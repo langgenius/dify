@@ -49,7 +49,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         render={
           <button
             type="button"
-            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
+            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           />
         }
       >

@@ -48,24 +48,38 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup web dependencies
+      - name: Setup web toolchain
         uses: ./.github/actions/setup-web
+        with:
+          run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           python-version: '3.12'
           cache-dependency-glob: |
             api/uv.lock
 
+      # API and web installs are independent, so overlap them; the browser
+      # install needs Playwright from the web dependencies.
       - name: Install API dependencies
+        id: install-api-dependencies
+        background: true
+        timeout-minutes: 15
         run: uv sync --project api --dev
+
+      - name: Install web dependencies
+        timeout-minutes: 15
+        run: vp install --frozen-lockfile
 
       - name: Install Chromium for accessibility E2E
         timeout-minutes: 15
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
+
+      - name: Wait for API dependencies
+        wait: install-api-dependencies
 
       - name: Run automated WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} checks
         working-directory: ./e2e

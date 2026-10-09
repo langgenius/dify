@@ -7,15 +7,17 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.knowledge import build_dataset_api_key_service
 from machinery.context import RequestContext
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermission
 from models.enums import PermissionEnum
 from models.model import ApiToken
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.api_token_service import ApiTokenCache
 from services.auth.api_key_contracts import ApiKeyNotFoundError
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.api_key_service import DatasetApiKeyService
 
 
@@ -36,7 +38,14 @@ def service(
         ]
     )
     sqlite_session.commit()
-    return build_dataset_api_key_service(database_client=sqlite_session_factory)
+    dataset_access = build_dataset_dependencies(
+        database_client=sqlite_session_factory,
+        workspace_roles=WorkspaceRepository(session_factory=sqlite_session_factory),
+    ).access
+    return build_dataset_api_key_service(
+        database_client=sqlite_session_factory,
+        dataset_access=dataset_access,
+    )
 
 
 @pytest.mark.parametrize("workspace", [False, True])

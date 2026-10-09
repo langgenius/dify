@@ -2,7 +2,7 @@
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
+import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +13,7 @@ import {
   WebAppAccessControlEntry,
   WebAppAccessControlEntrySkeleton,
 } from '@/app/components/app/access-point/shared/web-app-access-control'
-import CustomizeModal from '@/app/components/app/overview/customize'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
@@ -60,8 +60,8 @@ export function WebAppAccessCard({
           appBaseUrl,
           siteInfo: {
             title: site?.title ?? agent?.name ?? '',
-            chat_color_theme: site?.chat_color_theme ?? undefined,
-            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
+            chat_color_theme: site?.chat_color_theme ?? null,
+            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? false,
           },
         }
       : null
@@ -73,7 +73,6 @@ export function WebAppAccessCard({
           appId,
         }
       : null
-  const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [showEmbeddedModal, setShowEmbeddedModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
@@ -184,7 +183,7 @@ export function WebAppAccessCard({
     })
   }
 
-  async function handleSaveSettings(params: ConfigParams) {
+  async function handleSaveSettings(params: AppSiteUpdatePayload) {
     if (!appId || !canManageWebApp) return
 
     const sitePayload = params satisfies AppSiteUpdatePayload
@@ -242,15 +241,20 @@ export function WebAppAccessCard({
               <span aria-hidden className="i-ri-window-line size-4" />
               {t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={!canUseIntegrationActions || !customizeConfig}
-              onClick={() => setShowCustomizeModal(true)}
-              className="flex items-center gap-1 px-3"
-            >
-              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-              {t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
-            </Button>
+            {canManageWebApp && customizeConfig ? (
+              <CustomizeDialog
+                appId={customizeConfig.appId}
+                api_base_url={customizeConfig.apiBaseUrl}
+                sourceCodeRepository="webapp-conversation"
+                disabled={!canUseIntegrationActions}
+                triggerLabel={t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
+              />
+            ) : (
+              <Button variant="secondary" disabled className="flex items-center gap-1 px-3">
+                <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
+                {t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
+              </Button>
+            )}
             <Button
               variant="secondary"
               disabled={!canManageWebApp || !settingsAppInfo || updateSiteMutation.isPending}
@@ -311,15 +315,6 @@ export function WebAppAccessCard({
           isShow={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           onSave={handleSaveSettings}
-        />
-      )}
-      {canManageWebApp && customizeConfig && (
-        <CustomizeModal
-          isShow={showCustomizeModal}
-          onClose={() => setShowCustomizeModal(false)}
-          appId={customizeConfig.appId}
-          api_base_url={customizeConfig.apiBaseUrl}
-          sourceCodeRepository="webapp-conversation"
         />
       )}
       {canManageWebApp && embeddedConfig && (

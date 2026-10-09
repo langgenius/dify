@@ -18,6 +18,7 @@ import { TEST_RUN_MENU_HOTKEY } from './hotkeys'
 import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
+import { handleWorkflowMenuKeyDown } from './shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 import { WorkflowRunningStatus } from './types'
@@ -73,12 +74,28 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
 
   if (!isPanelContextMenu) return null
 
+  function pasteNodes() {
+    if (!clipboardElements.length) return
+    handleNodesPaste()
+    onClose()
+  }
+
   return (
-    <ContextMenuContent className="w-50 rounded-lg" sideOffset={4}>
+    <ContextMenuContent
+      className="w-50 rounded-lg"
+      sideOffset={4}
+      onKeyDown={(event) =>
+        handleWorkflowMenuKeyDown(event, [
+          ['workflow.paste', canEditWorkflow && clipboardElements.length ? pasteNodes : undefined],
+        ])
+      }
+    >
       <ContextMenuGroup>
         {canEditWorkflow && (
           <AddBlock
             renderTrigger={addBlockTrigger}
+            // The menu row owns the focus treatment, so the trigger adds no ring.
+            triggerClassName="focus-visible:ring-0"
             onClose={onClose}
             isolateKeyboardEvents
             sideOffset={-36}
@@ -137,12 +154,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
                 'justify-between gap-4 px-3 text-text-secondary',
                 !clipboardElements.length && 'cursor-not-allowed opacity-50',
               )}
-              onClick={() => {
-                if (clipboardElements.length) {
-                  handleNodesPaste()
-                  onClose()
-                }
-              }}
+              onClick={pasteNodes}
             >
               {t(($) => $['common.pasteHere'], { ns: 'workflow' })}
               <ShortcutKbd shortcut="workflow.paste" />

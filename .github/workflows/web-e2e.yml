@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
 
       - name: Test Web build synchronization
-        run: node --test .github/actions/wait-e2e-web-build/wait.test.cjs
+        run: node --test .github/actions/wait-e2e-web-build/*.test.cjs
 
       - name: Compute build source hash
         id: build-source
@@ -113,30 +113,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Prepare Chromium E2E dependencies
+      - name: Setup web toolchain
+        uses: ./.github/actions/setup-web
+        with:
+          run-install: 'false'
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      # API and web installs are independent, so overlap them; the browser
+      # install needs Playwright from the web dependencies.
+      - name: Install API dependencies
+        id: install-api-dependencies
+        background: true
         timeout-minutes: 15
-        uses: ./.github/actions/setup-core-e2e
-        with:
-          browser: chromium
+        run: uv sync --project api --dev
 
-      # Install dependencies while core-build runs, then wait only for its artifact.
-      - name: Wait for Web build
-        id: web-build
-        timeout-minutes: 35
-        uses: ./.github/actions/wait-e2e-web-build
+      - name: Install web dependencies
+        timeout-minutes: 15
+        run: vp install --frozen-lockfile
 
-      - name: Download Web build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
-          github-token: ${{ github.token }}
+      - name: Install Chromium
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:chromium
 
-      - name: Extract Web build
-        run: tar -xf e2e-web-build.tar -C web
+      - name: Wait for API dependencies
+        wait: install-api-dependencies
 
+      # The runner prepares the backend while waiting for and downloading the build.
       - name: Run Chromium full shard
         working-directory: ./e2e
-        run: vp run e2e:full -- --shard ${{ matrix.shard }}/3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: vp run e2e:full --download-web-build -- --shard ${{ matrix.shard }}/3
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -177,30 +191,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Prepare WebKit E2E dependencies
+      - name: Setup web toolchain
+        uses: ./.github/actions/setup-web
+        with:
+          run-install: 'false'
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      # API and web installs are independent, so overlap them; the browser
+      # install needs Playwright from the web dependencies.
+      - name: Install API dependencies
+        id: install-api-dependencies
+        background: true
         timeout-minutes: 15
-        uses: ./.github/actions/setup-core-e2e
-        with:
-          browser: webkit
+        run: uv sync --project api --dev
 
-      # Install dependencies while core-build runs, then wait only for its artifact.
-      - name: Wait for Web build
-        id: web-build
-        timeout-minutes: 35
-        uses: ./.github/actions/wait-e2e-web-build
+      - name: Install web dependencies
+        timeout-minutes: 15
+        run: vp install --frozen-lockfile
 
-      - name: Download Web build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ steps.web-build.outputs.artifact-id }}
-          github-token: ${{ github.token }}
+      - name: Install WebKit
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:webkit
 
-      - name: Extract Web build
-        run: tar -xf e2e-web-build.tar -C web
+      - name: Wait for API dependencies
+        wait: install-api-dependencies
 
+      # Keep the same overlap and teardown ownership for the WebKit smoke lane.
       - name: Run WebKit browser smoke
         working-directory: ./e2e
-        run: vp run e2e:full -- --tags '@browser-smoke'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: vp run e2e:full --download-web-build -- --tags '@browser-smoke'
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -235,11 +263,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup web dependencies
+      - name: Setup web toolchain
         uses: ./.github/actions/setup-web
+        with:
+          run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           python-version: '3.12'
@@ -247,13 +277,25 @@ jobs:
             api/uv.lock
             dify-agent/uv.lock
 
+      # API and web installs are independent, so overlap them; the browser
+      # install needs Playwright from the web dependencies.
       - name: Install API dependencies
+        id: install-api-dependencies
+        background: true
+        timeout-minutes: 15
         run: uv sync --project api --dev
+
+      - name: Install web dependencies
+        timeout-minutes: 15
+        run: vp install --frozen-lockfile
 
       - name: Install Chromium
         timeout-minutes: 15
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
+
+      - name: Wait for API dependencies
+        wait: install-api-dependencies
 
       - name: Run prepared and external runtime E2E tests
         working-directory: ./e2e

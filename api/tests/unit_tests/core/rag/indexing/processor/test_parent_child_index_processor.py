@@ -11,6 +11,7 @@ from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
+from models.account import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentCreatedFrom, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType
@@ -139,12 +140,13 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
         ):
             result = processor.transform(
                 [parent_document],
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=False,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -176,12 +178,13 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
-            patch.object(processor, "_split_child_nodes", return_value=[]),
+            patch.object(processor, "split_child_nodes", return_value=[]),
         ):
             result = processor.transform(
                 documents,
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -202,7 +205,7 @@ class TestParentChildIndexProcessor:
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
-            patch.object(processor, "_split_child_nodes", return_value=child_docs),
+            patch.object(processor, "split_child_nodes", return_value=child_docs),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
@@ -213,6 +216,7 @@ class TestParentChildIndexProcessor:
                 docs,
                 process_rule={"mode": "hierarchical", "rules": {"enabled": True}},
                 preview=True,
+                tenant_id="tenant-1",
                 session=self.session,
             )
 
@@ -336,7 +340,7 @@ class TestParentChildIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
         ):
@@ -349,7 +353,7 @@ class TestParentChildIndexProcessor:
     ) -> None:
         with (
             patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
         ):
@@ -362,7 +366,7 @@ class TestParentChildIndexProcessor:
         rules = Rule(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
-            processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
+            processor.split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
@@ -379,7 +383,7 @@ class TestParentChildIndexProcessor:
                 return_value="hash",
             ),
         ):
-            child_docs = processor._split_child_nodes(
+            child_docs = processor.split_child_nodes(
                 Document(page_content="parent", metadata={}), rules, "custom", None
             )
 
@@ -450,9 +454,11 @@ class TestParentChildIndexProcessor:
             parent_child_chunks=[SimpleNamespace(parent_content="parent", child_contents=["child"], files=None)],
         )
         session = self.session
-        account_session = self.session_factory()
+        loaded_account = Account(name="User", email="user@example.com")
+        load_user = Mock(return_value=loaded_account)
 
         with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.load_account", new=load_user),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.ParentChildStructureChunk.model_validate",
                 return_value=parent_childs,
@@ -460,14 +466,6 @@ class TestParentChildIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
-            ),
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.AccountService.load_user",
-                return_value=SimpleNamespace(id="user-1"),
-            ) as load_user,
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.session_factory.create_session",
-                return_value=nullcontext(account_session),
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
@@ -482,8 +480,9 @@ class TestParentChildIndexProcessor:
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
         mock_files.assert_called_once()
-        load_user.assert_called_once_with(dataset_document.created_by, account_session)
-        assert account_session is not session
+        load_user.assert_called_once_with(dataset_document.created_by)
+        assert mock_files.call_args.kwargs["current_user"] is loaded_account
+        assert mock_files.call_args.kwargs["session"] is session
 
     def test_index_raises_when_account_missing(
         self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
@@ -502,10 +501,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
                 return_value="hash",
             ),
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.AccountService.load_user",
-                return_value=None,
-            ),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.load_account", return_value=None),
         ):
             with pytest.raises(ValueError, match="Invalid account"):
                 processor.index(dataset, dataset_document, {"parent_child_chunks": []}, self.session)

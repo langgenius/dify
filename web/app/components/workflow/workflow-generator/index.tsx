@@ -12,11 +12,11 @@ import type {
 import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -143,10 +143,10 @@ const RecoveryDialog = ({
           {description}
         </AlertDialogDescription>
       </div>
-      <AlertDialogActions>
+      <AlertDialogFooter>
         <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
         <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>
-      </AlertDialogActions>
+      </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
 )
@@ -643,9 +643,12 @@ function WorkflowGeneratorModal() {
                 value={instruction}
                 onValueChange={setInstruction}
                 onKeyDown={(e) => {
+                  if (e.defaultPrevented || e.nativeEvent.isComposing || e.repeat || isLoading)
+                    return
                   if (matchesKeyboardEvent(e.nativeEvent, WORKFLOW_GENERATOR_SUBMIT_HOTKEY)) {
                     e.preventDefault()
-                    if (!isLoading) onGenerate()
+                    e.stopPropagation()
+                    onGenerate()
                   }
                 }}
                 maxLength={MAX_INSTRUCTION_LENGTH}

@@ -382,6 +382,33 @@ describe('AgentPreviewVersionsPanel', () => {
   })
 
   describe('Version filter', () => {
+    it('exposes which filter option is selected', async () => {
+      const user = userEvent.setup()
+      render(
+        <AgentPreviewVersionsPanel
+          agentId="agent-1"
+          activeVersionId="version-2"
+          onSelectVersion={vi.fn()}
+          onClose={vi.fn()}
+        />,
+        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
+      )
+
+      await user.click(screen.getByRole('button', { name: /filter/i }))
+      expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+
+      await user.click(screen.getByRole('button', { name: /onlyYours/i }))
+      expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
     it('should show filter options when the filter trigger is clicked', () => {
       render(
         <AgentPreviewVersionsPanel

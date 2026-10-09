@@ -9,15 +9,12 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 
 export default function AppSelector() {
-  const router = useRouter()
   const { t } = useTranslation(['common'])
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
@@ -34,26 +31,17 @@ export default function AppSelector() {
     }),
   )
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutate: logout } = useLogout()
 
   if (!userProfile) return null
-
-  const handleLogout = async () => {
-    await logout()
-
-    resetUser()
-    // Tokens are now stored in cookies and cleared by backend
-
-    router.push('/signin')
-  }
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={userProfile.name}
         className={cn(
-          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary outline-hidden',
-          'hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-hover active:opacity-70 data-popup-open:opacity-80',
+          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary',
+          'hover:opacity-80 active:opacity-70 data-popup-open:opacity-80',
         )}
       >
         <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
@@ -83,7 +71,7 @@ export default function AppSelector() {
           </div>
         </div>
         <div className="p-1">
-          <DropdownMenuItem className="h-9 justify-start px-3" onClick={handleLogout}>
+          <DropdownMenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
               className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"

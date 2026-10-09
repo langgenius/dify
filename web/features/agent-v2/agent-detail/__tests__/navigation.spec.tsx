@@ -137,6 +137,47 @@ describe('AgentDetailSection', () => {
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
   })
 
+  it('renders an uploaded sidebar avatar using its signed URL', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: 'https://files.example.com/avatar.png?sign=signature',
+    })
+    renderAgentDetailSection()
+
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+      'src',
+      'https://files.example.com/avatar.png?sign=signature',
+    )
+  })
+
+  it('preserves an external sidebar avatar when icon_url is null', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'link',
+      icon: 'https://example.com/avatar.png',
+      icon_url: null,
+    })
+    renderAgentDetailSection()
+
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+      'src',
+      'https://example.com/avatar.png',
+    )
+  })
+
+  it('shows a fallback without exposing the file ID when the signed URL is missing', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: null,
+    })
+    renderAgentDetailSection()
+
+    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
+    expect(screen.getByText('🤖')).toBeInTheDocument()
+  })
+
   it.each([null, '', '   '])(
     'omits an empty role while keeping the agent accessible (%s)',
     (role) => {

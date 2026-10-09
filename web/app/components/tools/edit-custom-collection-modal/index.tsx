@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -22,7 +22,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import EmojiPicker from '@/app/components/base/emoji-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
@@ -232,9 +232,15 @@ const EditCustomCollectionModal: FC<Props> = ({
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {t(($) => $[`createTool.${isAdd ? 'title' : 'editTitle'}`], { ns: 'tools' })}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -481,15 +487,21 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </Button>
                       </div>
                     </div>
-                    {showEmojiPicker && (
-                      <EmojiPicker
-                        open={showEmojiPicker}
-                        onOpenChange={setShowEmojiPicker}
-                        onSelect={(icon, icon_background) => {
-                          setEmoji({ content: icon, background: icon_background })
-                        }}
-                      />
-                    )}
+                    <IconPickerDialog
+                      enableImageUpload={false}
+                      defaultValue={{
+                        type: 'emoji',
+                        icon: emoji.content,
+                        background: emoji.background,
+                      }}
+                      open={showEmojiPicker}
+                      onOpenChange={setShowEmojiPicker}
+                      onConfirm={(value) => {
+                        if (value.type !== 'emoji') return
+                        const { icon, background: icon_background } = value
+                        setEmoji({ content: icon, background: icon_background })
+                      }}
+                    />
                     {credentialsModalShow && (
                       <ConfigCredentials
                         positionCenter={isAdd}

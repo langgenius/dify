@@ -9,11 +9,11 @@ import type { FormEvent } from 'react'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { CrawlSelectionForm } from './crawl-selection-form'
 import { createRequestId } from './request-id'
 import {
@@ -420,14 +421,11 @@ export function WebsiteCrawlPreview({
 
   useEffect(() => {
     if (!dirty) return
-    const preventUnsavedUnload = (event: BeforeUnloadEvent) => {
-      if (submittedRef.current) return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', preventUnsavedUnload)
-    return () => window.removeEventListener('beforeunload', preventUnsavedUnload)
-  }, [dirty])
+    return registerPageLeaveGuard({
+      message: t(($) => $['newKnowledge.discardSourceChangesDescription']),
+      shouldBlock: () => !submittedRef.current,
+    })
+  }, [dirty, t])
 
   useEffect(() => {
     if ((!dirty && !historyGuardRef.current) || submittedRef.current) return
@@ -1339,14 +1337,14 @@ export function WebsiteCrawlPreview({
               </p>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={discarding}>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={discarding} onClick={() => void discardAndCancel()}>
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </section>

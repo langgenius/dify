@@ -21,6 +21,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
+  # Keep orchestration on Depot to avoid GitHub-hosted runner queue delays.
   pre_job:
     name: Skip Duplicate Checks
     runs-on: depot-ubuntu-24.04
@@ -62,10 +63,13 @@ jobs:
               - 'api/**'
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_spec_mock.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
               - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_spec_mock.yml'
               - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - 'scripts/ast_grep_rules/no_new_session_mock.yml'
               - '.github/workflows/style.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/api-tests.yml'
@@ -78,6 +82,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'skills/**'
               - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
@@ -111,7 +116,6 @@ jobs:
               - '.github/workflows/web-e2e.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
-              - '.github/actions/setup-core-e2e/**'
               - '.github/actions/wait-e2e-web-build/**'
             vdb:
               - 'api/core/rag/datasource/**'
@@ -159,10 +163,14 @@ jobs:
               - 'api/**'
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_spec_mock.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/check_no_new_session_mock.py'
               - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_spec_mock.yml'
               - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - 'scripts/ast_grep_rules/no_new_session_mock.yml'
               - '.github/workflows/style.yml'
               - '.github/workflows/main-ci.yml'
             dify-agent-style:
@@ -187,6 +195,7 @@ jobs:
             ts-common-style:
               - 'web/**'
               - 'cli/**'
+              - 'skills/**'
               - 'e2e/**'
               - 'sdks/nodejs-client/**'
               - 'packages/**'
@@ -212,7 +221,8 @@ jobs:
               - '.editorconfig'
               - '.vite-hooks/**'
 
-  # Run tests in parallel while always emitting stable required checks.
+  # Finalizers report unchanged paths directly, avoiding separate skip-only jobs.
+  # Keep each required check name stable and fail closed if classification fails.
   api-tests-run:
     name: Run API Tests
     needs:
@@ -222,17 +232,6 @@ jobs:
     uses: ./.github/workflows/api-tests.yml
     secrets: inherit
 
-  api-tests-skip:
-    name: Skip API Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped API tests
-        run: echo "No API-related changes detected; skipping API tests."
-
   api-tests:
     name: API Tests
     if: ${{ always() }}
@@ -240,7 +239,6 @@ jobs:
       - pre_job
       - check-changes
       - api-tests-run
-      - api-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize API Tests status
@@ -248,11 +246,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.api-changed }}
           RUN_RESULT: ${{ needs.api-tests-run.result }}
-          SKIP_RESULT: ${{ needs.api-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "API tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -265,12 +269,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "API tests were skipped because no API-related files changed."
             exit 0
           fi
 
-          echo "API tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   cli-tests-run:
@@ -282,17 +286,6 @@ jobs:
     uses: ./.github/workflows/cli-tests.yml
     secrets: inherit
 
-  cli-tests-skip:
-    name: Skip CLI Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped CLI tests
-        run: echo "No CLI-related changes detected; skipping CLI tests."
-
   cli-tests:
     name: CLI Tests
     if: ${{ always() }}
@@ -300,7 +293,6 @@ jobs:
       - pre_job
       - check-changes
       - cli-tests-run
-      - cli-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize CLI Tests status
@@ -308,11 +300,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.cli-changed }}
           RUN_RESULT: ${{ needs.cli-tests-run.result }}
-          SKIP_RESULT: ${{ needs.cli-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "CLI tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -325,12 +323,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "CLI tests were skipped because no CLI-related files changed."
             exit 0
           fi
 
-          echo "CLI tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   web-tests-run:
@@ -342,17 +340,6 @@ jobs:
     uses: ./.github/workflows/web-tests.yml
     secrets: inherit
 
-  web-tests-skip:
-    name: Skip Web Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped web tests
-        run: echo "No web-related changes detected; skipping web tests."
-
   web-tests:
     name: Web Tests
     if: ${{ always() }}
@@ -360,7 +347,6 @@ jobs:
       - pre_job
       - check-changes
       - web-tests-run
-      - web-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Tests status
@@ -368,11 +354,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.web-changed }}
           RUN_RESULT: ${{ needs.web-tests-run.result }}
-          SKIP_RESULT: ${{ needs.web-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "Web tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -385,12 +377,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "Web tests were skipped because no web-related files changed."
             exit 0
           fi
 
-          echo "Web tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   web-e2e-run:
@@ -404,17 +396,6 @@ jobs:
       run-external-runtime: false
     secrets: inherit
 
-  web-e2e-skip:
-    name: Skip Web Full-Stack E2E
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped web full-stack e2e
-        run: echo "No E2E-related changes detected; skipping web full-stack E2E."
-
   web-e2e:
     name: Web Full-Stack E2E
     if: ${{ always() }}
@@ -422,7 +403,6 @@ jobs:
       - pre_job
       - check-changes
       - web-e2e-run
-      - web-e2e-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Full-Stack E2E status
@@ -430,11 +410,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.e2e-changed }}
           RUN_RESULT: ${{ needs.web-e2e-run.result }}
-          SKIP_RESULT: ${{ needs.web-e2e-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "Web full-stack E2E was skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -447,12 +433,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "Web full-stack E2E was skipped because no E2E-related files changed."
             exit 0
           fi
 
-          echo "Web full-stack E2E was not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   style-check:
@@ -480,17 +466,6 @@ jobs:
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
 
-  vdb-tests-skip:
-    name: Skip VDB Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped VDB tests
-        run: echo "No VDB-related changes detected; skipping VDB tests."
-
   vdb-tests:
     name: VDB Tests
     if: ${{ always() }}
@@ -498,7 +473,6 @@ jobs:
       - pre_job
       - check-changes
       - vdb-tests-run
-      - vdb-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize VDB Tests status
@@ -506,11 +480,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.vdb-changed }}
           RUN_RESULT: ${{ needs.vdb-tests-run.result }}
-          SKIP_RESULT: ${{ needs.vdb-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "VDB tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -523,12 +503,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "VDB tests were skipped because no VDB-related files changed."
             exit 0
           fi
 
-          echo "VDB tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   db-migration-test-run:
@@ -539,17 +519,6 @@ jobs:
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
 
-  db-migration-test-skip:
-    name: Skip DB Migration Test
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped DB migration tests
-        run: echo "No migration-related changes detected; skipping DB migration tests."
-
   db-migration-test:
     name: DB Migration Test
     if: ${{ always() }}
@@ -557,7 +526,6 @@ jobs:
       - pre_job
       - check-changes
       - db-migration-test-run
-      - db-migration-test-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize DB Migration Test status
@@ -565,11 +533,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.migration-changed }}
           RUN_RESULT: ${{ needs.db-migration-test-run.result }}
-          SKIP_RESULT: ${{ needs.db-migration-test-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "DB migration tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -582,12 +556,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "DB migration tests were skipped because no migration-related files changed."
             exit 0
           fi
 
-          echo "DB migration tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   sandbox-runtime-tests-run:
@@ -599,17 +573,6 @@ jobs:
     uses: ./.github/workflows/sandbox-runtime-tests.yml
     secrets: inherit
 
-  sandbox-runtime-tests-skip:
-    name: Skip Sandbox Runtime Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.sandbox-runtime-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped sandbox runtime tests
-        run: echo "No sandbox-runtime-related changes detected; skipping sandbox runtime tests."
-
   sandbox-runtime-tests:
     name: Sandbox Runtime Tests
     if: ${{ always() }}
@@ -617,7 +580,6 @@ jobs:
       - pre_job
       - check-changes
       - sandbox-runtime-tests-run
-      - sandbox-runtime-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Sandbox Runtime Tests status
@@ -625,11 +587,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.sandbox-runtime-changed }}
           RUN_RESULT: ${{ needs.sandbox-runtime-tests-run.result }}
-          SKIP_RESULT: ${{ needs.sandbox-runtime-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "Sandbox runtime tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -642,12 +610,12 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "Sandbox runtime tests were skipped because no sandbox-runtime-related files changed."
             exit 0
           fi
 
-          echo "Sandbox runtime tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1
 
   dify-agent-tests-run:
@@ -659,17 +627,6 @@ jobs:
     uses: ./.github/workflows/dify-agent-tests.yml
     secrets: inherit
 
-  dify-agent-tests-skip:
-    name: Skip Dify Agent Tests
-    needs:
-      - pre_job
-      - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.dify-agent-changed != 'true'
-    runs-on: depot-ubuntu-24.04
-    steps:
-      - name: Report skipped dify agent tests
-        run: echo "No dify-agent-related changes detected; skipping dify agent tests."
-
   dify-agent-tests:
     name: Dify Agent Tests
     if: ${{ always() }}
@@ -677,7 +634,6 @@ jobs:
       - pre_job
       - check-changes
       - dify-agent-tests-run
-      - dify-agent-tests-skip
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Dify Agent Tests status
@@ -685,11 +641,17 @@ jobs:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.dify-agent-changed }}
           RUN_RESULT: ${{ needs.dify-agent-tests-run.result }}
-          SKIP_RESULT: ${{ needs.dify-agent-tests-skip.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
         run: |
           if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
             echo "Dify agent tests were skipped because this workflow run duplicated a successful or newer run."
             exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
           fi
 
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
@@ -702,10 +664,10 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SKIP_RESULT" == 'success' ]]; then
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "Dify agent tests were skipped because no dify-agent-related files changed."
             exit 0
           fi
 
-          echo "Dify agent tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
           exit 1

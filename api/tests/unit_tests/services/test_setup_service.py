@@ -6,15 +6,14 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from services.account.contracts import SetupInput, SetupStatus
 from services.setup_service import (
     InitializationValidationRequiredError,
     SetupAccountProvisioner,
     SetupAlreadyCompletedError,
-    SetupInput,
     SetupLock,
     SetupService,
     SetupState,
-    SetupStatus,
 )
 
 

@@ -9,7 +9,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -17,6 +17,7 @@ import {
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -26,7 +27,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
+import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
   buildMarketplaceUrlPathByIntegrationSection,
@@ -397,8 +398,15 @@ export default function IntegrationsPage({
                 <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
                   <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
                     <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="lg"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                   <DrawerContent className="min-h-0 flex-1 p-0 pb-0">{sidebar}</DrawerContent>

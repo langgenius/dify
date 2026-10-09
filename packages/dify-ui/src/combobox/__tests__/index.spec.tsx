@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Combobox,
@@ -10,7 +10,6 @@ import {
   ComboboxCollection,
   ComboboxEmpty,
   ComboboxGroup,
-  ComboboxGroupLabel,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxInputTrigger,
@@ -22,7 +21,6 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
-  ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
@@ -206,13 +204,13 @@ describe('Combobox wrappers', () => {
         .not.toBe(restingBoxShadow)
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderInputCombobox({
         children: (
           <ComboboxInputGroup>
             <ComboboxInput
               aria-label="Search resources"
-              className="custom-input"
+
               placeholder="Find a resource"
               required
             />
@@ -229,9 +227,6 @@ describe('Combobox wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search resources' }))
         .toBeRequired()
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search resources' }))
-        .toHaveClass('custom-input')
     })
 
     it('should not inject input-only attributes into a custom textarea', async () => {
@@ -282,6 +277,59 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Popup anatomy and options', () => {
+    it('should keep the popup input visible and scroll the list in a short viewport', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `Resource ${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Combobox open items={longOptions}>
+              <ComboboxTrigger aria-label="Resource">Choose resource</ComboboxTrigger>
+              <ComboboxPortal>
+                <ComboboxPositioner>
+                  <ComboboxPopup ref={popupRef} aria-label="Choose a resource">
+                    <ComboboxInput aria-label="Filter resources" />
+                    <ComboboxList<string>>
+                      {(item) => (
+                        <ComboboxItem key={item} value={item}>
+                          {item}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxPopup>
+                </ComboboxPositioner>
+              </ComboboxPortal>
+            </Combobox>
+          </div>,
+        )
+
+        const input = screen.getByRole('combobox', { name: 'Filter resources' })
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+          const inputBounds = input.element().getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(inputBounds.top).toBeGreaterThanOrEqual(popupBounds.top)
+          expect(inputBounds.bottom).toBeLessThanOrEqual(popupBounds.bottom)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
+          expect(popupRef.current!.scrollHeight).toBeLessThanOrEqual(popupRef.current!.clientHeight)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
     it('should render source objects while exposing primitive selected values', async () => {
       const onValueChange = vi.fn()
       const screen = await render(
@@ -403,43 +451,6 @@ describe('Combobox wrappers', () => {
       expect(status.element().getBoundingClientRect().height).toBe(0)
     })
 
-    it('should forward custom classes to group label separator item text and indicator', async () => {
-      const screen = await renderWithSafeViewport(
-        <Combobox open defaultValue="workflow" items={['workflow']}>
-          <ComboboxTrigger aria-label="Resource type">
-            <ComboboxValue />
-          </ComboboxTrigger>
-          <ComboboxPortal>
-            <ComboboxPositioner>
-              <ComboboxPopup aria-label="Choose a resource">
-                <ComboboxInput aria-label="Filter resources" />
-                <ComboboxList data-testid="custom-list">
-                  <ComboboxGroup items={['workflow']}>
-                    <ComboboxGroupLabel className="custom-label">Resources</ComboboxGroupLabel>
-                    <ComboboxSeparator className="custom-separator" data-testid="separator" />
-                    <ComboboxItem value="workflow" className="custom-item">
-                      <ComboboxItemText className="custom-text">Workflow</ComboboxItemText>
-                      <ComboboxItemIndicator className="custom-indicator" data-testid="indicator" />
-                    </ComboboxItem>
-                  </ComboboxGroup>
-                </ComboboxList>
-              </ComboboxPopup>
-            </ComboboxPositioner>
-          </ComboboxPortal>
-        </Combobox>,
-      )
-
-      await expect.element(screen.getByText('Resources')).toHaveClass('custom-label')
-      await expect.element(screen.getByTestId('separator')).toHaveClass('custom-separator')
-      await expect
-        .element(screen.getByRole('option', { name: 'Workflow' }))
-        .toHaveClass('custom-item')
-      await expect
-        .element(screen.getByTestId('custom-list').getByText('Workflow'))
-        .toHaveClass('custom-text')
-      await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
-    })
-
     it('should navigate function-rendered items with arrow keys', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox defaultValue="workflow" items={['workflow', 'dataset', 'app']}>
@@ -525,16 +536,16 @@ describe('Combobox wrappers', () => {
       await expect.element(screen.getByText('No reviewers selected')).toBeInTheDocument()
     })
 
-    it('should render chip wrappers and default remove button label', async () => {
+    it('should give chip remove buttons a default accessible name and non-submit type', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox multiple defaultValue={['maya']} items={['maya', 'nora']}>
           <ComboboxInputGroup>
-            <ComboboxChips className="custom-chips" data-testid="chips">
+            <ComboboxChips data-testid="chips">
               <ComboboxValue<string, true>>
                 {(selectedValue) => (
                   <React.Fragment>
                     {selectedValue?.map((item) => (
-                      <ComboboxChip key={item} className="custom-chip">
+                      <ComboboxChip key={item}>
                         <span>{item}</span>
                         <ComboboxChipRemove data-testid="remove-chip" />
                       </ComboboxChip>
@@ -548,10 +559,6 @@ describe('Combobox wrappers', () => {
         </Combobox>,
       )
 
-      await expect.element(screen.getByTestId('chips')).toHaveClass('custom-chips')
-      await expect
-        .element(screen.getByText('maya').element().parentElement!)
-        .toHaveClass('custom-chip')
       await expect
         .element(screen.getByRole('button', { name: 'Remove selected item' }))
         .toHaveAttribute('type', 'button')

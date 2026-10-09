@@ -1,7 +1,40 @@
 import type {
   AppDetailSiteResponse,
   AppDetailWithSite,
+  AppModelConfigResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+
+export function createAppModelConfigFixture(
+  overrides: Partial<AppModelConfigResponse> = {},
+): AppModelConfigResponse {
+  return {
+    agent_mode: { enabled: false },
+    annotation_reply: { enabled: false },
+    chat_prompt_config: {},
+    completion_prompt_config: {},
+    created_at: 1,
+    created_by: null,
+    dataset_configs: { retrieval_model: 'single' },
+    dataset_query_variable: null,
+    external_data_tools: [],
+    file_upload: {},
+    model: {},
+    more_like_this: { enabled: false },
+    opening_statement: null,
+    pre_prompt: null,
+    prompt_type: 'simple',
+    retriever_resource: { enabled: false },
+    sensitive_word_avoidance: { enabled: false },
+    speech_to_text: { enabled: false },
+    suggested_questions: [],
+    suggested_questions_after_answer: { enabled: false },
+    text_to_speech: { enabled: false },
+    updated_at: 1,
+    updated_by: null,
+    user_input_form: [],
+    ...overrides,
+  }
+}
 
 export function createAppSiteFixture(
   overrides: Partial<AppDetailSiteResponse> = {},

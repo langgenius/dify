@@ -30,8 +30,7 @@ import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflo
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -164,12 +163,15 @@ const FeaturesTrigger = () => {
     try {
       if (!appID) return
 
-      const res = await fetchAppDetail({ url: '/apps', id: appID })
+      const res = await consoleClient.apps.byAppId.get({ params: { app_id: appID } })
       setAppDetail({ ...res })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+      })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, setAppDetail, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -202,6 +204,7 @@ const FeaturesTrigger = () => {
           if (options?.showSuccessToast !== false) {
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           }
+          if (res.warning) toast.warning(res.warning)
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)
@@ -276,6 +279,7 @@ const FeaturesTrigger = () => {
         </Button>
       )}
       <AppPublisher
+        appId={appID!}
         {...{
           publishedAt,
           draftUpdatedAt,

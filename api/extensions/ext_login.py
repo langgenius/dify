@@ -1,9 +1,10 @@
 import json
 import logging
+from collections.abc import Callable
 from typing import assert_never, cast, override
 
 import flask_login
-from flask import Request, Response, request
+from flask import Flask, Request, Response, current_app, request
 from flask_login import user_loaded_from_request, user_logged_in
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,11 +25,19 @@ from libs.token import (
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
-from services.account_service import AccountService
 
 logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
+type AccountLoader = Callable[[str], Account | None]
+
+
+def bind_account_loader(app: Flask, loader: AccountLoader) -> None:
+    app.extensions["account_identity_loader"] = loader
+
+
+def load_account(account_id: str) -> Account | None:
+    return cast(AccountLoader, current_app.extensions["account_identity_loader"])(account_id)
 
 
 class DifyLoginManager(flask_login.LoginManager):
@@ -99,7 +108,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = AccountService.load_logged_in_account(account_id=user_id, session=session)
+        logged_in_account = load_account(user_id)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /
@@ -118,7 +127,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         source = decoded.get("token_source")
         if source or not user_id:
             return None
-        return AccountService.load_logged_in_account(account_id=user_id, session=session)
+        return load_account(user_id)
     elif request.blueprint == "web":
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         webapp_token = extract_webapp_passport(app_code, request) if app_code else None
@@ -166,7 +175,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
 def on_user_logged_in(_sender: object, user: LoginUser) -> None:
     """Snapshot authenticated identity into the side-effect-free logging context.
 
-    Note: AccountService.load_logged_in_account will populate user.current_tenant_id
+    Note: AccountIdentityGateway.load_user will populate user.current_tenant_id
     through the load_user method, which calls account.set_tenant_id_with_session().
     """
     set_identity_context()

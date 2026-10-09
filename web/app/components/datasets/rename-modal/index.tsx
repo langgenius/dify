@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconSelection } from '../../base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -9,10 +9,10 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
 import AppIcon from '../../base/app-icon'
-import AppIconPicker from '../../base/app-icon-picker'
 
 type RenameDatasetModalProps = {
   show: boolean
@@ -27,7 +27,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const [description, setDescription] = useState<string>(dataset.description)
   const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
   const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+  const [appIcon, setAppIcon] = useState<IconPickerValue>(
     dataset.icon_info?.icon_type === 'image'
       ? {
           type: 'image' as const,
@@ -40,11 +40,11 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           background: dataset.icon_info?.icon_background || '',
         },
   )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
+    setShowIconPicker(true)
   }, [])
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     setAppIcon(icon)
   }, [])
   const onConfirm = useCallback(async () => {
@@ -128,10 +128,11 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <button
                 type="button"
                 aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                className="shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleOpenAppIconPicker}
               >
                 <AppIcon
+                  decorative
                   size="medium"
                   iconType={appIcon.type}
                   icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
@@ -168,18 +169,12 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             </Button>
           </div>
         </form>
-        {showAppIconPicker && (
-          <AppIconPicker
-            open={showAppIconPicker}
-            initialEmoji={
-              appIcon.type === 'emoji'
-                ? { icon: appIcon.icon, background: appIcon.background }
-                : undefined
-            }
-            onOpenChange={setShowAppIconPicker}
-            onSelect={handleSelectAppIcon}
-          />
-        )}
+        <IconPickerDialog
+          open={showIconPicker}
+          defaultValue={appIcon}
+          onOpenChange={setShowIconPicker}
+          onConfirm={handleSelectAppIcon}
+        />
       </DialogContent>
     </Dialog>
   )

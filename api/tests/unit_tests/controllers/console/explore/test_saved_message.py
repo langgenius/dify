@@ -7,9 +7,9 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.saved_message as module
+from controllers.common.errors import NotFoundError
 from controllers.console.explore.error import NotCompletionAppError
 from graphon.file import File, FileTransferMethod, FileType
 from libs.external_api import ExternalApi
@@ -32,8 +32,13 @@ _WORKSPACE_ID = "22222222-2222-4222-8222-222222222222"
 
 
 @dataclass(frozen=True)
+class _InstalledAppServiceMocks:
+    access: MagicMock
+
+
+@dataclass(frozen=True)
 class _ApplicationServiceMocks:
-    installed_app_access: MagicMock
+    installed_apps: _InstalledAppServiceMocks
     saved_messages: MagicMock
 
 
@@ -129,10 +134,10 @@ def _expected_record() -> dict[str, object]:
 @pytest.fixture
 def services() -> Generator[_ApplicationServiceMocks]:
     service_mocks = _ApplicationServiceMocks(
-        installed_app_access=MagicMock(),
+        installed_apps=_InstalledAppServiceMocks(access=MagicMock()),
         saved_messages=MagicMock(),
     )
-    service_mocks.installed_app_access.get_access.return_value = _installed_app()
+    service_mocks.installed_apps.access.get_access.return_value = _installed_app()
     with patch.object(
         module,
         "application_services",
@@ -212,7 +217,7 @@ class TestSavedMessageListApi:
             response = http_app.test_client().get(f"/saved-messages/{installed_app.id}", query_string=query_string)
 
         assert response.status_code == 422
-        services.installed_app_access.get_access.assert_called_once_with(
+        services.installed_apps.access.get_access.assert_called_once_with(
             installed_app_id=installed_app.id,
             tenant_id=_WORKSPACE_ID,
             account_id=_ACCOUNT_ID,
@@ -279,13 +284,14 @@ class TestSavedMessageListApi:
     def test_post_maps_missing_message_to_not_found(self, services: _ApplicationServiceMocks) -> None:
         services.saved_messages.save.side_effect = MessageNotExistsError()
 
-        with pytest.raises(NotFound, match="Message Not Exists"):
+        with pytest.raises(NotFoundError, match="Message Not Exists") as raised:
             unwrap(module.SavedMessageListApi().post)(
                 module.SavedMessageListApi(),
                 module.SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())}),
                 _REQUEST_CONTEXT,
                 _installed_app(),
             )
+        assert raised.value.data == {"code": "not_found", "message": "Message Not Exists.", "status": 404}
 
 
 class TestSavedMessageApi:

@@ -671,6 +671,21 @@ describe('Agent access surface cards', () => {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const trigger = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+      })
+      await waitFor(() => expect(trigger).toHaveFocus())
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'appOverview.overview.appInfo.customize.title',
+        }),
+      ).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(trigger).toHaveFocus())
     })
 
     it('should open the embedded dialog with the Agent web app route', async () => {
@@ -694,7 +709,7 @@ describe('Agent access surface cards', () => {
       })
 
       await user.click(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('tab', {
           name: 'appOverview.overview.appInfo.embedded.scripts',
         }),
       )
@@ -849,7 +864,8 @@ describe('Agent access surface cards', () => {
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.settings.title',
       })
-      expect(within(dialog).getByAltText('app icon')).toHaveAttribute(
+      const iconTrigger = within(dialog).getByRole('button', { name: 'app.iconPicker.title' })
+      expect(iconTrigger.querySelector('img')).toHaveAttribute(
         'src',
         'https://files.example.test/agent-icon.png',
       )
@@ -1109,7 +1125,21 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
+      const keyTable = within(dialog).getByRole('table', {
+        name: 'appApi.apiKeyModal.apiSecretKey',
+      })
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.secretKey' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.created' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
+      ).toBeInTheDocument()
+      expect(
+        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+      ).toBeInTheDocument()
 
       await user.click(
         within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),

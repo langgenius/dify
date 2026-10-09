@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -40,6 +40,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        datasource_credentials: Callable[[str, str, str, str | None], dict[str, Any]],
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -48,6 +49,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self.datasource_manager = DatasourceManager
+        self._datasource_credentials = datasource_credentials
 
     @override
     def populate_start_event(self, event) -> None:
@@ -117,9 +119,9 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         datasource_type=datasource_type.value,
                         provider_id=provider_id,
                         tenant_id=dify_ctx.tenant_id,
-                        provider=node_data.provider_name,
-                        plugin_id=node_data.plugin_id,
-                        credential_id=credential_id,
+                        credentials=self._datasource_credentials(
+                            dify_ctx.tenant_id, node_data.provider_name, node_data.plugin_id, credential_id
+                        ),
                         parameters_for_log=parameters_for_log,
                         datasource_info=datasource_info,
                         variable_pool=variable_pool,

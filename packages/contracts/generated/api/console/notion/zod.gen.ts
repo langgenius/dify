@@ -19,6 +19,11 @@ export const zDataSourceIntegrateIconResponse = z.object({
 })
 
 /**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
  * NotionIntegratePageResponse
  */
 export const zNotionIntegratePageResponse = z.object({
@@ -27,7 +32,7 @@ export const zNotionIntegratePageResponse = z.object({
   page_id: z.string(),
   page_name: z.string(),
   parent_id: z.string().nullable(),
-  type: z.string(),
+  type: zNotionPageType,
 })
 
 /**

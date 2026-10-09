@@ -3,18 +3,18 @@ import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '.'
 import { Button } from '../button'
 
 const triggerButtonClassName =
-  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 
 const meta = {
   title: 'Base/UI/AlertDialog',
@@ -24,7 +24,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogActions`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
+          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogFooter`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
       },
     },
   },
@@ -50,10 +50,10 @@ export const Default: Story = {
             removed.
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
           <AlertDialogConfirmButton>Delete</AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   ),
@@ -95,16 +95,16 @@ export const NonDestructive: Story = {
             history.
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Not now</AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="default">Publish</AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   ),
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [open, setOpen] = React.useState(false)
   const [count, setCount] = React.useState(0)
 
@@ -128,7 +128,7 @@ const ControlledDemo = () => {
               token afterwards.
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">Keep token</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               onClick={() => {
@@ -138,7 +138,7 @@ const ControlledDemo = () => {
             >
               Revoke
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -149,7 +149,7 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
-const LoadingConfirmDemo = () => {
+function LoadingConfirmDemo() {
   const [pending, setPending] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const confirmLabelId = React.useId()
@@ -177,7 +177,7 @@ const LoadingConfirmDemo = () => {
             finalize.
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             Cancel
           </AlertDialogCancelButton>
@@ -189,7 +189,7 @@ const LoadingConfirmDemo = () => {
           >
             <span id={confirmLabelId}>{pending ? 'Archiving…' : 'Archive'}</span>
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

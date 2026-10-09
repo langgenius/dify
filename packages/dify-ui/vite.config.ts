@@ -1,9 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite-plus'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -11,12 +8,12 @@ const configDir = path.join(dirname, '.storybook')
 const isCI = !!process.env.CI
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: lazyPlugins(async () => {
+    const { default: react } = await import('@vitejs/plugin-react')
+    return [react()]
+  }),
   resolve: {
     tsconfigPaths: true,
-  },
-  optimizeDeps: {
-    include: ['vite-plus/test/browser'],
   },
   test: {
     browser: {
@@ -42,7 +39,10 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        plugins: [tailwindcss()],
+        plugins: lazyPlugins(async () => {
+          const { default: tailwindcss } = await import('@tailwindcss/vite')
+          return [tailwindcss()]
+        }),
         test: {
           name: 'unit',
           globals: true,
@@ -58,11 +58,10 @@ export default defineConfig({
       },
       {
         extends: true,
-        plugins: [
-          storybookTest({
-            configDir,
-          }),
-        ],
+        plugins: lazyPlugins(async () => {
+          const { storybookTest } = await import('@storybook/addon-vitest/vitest-plugin')
+          return [storybookTest({ configDir })]
+        }),
         test: {
           name: 'storybook',
         },

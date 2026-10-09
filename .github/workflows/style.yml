@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: false
           python-version: '3.12'
@@ -88,6 +88,14 @@ jobs:
       - name: Run No New Controller SQLAlchemy Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
+
+      - name: Run No New Session Mock Guard
+        if: inputs.run-python-style
+        run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
+
+      - name: Run No Spec Mock Guard
+        if: inputs.run-python-style
+        run: uv run --project api python scripts/check_no_spec_mock.py
 
       - name: Run Type Checks
         if: inputs.run-python-style
@@ -205,8 +213,24 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Restore static check task cache
+        id: static-check-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules/.vite/task-cache
+          key: vite-task-static-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vite-task-static-v1-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Static check
         run: vp run -w check
+
+      - name: Save static check task cache
+        if: success() && github.event_name != 'merge_group'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.static-check-cache.outputs.cache-primary-key }}
 
   superlinter:
     name: SuperLinter
@@ -227,7 +251,7 @@ jobs:
           persist-credentials: false
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
+        uses: super-linter/super-linter/slim@2da136927bd4a73596db63044b504547c62cb854 # v9.0.0
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: origin/main

@@ -12,7 +12,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -26,14 +26,16 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
+import { InlineAgentLoading } from './inline-agent-loading'
 
 const i18nPrefix = 'nodes.agent'
 type AgentRosterDrawerMode = 'setup' | 'detail'
@@ -220,7 +222,7 @@ function AgentRosterDrawer({
                             aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
                               ns: 'workflowAgent',
                             })}
-                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
                           </DropdownMenuTrigger>
@@ -248,9 +250,15 @@ function AgentRosterDrawer({
                         </div>
                       </>
                     )}
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -315,7 +323,9 @@ function AgentRosterInlineConfigureDialog({
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}
         </DialogDescription>
-        {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+        <Suspense fallback={<InlineAgentLoading />}>
+          {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+        </Suspense>
       </DialogContent>
     </Dialog>
   )
@@ -434,7 +444,7 @@ export function AgentRosterField({
                 type="button"
                 disabled={isPending}
                 className={cn(
-                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                   isPending &&
                     'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary',
                 )}

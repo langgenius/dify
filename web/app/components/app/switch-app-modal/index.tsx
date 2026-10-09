@@ -4,11 +4,11 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -19,8 +19,8 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,23 +28,20 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
   show: boolean
-  appDetail: Pick<
+  sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
   onClose: () => void
-  inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
   const { t } = useTranslation(['app', 'common'])
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
@@ -63,19 +60,19 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const appIconType = zIconType.safeParse(appDetail.icon_type).data
+  const [showIconPicker, setShowIconPicker] = useState(false)
+  const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon ?? '' }
+      ? { type: 'image' as const, url: sourceApp.icon_url ?? '', fileId: sourceApp.icon ?? '' }
       : {
           type: 'emoji' as const,
-          icon: appDetail.icon ?? '',
-          background: appDetail.icon_background,
+          icon: sourceApp.icon ?? '',
+          background: sourceApp.icon_background,
         },
   )
 
-  const [name, setName] = useState(`${appDetail.name}(copy)`)
+  const [name, setName] = useState(`${sourceApp.name}(copy)`)
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const { mutateAsync: convertToWorkflow } = useMutation(
@@ -89,7 +86,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     if (isAppQuotaUnavailable || isAppsFull) return
     try {
       const { new_app_id: newAppID, permission_keys } = await convertToWorkflow({
-        params: { app_id: appDetail.id },
+        params: { app_id: sourceApp.id },
         body: {
           name,
           icon_type: appIcon.type,
@@ -99,16 +96,15 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
       })
       onClose()
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (inAppDetail) setAppDetail()
       if (removeOriginal)
         await deleteOriginalApp({
-          params: { app_id: appDetail.id },
+          params: { app_id: sourceApp.id },
         })
       getRedirection(
         {
           id: newAppID,
           mode:
-            appDetail.mode === AppModeEnum.COMPLETION
+            sourceApp.mode === AppModeEnum.COMPLETION
               ? AppModeEnum.WORKFLOW
               : AppModeEnum.ADVANCED_CHAT,
           permission_keys,
@@ -169,17 +165,21 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => {
-                  setShowAppIconPicker(true)
-                }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
+              <button
+                type="button"
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={() => setShowIconPicker(true)}
+              >
+                <AppIcon
+                  decorative
+                  size="large"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                />
+              </button>
               <Input
                 id={nameInputId}
                 value={name}
@@ -188,20 +188,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
                 className="h-10 grow"
               />
             </div>
-            {showAppIconPicker && (
-              <AppIconPicker
-                open={showAppIconPicker}
-                initialEmoji={
-                  appIcon.type === 'emoji'
-                    ? { icon: appIcon.icon, background: appIcon.background }
-                    : undefined
-                }
-                onOpenChange={setShowAppIconPicker}
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                }}
-              />
-            )}
+            <IconPickerDialog
+              open={showIconPicker}
+              defaultValue={appIcon}
+              onOpenChange={setShowIconPicker}
+              onConfirm={(payload) => {
+                setAppIcon(payload)
+              }}
+            />
           </div>
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">
@@ -247,14 +241,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

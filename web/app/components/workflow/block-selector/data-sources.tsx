@@ -113,10 +113,14 @@ function DataSources({
     ],
   )
   const { data: marketplacePluginsData } = useMarketplacePlugins(marketplaceSearchParams)
-  const notInstalledPlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
-  )
+  const notInstalledPlugins = useMemo(() => {
+    const installedPluginIds = new Set(dataSources.map((provider) => provider.plugin_id))
+    return (
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !installedPluginIds.has(plugin.plugin_id)),
+      ) ?? []
+    )
+  }, [dataSources, marketplacePluginsData?.pages])
 
   return (
     <div className={cn('w-100 max-w-full min-w-0', className)}>
