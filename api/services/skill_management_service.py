@@ -4580,6 +4580,7 @@ class SkillManagementService:
     @staticmethod
     def _extract_docx_text(payload: bytes, *, max_chars: int) -> str:
         parts: list[str] = []
+        inline_text = {"tab": "\t", "br": "\n", "cr": "\n", "noBreakHyphen": "\u2011", "softHyphen": "\u00ad"}
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 for name in sorted(archive.namelist()):
@@ -4587,7 +4588,27 @@ class SkillManagementService:
                         name == "word/document.xml" or name.startswith("word/header") or name.startswith("word/footer")
                     ):
                         continue
-                    parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
+                    paragraph_text: list[str] = []
+                    ancestors: list[str] = []
+                    for event, node in ET.iterparse(io.BytesIO(archive.read(name)), events=("start", "end")):
+                        tag = node.tag.rsplit("}", 1)[-1]
+                        if event == "start":
+                            ancestors.append(tag)
+                        # Runs share a paragraph; nested text-box paragraphs must not be collected twice.
+                        if tag == "p":
+                            if paragraph_text:
+                                parts.append("".join(paragraph_text))
+                                paragraph_text = []
+                        elif event == "end" and tag == "t":
+                            paragraph_text.append(node.text or "")
+                        elif event == "end" and tag in inline_text and len(ancestors) > 1:
+                            if ancestors[-2] == "r" or (tag == "br" and ancestors[-2] == "p"):
+                                paragraph_text.append(inline_text[tag])
+                        if event == "end":
+                            ancestors.pop()
+                            node.clear()
+                    if paragraph_text:
+                        parts.append("".join(paragraph_text))
                     if sum(len(part) for part in parts) >= max_chars:
                         break
         except (ET.ParseError, OSError, zipfile.BadZipFile):
