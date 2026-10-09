@@ -3,11 +3,11 @@
 import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
@@ -58,14 +58,14 @@ export default function DeleteTokenDialog({
         <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
           {t(($) => $['resourceAccessToken.deleteDescription'], { ns: 'accountSettings' })}
         </AlertDialogDescription>
-        <AlertDialogActions className="mt-6 p-0">
+        <AlertDialogFooter className="mt-6 p-0">
           <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton disabled={deleteMutation.isPending} onClick={confirmDelete}>
             {t(($) => $['operation.delete'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
