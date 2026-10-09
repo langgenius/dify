@@ -35,3 +35,12 @@ export const textControlGroupClassName = [
   'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
   'motion-reduce:transition-none',
 ]
+
+// The input inside `textControlGroupClassName`: the group owns the surface, so the input is bare.
+// Its horizontal padding belongs to the layout around it.
+export const textControlGroupInputClassName = [
+  'w-0 min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden',
+  'placeholder:text-components-input-text-placeholder',
+  'read-only:cursor-default',
+  'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled',
+]
