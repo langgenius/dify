@@ -2,7 +2,7 @@ preset = "strict"
 project-includes = ["."]
 search-path = ["../.."]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.13.0"
 infer-with-first-use = true
 min-severity = "warn"
 

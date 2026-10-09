@@ -11,6 +11,10 @@ import AccountSetting from '../index'
 
 let canReplaceLogo = true
 
+const mockFeatureFlags = vi.hoisted(() => ({ NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: true }))
+
+vi.mock('@/env', () => ({ env: mockFeatureFlags }))
+
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
@@ -127,6 +131,11 @@ vi.mock('@/app/components/header/account-setting/access-rules-page', () => ({
   default: () => <div data-testid="access-rules-page" />,
 }))
 
+vi.mock('@/app/components/header/account-setting/resource-access-token-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="resource-access-token-page" />,
+}))
+
 const baseConsoleState: ConsoleStateFixture = {
   userProfile: {
     id: '1',
@@ -214,6 +223,7 @@ describe('AccountSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     canReplaceLogo = true
+    mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -235,6 +245,9 @@ describe('AccountSetting', () => {
       ).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: 'navigation.settings.permissionSet' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
       ).toBeInTheDocument()
       expect(screen.getByText('navigation.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
@@ -419,6 +432,9 @@ describe('AccountSetting', () => {
       expect(
         screen.queryByRole('button', { name: 'navigation.settings.permissionSet' }),
       ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide role and permission set entries when RBAC is disabled', () => {
@@ -434,6 +450,38 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'navigation.settings.permissionSet' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should hide access tokens and fall back to members when the feature is disabled', () => {
+      mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = false
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.ACCESS_TOKEN })
+
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('resource-access-token-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
+    })
+
+    it('should hide access tokens from non-owner workspaces', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'admin' as const,
+        },
+        isCurrentWorkspaceOwner: false,
+      }
+
+      renderAccountSetting()
+
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
       ).not.toBeInTheDocument()
     })
 
@@ -614,6 +662,10 @@ describe('AccountSetting', () => {
       fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.permissionSet' }))
       expect(screen.getByText('navigation.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
+
+      // Access Tokens
+      fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.accessToken' }))
+      expect(screen.getByTestId('resource-access-token-page')).toBeInTheDocument()
 
       // Language
       fireEvent.click(screen.getByText('navigation.settings.preferences'))

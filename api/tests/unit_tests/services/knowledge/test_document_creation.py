@@ -101,7 +101,7 @@ def external_calls(
         return result
 
     @contextmanager
-    def lock(_name: str, *, timeout: int) -> Generator[None, None, None]:
+    def lock(_name: str, *, timeout: int) -> Generator[None]:
         outside_transaction()
         assert timeout == 600
         yield
@@ -325,7 +325,7 @@ def test_lost_creation_lock_keeps_empty_batch_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     @contextmanager
-    def lock(_name: str, **_kwargs: object) -> Generator[None, None, None]:
+    def lock(_name: str, **_kwargs: object) -> Generator[None]:
         raise LockNotOwnedError("lock lost")
         yield  # pragma: no cover
 

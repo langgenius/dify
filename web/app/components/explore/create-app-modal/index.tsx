@@ -4,7 +4,7 @@ import type {
   UpdateAppPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
+import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -19,8 +19,12 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -71,13 +75,15 @@ const CreateAppModal = ({
 
   const [name, setName] = React.useState(appName)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+  const pickerValue: IconPickerInputValue | undefined =
     selectedIcon ??
     (appIconType === 'image' && _appIcon
       ? { type: 'image', fileId: _appIcon, url: appIconUrl ?? '' }
       : appIconType === 'emoji' && _appIcon
         ? { type: 'emoji', icon: _appIcon, background: appIconBackground }
-        : undefined)
+        : appIconType === 'link' && _appIcon
+          ? { type: 'link', url: _appIcon }
+          : undefined)
   const currentIcon = selectedIcon
     ? {
         icon_type: selectedIcon.type,
@@ -96,7 +102,6 @@ const CreateAppModal = ({
     icon: currentIconValue,
     icon_background: currentIconBackground,
   } = currentIcon
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -182,7 +187,6 @@ const CreateAppModal = ({
               !show ||
               submitDisabled ||
               confirmLoading ||
-              showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
               !(event.target instanceof Node) ||
@@ -229,23 +233,15 @@ const CreateAppModal = ({
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
               </label>
               <div className="flex items-center justify-between space-x-2">
-                <button
-                  type="button"
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => setShowIconPicker(true)}
-                >
-                  <AppIcon
-                    decorative
-                    size="large"
-                    iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
-                    icon={currentIcon.icon ?? undefined}
-                    background={currentIcon.icon_background}
-                    imageUrl={
-                      currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
-                    }
-                  />
-                </button>
+                <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                    className="shrink-0 cursor-pointer rounded-[10px]"
+                  >
+                    <IconPickerIcon size="large" />
+                  </IconPickerTrigger>
+                  <IconPickerContent />
+                </IconPicker>
                 <Input
                   id={nameInputId}
                   value={name}
@@ -344,12 +340,6 @@ const CreateAppModal = ({
           </div>
         </DialogContent>
       </Dialog>
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={pickerDefaultValue}
-        onOpenChange={setShowIconPicker}
-        onConfirm={setSelectedIcon}
-      />
     </>
   )
 }

@@ -117,6 +117,8 @@
   "common.branch": "RAMIFICAÇÃO",
   "common.chooseDSL": "Escolha o arquivo DSL(yml)",
   "common.chooseStartNodeToRun": "Escolha o nó inicial para executar",
+  "common.clearCanvasConfirmDescription": "Salvar limpará este fluxo de trabalho. Continuar?",
+  "common.clearCanvasConfirmTitle": "Limpar a tela?",
   "common.clipboardVersionCompatibilityWarning": "Este conteúdo foi copiado de uma versão diferente do aplicativo Dify. Algumas partes podem ser incompatíveis.",
   "common.commentMode": "Modo de comentários",
   "common.configure": "Configurar",

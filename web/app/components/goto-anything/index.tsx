@@ -469,7 +469,7 @@ export function GotoAnything() {
             >
               <AutocompleteInputGroup
                 size="medium"
-                className="h-auto shrink-0 gap-3 rounded-none border-0 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3 shadow-none focus-within:border-state-accent-solid data-focused:border-state-accent-solid"
+                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -494,7 +494,7 @@ export function GotoAnything() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden">
+              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
                 <ScrollAreaViewport
                   tabIndex={-1}
                   aria-busy={isLoading || undefined}

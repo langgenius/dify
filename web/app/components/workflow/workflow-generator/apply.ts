@@ -1,5 +1,6 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
 import type { AppModeEnum } from '@/types/app'
+import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { consoleClient } from '@/service/console'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 
@@ -121,7 +122,7 @@ export const applyToNewApp = async ({
     await syncWorkflowDraft({
       url: `apps/${app.id}/workflows/draft`,
       params: {
-        graph,
+        graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
         features: {},
         conversation_variables: [],
       },
@@ -140,6 +141,7 @@ export const applyToNewApp = async ({
 
 type ApplyToCurrentAppParams = {
   appId: string
+  appMode?: AppModeEnum
   graph: GeneratedGraph
 }
 
@@ -158,6 +160,7 @@ type ApplyToCurrentAppParams = {
  */
 export const applyToCurrentApp = async ({
   appId,
+  appMode,
   graph,
 }: ApplyToCurrentAppParams): Promise<void> => {
   const url = `apps/${appId}/workflows/draft`
@@ -177,7 +180,7 @@ export const applyToCurrentApp = async ({
     await syncWorkflowDraft({
       url,
       params: {
-        graph,
+        graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
         features: existing?.features ?? {},
         conversation_variables: existing?.conversation_variables ?? [],
         // Field is accepted by the backend but not typed in the Pick<> shape of
