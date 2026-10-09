@@ -299,6 +299,18 @@ def test_writes_use_explicit_actor_and_preserve_omitted_icon_type(
     assert persisted.name == "Updated"
 
 
+def test_openapi_visible_app_list_only_includes_apps_with_api_enabled(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    visible = persist_app(sqlite_session, name="Visible")
+    persist_app(sqlite_session, name="API disabled", enable_api=False)
+
+    page = repository.list_apps(CONTEXT, AppListParams(openapi_visible=True))
+
+    assert [app.id for app in page.data] == [visible.id]
+    assert page.total == 1
+
+
 def test_trace_settings_commit_and_default(repository: ConsoleAppRepository, sqlite_session: Session) -> None:
     app = persist_app(sqlite_session)
     assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()

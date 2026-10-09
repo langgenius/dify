@@ -4,6 +4,7 @@ from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
+from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import Scope
 from controllers.common.errors import ForbiddenError, NotFoundError
@@ -31,7 +32,7 @@ from machinery.context import AppRequestContext, RequestContext
 from models.account import TenantAccountRole
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
-from services.errors.app import AppDiscoveryNotFoundError, WorkflowNotFoundError
+from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 
 
@@ -194,6 +195,8 @@ class AppDslExportApi(Resource):
             )
         except (WorkflowNotFoundError, AppDiscoveryNotFoundError) as exc:
             raise NotFoundError(str(exc)) from exc
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(str(exc)) from exc
         return AppDslExportResponse(data=data), 200
 
 

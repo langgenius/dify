@@ -53,11 +53,21 @@ class ExportServices:
     apps: ExportAppServices
 
 
-@pytest.mark.parametrize("missing", ["app", "draft", "version"])
-def test_export_not_found_has_canonical_http_response(
+@pytest.mark.parametrize(
+    ("missing", "status", "error_code"),
+    [
+        ("app", 404, "not_found"),
+        ("draft", 404, "not_found"),
+        ("version", 404, "not_found"),
+        ("draft_version", 400, "bad_request"),
+    ],
+)
+def test_export_errors_have_canonical_http_responses(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     missing: str,
+    status: int,
+    error_code: str,
 ) -> None:
     """Exercise the admitted handler, real export reads and HTTP error formatter."""
     app_id, tenant_id, workflow_id = str(uuid4()), str(uuid4()), str(uuid4())
@@ -72,11 +82,11 @@ def test_export_not_found_has_canonical_http_response(
                 enable_site=False,
             )
         )
-    if missing == "version":
+    if missing in {"version", "draft_version"}:
         # A draft exists, but an explicitly requested version must not fall back to it.
         sqlite_session.add(
             Workflow(
-                id=str(uuid4()),
+                id=workflow_id if missing == "draft_version" else str(uuid4()),
                 tenant_id=tenant_id,
                 app_id=app_id,
                 type=WorkflowType.WORKFLOW,
@@ -111,16 +121,21 @@ def test_export_not_found_has_canonical_http_response(
 
     api.add_resource(AdmittedExport, "/apps/<string:app_id>/dsl")
     response = app.test_client().get(
-        f"/apps/{app_id}/dsl", query_string={"workflow_id": workflow_id} if missing == "version" else {}
+        f"/apps/{app_id}/dsl",
+        query_string={"workflow_id": workflow_id} if missing in {"version", "draft_version"} else {},
     )
 
     messages = {
         "app": "app not found",
         "draft": "Missing draft workflow configuration, please check.",
         "version": f"Workflow version not found. Workflow ID: {workflow_id}.",
+        "draft_version": (
+            f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+            "Please use a published workflow version or leave workflow_id empty."
+        ),
     }
-    assert response.status_code == 404
-    assert response.get_json() == {"code": "not_found", "message": messages[missing], "status": 404}
+    assert response.status_code == status
+    assert response.get_json() == {"code": error_code, "message": messages[missing], "status": status}
 
 
 @pytest.mark.parametrize(

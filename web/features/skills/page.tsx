@@ -5,11 +5,11 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -382,7 +382,7 @@ function DeleteSkillDialog({
             </Field>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -394,7 +394,7 @@ function DeleteSkillDialog({
           >
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

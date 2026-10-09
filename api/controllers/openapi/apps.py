@@ -20,7 +20,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
 from services.app.query_service import AppDiscoveryQuery
@@ -42,7 +42,7 @@ class AppDescribeApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
@@ -74,7 +74,7 @@ class AppListApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckScope(Scope.APPS_READ),
             CheckWorkspaceMember(),
         ),

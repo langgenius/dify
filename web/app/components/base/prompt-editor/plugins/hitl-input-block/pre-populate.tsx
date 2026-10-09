@@ -119,13 +119,13 @@ const PrePopulate: FC<Props> = ({
     <div
       className={cn(
         'relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal pb-1',
-        isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+        isFocus && 'bg-components-input-bg-active ring-2 ring-state-accent-solid',
       )}
     >
       <Textarea
         aria-label={t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflowHumanInput' })}
         value={value || ''}
-        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
+        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:ring-0"
         onValueChange={(value) => onValueChange?.(value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)

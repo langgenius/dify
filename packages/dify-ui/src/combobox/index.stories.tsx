@@ -13,6 +13,7 @@ import {
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxInputTrigger,
@@ -479,7 +480,7 @@ function VirtualizedLongListDemo() {
         }}
       >
         <ComboboxLabel>Model catalog</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue placeholder="Select model" />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -662,7 +663,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound combobox built on Base UI Combobox for searchable predefined selections. Use an input as the trigger, place an input inside a named popup, or set `inline` when an external Popover owns the surface. Keep independent actions outside the listbox, keep Status mounted while changing its children, and use Clear only for selection clearing.',
+          'Compound combobox built on Base UI Combobox for searchable predefined selections. Use an input as the trigger, or open a named popup that contains the input from the unstyled trigger, composed through `render` or with Value and Icon for a select-like field, or set `inline` when an external Popover owns the surface. Keep independent actions outside the listbox, keep Status mounted while changing its children, and use Clear only for selection clearing.',
       },
     },
   },
@@ -721,8 +722,11 @@ export const TriggerWithPopupInput: Story = {
     <div className={fieldWidth}>
       <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
-        <ComboboxTrigger>
-          <ComboboxValue placeholder="Choose source" />
+        <ComboboxTrigger className="group/trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-3 py-2 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none">
+          <span className="min-w-0 grow truncate">
+            <ComboboxValue placeholder="Choose source" />
+          </span>
+          <ComboboxIcon className="text-text-quaternary transition-colors group-hover/trigger:text-text-secondary group-data-popup-open/trigger:text-text-secondary" />
         </ComboboxTrigger>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -815,7 +819,7 @@ export const Grouped: Story = {
     <div className={fieldWidth}>
       <Combobox items={toolGroups} defaultValue={defaultTool}>
         <ComboboxLabel>Workflow tool</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue placeholder="Select tool" />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -950,7 +954,7 @@ export const Disabled: Story = {
     <div className={fieldWidth}>
       <Combobox items={providerOptions} defaultValue={disabledProvider} disabled>
         <ComboboxLabel>Disabled provider</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -1014,7 +1018,7 @@ function ControlledDemo() {
       <div className="w-full">
         <Combobox<string, false, Option> items={tagItems} value={value} onValueChange={setValue}>
           <ComboboxLabel>Default app tag</ComboboxLabel>
-          <ComboboxTrigger>
+          <ComboboxTrigger render={<Button variant="secondary" />}>
             <ComboboxValue placeholder="Select tag" />
           </ComboboxTrigger>
           <ComboboxPortal>

@@ -66,24 +66,23 @@ overrides:
   yaml@>=2.0.0 <2.8.3: 2.9.1
   yauzl@<3.2.1: 3.2.1
 catalog:
-  '@amplitude/analytics-browser': 2.47.1
-  '@amplitude/plugin-session-replay-browser': 1.35.4
+  '@amplitude/analytics-browser': 2.47.4
+  '@amplitude/plugin-session-replay-browser': 1.36.1
   '@axe-core/playwright': 4.13.0
-  '@base-ui/react': 1.8.0
-  '@base-ui/utils': 0.4.0
-  '@chromatic-com/storybook': 5.3.1
-  '@cucumber/cucumber': 13.2.1
-  '@date-fns/tz': 1.4.1
-  '@daypicker/react': 10.0.1
+  '@base-ui/react': 1.9.0
+  '@base-ui/utils': 0.5.0
+  '@chromatic-com/storybook': 5.4.0
+  '@cucumber/cucumber': 13.3.0
+  '@date-fns/tz': 1.5.0
+  '@daypicker/react': 10.0.2
   '@egoist/tailwindcss-icons': 1.9.2
-  '@eslint-community/eslint-plugin-eslint-comments': 4.8.1
-  '@eslint-react/eslint-plugin': 5.21.0
+  '@eslint-react/eslint-plugin': 5.24.10
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
   '@formatjs/intl-localematcher': 0.9.0
   '@heroicons/react': 2.2.0
   '@hey-api/openapi-ts': 0.98.2
-  '@hono/node-server': 2.1.1
+  '@hono/node-server': 2.1.4
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
   '@lexical/code': 0.47.0
@@ -93,38 +92,38 @@ catalog:
   '@lexical/selection': 0.47.0
   '@lexical/text': 0.47.0
   '@lexical/utils': 0.47.0
-  '@mediabunny/mp3-encoder': 1.60.0
+  '@mediabunny/mp3-encoder': 1.61.3
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
-  '@orpc/client': 1.15.4
-  '@orpc/contract': 1.15.4
-  '@orpc/openapi-client': 1.15.4
-  '@orpc/tanstack-query': 1.15.4
-  '@playwright/test': 1.63.0
+  '@orpc/client': 1.15.5
+  '@orpc/contract': 1.15.5
+  '@orpc/openapi-client': 1.15.5
+  '@orpc/tanstack-query': 1.15.5
+  '@playwright/test': 1.64.0
   '@remixicon/react': 4.9.0
-  '@sentry/react': 10.75.3
+  '@sentry/react': 10.76.2
   '@shadcn/lint': 0.2.0
-  '@storybook/addon-a11y': 10.6.0
-  '@storybook/addon-docs': 10.6.0
-  '@storybook/addon-links': 10.6.0
-  '@storybook/addon-onboarding': 10.6.0
-  '@storybook/addon-themes': 10.6.0
-  '@storybook/addon-vitest': 10.6.0
-  '@storybook/nextjs-vite': 10.6.0
-  '@storybook/react': 10.6.0
-  '@storybook/react-vite': 10.6.0
-  '@streamdown/math': 1.0.2
+  '@storybook/addon-a11y': 10.6.1
+  '@storybook/addon-docs': 10.6.1
+  '@storybook/addon-links': 10.6.1
+  '@storybook/addon-onboarding': 10.6.1
+  '@storybook/addon-themes': 10.6.1
+  '@storybook/addon-vitest': 10.6.1
+  '@storybook/nextjs-vite': 10.6.1
+  '@storybook/react': 10.6.1
+  '@storybook/react-vite': 10.6.1
+  '@streamdown/math': 1.0.3
   '@svgdotjs/svg.js': 3.2.8
   '@t3-oss/env-core': 0.13.11
   '@t3-oss/env-nextjs': 0.13.11
   '@tailwindcss/postcss': 4.3.3
   '@tailwindcss/vite': 4.3.3
-  '@tanstack/eslint-plugin-query': 5.104.0
+  '@tanstack/eslint-plugin-query': 5.104.1
   '@tanstack/form-core': 1.33.5
-  '@tanstack/query-core': 5.104.0
+  '@tanstack/query-core': 5.104.1
   '@tanstack/react-form': 1.33.5
-  '@tanstack/react-hotkeys': 0.12.1
-  '@tanstack/react-query': 5.104.0
+  '@tanstack/react-hotkeys': 0.13.0
+  '@tanstack/react-query': 5.104.1
   '@tanstack/react-virtual': 3.14.13
   '@testing-library/dom': 10.4.2
   '@testing-library/jest-dom': 7.0.1
@@ -136,18 +135,18 @@ catalog:
   '@types/js-cookie': 3.0.6
   '@types/lockfile': 1.0.4
   '@types/negotiator': 0.6.5
-  '@types/node': 25.9.8
+  '@types/node': 25.9.9
   '@types/picomatch': 4.0.3
   '@types/qs': 6.15.1
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
-  '@typescript-eslint/parser': 8.70.1
+  '@typescript-eslint/parser': 8.71.1
   '@typescript/native': npm:typescript@7.0.2
-  '@vitejs/plugin-react': 6.1.1
-  '@vitejs/plugin-rsc': 0.5.35
-  '@vitest/browser-playwright': 5.0.1
-  '@vitest/coverage-v8': 5.0.1
+  '@vitejs/plugin-react': 6.1.2
+  '@vitejs/plugin-rsc': 0.5.36
+  '@vitest/browser-playwright': 5.0.3
+  '@vitest/coverage-v8': 5.0.3
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.1
   agentation: 3.1.2
@@ -159,10 +158,10 @@ catalog:
   class-variance-authority: 0.7.1
   cn: 0.4.0
   code-inspector-plugin: 1.6.6
-  concurrently: 10.0.5
+  concurrently: 10.0.6
   copy-to-clipboard: 4.0.2
   cron-parser: 5.10.1
-  date-fns: 4.1.0
+  date-fns: 4.4.0
   dayjs: 1.11.23
   decimal.js: 10.6.0
   dompurify: 3.4.16
@@ -173,71 +172,68 @@ catalog:
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
   es-toolkit: 1.52.0
-  eslint: 10.11.0
+  eslint: 10.12.0
   eslint-config-flat-gitignore: 2.4.0
   eslint-markdown: 0.18.1
   eslint-plugin-antfu: 3.2.3
-  eslint-plugin-better-tailwindcss: 4.7.0
-  eslint-plugin-command: 4.0.0
-  eslint-plugin-jsdoc: 64.5.4
+  eslint-plugin-better-tailwindcss: 4.9.0
+  eslint-plugin-jsdoc: 65.2.1
   eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.42.0
-  eslint-plugin-n: 18.4.0
+  eslint-plugin-n: 18.4.1
   eslint-plugin-no-barrel-files: 2.2.0
   eslint-plugin-perfectionist: 5.12.1
   eslint-plugin-pnpm: 1.9.1
   eslint-plugin-regexp: 3.3.1
-  eslint-plugin-storybook: 10.6.0
-  eslint-plugin-toml: 1.5.0
-  eslint-plugin-unicorn: 76.0.0
-  eslint-plugin-yml: 3.8.1
+  eslint-plugin-storybook: 10.6.1
+  eslint-plugin-yml: 3.9.0
   eventsource-parser: 4.1.1
   fast-deep-equal: 3.1.3
   foxact: 0.3.12
   fuse.js: 7.5.0
-  happy-dom: 20.14.5
+  happy-dom: 20.14.6
   hast-util-to-jsx-runtime: 2.3.6
-  hono: 4.13.9
+  hono: 4.13.13
   html-entities: 2.6.0
   html-to-image: 1.11.13
   i18next: 26.4.2
   i18next-resources-for-ts: 2.1.1
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
-  immer: 11.1.18
-  jotai: 3.0.0
+  immer: 11.1.21
+  jotai: 3.0.1
   jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
-  js-yaml: 5.4.2
+  js-yaml: 5.4.3
   jsonschema: 1.5.0
   katex: 0.17.0
-  knip: 6.38.0
+  knip: 6.40.0
   ky: 2.1.0
   lexical: 0.47.0
   lockfile: 1.0.4
-  loro-crdt: 1.16.3
-  mediabunny: 1.60.0
+  loro-crdt: 1.16.4
+  mediabunny: 1.61.3
   mermaid: 11.17.2
   mime: 4.1.0
   mitt: 3.0.1
-  motion: 13.4.4
+  motion: 13.5.1
   negotiator: 1.1.0
-  next: 16.3.6
+  next: 16.4.0
   next-themes: 0.4.6
-  nuqs: 2.10.1
+  nuqs: 2.10.2
   open: 11.0.4
   picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4
-  playwright: 1.63.0
-  postcss: 8.5.28
+  playwright: 1.64.0
+  postcss: 8.5.29
   qrcode.react: 4.2.0
   qs: 6.16.0
   react: 19.3.0
   react-dom: 19.3.0
-  react-easy-crop: 6.2.3
-  react-i18next: 17.0.15
+  react-easy-crop: 6.2.4
+  react-i18next: 17.0.16
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.3.0
@@ -249,27 +245,27 @@ catalog:
   scheduler: 0.28.0
   server-only: 0.0.1
   sharp: 0.35.5
-  shiki: 4.4.3
+  shiki: 4.5.0
   socket.io-client: 4.8.4
   sortablejs: 1.15.7
   std-semver: 1.0.8
-  storybook: 10.6.0
-  streamdown: 2.6.0
+  storybook: 10.6.1
+  streamdown: 2.7.0
   string-ts: 2.3.1
   svgo: 4.1.0
   tailwindcss: 4.3.3
-  tldts: 7.4.16
+  tldts: 7.4.18
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.30.0
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 14.0.2
-  vinext: 1.0.0
-  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
+  vinext: 1.1.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plugin-inspect: 12.0.2
-  vite-plus: 1.0.0
-  vitest: 5.0.1
+  vite-plus: 1.1.0
+  vitest: 5.0.3
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
   zod: 4.6.5

@@ -7,7 +7,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
 import httpx
@@ -89,6 +89,8 @@ from services.account.oauth_adapters import (
     WorkspaceProvisioningOAuthGateway,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
@@ -132,7 +134,6 @@ from services.knowledge.indexing.estimate import IndexingEstimateApplicationServ
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -360,6 +361,21 @@ def test_build_application_services_wires_tag_boundary(
     assert isinstance(services.tags, TagApplicationService)
 
 
+def test_build_application_services_wires_api_based_extension_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
+    assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
+    assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
+
+
 def test_build_application_services_reuses_file_service(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -500,7 +516,7 @@ def test_build_application_services_wires_web_authentication_boundary(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.web_authentication, WebAuthenticationService)
@@ -526,7 +542,7 @@ def test_build_application_services_reuses_installed_app_dependencies(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.installed_apps.access, InstalledAppAccessService)
@@ -618,11 +634,6 @@ def test_build_application_services_wires_billing_service(
             "get_invoices",
             return_value={"url": "https://billing.example.com/portal"},
         ) as get_invoices,
-        patch.object(
-            BillingService,
-            "sync_partner_tenants_bindings",
-            return_value={"result": "success"},
-        ) as sync_partner_tenants_bindings,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -644,15 +655,8 @@ def test_build_application_services_wires_billing_service(
         interval="month",
     ) == {"url": "https://billing.example.com/checkout"}
     assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
-    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
-    assert services.partner_tenant_bindings.sync(
-        account_id="account-1",
-        partner_key="partner-key",
-        click_id="click-1",
-    ) == {"result": "success"}
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
-    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
 
 
 def test_build_application_services_wires_compliance_downloads(
@@ -864,7 +868,7 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)
@@ -908,7 +912,7 @@ def test_build_application_services_wires_credential_query(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
     tenant_id, actor_id = str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
@@ -1010,7 +1014,7 @@ def test_build_application_services_reuses_installed_app_generation_dependencies
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert services.installed_apps.access._installed_apps is services.installed_apps.generation._usage

@@ -8,7 +8,7 @@ client to create one plugin-daemon-backed run.
 
 Install or prepare:
 
-- Python 3.12 or newer
+- Python 3.13 or newer
 - `uv`
 - Redis
 - a reachable Dify plugin daemon

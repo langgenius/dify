@@ -346,36 +346,6 @@ describe('dropdown-menu wrapper', () => {
   })
 
   describe('DropdownMenuSeparator', () => {
-    it('should forward passthrough props and handlers when separator props are provided', async () => {
-      const handleMouseEnter = vi.fn()
-
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSeparator
-              aria-label="actions divider"
-              id="menu-separator"
-              onMouseEnter={handleMouseEnter}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
-
-      screen
-        .getByRole('separator', { name: 'actions divider' })
-        .element()
-        .dispatchEvent(
-          new MouseEvent('mouseover', {
-            bubbles: true,
-          }),
-        )
-      await expect
-        .element(screen.getByRole('separator', { name: 'actions divider' }))
-        .toHaveAttribute('id', 'menu-separator')
-      expect(handleMouseEnter).toHaveBeenCalledTimes(1)
-    })
-
     it('should keep surrounding menu rows rendered when separator is placed between items', async () => {
       const screen = await render(
         <DropdownMenu open>

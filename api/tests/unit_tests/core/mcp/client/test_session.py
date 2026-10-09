@@ -24,14 +24,14 @@ from core.mcp.types import (
 )
 
 
-def test_client_session_initialize():
+def test_client_session_initialize() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
 
     initialized_notification = None
 
-    def mock_server():
+    def mock_server() -> None:
         nonlocal initialized_notification
 
         # Receive initialization request
@@ -83,7 +83,7 @@ def test_client_session_initialize():
     # Create message handler
     def message_handler(
         message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
-    ):
+    ) -> None:
         if isinstance(message, Exception):
             raise message
 
@@ -114,7 +114,7 @@ def test_client_session_initialize():
     assert isinstance(initialized_notification.root, InitializedNotification)
 
 
-def test_client_session_custom_client_info():
+def test_client_session_custom_client_info() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
@@ -122,7 +122,7 @@ def test_client_session_custom_client_info():
     custom_client_info = Implementation(name="test-client", version="1.2.3")
     received_client_info = None
 
-    def mock_server():
+    def mock_server() -> None:
         nonlocal received_client_info
 
         session_message = client_to_server.get(timeout=5.0)
@@ -174,14 +174,14 @@ def test_client_session_custom_client_info():
     assert received_client_info == custom_client_info
 
 
-def test_client_session_default_client_info():
+def test_client_session_default_client_info() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
 
     received_client_info = None
 
-    def mock_server():
+    def mock_server() -> None:
         nonlocal received_client_info
 
         session_message = client_to_server.get(timeout=5.0)
@@ -232,12 +232,12 @@ def test_client_session_default_client_info():
     assert received_client_info == DEFAULT_CLIENT_INFO
 
 
-def test_client_session_version_negotiation_success():
+def test_client_session_version_negotiation_success() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
 
-    def mock_server():
+    def mock_server() -> None:
         session_message = client_to_server.get(timeout=5.0)
         jsonrpc_request = session_message.message
         assert isinstance(jsonrpc_request.root, JSONRPCRequest)
@@ -287,12 +287,12 @@ def test_client_session_version_negotiation_success():
     assert result.protocolVersion == LATEST_PROTOCOL_VERSION
 
 
-def test_client_session_version_negotiation_failure():
+def test_client_session_version_negotiation_failure() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
 
-    def mock_server():
+    def mock_server() -> None:
         session_message = client_to_server.get(timeout=5.0)
         jsonrpc_request = session_message.message
         assert isinstance(jsonrpc_request.root, JSONRPCRequest)
@@ -339,14 +339,14 @@ def test_client_session_version_negotiation_failure():
     server_thread.join(timeout=10.0)
 
 
-def test_client_capabilities_default():
+def test_client_capabilities_default() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
 
     received_capabilities = None
 
-    def mock_server():
+    def mock_server() -> None:
         nonlocal received_capabilities
 
         session_message = client_to_server.get(timeout=5.0)
@@ -397,7 +397,7 @@ def test_client_capabilities_default():
     assert received_capabilities is not None
 
 
-def test_client_capabilities_with_custom_callbacks():
+def test_client_capabilities_with_custom_callbacks() -> None:
     # Create synchronous queues to replace async streams
     client_to_server: queue.Queue[SessionMessage] = queue.Queue()
     server_to_client: queue.Queue[SessionMessage] = queue.Queue()
@@ -417,7 +417,7 @@ def test_client_capabilities_with_custom_callbacks():
     ) -> types.ListRootsResult | types.ErrorData:
         return types.ListRootsResult(roots=[])
 
-    def mock_server():
+    def mock_server() -> None:
         session_message = client_to_server.get(timeout=5.0)
         jsonrpc_request = session_message.message
         assert isinstance(jsonrpc_request.root, JSONRPCRequest)

@@ -64,7 +64,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: false
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock
@@ -92,6 +92,10 @@ jobs:
       - name: Run No New Session Mock Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
+
+      - name: Run No Spec Mock Guard
+        if: inputs.run-python-style
+        run: uv run --project api python scripts/check_no_spec_mock.py
 
       - name: Run Type Checks
         if: inputs.run-python-style
@@ -247,7 +251,7 @@ jobs:
           persist-credentials: false
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
+        uses: super-linter/super-linter/slim@2da136927bd4a73596db63044b504547c62cb854 # v9.0.0
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: origin/main

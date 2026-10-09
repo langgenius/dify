@@ -2,6 +2,7 @@
 
 import sys
 from dataclasses import dataclass
+from functools import cache
 from types import SimpleNamespace
 from unittest.mock import create_autospec
 
@@ -30,9 +31,16 @@ from services.webapp_access_query_service import WebAppAccessQueryService
 
 @pytest.fixture(autouse=True)
 def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
-    registry = SimpleNamespace(
-        data_sources=SimpleNamespace(providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True))
-    )
+    # Most controller tests never use these services. Build the mock on demand,
+    # with a fresh cache for each test to preserve mock isolation.
+    @cache
+    def application_services() -> SimpleNamespace:
+        return SimpleNamespace(
+            data_sources=SimpleNamespace(
+                providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
+            )
+        )
+
     for name in (
         "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow",
         "controllers.console.datasets.rag_pipeline.datasource_content_preview",
@@ -40,7 +48,7 @@ def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None
     ):
         module = sys.modules.get(name)
         if module is not None:
-            monkeypatch.setattr(module, "application_services", lambda: registry)
+            monkeypatch.setattr(module, "application_services", application_services)
 
 
 @dataclass(frozen=True)

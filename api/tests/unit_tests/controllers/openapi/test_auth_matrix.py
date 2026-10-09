@@ -92,7 +92,7 @@ from controllers.openapi.auth.requirements import (
     Requirement,
 )
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.app import AppServices
@@ -736,14 +736,19 @@ _REQ_EXTERNAL_DESCRIBE = (
     CheckAppAccess(),
 )
 
+_RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
+
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "describe.account": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
     "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
-    "apps.describe": _REQ_APP_DESCRIBE,
-    "apps.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
-    "workspaces.list": _REQ_ACCOUNT_WORKSPACE_READ,
+    "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
+    "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "workspaces.list": (
+        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
+        *_REQ_ACCOUNT_WORKSPACE_READ[1:],
+    ),
     "workspaces.describe": _REQ_ACCOUNT_WORKSPACE_READ,
     "workspaces.switch": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "workspaces.members.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -754,11 +759,11 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
-    "app_run.workflow": _REQ_RUN,
-    "app_run.chat": _REQ_RUN,
-    "app_run.advanced_chat": _REQ_RUN,
-    "app_run.completion": _REQ_RUN,
-    "app_run.stop": _REQ_RUN,
+    "app_run.workflow": _RESOURCE_RUN,
+    "app_run.chat": _RESOURCE_RUN,
+    "app_run.advanced_chat": _RESOURCE_RUN,
+    "app_run.completion": _RESOURCE_RUN,
+    "app_run.stop": _RESOURCE_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
     "human_input_form.submit": _REQ_RUN_FORM,

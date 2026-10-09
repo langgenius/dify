@@ -99,11 +99,11 @@ const ConfigParamModal: FC<Props> = ({
           >
             <ScoreSlider
               className="mt-1"
-              value={(annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold) * 100}
+              value={annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold}
               onChange={(val) => {
                 setAnnotationConfig({
                   ...annotationConfig,
-                  score_threshold: val / 100,
+                  score_threshold: val,
                 })
               }}
             />

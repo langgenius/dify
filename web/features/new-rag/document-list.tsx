@@ -194,7 +194,7 @@ const DocumentRow = memo(
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
-              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex size-7 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover"
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>

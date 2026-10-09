@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
@@ -408,7 +409,31 @@ class TestBuildDatasetToolImageContents:
             "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
         )
 
-        tool = MagicMock(spec=DatasetRetrieverTool)
+        from core.tools.__base.tool_runtime import ToolRuntime
+        from core.tools.entities.common_entities import I18nObject
+        from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
+        from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
+
+        tool = DatasetRetrieverTool(
+            entity=ToolEntity(
+                identity=ToolIdentity(
+                    provider="dataset", author="Dify", name="dataset", label=I18nObject(en_US="Dataset")
+                ),
+                parameters=[],
+                description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
+            ),
+            runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
+            retrieval_tool=RetrievalTool(
+                tenant_id=upload_file.tenant_id,
+                dataset_id="dataset-id",
+                return_resource=True,
+                retriever_from="dev",
+                retrieve_config=DatasetRetrieveConfigEntity(
+                    retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
+                ),
+                inputs={},
+            ),
+        )
         contents = runner._build_dataset_tool_image_contents(session, response, tool)
 
         assert contents == [image_content]

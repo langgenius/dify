@@ -124,6 +124,25 @@ def test_uuid_search_is_tenant_scoped(sqlite_session: Session, service: AppDisco
     assert result.items == []
 
 
+@pytest.mark.parametrize("uuid_search", [False, True])
+@pytest.mark.parametrize("bound", [False, True])
+def test_resource_bindings_replace_account_visibility(
+    sqlite_session: Session, service: AppDiscoveryService, access: DiscoveryAccess, uuid_search: bool, bound: bool
+) -> None:
+    tenant_id = str(uuid4())
+    app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
+    persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
+    access.access_filter = AppAccessFilter(set(), can_manage_own_apps=True)
+    context = RequestContext(
+        "req", None, "token-id", tenant_id, resource_app_ids=frozenset({app_id}) if bound else frozenset()
+    )
+    result = service.list_apps(context, AppDiscoveryQuery(1, 1, None, app_id if uuid_search else None))
+
+    assert access.contexts == []
+    assert result.total == (1 if bound else 0)
+    assert [entry.app.id for entry in result.items] == ([app_id] if bound else [])
+
+
 def test_external_list_keeps_remote_order_and_total_after_local_filtering(
     sqlite_session: Session,
     service: AppDiscoveryService,

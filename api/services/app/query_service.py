@@ -61,7 +61,11 @@ class AppDiscoveryService:
         self._access = access
 
     def list_apps(self, context: RequestContext, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
-        access = self._access.visibility(context)
+        access = (
+            AppAccessFilter(set(context.resource_app_ids), can_manage_own_apps=False)
+            if context.resource_app_ids is not None
+            else self._access.visibility(context)
+        )
         try:
             app_id = str(UUID(query.name)) if query.name else None
         except ValueError:

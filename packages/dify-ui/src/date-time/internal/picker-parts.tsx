@@ -1,13 +1,19 @@
 'use client'
 
 import type { IconButtonProps } from '../../icon-button'
-import type { PopoverContentProps, PopoverProps, PopoverTriggerProps } from '../../popover'
+import type {
+  PopoverActions,
+  PopoverContentProps,
+  PopoverProps,
+  PopoverTriggerProps,
+} from '../../popover'
 import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
 import { DirectionProvider, useDirection } from '../../direction-provider'
 import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
+import { resolveClassName } from '../../internals/resolve-class-name'
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
 
 type PickerOpenChangeDetails = Omit<
@@ -72,7 +78,7 @@ function PickerRoot({
   const [labelId, setLabelId] = React.useState<string>()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
-  const actionsRef = React.useRef<NonNullable<PopoverProps['actionsRef']>['current']>(null)
+  const actionsRef = React.useRef<PopoverActions>(null)
   const [validationAttempted, setValidationAttempted] = React.useState(false)
   const errorMessage = props.invalid
     ? (props.validationMessage ?? 'Choose a valid value.')
@@ -276,9 +282,9 @@ function PickerTrigger({
       className={(state) =>
         cn(
           'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
-          'hover:bg-state-base-hover-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
+          'hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
-          typeof className === 'function' ? className(state) : className,
+          resolveClassName(className, state),
         )
       }
     >
@@ -364,7 +370,7 @@ function PickerContent({
         cn(
           'forced-colors:[&_button:focus-visible]:outline-2 forced-colors:[&_button:focus-visible]:outline-[Highlight] forced-colors:[&_button:focus-visible]:outline-solid',
           'flex w-63 max-w-(--available-width) flex-col overflow-hidden border-0 p-0 inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]',
-          typeof className === 'function' ? className(state) : className,
+          resolveClassName(className, state),
         )
       }
       initialFocus={() =>

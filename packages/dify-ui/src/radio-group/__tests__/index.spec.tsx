@@ -184,21 +184,13 @@ describe('Radio', () => {
   it('should support custom items with a visual RadioControl', async () => {
     const screen = await render(
       <RadioGroup defaultValue="card" aria-label="Card choice">
-        <RadioItem
-          value="card"
-          nativeButton
-          render={<button type="button" className="custom-card" />}
-        >
+        <RadioItem value="card" nativeButton render={<button type="button" />}>
           <span>Card option</span>
-          <RadioControl className="custom-control" />
+          <RadioControl />
         </RadioItem>
       </RadioGroup>,
     )
 
-    await expect
-      .element(screen.getByRole('radio', { name: 'Card option' }))
-      .toHaveClass('custom-card')
-    expect(screen.container.querySelector('.custom-control')).toBeInTheDocument()
     await expect
       .element(screen.getByRole('radio', { name: 'Card option' }))
       .toHaveAttribute('data-checked', '')

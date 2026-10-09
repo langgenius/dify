@@ -3,6 +3,7 @@ import type {
   AgentAppPagination,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
@@ -342,8 +343,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           apiEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
-                  if (error) return
+                onSettled: (data, error, variables, _onMutateResult, context) => {
+                  if (error || !data) return
+
+                  context.client.setQueryData<AppDetailWithSite>(
+                    consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
+                    (detail) =>
+                      detail
+                        ? { ...detail, enable_api: data.enable_api, updated_at: data.updated_at }
+                        : undefined,
+                  )
 
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -392,8 +401,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           siteEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
-                  if (error) return
+                onSettled: (data, error, variables, _onMutateResult, context) => {
+                  if (error || !data) return
+
+                  context.client.setQueryData<AppDetailWithSite>(
+                    consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
+                    (detail) =>
+                      detail
+                        ? { ...detail, enable_site: data.enable_site, updated_at: data.updated_at }
+                        : undefined,
+                  )
 
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -405,11 +422,46 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           site: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  })
+                },
+              },
+            },
             accessTokenReset: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, variables, _onMutateResult, context) => {
-                    if (error) return
+                  onSettled: (data, error, variables, _onMutateResult, context) => {
+                    if (error || !data) return
+
+                    const { code } = data
+                    if (code !== undefined) {
+                      context.client.setQueryData<AppDetailWithSite>(
+                        consoleQuery.apps.byAppId.get.queryKey({
+                          input: { params: variables.params },
+                        }),
+                        (detail) =>
+                          detail?.site
+                            ? {
+                                ...detail,
+                                site: { ...detail.site, code, access_token: code },
+                              }
+                            : detail,
+                      )
+                    }
 
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.get.queryKey({

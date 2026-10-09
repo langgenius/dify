@@ -175,7 +175,7 @@ export function EmailRecipientsField({
         className={cn(
           'flex max-h-24 min-h-10 flex-wrap content-start items-center gap-1 overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1.5 transition-[background-color,border-color,box-shadow]',
           'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-          'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+          'focus-within:bg-components-input-bg-active has-[input:focus]:border-transparent has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid',
           'group-data-invalid/field:border-components-input-border-destructive group-data-invalid/field:bg-components-input-bg-destructive',
           disabled &&
             'cursor-not-allowed bg-components-input-bg-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
@@ -261,7 +261,7 @@ export function EmailRecipientsField({
           }
           value={draft}
           className={cn(
-            'h-6 w-0 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none disabled:bg-transparent disabled:hover:bg-transparent data-invalid:border-transparent data-invalid:bg-transparent',
+            'h-6 w-0 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0 disabled:bg-transparent disabled:hover:bg-transparent data-invalid:border-transparent data-invalid:bg-transparent',
             recipients.length > 0 ? 'min-w-12' : 'min-w-40',
           )}
           onChange={(event) => {

@@ -8,10 +8,10 @@ import type {
 } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -413,14 +413,14 @@ const ModelLoadBalancingModal = ({
                   {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
                 </AlertDialogTitle>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
                 <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </DialogContent>

@@ -56,5 +56,5 @@ existing business storage/display calculations; it is not passed into Dify UI, w
 civil strings, wall-time strings or Date instants. Do not add a second conversion inside the roots.
 
 [Dify UI picker contract]: ../../../../../packages/dify-ui/src/date-time/README.md
-[Monitoring date range]: ../../../../features/monitoring/date-range-picker.tsx
+[Monitoring date range]: ../../app/monitoring/date-range-picker.tsx
 [Tool date parameters]: ../../tools/parameters/tool-date-picker.tsx
