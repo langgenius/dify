@@ -13,15 +13,13 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import register_response_schema_model
 from controllers.web import api, web_ns
 from controllers.web.wraps import WebApiResource
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
-from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app.generation.response import convert_to_event_stream
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 register_response_schema_model(web_ns, EventStreamResponse)
@@ -75,22 +73,16 @@ class WorkflowEventsApi(WebApiResource):
             event_generator = _generate_finished_events
         else:
             app_mode = AppMode.value_of(app_model.mode)
-            msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            match app_mode:
-                case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
-                case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
-                case _:
-                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+            msg_generator = WorkflowEventStream
+            if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot:
-                    return generator.convert_to_event_stream(
+                    return convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
                             workflow_run=workflow_run,
@@ -100,7 +92,7 @@ class WorkflowEventsApi(WebApiResource):
                             close_on_pause=not continue_on_pause,
                         )
                     )
-                return generator.convert_to_event_stream(
+                return convert_to_event_stream(
                     msg_generator.retrieve_events(app_mode, workflow_run.id),
                 )
 

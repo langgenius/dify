@@ -9,10 +9,9 @@ from typing import Self
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.errors import NotFoundError
+from controllers.common.errors import AccessDeniedError, NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -150,7 +149,7 @@ class HumanInputFormApi(Resource):
     @web_ns.doc(
         responses={
             200: "Form retrieved successfully",
-            403: "Forbidden",
+            403: "AccessDeniedError",
             404: "Form not found",
             412: "Form already submitted or expired",
             429: "Too many requests",
@@ -184,7 +183,7 @@ class HumanInputFormApi(Resource):
         app_model, site = _get_app_site_from_form(form)
         tenant = app_model.tenant(db.session)
         if tenant is None:
-            raise Forbidden()
+            raise AccessDeniedError()
         inputs = service.resolve_form_inputs(form)
         features = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True)
 
@@ -274,10 +273,10 @@ def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
 
     site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
     if site is None:
-        raise Forbidden()
+        raise AccessDeniedError()
 
     tenant = app_model.tenant(db.session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
-        raise Forbidden()
+        raise AccessDeniedError()
 
     return app_model, site

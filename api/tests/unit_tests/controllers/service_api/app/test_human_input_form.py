@@ -12,8 +12,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask, request
 from sqlalchemy.engine import Engine
-from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
 from enums.human_input import RecipientType
@@ -159,7 +159,7 @@ class TestWorkflowHumanInputFormApi:
         app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, form_token="token-1")
 
     @pytest.mark.parametrize(
@@ -193,7 +193,7 @@ class TestWorkflowHumanInputFormApi:
         app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, form_token="token-1")
 
         service_mock.ensure_form_active.assert_not_called()
@@ -333,7 +333,7 @@ class TestWorkflowHumanInputFormApi:
             json={"inputs": {"name": "Alice"}, "action": "approve", "user": "external-1"},
         ):
             payload = HumanInputFormSubmitPayload.model_validate(request.get_json() or {})
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, payload, app_model=app_model, end_user=end_user, form_token="token-1")
 
         service_mock.submit_form_by_token.assert_not_called()

@@ -12,8 +12,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
-from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from graphon.enums import WorkflowExecutionStatus
@@ -101,7 +101,7 @@ class TestWorkflowEventsApi:
         end_user = _end_user()
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_permission_denied(
@@ -115,7 +115,7 @@ class TestWorkflowEventsApi:
         end_user = _end_user()
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
@@ -155,8 +155,10 @@ class TestWorkflowEventsApi:
         msg_generator.retrieve_events.return_value = ["raw-event"]
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
+        monkeypatch.setattr(
+            workflow_events_module, "convert_to_event_stream", workflow_generator.convert_to_event_stream
+        )
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -183,8 +185,10 @@ class TestWorkflowEventsApi:
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
         snapshot_builder = Mock(return_value=["snapshot-events"])
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
+        monkeypatch.setattr(
+            workflow_events_module, "convert_to_event_stream", workflow_generator.convert_to_event_stream
+        )
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()

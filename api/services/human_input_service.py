@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType, ValueSourceType
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -29,9 +28,12 @@ from models.human_input_entities import (
     SelectInputConfig,
     UserActionConfig,
 )
-from models.human_input_entities import validate_human_input_submission as graphon_validate_human_input_submission
+from models.human_input_entities import (
+    validate_human_input_submission as graphon_validate_human_input_submission,
+)
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 _file_access_controller = DatabaseFileAccessController()
@@ -327,9 +329,8 @@ class HumanInputService:
         global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
         return global_deadline <= current
 
-    @classmethod
     def validate_and_normalize_submission(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_definition: FormDefinitionProtocol,
@@ -342,7 +343,7 @@ class HumanInputService:
         graphon owns the form schema and validation rules, while Dify owns tenant-aware file
         reconstruction and persistence compatibility for submitted payloads.
         """
-        normalized_form_data = cls.normalize_submission_data(
+        normalized_form_data = self.normalize_submission_data(
             tenant_id=tenant_id,
             form_definition=form_definition,
             form_data=form_data,
@@ -355,9 +356,8 @@ class HumanInputService:
         )
         return normalized_form_data
 
-    @classmethod
     def normalize_submission_data(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_definition: FormDefinitionProtocol,
@@ -368,7 +368,7 @@ class HumanInputService:
         for name, form_input in inputs_by_name.items():
             if name not in form_data:
                 continue
-            normalized_form_data[name] = cls._normalize_input_value(
+            normalized_form_data[name] = self._normalize_input_value(
                 tenant_id=tenant_id,
                 form_input=form_input,
                 value=form_data[name],
@@ -376,24 +376,23 @@ class HumanInputService:
 
         return normalized_form_data
 
-    @classmethod
     def _normalize_input_value(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_input: FormInputConfig,
         value: Any,
     ) -> JsonValue:
         if isinstance(form_input, SelectInputConfig):
-            return cls._normalize_select_value(form_input=form_input, value=value)
+            return self._normalize_select_value(form_input=form_input, value=value)
         if isinstance(form_input, FileInputConfig):
-            return cls._normalize_file_value(
+            return self._normalize_file_value(
                 tenant_id=tenant_id,
                 form_input=form_input,
                 value=value,
             )
         if isinstance(form_input, FileListInputConfig):
-            return cls._normalize_file_list_value(
+            return self._normalize_file_list_value(
                 tenant_id=tenant_id,
                 form_input=form_input,
                 value=value,
@@ -418,9 +417,8 @@ class HumanInputService:
             )
         return value
 
-    @classmethod
     def _normalize_file_value(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_input: FileInputConfig,
@@ -430,7 +428,7 @@ class HumanInputService:
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file input '{form_input.output_variable_name}': expected mapping"
             )
-        upload_config = cls._build_file_upload_config(form_input=form_input, number_limits=1)
+        upload_config = self._build_file_upload_config(form_input=form_input, number_limits=1)
         try:
             # `build_from_mapping` enforces tenant ownership for persisted upload references.
             file = build_from_mapping(
@@ -439,6 +437,7 @@ class HumanInputService:
                 config=upload_config,
                 strict_type_validation=True,
                 access_controller=_file_access_controller,
+                sessions=self._session_factory,
             )
         except ValueError as exc:
             raise HumanInputSubmissionValidationError(
@@ -446,9 +445,8 @@ class HumanInputService:
             ) from exc
         return cast(JsonValue, file.to_dict())
 
-    @classmethod
     def _normalize_file_list_value(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_input: FileListInputConfig,
@@ -468,7 +466,7 @@ class HumanInputService:
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file list input '{form_input.output_variable_name}': expected list of mappings"
             )
-        upload_config = cls._build_file_upload_config(
+        upload_config = self._build_file_upload_config(
             form_input=form_input,
             number_limits=form_input.number_limits,
         )
@@ -480,6 +478,7 @@ class HumanInputService:
                 config=upload_config,
                 strict_type_validation=True,
                 access_controller=_file_access_controller,
+                sessions=self._session_factory,
             )
         except ValueError as exc:
             raise HumanInputSubmissionValidationError(

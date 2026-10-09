@@ -16,10 +16,6 @@ import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.repositories.human_input_repository import (
-    HumanInputFormRecord,
-    HumanInputFormSubmissionRepository,
-)
 from enums.human_input import (
     DeliveryMethodType,
     HumanInputFormKind,
@@ -31,6 +27,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_contracts import HumanInputFormRecord
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -42,6 +39,7 @@ from models.human_input_entities import (
 )
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -109,7 +107,7 @@ def form_repository(
     mocker: MockerFixture,
 ) -> Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository]:
     monkeypatch.setattr(
-        "core.repositories.human_input_repository.session_factory.create_session", sqlite_session_factory
+        "repositories.human_input.form_repository.session_factory.create_session", sqlite_session_factory
     )
 
     def build(record: HumanInputFormRecord | None) -> HumanInputFormSubmissionRepository:
