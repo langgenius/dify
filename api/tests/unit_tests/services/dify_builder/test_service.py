@@ -57,6 +57,14 @@ class FakeSessionLock:
         self._held[session_id] = token
         return token
 
+    def activate(self, session_id: str, token: str) -> bool:
+        """Compare-and-extend, as the real one does at worker start: true only
+        while this token still holds the session, so a command that sat in the
+        queue past its lease cannot run after another worker took over. The
+        real implementation also extends the Redis lease; this double has no
+        TTL, so only the compare is modelled."""
+        return self._held.get(session_id) == token
+
     def release(self, session_id: str, token: str) -> None:
         if self._held.get(session_id) == token:
             self._held.pop(session_id, None)
