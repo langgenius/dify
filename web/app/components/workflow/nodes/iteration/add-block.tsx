@@ -15,7 +15,7 @@ type AddBlockProps = {
   iterationNodeData: IterationNodeType
 }
 const AddBlock = ({ iterationNodeData }: AddBlockProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeAdd } = useNodesInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)

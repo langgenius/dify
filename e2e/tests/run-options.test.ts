@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { parseRunOptions, shouldStartManagedAgentBackend } from '../scripts/run-options'
+import { parseRunOptions, shouldStartManagedAgentBackend } from '../scripts/run-options.ts'
 
 describe('E2E run options', () => {
   it('forwards Cucumber arguments without requesting seed data', () => {
     expect(parseRunOptions(['--tags', '@smoke'])).toEqual({
+      downloadWebBuild: false,
       forwardArgs: ['--tags', '@smoke'],
       full: false,
       headed: false,
@@ -39,6 +40,19 @@ describe('E2E run options', () => {
     )
     expect(() => parseRunOptions(['--dry-run', '--profile', 'prepared'])).toThrow(
       '--dry-run requires --seed-only.',
+    )
+  })
+
+  it('selects a shared CI build without forwarding the option to Cucumber', () => {
+    expect(
+      parseRunOptions(['--full', '--download-web-build', '--', '--shard', '2/3']),
+    ).toMatchObject({
+      downloadWebBuild: true,
+      full: true,
+      forwardArgs: ['--shard', '2/3'],
+    })
+    expect(() => parseRunOptions(['--download-web-build'])).toThrow(
+      '--download-web-build requires --full.',
     )
   })
 })

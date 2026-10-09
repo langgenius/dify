@@ -11,15 +11,13 @@ changes the runtime exit policy carried to the backend.
 from __future__ import annotations
 
 import contextvars
-import json
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from typing import Any, Literal
 
 from flask import Flask, current_app
-from pydantic import JsonValue
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -29,6 +27,7 @@ from configs import dify_config
 from constants import UUID_NIL
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.errors import (
@@ -52,8 +51,8 @@ from core.app.entities.app_invoke_entities import (
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
+from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -75,69 +74,6 @@ from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
 
-_REFERENCE_FILE_TRANSFER_METHODS = {"local_file", "tool_file", "datasource_file"}
-
-
-def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
-    """Append labeled, prompt-safe file locators to the backend user prompt."""
-    prompt_files = _prompt_file_locators(prompt_file_mappings)
-    if not prompt_files:
-        return query
-    payload = json.dumps(prompt_files, ensure_ascii=False, separators=(",", ":"))
-    return (
-        f"{query}\n"
-        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
-        "to get the files and investigate them\n"
-        f"{payload}"
-    )
-
-
-def _prompt_file_locators(prompt_file_mappings: Sequence[JsonValue]) -> list[dict[str, str]]:
-    locators: list[dict[str, str]] = []
-    for file_mapping in prompt_file_mappings:
-        if not isinstance(file_mapping, Mapping):
-            continue
-        locator = _prompt_file_locator(file_mapping)
-        if locator is not None:
-            locators.append(locator)
-    return locators
-
-
-def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] | None:
-    transfer_method = _string_value(file_mapping, "transfer_method")
-    if transfer_method == "remote_url":
-        url = _string_value(file_mapping, "url") or _string_value(file_mapping, "remote_url")
-        if url is None:
-            return None
-        return {"transfer_method": "remote_url", "url": url}
-    elif transfer_method in _REFERENCE_FILE_TRANSFER_METHODS:
-        if transfer_method is None:
-            return None
-        reference = _canonical_file_reference(
-            _string_value(file_mapping, "reference")
-            or _string_value(file_mapping, "upload_file_id")
-            or _string_value(file_mapping, "file_id")
-            or _string_value(file_mapping, "id")
-        )
-        if reference is None:
-            return None
-        return {"transfer_method": transfer_method, "reference": reference}
-    else:
-        return None
-
-
-def _canonical_file_reference(reference: str | None) -> str | None:
-    if reference is None:
-        return None
-    if reference.startswith("dify-file-ref:"):
-        return reference if is_canonical_file_reference(reference) else None
-    return build_file_reference(record_id=reference)
-
-
-def _string_value(mapping: Mapping[str, object], key: str) -> str | None:
-    value = mapping.get(key)
-    return value if isinstance(value, str) and value else None
-
 
 class AgentAppGenerator(MessageBasedAppGenerator):
     def generate(
@@ -155,7 +91,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         query = self._require_query(args)
         inputs = args["inputs"]
-        prompt_file_mappings = args.get("files") or []
+        raw_files = args.get("files") or []
 
         conversation = None
         conversation_id = args.get("conversation_id")
@@ -193,19 +129,33 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
         )
         model_conf = ModelConfigConverter.convert(app_config)
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+            file_upload_config = (
+                FileUploadConfigManager.convert(app_config.app_model_config_dict, is_vision=True) if raw_files else None
+            )
+            file_objs = (
+                file_factory.build_from_mappings(
+                    mappings=raw_files,
+                    tenant_id=app_model.tenant_id,
+                    config=file_upload_config,
+                    access_controller=self._file_access_controller,
+                )
+                if raw_files and file_upload_config is not None
+                else []
+            )
 
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=model_conf,
+            file_upload_config=file_upload_config,
             conversation_id=conversation.id if conversation else None,
             inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
-            files=[],
-            prompt_file_mappings=prompt_file_mappings,
+            files=list(file_objs),
             parent_message_id=(
                 args.get("parent_message_id")
                 if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
@@ -492,10 +442,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         )
                     if handled:
                         return
-                    query = _append_prompt_file_mappings(
-                        query=query,
-                        prompt_file_mappings=application_generate_entity.prompt_file_mappings,
-                    )
 
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
@@ -514,6 +460,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     )
 
                 runner = self._build_runner()
+                image_detail_config = (
+                    application_generate_entity.file_upload_config.image_config.detail
+                    if (
+                        application_generate_entity.file_upload_config
+                        and application_generate_entity.file_upload_config.image_config
+                    )
+                    else None
+                )
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
@@ -526,6 +480,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
+                    files=list(application_generate_entity.files),
+                    image_detail_config=image_detail_config,
                     session_scope_snapshot_id=application_generate_entity.agent_session_scope_config_version_id,
                     build_draft_id=(
                         application_generate_entity.agent_config_snapshot_id

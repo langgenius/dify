@@ -80,6 +80,7 @@ lint:
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
 	@$(MAKE) api-contract-lint
+	@uv run --project api python scripts/check_no_spec_mock.py
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
@@ -90,15 +91,13 @@ api-contract-lint:
 	@echo "✅ Response contract lint complete"
 
 type-check:
-	@echo "📝 Running type checks (pyrefly + mypy)..."
+	@echo "📝 Running type checks (pyrefly)..."
 	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
 type-check-core:
-	@echo "📝 Running core type checks (pyrefly + mypy)..."
+	@echo "📝 Running core type checks (pyrefly)..."
 	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Core type checks complete"
 
 test:
@@ -214,8 +213,8 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
-	@echo "  make type-check     - Run type checks (pyrefly, mypy)"
-	@echo "  make type-check-core - Run core type checks (pyrefly, mypy)"
+	@echo "  make type-check     - Run type checks (pyrefly)"
+	@echo "  make type-check-core - Run core type checks (pyrefly)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo "  make test-all       - Run full backend tests, including Docker-backed suites"
 	@echo ""

@@ -1,10 +1,10 @@
 import type { SelectorParam } from 'i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { toast } from '@/app/notifications'
 import { fetchWebhookUrl } from '@/service/apps'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import {
@@ -31,7 +31,7 @@ function isVarKeyErrorKey(key: string): key is keyof typeof varKeyErrorSelectors
 }
 
 export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
   const appId = useAppStore.getState().appDetail?.id

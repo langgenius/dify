@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Cancel",
+  "operation.now": "Now",
+  "operation.ok": "OK",
+  "operation.pickDate": "Pick Date",
+  "picker.chooseMonthAndYear": "Choose month and year",
+  "picker.endDate": "End date",
+  "picker.hour": "Hour",
+  "picker.minute": "Minute",
+  "picker.month": "Month",
+  "picker.nextMonth": "Next month",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Previous month",
+  "picker.required": "Choose a value.",
+  "picker.requiredLabel": "Required",
+  "picker.startDate": "Start date",
+  "picker.unavailable": "This date or time is unavailable.",
+  "picker.year": "Year",
+  "title.pickTime": "Pick Time"
+}

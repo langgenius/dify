@@ -13,7 +13,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { normalizeHumanInputFormInput } from '../shared/types'
 import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
@@ -36,7 +36,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
   userActions,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowHumanInput'])
   const panelWidth = useStore((state) => state.panelWidth)
   const nodes = useNodes()
 
@@ -75,7 +75,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
     >
       <div className="flex h-6.5 items-center justify-between px-4">
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
-          {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflowHumanInput' })}
         </Badge>
         <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} onClick={onClose}>
           <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
@@ -107,7 +107,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           ))}
         </div>
         <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['nodes.humanInput.editor.previewTip'], { ns: 'workflow' })}
+          {t(($) => $['nodes.humanInput.editor.previewTip'], { ns: 'workflowHumanInput' })}
         </div>
       </div>
     </div>
@@ -115,7 +115,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
 }
 
 const ServerFormContentPreview = (props: FormContentPreviewProps & { nodeId: string }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const app = useAppStore((state) => state.appDetail)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const panelWidth = useStore((state) => state.panelWidth)

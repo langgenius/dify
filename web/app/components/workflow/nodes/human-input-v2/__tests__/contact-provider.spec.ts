@@ -21,7 +21,7 @@ const api = vi.hoisted(() => ({
     >(),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
   return {
     consoleQuery: createTanstackQueryUtils({

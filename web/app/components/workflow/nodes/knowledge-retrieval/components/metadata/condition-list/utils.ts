@@ -67,16 +67,18 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
 }
 
 export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator) => {
-  if (!operator) return false
-
-  return [
+  const valueFreeOperators: readonly ComparisonOperator[] = [
     ComparisonOperator.empty,
     ComparisonOperator.notEmpty,
     ComparisonOperator.isNull,
     ComparisonOperator.isNotNull,
     ComparisonOperator.exists,
     ComparisonOperator.notExists,
-  ].includes(operator)
+  ]
+
+  if (!operator) return false
+
+  return valueFreeOperators.includes(operator)
 }
 
 export const VARIABLE_REGEX = /\{\{(#[\w-]{1,50}(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi

@@ -7,7 +7,7 @@ import {
   zGetNotificationResponse,
   zPostNotificationDismissBody,
   zPostNotificationDismissResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Mark a notification as dismissed for the current user.

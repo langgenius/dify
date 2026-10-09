@@ -1,10 +1,10 @@
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   RemoveDatasetAccessPolicyMemberBindingsRequest,
   UpdateDatasetUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { normalizeDatasetAccessMatrix, normalizeDatasetUserAccessPolicies } from './normalizers'
 
 const NAME_SPACE = 'dataset-access-config'

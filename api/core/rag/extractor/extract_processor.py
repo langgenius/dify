@@ -7,10 +7,11 @@ from urllib.parse import unquote
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import get_session_maker
 from core.file import remote_fetcher
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, UploadFileExtractionInput
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
@@ -59,7 +60,9 @@ class ExtractProcessor:
         cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> list[Document] | str:
         extract_setting = ExtractSetting(
-            datasource_type=DatasourceType.FILE, upload_file=upload_file, document_model="text_model"
+            datasource_type=DatasourceType.FILE,
+            upload_file=UploadFileExtractionInput.model_validate(upload_file),
+            document_model="text_model",
         )
         if return_text:
             delimiter = "\n"
@@ -83,10 +86,12 @@ class ExtractProcessor:
             suffix = Path(url).suffix
             if not suffix and suffix != ".":
                 # get content-type
-                if response.headers.get("Content-Type"):
-                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
+                content_type = response.headers.get("Content-Type")
+                if content_type:
+                    # strip parameters such as "; charset=utf-8" before using the subtype as suffix
+                    suffix = "." + content_type.split(";")[0].strip().split("/")[-1]
                 else:
-                    content_disposition = response.headers.get("Content-Disposition")
+                    content_disposition = response.headers.get("Content-Disposition", "")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))
@@ -147,9 +152,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -195,9 +202,11 @@ class ExtractProcessor:
                             upload_file.id,
                         )
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
                         extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id if upload_file else None,
+                            upload_file.created_by if upload_file else None,
+                            session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
@@ -217,17 +226,29 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.NOTION:
+            from extensions.application_services.data_sources import build_data_source_credentials
+
             assert extract_setting.notion_info is not None, "notion_info is required"
+            notion_info = extract_setting.notion_info
             extractor = NotionExtractor(
                 notion_workspace_id=extract_setting.notion_info.notion_workspace_id or "",
                 notion_obj_id=extract_setting.notion_info.notion_obj_id,
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
+                notion_access_token=extract_setting.notion_info.notion_access_token,
                 credential_id=extract_setting.notion_info.credential_id,
+                notion_token_loader=lambda: build_data_source_credentials(
+                    database_client=get_session_maker()
+                ).providers.get_stored_notion_access_token(
+                    tenant_id=notion_info.tenant_id, credential_id=notion_info.credential_id
+                ),
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE:
+            from extensions.application_services.data_sources import build_website_service
+
+            website_service = build_website_service(database_client=get_session_maker())
             assert extract_setting.website_info is not None, "website_info is required"
             match extract_setting.website_info.provider:
                 case "firecrawl":
@@ -237,6 +258,7 @@ class ExtractProcessor:
                         tenant_id=extract_setting.website_info.tenant_id,
                         mode=extract_setting.website_info.mode,
                         only_main_content=extract_setting.website_info.only_main_content,
+                        website_service=website_service,
                     )
                     return extractor.extract()
                 case "watercrawl":
@@ -246,6 +268,7 @@ class ExtractProcessor:
                         tenant_id=extract_setting.website_info.tenant_id,
                         mode=extract_setting.website_info.mode,
                         only_main_content=extract_setting.website_info.only_main_content,
+                        website_service=website_service,
                     )
                     return extractor.extract()
                 case "jinareader":
@@ -255,6 +278,7 @@ class ExtractProcessor:
                         tenant_id=extract_setting.website_info.tenant_id,
                         mode=extract_setting.website_info.mode,
                         only_main_content=extract_setting.website_info.only_main_content,
+                        website_service=website_service,
                     )
                     return extractor.extract()
                 case _:

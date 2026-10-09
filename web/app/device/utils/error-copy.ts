@@ -4,7 +4,7 @@
 // this maps a server code to an i18n key, then the key to translated copy.
 
 import type { TFunction } from 'i18next'
-import type deviceFlowResources from '@/i18n/en-US/device-flow.json'
+import type deviceFlowResources from '@/i18n/locales/en-US/device-flow.json'
 import { DeviceFlowError } from '@/service/device-flow'
 
 type DeviceFlowKey = keyof typeof deviceFlowResources
@@ -27,7 +27,7 @@ const APPROVE_KEY: Record<string, DeviceFlowKey> = {
   server_error: 'approveError.serverError',
 }
 
-export function approveErrorCopy(err: unknown, t: TFunction<'deviceFlow'>): string {
+export function approveErrorCopy(err: unknown, t: TFunction<['deviceFlow']>): string {
   if (err instanceof DeviceFlowError)
     return t(($) => $[APPROVE_KEY[err.code] ?? 'approveError.default'])
   return t(($) => $['approveError.default'])
@@ -39,7 +39,7 @@ const SSO_ERROR_KEY: Record<string, DeviceFlowKey> = {
   email_belongs_to_dify_account: 'ssoError.emailBelongsToDifyAccount',
 }
 
-export function ssoErrorCopy(code: string, t: TFunction<'deviceFlow'>): string {
+export function ssoErrorCopy(code: string, t: TFunction<['deviceFlow']>): string {
   return t(($) => $[SSO_ERROR_KEY[code] ?? 'ssoError.default'])
 }
 

@@ -1,6 +1,6 @@
 import type { ChatItem } from '../types'
 import { debounce } from 'es-toolkit/compat'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 type UseChatLayoutOptions = {
   chatList: ChatItem[]
@@ -16,7 +16,6 @@ const setStyleValue = (
 }
 
 export const useChatLayout = ({ chatList, sidebarCollapseState }: UseChatLayoutOptions) => {
-  const [width, setWidth] = useState(0)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)
   const chatFooterRef = useRef<HTMLDivElement>(null)
@@ -40,11 +39,6 @@ export const useChatLayout = ({ chatList, sidebarCollapseState }: UseChatLayoutO
   }, [chatList.length])
 
   const handleWindowResize = useCallback(() => {
-    if (chatContainerRef.current) {
-      const nextWidth = document.body.clientWidth - (chatContainerRef.current.clientWidth + 16) - 8
-      setWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth))
-    }
-
     if (chatContainerRef.current && chatFooterRef.current)
       setStyleValue(chatFooterRef.current, 'width', `${chatContainerRef.current.clientWidth}px`)
 
@@ -172,7 +166,6 @@ export const useChatLayout = ({ chatList, sidebarCollapseState }: UseChatLayoutO
   }, [handleWindowResize, sidebarCollapseState])
 
   return {
-    width,
     chatContainerRef,
     chatContainerInnerRef,
     chatFooterRef,

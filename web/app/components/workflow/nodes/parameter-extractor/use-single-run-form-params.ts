@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const { inputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
 
   const model = inputs.model
@@ -76,7 +76,9 @@ const useSingleRunFormParams = ({
   )
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }, [])
   const { availableVars: availableVisionVars } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
@@ -87,7 +89,7 @@ const useSingleRunFormParams = ({
     const forms: FormProps[] = []
 
     forms.push({
-      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
+      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflowModels' })!,
       inputs: [
         {
           label: t(($) => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })!,
@@ -108,7 +110,7 @@ const useSingleRunFormParams = ({
       )
 
       forms.push({
-        label: t(($) => $['nodes.llm.vision'], { ns: 'workflow' })!,
+        label: t(($) => $['nodes.llm.vision'], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: currentVariable?.variable as any,

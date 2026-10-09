@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -11,6 +11,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -162,6 +164,90 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
+@pytest.mark.parametrize("json_first", [True, False])
+@pytest.mark.parametrize(
+    ("text", "json_object"),
+    [
+        pytest.param('{"a":1,"b":2}', {"a": 1, "b": 2}, id="compact"),
+        pytest.param(' \r\n{\n  "a": 1,\n  "b": 2\n}\t', {"a": 1, "b": 2}, id="whitespace"),
+        pytest.param('{"b": 2, "a": 1}', {"a": 1, "b": 2}, id="key-order"),
+        pytest.param(
+            '{"items":[{"b":2,"a":1}],"nested":{"y":2,"x":1}}',
+            {"nested": {"x": 1, "y": 2}, "items": [{"a": 1, "b": 2}]},
+            id="nested-key-order",
+        ),
+        pytest.param(r'{"\u540d\u79f0":"\u4e2d\u6587"}', {"名称": "中文"}, id="unicode-escapes"),
+        pytest.param(r'{"path":"\/a\/b"}', {"path": "/a/b"}, id="slash-escapes"),
+        pytest.param('{"a":1e0}', {"a": 1.0}, id="exponent"),
+        pytest.param(" { } ", {}, id="empty-object"),
+        pytest.param('[ {"b":2,"a":1},null,true ]', [{"a": 1, "b": 2}, None, True], id="array"),
+    ],
+)
+def test_convert_tool_response_deduplicates_equivalent_json(
+    text: str, json_object: dict[str, Any] | list[Any], json_first: bool
+):
+    tool = _build_tool()
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.JSON,
+            message=ToolInvokeMessage.JsonMessage(json_object=json_object),
+        ),
+        tool.create_text_message(text),
+    ]
+    if not json_first:
+        messages.reverse()
+
+    assert ToolEngine.tool_response_to_str(messages) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "json_object", "json_text"),
+    [
+        pytest.param("plain text", {"a": 1}, '{"a": 1}', id="plain-text"),
+        pytest.param("[" * 2000 + "0" + "]" * 2000, {"a": 1}, '{"a": 1}', id="deeply-nested-text"),
+        pytest.param("9" * 5000, {"a": 1}, '{"a": 1}', id="oversized-integer"),
+        pytest.param("{'a': 1}", {"a": 1}, '{"a": 1}', id="invalid-json"),
+        pytest.param('result: {"a":1}', {"a": 1}, '{"a": 1}', id="embedded-json"),
+        pytest.param('{"a":1}{"a":1}', {"a": 1}, '{"a": 1}', id="concatenated-json"),
+        pytest.param('{"a":1}', {"a": 2}, '{"a": 2}', id="different-value"),
+        pytest.param('{"a":1}', {"b": 1}, '{"b": 1}', id="different-key"),
+        pytest.param('{"a":[1,2]}', {"a": [2, 1]}, '{"a": [2, 1]}', id="array-order"),
+        pytest.param('{"a":true}', {"a": 1}, '{"a": 1}', id="boolean-vs-number"),
+        pytest.param('{"a":null}', {"a": False}, '{"a": false}', id="null-vs-boolean"),
+        pytest.param('{"a":"1"}', {"a": 1}, '{"a": 1}', id="string-vs-number"),
+        pytest.param('{"a":"a b"}', {"a": "ab"}, '{"a": "ab"}', id="string-whitespace"),
+    ],
+)
+def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str):
+    tool = _build_tool()
+    messages = [tool.create_json_message(json_object), tool.create_text_message(text)]
+
+    assert ToolEngine.tool_response_to_str(messages) == text + json_text
+
+
+@pytest.mark.parametrize("suppress_output", [True, False])
+def test_convert_tool_response_preserves_json_only_output(suppress_output: bool):
+    tool = _build_tool()
+    messages = [tool.create_json_message({"b": 2, "a": "中文"}, suppress_output=suppress_output)]
+
+    assert ToolEngine.tool_response_to_str(messages) == ("" if suppress_output else '{"b": 2, "a": "中文"}')
+
+
+def test_convert_tool_response_deduplicates_only_matching_json():
+    tool = _build_tool()
+    text = '{"b":2,"a":1}'
+    messages = [
+        tool.create_json_message({"a": 1, "b": 2}),
+        tool.create_text_message(text),
+        tool.create_text_message("result"),
+        tool.create_text_message(text),
+        tool.create_json_message({"c": 3}),
+        tool.create_json_message({"c": 3}),
+    ]
+
+    assert ToolEngine.tool_response_to_str(messages) == text + "result" + text + '{"c": 3}{"c": 3}'
+
+
 @pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
 def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session):
     binaries = [
@@ -192,8 +278,7 @@ def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
     tool = _build_tool()
-    callback = Mock()
-    callback.on_tool_execution.side_effect = lambda **kwargs: kwargs["tool_outputs"]
+    callback = DifyWorkflowCallbackHandler()
     response = list(
         ToolEngine.generic_invoke(
             session=sqlite_session,
@@ -208,12 +293,9 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
         )
     )
     assert response[0].message.text == "ok"
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_execution.assert_called_once()
 
     tool.raise_error = RuntimeError("boom")
-    error_callback = Mock()
-    error_callback.on_tool_execution.side_effect = lambda **kwargs: list(kwargs["tool_outputs"])
+    error_callback = DifyWorkflowCallbackHandler()
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
@@ -225,13 +307,12 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
                 workflow_call_depth=0,
             )
         )
-    error_callback.on_tool_error.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_success(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     meta = ToolInvokeMeta.empty()
 
@@ -256,14 +337,12 @@ def test_agent_invoke_success(sqlite_session: Session):
     assert result_text == "ok"
     assert message_files == []
     assert result_meta.error is None
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_end.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_param_validation_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
@@ -286,7 +365,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_engine_meta_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
 
@@ -332,7 +411,7 @@ def test_convert_tool_response_excludes_variable_messages():
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):

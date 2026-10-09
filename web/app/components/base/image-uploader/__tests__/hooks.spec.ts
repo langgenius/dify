@@ -4,7 +4,7 @@ import { TransferMethod } from '@/types/app'
 import { useImageFiles, useLocalFileUploader } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },

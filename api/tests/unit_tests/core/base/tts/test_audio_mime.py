@@ -1,5 +1,6 @@
+from collections.abc import Generator, Iterator
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 
 import pytest
 
@@ -64,3 +65,148 @@ def test_id3_metadata_is_not_treated_as_proof_of_an_mp3_codec() -> None:
 
     assert sniff_audio_mime_type(signature) is None
     assert resolve_audio_mime_type(signature, reported_mime_type="audio/aac") == "audio/aac"
+
+
+class _TrackedStream(Iterator[bytes]):
+    def __init__(self, chunks: Iterator[bytes], *, close_error: Exception | None = None) -> None:
+        self._chunks: Iterator[bytes] = chunks
+        self._close_error: Exception | None = close_error
+        self.close_calls: int = 0
+
+    @override
+    def __next__(self) -> bytes:
+        return next(self._chunks)
+
+    def close(self) -> None:
+        self.close_calls += 1
+        if self._close_error is not None:
+            raise self._close_error
+
+
+@pytest.mark.parametrize("consumed_chunks", [0, 1, 2, 3])
+def test_inspected_stream_closes_source_once_even_before_consumption(consumed_chunks: int) -> None:
+    chunks = [b"x" * 32, b"middle", b"last"]
+    source = _TrackedStream(iter(chunks))
+    stream, mime_type = inspect_audio_stream(source)
+
+    assert mime_type == "audio/mpeg"
+    assert [next(stream) for _ in range(consumed_chunks)] == chunks[:consumed_chunks]
+    assert source.close_calls == 0
+    stream.close()
+    stream.close()
+
+    assert source.close_calls == 1
+    assert list(stream) == []
+
+
+@pytest.mark.parametrize("chunks", [[], [b"short"], [b"x" * 32, b"last"]])
+def test_exhausting_inspected_stream_closes_source(chunks: list[bytes]) -> None:
+    source = _TrackedStream(iter(chunks))
+    stream, _ = inspect_audio_stream(source)
+
+    assert list(stream) == chunks
+    assert source.close_calls == 1
+    stream.close()
+    assert source.close_calls == 1
+
+
+def test_closing_inspected_stream_runs_provider_finally_without_gc() -> None:
+    released: list[bool] = []
+
+    def provider() -> Generator[bytes, None, None]:
+        try:
+            yield b"x" * 32
+            yield b"unread"
+        finally:
+            released.append(True)
+
+    source = provider()
+    stream, _ = inspect_audio_stream(source)
+    assert released == []
+
+    stream.close()
+
+    assert released == [True]
+    assert list(source) == []
+
+
+@pytest.mark.parametrize("after_prefix", [False, True])
+def test_provider_error_closes_source_without_being_replaced_by_cleanup_error(
+    after_prefix: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    provider_error = RuntimeError("provider interrupted")
+
+    def provider() -> Generator[bytes, None, None]:
+        if after_prefix:
+            yield b"x" * 32
+        raise provider_error
+
+    source = _TrackedStream(provider(), close_error=RuntimeError("cleanup failed"))
+    with pytest.raises(RuntimeError) as raised:
+        list(inspect_audio_stream(source)[0])
+
+    assert raised.value is provider_error
+    assert source.close_calls == 1
+    assert "cleanup failed" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    [
+        [TTSAudioChunk(b"x", "application/octet-stream")],
+        [TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt ", "audio/mpeg")],
+        [TTSAudioChunk(b"x", "audio/mpeg"), TTSAudioChunk(b"y", "audio/ogg")],
+        [b"x" * 32, TTSAudioChunk(b"later", "audio/ogg")],
+    ],
+)
+def test_mime_rejection_closes_provider_during_peek_or_later(chunks: list[bytes]) -> None:
+    source = _TrackedStream(iter(chunks))
+
+    with pytest.raises(InvokeBadRequestError):
+        list(inspect_audio_stream(source)[0])
+
+    assert source.close_calls == 1
+
+
+def test_closing_inspected_stream_closes_distinct_iterable_owner_and_iterator() -> None:
+    iterator = _TrackedStream(iter([b"x" * 32, b"remaining"]))
+
+    class ProviderResponse:
+        def __init__(self) -> None:
+            self.close_calls: int = 0
+
+        def __iter__(self) -> Iterator[bytes]:
+            return iterator
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    source = ProviderResponse()
+    stream, _ = inspect_audio_stream(source)
+
+    stream.close()
+    stream.close()
+
+    assert iterator.close_calls == 1
+    assert source.close_calls == 1
+
+
+def test_iterator_creation_failure_closes_provider_response() -> None:
+    error = RuntimeError("cannot start reading")
+
+    class ProviderResponse:
+        def __init__(self) -> None:
+            self.closed: bool = False
+
+        def __iter__(self) -> Iterator[bytes]:
+            raise error
+
+        def close(self) -> None:
+            self.closed = True
+
+    source = ProviderResponse()
+    with pytest.raises(RuntimeError) as raised:
+        inspect_audio_stream(source)
+
+    assert raised.value is error
+    assert source.closed

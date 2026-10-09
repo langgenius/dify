@@ -5,10 +5,10 @@ import type {
   LLMCompletionParams,
   LLMEnvironmentVariableValue,
 } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { toast } from '@/app/notifications'
 
 export function LLMEnvironmentVariableValueField({
   disabled = false,
@@ -23,7 +23,7 @@ export function LLMEnvironmentVariableValueField({
   value?: LLMEnvironmentVariableValue
   onChange: (value: LLMEnvironmentVariableValue) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const selectableModelList = requiredMode
     ? activeTextGenerationModelList
@@ -43,7 +43,7 @@ export function LLMEnvironmentVariableValueField({
 
     if (typeof mode !== 'string') return
     if (requiredMode && mode !== requiredMode) {
-      toast.error(t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'modelProvider' }))
       return
     }
 

@@ -254,6 +254,17 @@ describe('YamlStore persistence', () => {
     expect(s3.doGet({ key: 'y', default: '' })).toBe('second')
   })
 
+  it('forgets its cached content once the file is deleted and reloaded', async () => {
+    const path = join(dir, 'config.yml')
+    await writeFile(path, 'key: value\n')
+
+    const store = new YamlStore(path)
+    expect(await store.getTyped<{ key: string }>()).toEqual({ key: 'value' })
+
+    await rm(path)
+    expect(await store.getTyped<{ key: string }>()).toBeNull()
+  })
+
   it('load → doSet → flush writes the value to disk', async () => {
     const path = join(dir, 'config.yml')
     await writeFile(path, 'existing: value\n')

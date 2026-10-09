@@ -60,7 +60,6 @@
   <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </p>
 
-# 
 
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -94,7 +93,7 @@ Toutes les offres de Dify sont accompagnées d'API correspondantes, vous permett
 ## Utiliser Dify
 
 - **Cloud </br>**
-  Nous hébergeons un service [Dify Cloud](https://dify.ai) pour que tout le monde puisse l'essayer sans aucune configuration. Il fournit toutes les capacités de la version auto-hébergée et comprend 200 appels GPT-4 gratuits dans le plan bac à sable.
+  Essayez [Dify Cloud](https://cloud.dify.ai) sans gérer de serveur. Consultez la [page des tarifs](https://dify.ai/pricing) pour les offres et quotas actuels.
 
 - **Auto-hébergement Dify Community Edition</br>**
   Lancez rapidement Dify dans votre environnement avec ce [guide de démarrage](#démarrage-rapide).
@@ -140,7 +139,7 @@ Dify accueille les contributions de toutes sortes :
 
 - **Code** : consultez le [guide de contribution](./CONTRIBUTING.md), puis parcourez les [issues accessibles aux nouveaux contributeurs](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Idées et retours** : lancez ou rejoignez une [discussion GitHub](https://github.com/langgenius/dify/discussions).
-- **Traductions** : suivez le [guide d’internationalisation](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) pour ajouter ou mettre à jour une langue.
+- **Traductions** : suivez le [guide d’internationalisation](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) pour ajouter ou mettre à jour une langue.
 - **Communauté** : partagez les applications que vous créez, aidez les autres utilisateurs et faites connaître Dify.
 
 ### Contributeurs
@@ -163,7 +162,7 @@ Choisissez le canal le plus adapté à votre demande :
 
 ## Divulgation de sécurité
 
-Pour protéger votre vie privée, veuillez éviter de publier des problèmes de sécurité sur GitHub. Au lieu de cela, envoyez vos questions à security@dify.ai et nous vous fournirons une réponse plus détaillée.
+Signalez les vulnérabilités en privé via GitHub Security Advisories, conformément à notre [politique de sécurité](../../SECURITY.md). Ne les divulguez pas dans les issues, discussions ou pull requests publiques.
 
 ## Licence
 

@@ -110,8 +110,8 @@ describe('CommentsPanel', () => {
     expect(screen.getByText('my open thread')).toBeInTheDocument()
     expect(screen.getByText('others resolved thread')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByText('workflow.comments.filter.onlyYourThreads'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
+    fireEvent.click(screen.getByText('workflowComments.comments.filter.onlyYourThreads'))
     expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
     expect(screen.getByText('my open thread')).toBeInTheDocument()
 
@@ -135,7 +135,7 @@ describe('CommentsPanel', () => {
   it('toggles show-resolved state from filter panel switch', () => {
     render(<CommentsPanel />)
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
     fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)

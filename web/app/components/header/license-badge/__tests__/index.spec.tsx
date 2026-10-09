@@ -2,7 +2,7 @@ import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.
 import { noop } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,

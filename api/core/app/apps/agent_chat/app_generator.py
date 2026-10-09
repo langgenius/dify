@@ -138,9 +138,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
-        annotation_reply = (
-            None if override_model_config_dict else load_annotation_reply_config(session, app_model_config.app_id)
-        )
+        if override_model_config_dict:
+            annotation_reply = None
+            effective_model_config_dict = override_model_config_dict
+        else:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            effective_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -150,9 +153,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # `DraftWorkflowNodeRunApi` class which handle this properly.
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args.get("files") or []
-            file_extra_config = FileUploadConfigManager.convert(
-                override_model_config_dict or app_model_config.to_dict(annotation_reply=annotation_reply)
-            )
+            file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
                     mappings=files,

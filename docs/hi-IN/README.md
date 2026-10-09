@@ -86,7 +86,7 @@ docker compose up -d
 
 रन करने के बाद, आप अपने ब्राउज़र में [http://localhost/install](http://localhost/install) पर Dify डैशबोर्ड एक्सेस कर सकते हैं और प्रारंभिक सेटअप प्रक्रिया शुरू कर सकते हैं।
 
-#### सहायता प्राप्त करना
+### सहायता प्राप्त करना
 
 यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#समुदाय-और-संपर्क-community--contact) से संपर्क करें।
 
@@ -120,7 +120,7 @@ Dify की सभी सेवाएँ संबंधित APIs के स�
 ## Dify का उपयोग करना
 
 - **Cloud <br/>**\
-  हम [Dify Cloud](https://dify.ai) सेवा प्रदान करते हैं, जिसे कोई भी बिना किसी सेटअप के आज़मा सकता है। यह स्व-परिनियोजित संस्करण की सभी क्षमताएँ प्रदान करता है और सैंडबॉक्स प्लान में 200 निःशुल्क GPT-4 कॉल्स शामिल करता है।
+  सर्वर का प्रबंधन किए बिना [Dify Cloud](https://cloud.dify.ai) पर Dify आज़माएँ। मौजूदा योजनाओं और उपयोग सीमाओं के लिए [मूल्य निर्धारण पृष्ठ](https://dify.ai/pricing) देखें।
 
 - **Dify कम्युनिटी संस्करण की स्व-होस्टिंग<br/>**\
   अपने वातावरण में Dify को जल्दी चलाएँ इस [starter guide](#त्वरित-प्रारंभ) की मदद से।\
@@ -146,7 +146,7 @@ Dify सभी प्रकार के योगदानों का स्�
 
 - **कोड**: [Contribution Guide](./CONTRIBUTING.md) पढ़ें, फिर [नए योगदानकर्ताओं के लिए उपयुक्त issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) देखें।
 - **विचार और प्रतिक्रिया**: [GitHub Discussion](https://github.com/langgenius/dify/discussions) शुरू करें या किसी मौजूदा चर्चा में शामिल हों।
-- **अनुवाद**: किसी locale को जोड़ने या अपडेट करने के लिए [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) का पालन करें।
+- **अनुवाद**: किसी locale को जोड़ने या अपडेट करने के लिए [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) का पालन करें।
 - **समुदाय**: अपने बनाए हुए ऐप साझा करें, अन्य उपयोगकर्ताओं की मदद करें और Dify के बारे में लोगों को बताएं।
 
 ### योगदानकर्ता
@@ -169,8 +169,7 @@ Dify सभी प्रकार के योगदानों का स्�
 
 ## सुरक्षा प्रकटीकरण (Security disclosure)
 
-आपकी गोपनीयता की सुरक्षा के लिए, कृपया GitHub पर सुरक्षा संबंधित समस्याएँ पोस्ट करने से बचें।\
-इसके बजाय, समस्याओं की रिपोर्ट security@dify.ai पर करें, और हमारी टीम आपको विस्तृत उत्तर के साथ प्रतिक्रिया देगी।
+हमारी [सुरक्षा नीति](../../SECURITY.md) के अनुसार GitHub Security Advisories के ज़रिए निजी तौर पर सुरक्षा खामियों की रिपोर्ट करें। उन्हें सार्वजनिक issues, चर्चाओं या pull requests में उजागर न करें।
 
 ## लाइसेंस (License)
 

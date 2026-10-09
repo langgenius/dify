@@ -1,7 +1,8 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
 type UsagePrioritySectionProps = {
@@ -20,10 +21,14 @@ export default function UsagePrioritySection({
   disabled,
   onSelect,
 }: UsagePrioritySectionProps) {
-  const { t } = useTranslation()
+  const priorityLabelId = useId()
+
+  const { t } = useTranslation(['modelProvider'])
   const selectedKey =
     value === 'credits' ? PreferredProviderTypeEnum.system : PreferredProviderTypeEnum.custom
-  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], { ns: 'common' })
+  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], {
+    ns: 'modelProvider',
+  })
 
   return (
     <div className="p-1">
@@ -35,10 +40,13 @@ export default function UsagePrioritySection({
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
-          <span className="truncate system-sm-medium text-text-secondary">
-            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
+          <span id={priorityLabelId} className="truncate system-sm-medium text-text-secondary">
+            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'modelProvider' })}
           </span>
-          <Infotip aria-label={usagePriorityTip}>{usagePriorityTip}</Infotip>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={priorityLabelId} />
+            <InfotipContent aria-labelledby={priorityLabelId}>{usagePriorityTip}</InfotipContent>
+          </Infotip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map((option) => {
@@ -58,7 +66,7 @@ export default function UsagePrioritySection({
                 disabled={disabled}
                 onClick={() => onSelect(option.key)}
               >
-                {t(($) => $[option.labelKey], { ns: 'common' })}
+                {t(($) => $[option.labelKey], { ns: 'modelProvider' })}
               </button>
             )
           })}

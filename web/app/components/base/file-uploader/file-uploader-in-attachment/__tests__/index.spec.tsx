@@ -188,7 +188,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
   it('should call handleReUploadFile when reupload button is clicked', () => {
     const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
 
-    const { container } = render(
+    render(
       <FileUploaderInAttachmentWrapper
         value={files}
         onChange={vi.fn()}
@@ -196,10 +196,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside an icon button with a data-icon attribute.
-    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry a.txt' }))
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
   })

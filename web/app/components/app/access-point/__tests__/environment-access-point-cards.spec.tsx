@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
@@ -17,65 +17,6 @@ const mocks = vi.hoisted(() => ({
   updateSite: vi.fn(),
   environmentAccessControlProps: vi.fn(),
   apiKeyButtonProps: vi.fn(),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    enterprise: {
-      appDeploy: {
-        accessService: {
-          getEnvironmentApi: {
-            queryOptions: ({
-              input,
-            }: {
-              input: { params: { app_id: string; environment_id: string } }
-            }) => ({
-              queryKey: ['environment-api', input.params.app_id, input.params.environment_id],
-              queryFn: () => mocks.getApi(input),
-            }),
-          },
-          getEnvironmentSite: {
-            queryOptions: ({
-              input,
-            }: {
-              input: { params: { app_id: string; environment_id: string } }
-            }) => ({
-              queryKey: ['environment-site', input.params.app_id, input.params.environment_id],
-              queryFn: () => mocks.getSite(input),
-            }),
-          },
-          getEnvironmentWebAppSubjects: {
-            queryOptions: ({
-              input,
-            }: {
-              input: { params: { app_id: string; environment_id: string } }
-            }) => ({
-              queryKey: ['environment-subjects', input.params.app_id, input.params.environment_id],
-              queryFn: () => mocks.getSubjects(input),
-            }),
-          },
-          resetEnvironmentSiteAccessToken: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.resetSite,
-              ...options,
-            }),
-          },
-          updateEnvironmentApi: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateApi,
-              ...options,
-            }),
-          },
-          updateEnvironmentSite: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateSite,
-              ...options,
-            }),
-          },
-        },
-      },
-    },
-  },
 }))
 
 vi.mock('@/features/system-features/client', () => ({
@@ -164,7 +105,7 @@ vi.mock('@/app/components/app/access-point/shared/api-secret-key-button', () => 
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -189,8 +130,7 @@ const api = {
   enabled: true,
 }
 
-function renderCard(ui: ReactElement) {
-  const queryClient = createTestQueryClient()
+function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
   queryClient.setQueryData(['system-features'], {
     webapp_auth: {
       enabled: true,
@@ -211,9 +151,46 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
+// Keep HTTP mocked through Testing Library's asynchronous cleanup.
+afterAll(() => vi.unstubAllGlobals())
+
 describe('environment access point cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppMode = 'workflow'
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      const path = new URL(request.url).pathname
+      const match = /\/enterprise\/app-deploy\/apps\/([^/]+)\/environments\/([^/]+)\/(.+)$/.exec(
+        path,
+      )
+      if (!match) throw new Error(`Unexpected request: ${request.method} ${path}`)
+      const params = { app_id: match[1], environment_id: match[2] }
+      let data: unknown
+      switch (`${request.method} ${match[3]}`) {
+        case 'GET api':
+          data = await mocks.getApi({ params })
+          break
+        case 'GET site':
+          data = await mocks.getSite({ params })
+          break
+        case 'GET webapp/subjects':
+          data = await mocks.getSubjects({ params })
+          break
+        case 'POST site/access-token-reset':
+          data = await mocks.resetSite({ params })
+          break
+        case 'PATCH api':
+          data = await mocks.updateApi({ params, body: await request.json() })
+          break
+        case 'PATCH site':
+          data = await mocks.updateSite({ params, body: await request.json() })
+          break
+        default:
+          throw new Error(`Unexpected request: ${request.method} ${path}`)
+      }
+      return Response.json(data)
+    })
     mocks.getApi.mockResolvedValue(api)
     mocks.getSite.mockResolvedValue(site)
     mocks.getSubjects.mockResolvedValue({
@@ -243,34 +220,52 @@ describe('environment access point cards', () => {
     })
   })
 
+  it.each(['site', 'api'] as const)(
+    'keeps the saved %s status when reopening an environment without changing another environment',
+    async (target) => {
+      const user = userEvent.setup()
+      const queryClient = createTestQueryClient()
+      const card = (environmentId: string) =>
+        target === 'site' ? (
+          <EnvironmentWebAppCard appId="app-1" environmentId={environmentId} canManageAccessPoint />
+        ) : (
+          <EnvironmentServiceApiCard
+            appId="app-1"
+            environmentId={environmentId}
+            canManageAccessPoint
+          />
+        )
+
+      const staging = renderCard(card('staging'), queryClient)
+      const toggle = await screen.findByRole('switch')
+      expect(toggle).toHaveAttribute('aria-checked', 'true')
+      await user.click(toggle)
+      await waitFor(() =>
+        expect(target === 'site' ? mocks.updateSite : mocks.updateApi).toHaveBeenCalled(),
+      )
+      staging.unmount()
+
+      const production = renderCard(card('production'), queryClient)
+      expect(await screen.findByRole('switch')).toHaveAttribute('aria-checked', 'true')
+      production.unmount()
+
+      renderCard(card('staging'), queryClient)
+      expect(await screen.findByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    },
+  )
+
   it('sends a chatflow app to the chat web app shell', async () => {
     mockAppMode = 'advanced-chat'
 
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     expect(await screen.findByText(/environment\/chat\/site-code/)).toHaveTextContent(
       'https://site.example.test/environment/chat/site-code',
     )
-
-    mockAppMode = 'workflow'
   })
 
   it('renders the real environment Web app URL and workflow actions without Embed', async () => {
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     expect(await screen.findByText(/environment\/workflow\/site-code/)).toHaveTextContent(
       'https://site.example.test/environment/workflow/site-code',
@@ -281,7 +276,9 @@ describe('environment access point cards', () => {
       }),
     ).toBeEnabled()
     expect(screen.queryByRole('button', { name: /embedIntoSite/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
+    )
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
   })
 
@@ -291,14 +288,7 @@ describe('environment access point cards', () => {
       access_mode: 'sso_verified',
     })
 
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     expect(
       await screen.findByRole('button', {
@@ -307,17 +297,11 @@ describe('environment access point cards', () => {
     ).toBeEnabled()
   })
 
-  it('shows the environment Web app query as loading instead of failed', () => {
-    mocks.getSite.mockImplementation(() => new Promise(() => {}))
+  it('shows loading until the environment Web app becomes available', async () => {
+    const pending = createDeferredPromise<typeof site>()
+    mocks.getSite.mockReturnValue(pending.promise)
 
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     const card = screen.getByRole('region', { name: /webApp\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
@@ -325,19 +309,15 @@ describe('environment access point cards', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+    pending.resolve(site)
+    expect(await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
+    expect(card).not.toHaveAttribute('aria-busy', 'true')
   })
 
   it('does not announce the access control placeholder as loading after the Site query fails', async () => {
     mocks.getSite.mockRejectedValueOnce(new Error('Site unavailable'))
 
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     const card = screen.getByRole('region', { name: /webApp\.title/ })
     await screen.findAllByText('deployments.health.ENVIRONMENT_STATUS_FAILED')
@@ -346,14 +326,7 @@ describe('environment access point cards', () => {
 
   it('uses environment Site mutations for status and URL reset, and opens its access container', async () => {
     const user = userEvent.setup()
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     const accessModeButton = await screen.findByRole('button', {
       name: /accessControlDialog\.accessItems\.specific/,
@@ -398,14 +371,7 @@ describe('environment access point cards', () => {
     mocks.updateSite
       .mockReturnValueOnce(firstToggle.promise)
       .mockReturnValueOnce(secondToggle.promise)
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     const accessSwitch = await screen.findByRole('switch')
     await user.click(accessSwitch)
@@ -436,16 +402,12 @@ describe('environment access point cards', () => {
 
   it('opens Customize and Settings with environment endpoint data', async () => {
     const user = userEvent.setup()
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion={false}
-      />,
-    )
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     await screen.findByText(/environment\/workflow\/site-code/)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
+    )
     await user.click(screen.getByRole('button', { name: /customize\.entry/ }))
     expect(screen.getByRole('dialog', { name: 'environment customize' })).toHaveTextContent(
       'https://api.example.test/v1',
@@ -457,12 +419,7 @@ describe('environment access point cards', () => {
 
   it('keeps view actions available while disabling deployed Web App management', async () => {
     renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint={false}
-        canReleaseAndVersion={false}
-      />,
+      <EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint={false} />,
     )
 
     expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
@@ -475,37 +432,15 @@ describe('environment access point cards', () => {
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
   })
 
-  it('uses Access Point management for deployed Web App operations without access management', async () => {
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-        canReleaseAndVersion={false}
-      />,
-    )
+  it('uses Access Point management for every deployed Web App operation', async () => {
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     expect(await screen.findByRole('switch')).toBeEnabled()
     expect(screen.getByRole('button', { name: /regenerate/ })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
-    ).toBeDisabled()
-  })
-
-  it('uses Web App access management independently from Access Point management', async () => {
-    renderCard(
-      <EnvironmentWebAppCard
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint={false}
-        canReleaseAndVersion
-      />,
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
     )
-
-    expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
     ).toBeEnabled()

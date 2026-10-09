@@ -1,238 +1,74 @@
 import type { CommandSearchResult } from '../types'
-import type { SlashCommand, SlashCommandHandler } from './types'
+import type { CommandContext, SlashCommand } from './types'
 
-/**
- * Slash Command Registry System
- * Responsible for managing registration, lookup, and search of all slash commands
- */
 export class SlashCommandRegistry {
-  private commands = new Map<string, SlashCommand>()
-  private commandDeps = new Map<string, unknown>()
+  private readonly commands: readonly SlashCommand[]
+  private readonly byName = new Map<string, SlashCommand>()
 
-  /**
-   * Register command handler
-   */
-  register<TDeps>(handler: SlashCommandHandler<TDeps>, deps?: TDeps) {
-    // Register main command name
-    this.commands.set(handler.name, handler)
-
-    // Register aliases
-    if (handler.aliases) {
-      handler.aliases.forEach((alias) => {
-        this.commands.set(alias, handler)
-      })
-    }
-
-    // Store dependencies and call registration method
-    if (deps) {
-      this.commandDeps.set(handler.name, deps)
-      handler.register?.(deps)
-    }
-  }
-
-  /**
-   * Unregister command
-   */
-  unregister(name: string) {
-    const handler = this.commands.get(name)
-    if (handler) {
-      // Call the command's unregister method
-      handler.unregister?.()
-
-      // Remove dependencies
-      this.commandDeps.delete(handler.name)
-
-      // Remove main command name
-      this.commands.delete(handler.name)
-
-      // Remove all aliases
-      if (handler.aliases) {
-        handler.aliases.forEach((alias) => {
-          this.commands.delete(alias)
-        })
+  constructor(commands: readonly SlashCommand[]) {
+    this.commands = [...commands]
+    for (const command of commands) {
+      for (const name of [command.name, ...(command.aliases ?? [])]) {
+        if (this.byName.has(name)) throw new Error(`Duplicate slash command: ${name}`)
+        this.byName.set(name, command)
       }
     }
   }
 
-  /**
-   * Find command handler
-   */
-  findCommand(commandName: string): SlashCommand | undefined {
-    return this.commands.get(commandName)
+  findCommand(name: string) {
+    return this.byName.get(name)
   }
 
-  /**
-   * Smart partial command matching
-   * Prioritize alias matching, then match command name prefix
-   */
-  private findBestPartialMatch(partialName: string): SlashCommand | undefined {
-    const lowerPartial = partialName.toLowerCase()
-
-    // First check if any alias starts with this
-    const aliasMatch = this.findHandlerByAliasPrefix(lowerPartial)
-    if (aliasMatch && this.isCommandAvailable(aliasMatch)) return aliasMatch
-
-    // Then check if command name starts with this
-    const nameMatch = this.findHandlerByNamePrefix(lowerPartial)
-    return nameMatch && this.isCommandAvailable(nameMatch) ? nameMatch : undefined
+  getAvailableCommands(context: CommandContext) {
+    return this.commands.filter((command) => command.isAvailable?.(context) ?? true)
   }
 
-  /**
-   * Find handler by alias prefix
-   */
-  private findHandlerByAliasPrefix(prefix: string): SlashCommand | undefined {
-    for (const handler of this.getAllCommands()) {
-      if (handler.aliases?.some((alias) => alias.toLowerCase().startsWith(prefix))) return handler
+  async execute(name: string, args: Record<string, unknown>, context: CommandContext) {
+    const command = this.findCommand(name)
+    if (!command || command.isAvailable?.(context) === false) return
+    try {
+      await command.execute(args, context)
+    } catch (error) {
+      context.onError(error)
     }
-    return undefined
   }
 
-  /**
-   * Find handler by name prefix
-   */
-  private findHandlerByNamePrefix(prefix: string): SlashCommand | undefined {
-    return this.getAllCommands().find((handler) => handler.name.toLowerCase().startsWith(prefix))
-  }
+  search(query: string, context: CommandContext): CommandSearchResult[] {
+    const input = query.trim().replace(/^\//, '').trim()
+    const commands = this.getAvailableCommands(context)
+    if (!input) return commands.map((command) => this.toResult(command))
 
-  /**
-   * Get all registered commands (deduplicated)
-   */
-  getAllCommands(): SlashCommand[] {
-    const uniqueCommands = new Map<string, SlashCommand>()
-    this.commands.forEach((handler) => {
-      uniqueCommands.set(handler.name, handler)
-    })
-    return Array.from(uniqueCommands.values())
-  }
-
-  /**
-   * Get all available commands in current context (deduplicated and filtered)
-   * Commands without isAvailable method are considered always available
-   */
-  getAvailableCommands(): SlashCommand[] {
-    return this.getAllCommands().filter((handler) => this.isCommandAvailable(handler))
-  }
-
-  /**
-   * Search commands
-   * @param query Full query (e.g., "/theme dark" or "/lang en")
-   * @param locale Current language
-   */
-  search(query: string, locale: string = 'en'): CommandSearchResult[] {
-    const trimmed = query.trim()
-
-    // Handle root level search "/"
-    if (trimmed === '/' || !trimmed.replace('/', '').trim()) return this.getRootCommands()
-
-    // Parse command and arguments
-    const afterSlash = trimmed.substring(1).trim()
-    const spaceIndex = afterSlash.indexOf(' ')
-    const commandName = spaceIndex === -1 ? afterSlash : afterSlash.substring(0, spaceIndex)
-    const args = spaceIndex === -1 ? '' : afterSlash.substring(spaceIndex + 1).trim()
-
-    // First try exact match
-    let handler = this.findCommand(commandName)
-    if (handler && this.isCommandAvailable(handler)) {
+    const name = input.split(/\s/, 1)[0]!.toLowerCase()
+    const args = input.slice(name.length).trim()
+    const exact = this.findCommand(name)
+    if (exact?.isAvailable?.(context) === false) return []
+    const command =
+      exact ??
+      commands.find((candidate) => candidate.aliases?.some((alias) => alias.startsWith(name))) ??
+      commands.find((candidate) => candidate.name.startsWith(name))
+    if (command) {
       try {
-        return handler.search(args, locale)
+        return command.search(args, context)
       } catch (error) {
-        console.warn(`Command search failed for ${commandName}:`, error)
+        console.warn(`Command search failed for ${command.name}:`, error)
         return []
       }
     }
 
-    // If no exact match, try smart partial matching
-    handler = this.findBestPartialMatch(commandName)
-    if (handler && this.isCommandAvailable(handler)) {
-      try {
-        return handler.search(args, locale)
-      } catch (error) {
-        console.warn(`Command search failed for ${handler.name}:`, error)
-        return []
-      }
+    return commands.flatMap((candidate) =>
+      [candidate.name, ...(candidate.aliases ?? [])]
+        .filter((name) => name.toLowerCase().includes(input.toLowerCase()))
+        .map((name) => this.toResult(candidate, name)),
+    )
+  }
+
+  private toResult(command: SlashCommand, name = command.name): CommandSearchResult {
+    return {
+      id: `root-${name}`,
+      title: `/${name}`,
+      description: command.description,
+      type: 'command',
+      data: { command: command.name },
     }
-
-    // Finally perform fuzzy search
-    return this.fuzzySearchCommands(afterSlash)
-  }
-
-  /**
-   * Get root level command list
-   * Only shows commands that are available in current context
-   */
-  private getRootCommands(): CommandSearchResult[] {
-    return this.getAvailableCommands().map((handler) => ({
-      id: `root-${handler.name}`,
-      title: `/${handler.name}`,
-      description: handler.description,
-      type: 'command' as const,
-      data: {
-        command: `root.${handler.name}`,
-        args: { name: handler.name },
-      },
-    }))
-  }
-
-  /**
-   * Fuzzy search commands
-   * Only shows commands that are available in current context
-   */
-  private fuzzySearchCommands(query: string): CommandSearchResult[] {
-    const lowercaseQuery = query.toLowerCase()
-    const matches: CommandSearchResult[] = []
-
-    for (const handler of this.getAvailableCommands()) {
-      // Check if command name matches
-      if (handler.name.toLowerCase().includes(lowercaseQuery)) {
-        matches.push({
-          id: `fuzzy-${handler.name}`,
-          title: `/${handler.name}`,
-          description: handler.description,
-          type: 'command' as const,
-          data: {
-            command: `root.${handler.name}`,
-            args: { name: handler.name },
-          },
-        })
-      }
-
-      // Check if aliases match
-      if (handler.aliases) {
-        handler.aliases.forEach((alias) => {
-          if (alias.toLowerCase().includes(lowercaseQuery)) {
-            matches.push({
-              id: `fuzzy-${alias}`,
-              title: `/${alias}`,
-              description: `${handler.description} (alias for /${handler.name})`,
-              type: 'command' as const,
-              data: {
-                command: `root.${handler.name}`,
-                args: { name: handler.name },
-              },
-            })
-          }
-        })
-      }
-    }
-
-    return matches
-  }
-
-  /**
-   * Get command dependencies
-   */
-  getCommandDependencies(commandName: string): unknown {
-    return this.commandDeps.get(commandName)
-  }
-
-  /**
-   * Determine if a command is available in the current context.
-   * Defaults to true when a handler does not implement the guard.
-   */
-  private isCommandAvailable(handler: SlashCommand) {
-    return handler.isAvailable?.() ?? true
   }
 }
-
-// Global registry instance
-export const slashCommandRegistry = new SlashCommandRegistry()

@@ -25,7 +25,7 @@ const OtpVerification = ({
   onRetry,
   onResend,
 }: OtpVerificationProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   return (
     <div className="my-3 rounded-xl border border-divider-subtle bg-background-section p-3">

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
 from controllers.common.fields import RedirectResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -17,19 +18,19 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console.flask_admission import console_account_admission
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.data_source_oauth_service import (
+from services.data_source.entities.oauth import DataSourceOAuthCallback
+from services.data_source.oauth_service import (
     DataSourceOAuthConfigurationError,
     DataSourceOAuthError,
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
 
 from .. import console_ns
 
@@ -111,13 +112,11 @@ class OAuthDataSource(Resource):
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
     )
     def get(self, request_context: RequestContext, provider: str):
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             authorization = service.start_authorization(request_context)
         except InvalidDataSourceOAuthProviderError:
             return _invalid_provider_response()
@@ -142,7 +141,7 @@ class OAuthDataSourceCallback(Resource):
     def get(self, provider: str):
         query = query_params_from_request(OAuthDataSourceCallbackQuery)
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             callback = service.complete_callback(
                 code=query.code,
                 error=query.error,
@@ -173,7 +172,7 @@ class OAuthDataSourceBinding(Resource):
         if not query.code:
             return {"error": "Invalid code"}, HTTPStatus.BAD_REQUEST
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             service.bind(request_context, code=query.code)
         except InvalidDataSourceOAuthProviderError:
             return _invalid_provider_response()
@@ -199,7 +198,7 @@ class OAuthDataSourceSync(Resource):
     @console_account_admission()
     def get(self, request_context: RequestContext, provider: str, binding_id: UUID):
         try:
-            service = application_services().resolve_data_source_oauth(provider)
+            service = application_services().data_sources.resolve_oauth(provider)
             service.sync(
                 request_context,
                 binding_id=str(binding_id),

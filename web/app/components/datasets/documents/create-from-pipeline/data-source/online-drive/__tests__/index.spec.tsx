@@ -61,8 +61,8 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceAuth: (...args: unknown[]) => mocks.useGetDataSourceAuth(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {

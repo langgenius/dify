@@ -46,7 +46,7 @@ const RetrievalConfig: FC<Props> = ({
   onRerankModelOpenChange,
   selectedDatasets,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { retrieval_mode, multiple_retrieval_config } = payload
 
   const handleOpen = useCallback(

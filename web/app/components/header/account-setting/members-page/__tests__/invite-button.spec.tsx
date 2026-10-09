@@ -55,7 +55,7 @@ describe('InviteButton', () => {
 
     renderInviteButton(true)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should hide invite button when permission is denied', () => {

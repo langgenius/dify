@@ -39,7 +39,7 @@ export function DatasetScopeDialog({
   onOpenChange,
   onConfirm,
 }: DatasetScopeDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common'])
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)

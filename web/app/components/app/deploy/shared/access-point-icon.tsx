@@ -14,13 +14,13 @@ const ACCESS_POINT_ICON_CLASS_NAMES: Record<AccessPoint, string> = {
 }
 
 function useAccessPointLabels() {
-  const { t: tAgent } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tAgent } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['navigation'])
 
   return {
     mcp: 'MCP',
     serviceApi: tAgent(($) => $['agentDetail.access.serviceApi.title']),
-    trigger: tCommon(($) => $['settings.trigger']),
+    trigger: tCommon(($) => $['settings.trigger'], { ns: 'navigation' }),
     webApp: tAgent(($) => $['agentDetail.access.webApp.title']),
   } satisfies Record<AccessPoint, string>
 }
@@ -34,7 +34,7 @@ export function AccessPointIcon({
   accessPoint: AccessPoint
   href?: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const labels = useAccessPointLabels()
   const status = active
     ? t(($) => $['agentDetail.access.status.inService'])

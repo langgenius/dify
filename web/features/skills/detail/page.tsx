@@ -1,24 +1,22 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect -- The detail route resets local draft overrides when the selected skill or authoritative query snapshot changes. */
-
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useSkillPermissions } from '../permissions'
 import { SkillBuilderPanel } from './builder-panel'
 import { FileEditor } from './file-editor'
@@ -36,7 +34,7 @@ import { DetailSkeleton } from './shell'
 import { RestoreVersionDialog, VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { canEdit, canPublish, canDelete } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()
@@ -418,7 +416,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
               {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
             </AlertDialogDescription>
-            <AlertDialogActions className="p-0 pt-6">
+            <AlertDialogFooter className="p-0 pt-6">
               <AlertDialogConfirmButton
                 loading={saveConflictReloading}
                 tone="default"
@@ -436,7 +434,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               >
                 {t(($) => $['skillManagement.detail.saveConflictReload'])}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {canEdit && rightPanelMode === 'builder' && (

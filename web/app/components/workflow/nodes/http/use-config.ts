@@ -135,7 +135,9 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+    return textVariableTypes.includes(varPayload.type)
   }, [])
 
   // curl import panel

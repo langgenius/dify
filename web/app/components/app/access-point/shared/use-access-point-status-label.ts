@@ -4,7 +4,7 @@ import type { AccessPointStatus } from '@/app/components/base/access-point/statu
 import { useTranslation } from 'react-i18next'
 
 export function useAccessPointStatusLabel(status: AccessPointStatus) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appOverview', 'common', 'deployments'])
   const labels: Record<AccessPointStatus, string> = {
     disabled: t(($) => $['overview.status.disable'], { ns: 'appOverview' }),
     inService: t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' }),

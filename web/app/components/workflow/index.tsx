@@ -11,15 +11,14 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -36,7 +35,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import ReactFlow, {
+import {
   Background,
   ReactFlowProvider,
   SelectionMode,
@@ -47,6 +46,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -63,6 +63,7 @@ import CommentManager from './comment-manager'
 import { CommentIcon } from './comment/comment-icon'
 import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
+import { CommentPlacementPreview } from './comment/placement-preview'
 import { CommentThread } from './comment/thread'
 import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
@@ -72,6 +73,7 @@ import HelpLine from './help-line'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
@@ -79,9 +81,9 @@ import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -95,7 +97,7 @@ import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
-import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
+import { WorkflowCanvas } from './shortcuts/workflow-canvas'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import { useStore, useWorkflowStore } from './store/workflow'
@@ -140,37 +142,6 @@ export type WorkflowProps = {
   onlineUsers?: OnlineUser[]
 }
 
-const CommentPlacementPreview = memo(
-  ({
-    onSubmit,
-    onCancel,
-  }: {
-    onSubmit: (content: string, mentionedUserIds: string[]) => void
-    onCancel: () => void
-  }) => {
-    const isCommentPlacing = useStore((s) => s.isCommentPlacing)
-    const pendingComment = useStore((s) => s.pendingComment)
-    const mousePosition = useStore((s) => s.mousePosition)
-
-    if (!isCommentPlacing || pendingComment) return null
-
-    return (
-      <CommentInput
-        position={{
-          x: mousePosition.elementX,
-          y: mousePosition.elementY,
-        }}
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-        autoFocus={false}
-        disabled
-      />
-    )
-  },
-)
-
-CommentPlacementPreview.displayName = 'CommentPlacementPreview'
-
 export const Workflow: FC<WorkflowProps> = memo(
   ({
     nodes: originalNodes,
@@ -183,8 +154,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow', 'workflowHistory', 'workflowComments'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
+    useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
     const store = useStoreApi()
@@ -292,7 +264,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       return collaborationManager.onRestoreIntent((data) => {
         toast.info(
           t(($) => $['versionHistory.action.restoreInProgress'], {
-            ns: 'workflow',
+            ns: 'workflowHistory',
             userName: data.initiatorName,
             versionName: data.versionName || data.versionId,
           }),
@@ -461,8 +433,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentDelete(commentId)
               setShowConfirm(undefined)
@@ -477,8 +449,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string, replyId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentReplyDelete(commentId, replyId)
               setShowConfirm(undefined)
@@ -499,9 +471,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [handleSyncWorkflowDraftWhenPageClose, handleBeforeUnload])
 
-    useEventListener('keydown', (e) => {
-      if (shouldPreventWorkflowBrowserDefault(e)) e.preventDefault()
-    })
     useEventListener('mousemove', (e) => {
       const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
 
@@ -559,6 +528,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleNodeEnter,
       handleNodeLeave,
       handleNodeClick,
+      handleNodeSelect,
       handleNodeConnect,
       handleNodeConnectStart,
       handleNodeConnectEnd,
@@ -566,6 +536,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleHistoryBack,
       handleHistoryForward,
     } = useNodesInteractions()
+    const handleNodeKeyDown = useNodeKeyboardInteractions(handleNodeSelect)
     const { handleEdgeEnter, handleEdgeLeave, handleEdgesChange, handleEdgeContextMenu } =
       useEdgesInteractions()
     const {
@@ -583,7 +554,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       },
     })
 
-    useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
 
@@ -683,14 +653,14 @@ export const Workflow: FC<WorkflowProps> = memo(
                 </AlertDialogDescription>
               )}
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
@@ -762,11 +732,12 @@ export const Workflow: FC<WorkflowProps> = memo(
         })}
         {children}
         <WorkflowContextmenu>
-          <ReactFlow
+          <WorkflowCanvas
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             nodes={nodes}
             edges={edges}
+            onKeyDownCapture={handleNodeKeyDown}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
@@ -789,6 +760,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
             defaultViewport={viewport}
+            fitView={!viewport}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
             nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
@@ -819,7 +791,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                 onlineUsers={onlineUsers || []}
               />
             )}
-          </ReactFlow>
+          </WorkflowCanvas>
         </WorkflowContextmenu>
         <SyncingDataModal />
       </div>

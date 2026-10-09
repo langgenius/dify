@@ -1,5 +1,5 @@
-import type { DifyWorld } from '../../support/world'
-import AxeBuilder from '@axe-core/playwright'
+import type { DifyWorld } from '../../support/world.ts'
+import { AxeBuilder } from '@axe-core/playwright'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 

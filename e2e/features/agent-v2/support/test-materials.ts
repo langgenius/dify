@@ -1,4 +1,7 @@
-import { getGeneratedTextMaterialPath, getTestMaterialPath } from '../../../support/test-materials'
+import {
+  getGeneratedTextMaterialPath,
+  getTestMaterialPath,
+} from '../../../support/test-materials.ts'
 
 export const agentBuilderTestMaterials = {
   smallFile: 'agent-small-file.txt',

@@ -11,6 +11,7 @@ export default defineConfig({
     file: false,
   },
   output: {
+    module: { extension: '.ts' },
     clean: true,
     entryFile: false,
     fileName: {

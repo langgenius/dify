@@ -4,22 +4,22 @@ import type { MouseEventHandler } from 'react'
 import type { SnippetDSLImportResponse } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {
@@ -61,7 +61,7 @@ function SnippetDSLConfirmDialog({
   onCancel: () => void
   onConfirm: MouseEventHandler
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
 
   return (
     <AlertDialog
@@ -92,14 +92,14 @@ function SnippetDSLConfirmDialog({
             </div>
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -107,7 +107,7 @@ function SnippetDSLConfirmDialog({
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
   const dslUrlInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
@@ -220,7 +220,6 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
   const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
   const importDisabled =
-    isSubmitting ||
     !canCreateAndModifySnippet ||
     (currentTab === ImportSnippetDSLDialogTab.FromFile && !currentFile) ||
     (currentTab === ImportSnippetDSLDialogTab.FromUrl && !dslUrl.trim())

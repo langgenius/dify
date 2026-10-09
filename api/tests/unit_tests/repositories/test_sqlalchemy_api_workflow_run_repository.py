@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -13,11 +14,14 @@ from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models import Message
+from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
+    WorkflowRunMessageRef,
+    WorkflowRunPauseRecord,
     _build_human_input_required_reason,
 )
 
@@ -260,8 +264,124 @@ def test_legacy_pause_reason_rejects_v2_references(reason) -> None:
         WorkflowPauseReason.from_entity(pause_id="pause-2", pause_reason=reason)
 
 
+def _message(*, message_id: str, app_id: str, workflow_run_id: str, conversation_id: str) -> Message:
+    message = Message(
+        app_id=app_id,
+        conversation_id=conversation_id,
+        query="query",
+        message={"role": "user", "content": "query"},
+        answer="answer",
+        message_unit_price=Decimal("0.0001"),
+        answer_unit_price=Decimal("0.0001"),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    message.id = message_id
+    message._inputs = {}
+    message.workflow_run_id = workflow_run_id
+    return message
+
+
+def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatus) -> WorkflowRun:
+    return WorkflowRun(
+        id=run_id,
+        tenant_id=tenant_id,
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=status,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+
+
+def test_get_message_refs_filters_by_app_and_returns_lightweight_records(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add_all(
+        [
+            _message(message_id="msg-1", app_id="app-1", workflow_run_id="run-1", conversation_id="conv-1"),
+            _message(message_id="msg-2", app_id="app-2", workflow_run_id="run-2", conversation_id="conv-2"),
+        ]
+    )
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    result = repository.get_message_refs(
+        app_id="app-1",
+        workflow_run_ids=["run-1", "run-2"],
+    )
+
+    assert result == {
+        "run-1": WorkflowRunMessageRef(message_id="msg-1", conversation_id="conv-1"),
+    }
+
+
+def test_get_pause_record_scopes_the_workflow_run_to_the_workspace(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add(
+        _workflow_run(
+            run_id="run-1",
+            tenant_id="tenant-1",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+        )
+    )
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    assert repository.get_pause_record(sqlite_session, workspace_id="tenant-2", workflow_run_id="run-1") is None
+    assert repository.get_pause_record(
+        sqlite_session,
+        workspace_id="tenant-1",
+        workflow_run_id="run-1",
+    ) == WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        pause=None,
+    )
+
+
+def test_get_pause_record_returns_run_bound_checkpoint(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _workflow_run(
+        run_id="run-1",
+        tenant_id="tenant-1",
+        status=WorkflowExecutionStatus.PAUSED,
+    )
+    pause = WorkflowPause(
+        workflow_id=workflow_run.workflow_id,
+        workflow_run_id=workflow_run.id,
+        state_object_key="pause-state",
+    )
+    pause.id = "pause-1"
+    sqlite_session.add_all([workflow_run, pause])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: b"checkpoint")
+    result = repository.get_pause_record(sqlite_session, workspace_id="tenant-1", workflow_run_id="run-1")
+
+    assert result is not None
+    assert result.status == WorkflowExecutionStatus.PAUSED
+    assert result.pause is not None
+    assert result.pause.id == pause.id
+    assert result.pause.workflow_execution_id == workflow_run.id
+    assert result.pause.paused_at == pause.created_at
+    assert result.pause.get_state() == b"checkpoint"
+
+
 def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
     caplog: pytest.LogCaptureFixture,
+    sqlite_session: Session,
 ) -> None:
     pause_model = WorkflowPause(
         workflow_id="workflow-1",
@@ -269,7 +389,9 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         state_object_key="workflow-state.json",
     )
     pause_model.id = "pause-1"
-    session = Mock(spec=Session)
+    session = sqlite_session
+    session.add(pause_model)
+    session.commit()
 
     with (
         patch(
@@ -281,7 +403,8 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         DifyAPISQLAlchemyWorkflowRunRepository._delete_pause_model(session, pause_model)
 
     delete_state_object.assert_called_once_with(pause_model.state_object_key)
-    session.delete.assert_called_once_with(pause_model)
+    session.commit()
+    assert session.get(WorkflowPause, "pause-1") is None
     assert "pause_id=pause-1" in caplog.text
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text

@@ -8,6 +8,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {
@@ -16,7 +17,6 @@ import {
   sendForgotPasswordEmail,
 } from '@/service/common'
 import { basePath } from '@/utils/var'
-import Loading from '../components/base/loading'
 
 type ForgotPasswordFormValues = {
   email: string
@@ -27,7 +27,7 @@ const emailSchema = z.email('error.emailInValid').min(1, {
 })
 
 const ForgotPasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
@@ -67,7 +67,7 @@ const ForgotPasswordForm = () => {
   }, [])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -93,7 +93,7 @@ const ForgotPasswordForm = () => {
               <Field
                 name="email"
                 validate={(value) =>
-                  emailSchema.safeParse(value).success
+                  emailSchema.validate(value)
                     ? null
                     : t(($) => $['error.emailInValid'], { ns: 'login' })
                 }

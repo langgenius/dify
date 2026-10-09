@@ -51,7 +51,7 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
@@ -320,6 +320,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
+        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
+
         // Handle features, variables etc.
         handleWorkflowDataUpdate(response)
 
@@ -338,6 +340,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
+    workflowStore,
   ])
 
   // The server directs this request to the selected saver. Do not gate it on the
@@ -415,7 +418,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(appACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -460,6 +463,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -503,6 +507,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

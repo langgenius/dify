@@ -3,8 +3,8 @@
 import type { FormEventHandler } from 'react'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDeployWorkflow } from '../../hooks/use-deploy-workflow'
 import {
   credentialProviderName,
@@ -35,9 +35,9 @@ export function useDeploymentConfigurationForm({
   onClose: () => void
   onDeploymentStarted?: (operationId: string) => void
 }) {
-  const { t: tCommon } = useTranslation('common')
-  const { t: tDeployments } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tDeployments } = useTranslation(['deployments'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const deployMutation = useDeployWorkflow({
     appId,
     invalidateAppEnvironmentsOnSuccess,

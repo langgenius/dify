@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export type ContactRecipientOption = {
   id: string

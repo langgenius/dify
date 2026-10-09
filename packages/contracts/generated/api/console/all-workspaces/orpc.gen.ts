@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen'
+import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen.ts'
 
 export const get = oc
   .route({

@@ -14,7 +14,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.start'
 
 const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const {
     readOnly,
     isChatMode,

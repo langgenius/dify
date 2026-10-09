@@ -6,12 +6,16 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
+from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import IndexingStatus
+from models.model import UploadFile
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
@@ -54,6 +58,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             session.commit()
 
             clean_success = False
+            index_processor = None
             try:
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 if index_node_ids:
@@ -87,14 +92,84 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 document.processing_started_at = naive_utc_now()
                 session.commit()
 
-            if clean_success:
+            if clean_success and index_processor is not None:
+                attachment_storage_keys: list[str] = []
+                if dataset.is_multimodal:
+                    segment_attachment_bindings = session.scalars(
+                        select(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset.id,
+                            SegmentAttachmentBinding.document_id == document_id,
+                        )
+                    ).all()
+                    attachment_ids = list(
+                        dict.fromkeys(binding.attachment_id for binding in segment_attachment_bindings)
+                    )
+
+                    if segment_attachment_bindings:
+                        session.execute(
+                            delete(SegmentAttachmentBinding).where(
+                                SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                                SegmentAttachmentBinding.dataset_id == dataset.id,
+                                SegmentAttachmentBinding.document_id == document_id,
+                            )
+                        )
+                        session.flush()
+
+                        remaining_attachment_ids = set(
+                            session.scalars(
+                                select(SegmentAttachmentBinding.attachment_id).where(
+                                    SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
+                                )
+                            ).all()
+                        )
+                        orphan_attachment_ids = [
+                            attachment_id
+                            for attachment_id in attachment_ids
+                            if attachment_id not in remaining_attachment_ids
+                        ]
+
+                        if orphan_attachment_ids:
+                            attachment_storage_keys = list(
+                                dict.fromkeys(
+                                    session.scalars(
+                                        select(UploadFile.key).where(
+                                            UploadFile.tenant_id == dataset.tenant_id,
+                                            UploadFile.id.in_(orphan_attachment_ids),
+                                        )
+                                    ).all()
+                                )
+                            )
+                            index_processor.clean(
+                                session=session,
+                                dataset=dataset,
+                                node_ids=orphan_attachment_ids,
+                                with_keywords=False,
+                            )
+                            session.execute(
+                                delete(UploadFile).where(
+                                    UploadFile.tenant_id == dataset.tenant_id,
+                                    UploadFile.id.in_(orphan_attachment_ids),
+                                )
+                            )
+
                 segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
                 session.execute(segment_delete_stmt)
                 session.commit()
 
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document], session)
+                for storage_key in attachment_storage_keys:
+                    try:
+                        storage.delete(storage_key)
+                    except Exception:
+                        logger.exception(
+                            "Failed to delete document attachment from storage during re-indexing, key: %s",
+                            storage_key,
+                        )
+
+            indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+            document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
             session.commit()
+            indexing_service.run(document_refs)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))

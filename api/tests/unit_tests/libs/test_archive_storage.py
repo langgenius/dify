@@ -4,8 +4,10 @@ from datetime import datetime
 from unittest.mock import ANY, MagicMock
 
 import pytest
+from botocore.awsrequest import AWSResponse
 from botocore.exceptions import ClientError, EndpointConnectionError
 
+from configs.extra.archive_config import ArchiveStorageConfig
 from libs import archive_storage as storage_module
 from libs.archive_storage import (
     ArchiveStorage,
@@ -115,6 +117,118 @@ def test_init_sets_client(monkeypatch: pytest.MonkeyPatch):
     )
     assert storage.client is client
     assert storage.bucket == BUCKET_NAME
+
+
+def test_init_default_address_style_is_path(monkeypatch: pytest.MonkeyPatch):
+    # _configure_storage does not set ARCHIVE_STORAGE_ADDRESS_STYLE, so the
+    # pydantic field default is exercised.
+    _configure_storage(monkeypatch)
+    _, boto_client = _mock_client(monkeypatch)
+
+    ArchiveStorage(bucket=BUCKET_NAME)
+
+    assert ArchiveStorageConfig.model_fields["ARCHIVE_STORAGE_ADDRESS_STYLE"].default == "path"
+    config = boto_client.call_args.kwargs["config"]
+    assert config.s3 == {"addressing_style": "path"}
+
+
+@pytest.mark.parametrize("address_style", ["virtual", "auto"])
+def test_init_address_style_override(monkeypatch: pytest.MonkeyPatch, address_style: str):
+    _configure_storage(monkeypatch, ARCHIVE_STORAGE_ADDRESS_STYLE=address_style)
+    _, boto_client = _mock_client(monkeypatch)
+
+    ArchiveStorage(bucket=BUCKET_NAME)
+
+    config = boto_client.call_args.kwargs["config"]
+    assert config.s3 == {"addressing_style": address_style}
+
+
+class _EmptyRawBody:
+    def stream(self, **_kwargs):
+        yield b""
+
+
+def _record_real_client_requests(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    urls: list[str] = []
+    real_client = storage_module.boto3.client
+
+    def make_client(*args, **kwargs):
+        client = real_client(*args, **kwargs)
+
+        def handler(request, **_kwargs):
+            urls.append(request.url)
+            return AWSResponse(request.url, 200, {}, _EmptyRawBody())
+
+        client.meta.events.register("before-send.s3", handler)
+        return client
+
+    monkeypatch.setattr(storage_module.boto3, "client", make_client)
+    return urls
+
+
+@pytest.mark.parametrize(
+    ("address_style", "expected_bucket_url", "expected_object_url"),
+    [
+        (
+            None,
+            "https://account123.r2.example.com/archive-bucket",
+            "https://account123.r2.example.com/archive-bucket/some/key.json",
+        ),
+        (
+            "path",
+            "https://account123.r2.example.com/archive-bucket",
+            "https://account123.r2.example.com/archive-bucket/some/key.json",
+        ),
+        (
+            "virtual",
+            "https://archive-bucket.account123.r2.example.com/",
+            "https://archive-bucket.account123.r2.example.com/some/key.json",
+        ),
+    ],
+)
+def test_real_client_request_urls_follow_address_style(
+    monkeypatch: pytest.MonkeyPatch,
+    address_style: str | None,
+    expected_bucket_url: str,
+    expected_object_url: str,
+):
+    overrides: dict[str, object] = {"ARCHIVE_STORAGE_ENDPOINT": "https://account123.r2.example.com"}
+    if address_style is not None:
+        overrides["ARCHIVE_STORAGE_ADDRESS_STYLE"] = address_style
+    _configure_storage(monkeypatch, **overrides)
+    urls = _record_real_client_requests(monkeypatch)
+
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+    storage.object_exists("some/key.json")
+
+    assert len(urls) == 2
+    assert urls[0].startswith(expected_bucket_url)
+    assert urls[1].startswith(expected_object_url)
+
+
+@pytest.mark.parametrize(
+    ("address_style", "expected_prefix"),
+    [
+        (None, "https://account123.r2.example.com/archive-bucket/some/key.json?"),
+        ("path", "https://account123.r2.example.com/archive-bucket/some/key.json?"),
+        ("virtual", "https://archive-bucket.account123.r2.example.com/some/key.json?"),
+    ],
+)
+def test_real_client_presigned_url_follows_address_style(
+    monkeypatch: pytest.MonkeyPatch,
+    address_style: str | None,
+    expected_prefix: str,
+):
+    overrides: dict[str, object] = {"ARCHIVE_STORAGE_ENDPOINT": "https://account123.r2.example.com"}
+    if address_style is not None:
+        overrides["ARCHIVE_STORAGE_ADDRESS_STYLE"] = address_style
+    _configure_storage(monkeypatch, **overrides)
+    _record_real_client_requests(monkeypatch)
+
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+    url = storage.generate_presigned_url("some/key.json", expires_in=123)
+
+    assert url.startswith(expected_prefix)
 
 
 def test_put_object_returns_checksum(monkeypatch: pytest.MonkeyPatch):

@@ -4,13 +4,13 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { zFormInputConfig, zUserActionConfig } from '@dify/contracts/api/web/zod.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { consoleClient } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
@@ -34,7 +34,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
   const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
@@ -56,7 +56,7 @@ const useSingleRunFormParams = ({
   const forms = useMemo(() => {
     const forms: FormProps[] = [
       {
-        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflowHumanInput' })!,
         inputs: generatedInputs,
         values: runInputData,
         onChange: setRunInputData,

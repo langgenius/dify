@@ -24,12 +24,11 @@ from models.dataset import Pipeline
 from models.engine import db
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="RAG Import Tester", email="rag-import@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="RAG Import Tester", email="rag-import@example.com")
 
 
 @pytest.fixture

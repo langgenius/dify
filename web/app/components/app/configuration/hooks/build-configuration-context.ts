@@ -12,6 +12,7 @@ type ModelConfiguration = ReturnType<typeof useModelConfigurationState>
 type ContextBase = Pick<
   DebugConfigurationValue,
   | 'appId'
+  | 'onOpenFeatures'
   | 'canReturnToSimpleMode'
   | 'canTestAndRun'
   | 'collectionList'
@@ -29,7 +30,6 @@ type ContextBase = Pick<
   | 'isShowDocumentConfig'
   | 'isShowVisionConfig'
   | 'isTrailFinished'
-  | 'isAPIKeySet'
   | 'mode'
   | 'modelModeType'
   | 'prevPromptConfig'

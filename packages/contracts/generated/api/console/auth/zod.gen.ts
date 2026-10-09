@@ -223,7 +223,10 @@ export const zDeleteAuthPluginDatasourceByProviderIdCustomClientPath = z.object(
 /**
  * Success
  */
-export const zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse = zSimpleResultResponse
+export const zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostAuthPluginDatasourceByProviderIdCustomClientBody = zDatasourceCustomClientPayload
 

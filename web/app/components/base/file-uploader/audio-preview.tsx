@@ -8,7 +8,7 @@ type AudioPreviewProps = {
   onCancel: () => void
 }
 const AudioPreview: FC<AudioPreviewProps> = ({ url, title, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog

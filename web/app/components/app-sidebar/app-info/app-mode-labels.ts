@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import { AppModeEnum } from '@/types/app'
 
-export function getAppModeLabel(mode: string, t: TFunction): string {
+export function getAppModeLabel(mode: string, t: TFunction<['app']>): string {
   switch (mode) {
     case AppModeEnum.ADVANCED_CHAT:
       return t(($) => $['types.advanced'], { ns: 'app' })

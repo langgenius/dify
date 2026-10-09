@@ -17,7 +17,8 @@ vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({}),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 

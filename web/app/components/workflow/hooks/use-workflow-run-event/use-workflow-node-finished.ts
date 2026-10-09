@@ -3,6 +3,7 @@ import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -40,6 +41,11 @@ export const useWorkflowNodeFinished = () => {
 
           if (data.node_type === BlockEnum.QuestionClassifier)
             currentNode.data._runningBranchId = data?.outputs?.class_id
+          if (
+            hasAgentV2OutputRoutes(currentNode.data) &&
+            data.status === NodeRunningStatus.Succeeded
+          )
+            currentNode.data._runningBranchId = data.outputs?.switch
           if (data.node_type === BlockEnum.HumanInput)
             currentNode.data._runningBranchId = data?.outputs?.__action_id
         }

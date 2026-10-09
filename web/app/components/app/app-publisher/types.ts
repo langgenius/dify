@@ -19,6 +19,7 @@ type AppPublisherPublishHandler =
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
 export type AppPublisherProps = {
+  appId: string
   disabled?: boolean
   publishDisabled?: boolean
   publishedAt?: number

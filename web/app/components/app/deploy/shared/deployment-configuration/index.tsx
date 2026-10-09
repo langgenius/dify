@@ -32,8 +32,8 @@ export function DeploymentConfiguration({
   onClose: () => void
   onDeploymentStarted?: (operationId: string) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const configurationValues = useDeploymentConfigurationValues()
   const queryState = useDeploymentConfigurationQueries({
     appId,

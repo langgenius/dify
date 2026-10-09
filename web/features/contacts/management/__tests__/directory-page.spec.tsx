@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ContactsMockScenarioDefinition } from '../mock/scenarios'
 import type { ContactsManagementRepository } from '../repository'
-import type { ContactIMIdentity, ContactView } from '../types'
+import type { ContactIMChannel, ContactIMIdentity, ContactView } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
@@ -655,18 +655,24 @@ describe('Contact IM binding controls', () => {
     provider: 'feishu',
     provider_user_id: 'feishu-user-1',
     display_name: 'Synced Member',
+    email: 'member@example.com',
     binding_status: 'unbound',
   }
-  function setup() {
+
+  function setup(scope?: 'organization' | 'workspace') {
     const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
     let contact: ContactView = {
       ...scenario.contacts.find((item) => item.type === 'workspace')!,
-      im_bindings: [],
+      im_bindings: scope ? [{ id: 'binding-1', provider: 'feishu', scope }] : [],
     }
+    const listIMChannels = vi.fn(async (): Promise<ContactIMChannel[]> => [
+      { id: 'channel-feishu', provider: 'feishu' },
+    ])
     const repository: ContactsManagementRepository = {
       ...createContactsMockRepository({ scenario }),
       supportsIMBindings: true,
       getContact: vi.fn(async () => contact),
+      listIMChannels,
       listIMIdentities: vi.fn(async ({ page, limit }) => ({
         data: [identity],
         page,
@@ -674,39 +680,140 @@ describe('Contact IM binding controls', () => {
         total: 1,
         has_more: false,
       })),
-      setIMBinding: vi.fn(async () => {
+      setIMBinding: vi.fn(async ({ override }) => {
         contact = {
           ...contact,
-          im_bindings: [{ id: 'binding-1', provider: 'feishu', scope: 'organization' }],
+          im_bindings: [
+            { id: 'binding-1', provider: 'feishu', scope: override ? 'workspace' : 'organization' },
+          ],
         }
         return contact
       }),
       removeIMBinding: vi.fn(async () => {
-        contact = { ...contact, im_bindings: [] }
+        contact = {
+          ...contact,
+          im_bindings: [{ id: 'organization-binding', provider: 'feishu', scope: 'organization' }],
+        }
       }),
     }
-    return { scenario, repository, contact }
+    return { scenario, repository, contact, listIMChannels }
   }
 
-  it('cannot submit a binding when the IM channel is not configured', async () => {
+  async function openEditor(user: ReturnType<typeof userEvent.setup>, contact: ContactView) {
+    const details = await findLoadedDetails(contact.name)
+    await user.click(
+      await within(details).findByRole('button', {
+        name: contact.im_bindings.length
+          ? /^contacts\.imBinding\.changeTitle/
+          : 'contacts.imBinding.bind',
+      }),
+    )
+    return screen.findByRole('dialog', { name: /^contacts\.imBinding\.changeTitle/ })
+  }
+
+  async function chooseIdentity(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+    name = 'Synced Member',
+  ) {
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
+    )
+    const picker = within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' })
+    await user.click(picker)
+    await user.click(await screen.findByRole('option', { name: new RegExp(name) }))
+    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
+    return picker
+  }
+
+  it('does not offer a binding action when no IM channel is configured', async () => {
+    const { scenario, repository, contact, listIMChannels } = setup()
+    listIMChannels.mockResolvedValue([])
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    await waitFor(() => expect(listIMChannels).toHaveBeenCalled())
+
+    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
+    expect(
+      within(details).queryByRole('button', { name: 'contacts.imBinding.bind' }),
+    ).not.toBeInTheDocument()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('binds an unbound configured channel as a workspace customization', async () => {
+    const { scenario, repository, contact } = setup()
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    expect(await within(details).findByText('contacts.imBinding.notBound')).toBeInTheDocument()
+    const dialog = await openEditor(user, contact)
+    const save = within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' })
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
+    )
+    expect(save).toBeDisabled()
+
+    await chooseIdentity(user, dialog)
+    expect(save).toBeEnabled()
+    await user.click(save)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(repository.setIMBinding).toHaveBeenCalledWith({
+      contactId: contact.id,
+      identityId: identity.id,
+      override: true,
+    })
+    expect(await within(details).findByText('contacts.imBinding.customized')).toBeInTheDocument()
+    expect(within(details).queryByText('contacts.imBinding.notBound')).not.toBeInTheDocument()
+  })
+
+  it('keeps the organization binding unchanged until a custom identity is submitted', async () => {
+    const { scenario, repository, contact } = setup('organization')
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    const organization = within(dialog).getByRole('radio', {
+      name: 'contacts.imBinding.organizationMode',
+    })
+    const save = within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' })
+    expect(organization).toBeChecked()
+    expect(save).toBeDisabled()
+    expect(
+      within(dialog).queryByRole('combobox', { name: 'contacts.imBinding.contactLabel' }),
+    ).not.toBeInTheDocument()
+
+    await chooseIdentity(user, dialog)
+    expect(save).toBeEnabled()
+    await user.click(organization)
+
+    expect(save).toBeDisabled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+    expect(repository.removeIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('shows unavailable identities as a recoverable error without allowing an empty save', async () => {
     const { scenario, repository, contact } = setup()
     vi.mocked(repository.listIMIdentities).mockRejectedValue(
       new ContactIMRequestError('im_integration_not_configured'),
     )
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
-    const details = await findLoadedDetails(contact.name)
     const user = userEvent.setup()
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.add' }))
-    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
+    )
     await user.click(
       within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' }),
     )
+
     expect(await screen.findByRole('alert')).toHaveTextContent('contacts.imBinding.notConfigured')
-    expect(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' })).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toBeDisabled()
     expect(repository.setIMBinding).not.toHaveBeenCalled()
   })
 
-  it('pages through identities, keeps selection on conflict, and refreshes detail only after a successful retry', async () => {
+  it('pages through identities, retains a conflicting selection, and updates details after a successful retry', async () => {
     const { scenario, repository, contact } = setup()
     const second = {
       ...identity,
@@ -724,39 +831,37 @@ describe('Contact IM binding controls', () => {
     vi.mocked(repository.setIMBinding).mockRejectedValueOnce(
       new ContactIMRequestError('im_binding_conflict'),
     )
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const details = await findLoadedDetails(contact.name)
+    const dialog = await openEditor(user, contact)
     await user.click(
-      within(details).getByRole('button', {
-        name: 'contacts.imBinding.add',
-      }),
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
     )
-    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
-    const picker = within(dialog).getByRole('combobox', {
-      name: 'contacts.imBinding.contactLabel',
-    })
+    const picker = within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' })
     await user.click(picker)
     await user.type(
-      await screen.findByRole('combobox', { name: 'contacts.imBinding.search' }),
+      await screen.findByRole('combobox', { name: /^contacts\.imBinding\.searchProvider/ }),
       'Member',
     )
     await user.click(await screen.findByRole('button', { name: 'contacts.action.loadMore' }))
     await user.click(await screen.findByRole('option', { name: /Second Member/ }))
     await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
+
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       'contacts.imBinding.conflict',
     )
     expect(picker).toHaveTextContent('Second Member')
-    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    expect(within(details).getByText('contacts.imBinding.notBound')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
+
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(within(await findLoadedDetails(contact.name)).getByText('Feishu')).toBeInTheDocument()
+    expect(await within(details).findByText('contacts.imBinding.customized')).toBeInTheDocument()
     expect(repository.setIMBinding).toHaveBeenLastCalledWith({
       contactId: contact.id,
-      identityId: 'identity-2',
-      override: false,
+      identityId: second.id,
+      override: true,
     })
     expect(repository.listIMIdentities).toHaveBeenCalledWith({
       search: 'Member',
@@ -765,31 +870,85 @@ describe('Contact IM binding controls', () => {
     })
   })
 
-  it('retains a binding after failed removal and refreshes the channel after retry', async () => {
-    const { scenario, repository, contact } = setup()
-    await repository.setIMBinding({
-      contactId: contact.id,
-      identityId: identity.id,
-      override: false,
-    })
+  it('restores the organization binding only after saving and retains the mode after a recoverable failure', async () => {
+    const { scenario, repository, contact } = setup('workspace')
     vi.mocked(repository.removeIMBinding).mockRejectedValueOnce(
       new ContactIMRequestError('im_write_unavailable'),
     )
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const user = userEvent.setup()
-    let details = await findLoadedDetails(contact.name)
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.remove' }))
-    expect(await within(details).findByRole('alert')).toHaveTextContent('contacts.imBinding.failed')
-    expect(within(details).getByText('Feishu')).toBeInTheDocument()
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.remove' }))
-    await waitFor(() => expect(within(details).queryByText('Feishu')).not.toBeInTheDocument())
-    details = await findLoadedDetails(contact.name)
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    let dialog = await openEditor(user, contact)
+    const save = within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' })
     expect(
-      within(details).getByRole('button', { name: 'contacts.imBinding.add' }),
-    ).toBeInTheDocument()
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
+    ).toBeChecked()
+    expect(save).toBeDisabled()
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.organizationMode' }),
+    )
+    expect(save).toBeEnabled()
+    expect(repository.removeIMBinding).not.toHaveBeenCalled()
+    await user.click(save)
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('contacts.imBinding.failed')
+    expect(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.organizationMode' }),
+    ).toBeChecked()
+    expect(within(details).getByText('contacts.imBinding.customized')).toBeInTheDocument()
+    await user.click(save)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(repository.removeIMBinding).toHaveBeenLastCalledWith({
+      contactId: contact.id,
+      binding: contact.im_bindings[0],
+    })
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+    expect(
+      within(await findLoadedDetails(contact.name)).queryByText('contacts.imBinding.customized'),
+    ).not.toBeInTheDocument()
+    dialog = await openEditor(user, contact)
+    expect(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.organizationMode' }),
+    ).toBeChecked()
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toBeDisabled()
   })
 
-  it('keeps a selected identity when a later search has no matching results', async () => {
+  it('prevents dismissing the editor while restoring the organization binding', async () => {
+    const { scenario, repository, contact } = setup('workspace')
+    let finishRestore: (() => void) | undefined
+    vi.mocked(repository.removeIMBinding).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRestore = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'contacts.imBinding.organizationMode' }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
+
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(within(dialog).getByRole('button', { name: 'contacts.action.cancel' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'contacts.action.close' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(
+      screen.getByRole('dialog', { name: /^contacts\.imBinding\.changeTitle/ }),
+    ).toBeInTheDocument()
+
+    await act(async () => finishRestore?.())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(repository.removeIMBinding).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a selected identity when a later search has no results', async () => {
     const { scenario, repository, contact } = setup()
     vi.mocked(repository.listIMIdentities).mockImplementation(async ({ search, page, limit }) => ({
       data: search === 'Nobody' ? [] : [identity],
@@ -798,34 +957,102 @@ describe('Contact IM binding controls', () => {
       total: search === 'Nobody' ? 0 : 1,
       has_more: false,
     }))
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const user = userEvent.setup()
-    const details = await findLoadedDetails(contact.name)
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.add' }))
-    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
-    const picker = within(dialog).getByRole('combobox', {
-      name: 'contacts.imBinding.contactLabel',
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    const picker = await chooseIdentity(user, dialog)
+    await user.click(picker)
+    const search = await screen.findByRole('combobox', {
+      name: /^contacts\.imBinding\.searchProvider/,
     })
-    await user.click(picker)
-    await user.click(await screen.findByRole('option', { name: /Synced Member/ }))
-    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
-    await user.click(picker)
-    const search = await screen.findByRole('combobox', { name: 'contacts.imBinding.search' })
     await user.clear(search)
     await user.type(search, 'Nobody')
     expect(await screen.findByText('contacts.imBinding.empty')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
-    expect(screen.getByRole('dialog', { name: 'contacts.imBinding.title' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: /^contacts\.imBinding\.changeTitle/ }),
+    ).toBeInTheDocument()
     expect(picker).toHaveTextContent('Synced Member')
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
     await waitFor(() =>
       expect(repository.setIMBinding).toHaveBeenCalledWith({
         contactId: contact.id,
         identityId: identity.id,
-        override: false,
+        override: true,
       }),
     )
+  })
+
+  it('discards an unsaved selection and stale error when the editor is closed and reopened', async () => {
+    const { scenario, repository, contact } = setup('workspace')
+    vi.mocked(repository.setIMBinding).mockRejectedValueOnce(
+      new ContactIMRequestError('im_binding_conflict'),
+    )
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    let dialog = await openEditor(user, contact)
+    await chooseIdentity(user, dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.imBinding.conflict',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.action.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    dialog = await openEditor(user, contact)
+
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' }),
+    ).not.toHaveTextContent('Synced Member')
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toBeDisabled()
+  })
+
+  it('does not infer the workspace identity from global binding status and excludes other providers', async () => {
+    const { scenario, repository, contact } = setup('workspace')
+    const defaultIdentity: ContactIMIdentity = { ...identity, binding_status: 'bound' }
+    const overrideIdentity: ContactIMIdentity = {
+      ...identity,
+      id: 'identity-override',
+      display_name: 'Workspace Member',
+      provider_user_id: 'feishu-user-override',
+    }
+    const otherProvider: ContactIMIdentity = {
+      ...identity,
+      id: 'identity-slack',
+      provider: 'slack',
+      display_name: 'Slack Member',
+    }
+    vi.mocked(repository.listIMIdentities).mockImplementation(async ({ page, limit }) => ({
+      data: [defaultIdentity, overrideIdentity, otherProvider],
+      page,
+      limit,
+      total: 3,
+      has_more: false,
+    }))
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    const picker = within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' })
+    expect(picker).not.toHaveTextContent('Synced Member')
+    expect(picker).not.toHaveTextContent('Workspace Member')
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toBeDisabled()
+    await user.click(picker)
+
+    expect(await screen.findByRole('option', { name: /Synced Member/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(screen.getByRole('option', { name: /Workspace Member/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(screen.queryByRole('option', { name: /Slack Member/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('contacts.imBinding.bound')).not.toBeInTheDocument()
   })
 
   it('does not offer IM binding for External contacts', async () => {
@@ -837,98 +1064,27 @@ describe('Contact IM binding controls', () => {
     vi.mocked(repository.getContact).mockResolvedValue(external)
     renderDirectory(scenario, `?contact_id=${external.id}`, repository)
     const details = await findLoadedDetails(external.name)
+
     expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
     expect(
-      within(details).queryByRole('button', { name: 'contacts.imBinding.add' }),
+      within(details).queryByRole('button', { name: 'contacts.imBinding.bind' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(details).queryByRole('button', { name: /^contacts\.imBinding\.changeTitle/ }),
     ).not.toBeInTheDocument()
     expect(repository.listIMIdentities).not.toHaveBeenCalled()
     expect(repository.setIMBinding).not.toHaveBeenCalled()
   })
 
-  it('does not present channel default binding status as the current workspace selection', async () => {
-    const { scenario, repository, contact } = setup()
-    const defaultIdentity: ContactIMIdentity = { ...identity, binding_status: 'bound' }
-    const overrideIdentity: ContactIMIdentity = {
-      ...identity,
-      id: 'identity-override',
-      display_name: 'Workspace Member',
-      provider_user_id: 'feishu-user-override',
-    }
-    vi.mocked(repository.getContact).mockResolvedValue({
-      ...contact,
-      im_bindings: [{ id: 'binding-override', provider: 'feishu', scope: 'workspace' }],
-    })
-    vi.mocked(repository.listIMIdentities).mockImplementation(async ({ page, limit }) => ({
-      data: [defaultIdentity, overrideIdentity],
-      page,
-      limit,
-      total: 2,
-      has_more: false,
-    }))
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
-    const user = userEvent.setup()
-    const details = await findLoadedDetails(contact.name)
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.edit' }))
-    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
-    const picker = within(dialog).getByRole('combobox', {
-      name: 'contacts.imBinding.contactLabel',
-    })
-    expect(picker).not.toHaveTextContent('Synced Member')
-    await user.click(picker)
-    const defaultOption = await screen.findByRole('option', { name: /Synced Member/ })
-    expect(defaultOption).toHaveAttribute('aria-selected', 'false')
-    expect(screen.queryByText('contacts.imBinding.bound')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('option', { name: /Workspace Member/ }))
-    await waitFor(() => expect(picker).toHaveAttribute('aria-expanded', 'false'))
-    expect(picker).toHaveTextContent('Workspace Member')
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
-    await waitFor(() =>
-      expect(repository.setIMBinding).toHaveBeenCalledWith({
-        contactId: contact.id,
-        identityId: overrideIdentity.id,
-        override: true,
-      }),
-    )
-  })
-
   it('keeps Enterprise bindings read-only', async () => {
-    const { scenario, repository } = setup()
-    const member = scenario.contacts.find((contact) => contact.type === 'workspace')!
-    vi.mocked(repository.getContact).mockResolvedValue(member)
-    renderDirectory({ ...scenario, deployment: 'ee' }, `?contact_id=${member.id}`, repository)
-    const details = await findLoadedDetails(member.name)
+    const { scenario, repository, contact } = setup('organization')
+    renderDirectory({ ...scenario, deployment: 'ee' }, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+
     expect(within(details).getByText('contacts.imBinding.enterpriseReadOnly')).toBeInTheDocument()
     expect(
-      within(details).queryByRole('button', { name: 'contacts.imBinding.edit' }),
+      within(details).queryByRole('button', { name: /^contacts\.imBinding\.changeTitle/ }),
     ).not.toBeInTheDocument()
     expect(repository.listIMIdentities).not.toHaveBeenCalled()
-  })
-
-  it('restores the default binding when removing a workspace override', async () => {
-    const { scenario, repository, contact } = setup()
-    const binding = {
-      id: 'workspace-override',
-      provider: 'feishu' as const,
-      scope: 'workspace' as const,
-    }
-    vi.mocked(repository.getContact).mockResolvedValue({ ...contact, im_bindings: [binding] })
-    vi.mocked(repository.removeIMBinding).mockImplementation(async () => {
-      vi.mocked(repository.getContact).mockResolvedValue({
-        ...contact,
-        im_bindings: [{ ...binding, id: 'default-binding', scope: 'organization' }],
-      })
-    })
-    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
-    const user = userEvent.setup()
-    const details = await findLoadedDetails(contact.name)
-    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.reset' }))
-    expect(
-      await within(details).findByRole('button', { name: 'contacts.imBinding.remove' }),
-    ).toBeInTheDocument()
-    expect(within(details).getByText('Feishu')).toBeInTheDocument()
-    expect(
-      within(details).queryByRole('button', { name: 'contacts.imBinding.add' }),
-    ).not.toBeInTheDocument()
-    expect(repository.removeIMBinding).toHaveBeenCalledWith({ contactId: contact.id, binding })
   })
 })

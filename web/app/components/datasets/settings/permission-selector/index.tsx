@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -15,6 +15,7 @@ import MemberItem from './member-item'
 import PermissionItem from './permission-item'
 
 type PermissionSelectorProps = {
+  'aria-labelledby'?: string
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]
@@ -24,6 +25,7 @@ type PermissionSelectorProps = {
 }
 
 const PermissionSelector = ({
+  'aria-labelledby': labelledBy,
   disabled,
   permission,
   value,
@@ -31,7 +33,8 @@ const PermissionSelector = ({
   onChange,
   onMemberSelect,
 }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const triggerId = useId()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -78,6 +81,8 @@ const PermissionSelector = ({
   return (
     <Popover>
       <PopoverTrigger
+        id={triggerId}
+        aria-labelledby={labelledBy ? `${labelledBy} ${triggerId}` : undefined}
         disabled={isDisabled}
         className={cn(
           'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
@@ -161,10 +166,10 @@ const PermissionSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        className="border-none bg-transparent shadow-none"
+        className="max-w-(--available-width) border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
-        <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+        <div className="relative w-120 max-w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
             value={permission}
             onValueChange={(nextPermission) => {

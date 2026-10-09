@@ -1,5 +1,6 @@
 import type { SettingsDestination } from '@/app/components/header/account-setting/query-params'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
   AUTO_UPDATE_MODE,
@@ -61,7 +62,8 @@ describe('UpdateSettingDialogForm', () => {
     mockSettingsDestination = null
   })
 
-  it('should open preferences after closing the update setting dialog when timezone link is clicked', () => {
+  it('should focus update time from its label and keep the timezone action separate', async () => {
+    const user = userEvent.setup()
     const onRequestClose = vi.fn()
 
     render(
@@ -79,16 +81,22 @@ describe('UpdateSettingDialogForm', () => {
         strategyOptions={[{ value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' }]}
         timezone="UTC"
         updateTimeValue="00:00"
-        minuteFilter={(minutes) => minutes}
         onAutoUpgradeChange={vi.fn()}
         onPluginsChange={vi.fn()}
         onRequestClose={onRequestClose}
         onUpdateTimeChange={vi.fn()}
-        renderTimePickerTrigger={() => <button type="button">Pick time</button>}
       />,
     )
 
-    fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
+    expect(
+      screen.getByRole('button', { name: /autoUpdate.updateTime.*12:00 AM.*UTC/ }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByText('plugin.autoUpdate.updateTime', { exact: true }))
+    expect(
+      screen.getByRole('button', { name: /autoUpdate.updateTime.*12:00 AM.*UTC/ }),
+    ).toHaveFocus()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByText('autoUpdate.changeTimezone'))
 
     expect(onRequestClose).toHaveBeenCalledTimes(1)
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
@@ -112,12 +120,10 @@ describe('UpdateSettingDialogForm', () => {
         strategyOptions={[{ value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' }]}
         timezone="UTC"
         updateTimeValue="00:00"
-        minuteFilter={(minutes) => minutes}
         onAutoUpgradeChange={vi.fn()}
         onPluginsChange={vi.fn()}
         onRequestClose={vi.fn()}
         onUpdateTimeChange={vi.fn()}
-        renderTimePickerTrigger={() => <button type="button">Pick time</button>}
       />,
     )
 

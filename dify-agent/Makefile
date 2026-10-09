@@ -10,7 +10,7 @@ help:
 	@echo "  make dev            - Run the Dify Agent server with reload"
 	@echo "  make check           - Run Ruff for dify-agent"
 	@echo "  make fix             - Format and fix Ruff issues"
-	@echo "  make typecheck       - Run basedpyright for src, examples, and tests"
+	@echo "  make typecheck       - Run pyrefly for src and examples"
 	@echo "  make test            - Run local tests and docs/example tests"
 	@echo "  make update-examples - Rewrite docs example outputs when needed"
 	@echo "  make docs            - Build MkDocs documentation"
@@ -30,7 +30,7 @@ fix:
 	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check --fix .
 
 typecheck:
-	@uv --directory "$(PROJECT_DIR)" run --project . basedpyright --level error src examples tests
+	@uv --directory "$(PROJECT_DIR)" run --project . --group dev --extra server pyrefly check
 
 test:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server python -m pytest tests

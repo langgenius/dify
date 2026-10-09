@@ -1701,3 +1701,27 @@ def test_feature_manifest_treats_empty_knowledge_sets_as_not_configured():
 
     manifest = build_runtime_feature_manifest(soul)
     assert manifest["reserved_status"]["knowledge"] == "not_configured"
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_runtime_request_adds_required_route_selection_with_resolved_conditions(custom):
+    context = _context()
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [{"name": "summary", "type": "string"}] if custom else [],
+            "output_routes": {
+                "enabled": True,
+                "routes": [
+                    {"id": "accept", "name": "Matches {{#sys.query#}}", "label": "Accepted"},
+                    {"id": "reject", "name": "Does not match"},
+                ],
+            },
+        }
+    )
+    result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=CapturingPluginLayerBuilder()).build(context)
+    schema = _request_layers(result)[DIFY_AGENT_OUTPUT_LAYER_ID]["config"]["json_schema"]
+    assert schema["properties"]["switch"]["enum"] == ["accept", "reject"]
+    assert "Accepted" in schema["properties"]["switch"]["description"]
+    assert "Matches Summarize the report." in schema["properties"]["switch"]["description"]
+    assert schema["required"] == (["switch", "summary"] if custom else ["switch"])
+    assert schema["properties"]["text"] == {"type": "string"}

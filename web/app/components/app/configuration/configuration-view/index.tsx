@@ -5,23 +5,25 @@ import type { InstallBundleCompleteCallback } from '@/app/components/plugins/ins
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,10 +33,9 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
@@ -77,7 +78,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   showUseGPT4Confirm,
   setShowUseGPT4Confirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
   const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
@@ -88,6 +89,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
       draft.agentConfig.tools.forEach((tool) => {
         if (
           'provider_id' in tool &&
+          typeof tool.provider_id === 'string' &&
           tool.isDeleted &&
           installedPluginNames.includes(tool.provider_id)
         ) {
@@ -101,7 +103,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   if (showLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -112,12 +114,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">
-              <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
+              <div className="absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
-                    <div className="system-xl-semibold text-text-primary">
+                    <h1 className="system-xl-semibold text-text-primary">
                       {t(($) => $.orchestrate, { ns: 'appDebug' })}
-                    </div>
+                    </h1>
                     {showLegacyAgentBadge && <LegacyAgentBadge />}
                     {isAdvancedMode && (
                       <div className="flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">
@@ -149,7 +151,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-3.5" />
+                        <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
@@ -177,7 +179,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
-                      isAPIKeySet={contextValue.isAPIKeySet}
                       onSetting={onOpenAccountSettings}
                       inputs={contextValue.inputs}
                       modelParameterParams={{
@@ -207,7 +208,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   {t(($) => $['trailUseGPT4Info.description'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton tone="default">
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
@@ -218,7 +219,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
@@ -254,13 +255,18 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
                     <DrawerContent className="flex min-h-0 flex-1 flex-col">
                       <div className="mb-4 flex shrink-0 justify-end">
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       </div>
                       <Debug
-                        isAPIKeySet={contextValue.isAPIKeySet}
                         onSetting={onOpenAccountSettings}
                         inputs={contextValue.inputs}
                         modelParameterParams={{

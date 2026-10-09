@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
     const newItems = [...headersItems]

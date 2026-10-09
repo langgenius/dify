@@ -14,7 +14,7 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: {
     downloadPlugin: {
       mutationOptions: (options = {}) => ({

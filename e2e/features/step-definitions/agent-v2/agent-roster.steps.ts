@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { zPostAgentResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { createE2EResourceName } from '../../../support/naming'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 When('I create an Agent v2 test agent from the Agent Roster', async function (this: DifyWorld) {
   const page = this.getPage()

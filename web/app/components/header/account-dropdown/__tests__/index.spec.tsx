@@ -1,42 +1,22 @@
-import type { ProviderContextState } from '@/context/provider-context'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
-import { resetUser } from '@/app/components/base/amplitude/utils'
+import AccountAvatar from '@/app/account/(commonLayout)/avatar'
 import AccountSection from '@/app/components/main-nav/components/account-section'
-import { useProviderContext } from '@/context/provider-context'
+import EducationUserInfo from '@/app/education/user-info'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountDropdown from '../index'
 
-const { mockPush, mockResetUser, mockSetSettingsDestination, mockUseRouter } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockResetUser: vi.fn(),
+const { mockSetSettingsDestination } = vi.hoisted(() => ({
   mockSetSettingsDestination: vi.fn(),
-  mockUseRouter: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/amplitude/utils', () => ({
-  resetUser: mockResetUser,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
 }))
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
 }))
-
-vi.mock('@/next/navigation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/next/navigation')>()
-  return {
-    ...actual,
-    useRouter: mockUseRouter,
-  }
-})
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
@@ -56,7 +36,7 @@ const userProfile = {
   email: 'current@example.com',
   avatar_url: 'current-avatar.png',
 }
-const accountMenuAccessibleName = `${userProfile.name} common.account.account`
+const accountMenuAccessibleName = `${userProfile.name} accountSettings.account.account`
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -69,7 +49,7 @@ const renderAccountDropdown = () => {
         </button>
       )}
     />,
-    { queryClient },
+    { queryClient, features: { education: { enabled: false } } },
   )
 }
 
@@ -78,19 +58,18 @@ describe('AccountDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseRouter.mockReturnValue({ push: mockPush })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
-      mutateAsync: mockLogout,
+      mutate: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
   })
 
   it('includes the visible account name in the main navigation trigger accessible name', () => {
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection />, { queryClient })
+    renderWithConsoleQuery(<AccountSection />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
   })
@@ -98,7 +77,10 @@ describe('AccountDropdown', () => {
   it('keeps the account identity in the compact trigger accessible name', () => {
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection compact />, { queryClient })
+    renderWithConsoleQuery(<AccountSection compact />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
     expect(screen.queryByText('Current User')).not.toBeInTheDocument()
@@ -108,7 +90,10 @@ describe('AccountDropdown', () => {
     const user = userEvent.setup()
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection />, { queryClient })
+    renderWithConsoleQuery(<AccountSection />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByText('Current User')).toBeInTheDocument()
 
@@ -130,45 +115,65 @@ describe('AccountDropdown', () => {
     const container = document.createElement('div')
     container.innerHTML = html
 
-    expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
+    expect(
+      container.querySelector('button[aria-label="accountSettings.account.account"]'),
+    ).toBeDisabled()
   })
 
   it('opens the main navigation account menu through the composed trigger', async () => {
     const user = userEvent.setup()
     renderAccountDropdown()
 
-    const trigger = screen.getByRole('button', { name: 'common.account.account' })
+    const trigger = screen.getByRole('button', { name: 'accountSettings.account.account' })
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
     await user.click(trigger)
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
     expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByText('common.settings.preferences')).toBeInTheDocument()
-    expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
+    expect(screen.getByText('navigation.settings.preferences')).toBeInTheDocument()
+    expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
   })
 
   it('opens preferences from the account menu', async () => {
     const user = userEvent.setup()
     renderAccountDropdown()
 
-    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
-    await user.click(await screen.findByText('common.settings.preferences'))
+    await user.click(screen.getByRole('button', { name: 'accountSettings.account.account' }))
+    await user.click(await screen.findByText('navigation.settings.preferences'))
 
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
 
-  it('logs out and redirects to sign in', async () => {
-    mockLogout.mockResolvedValue({})
-    renderAccountDropdown()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
-    fireEvent.click(await screen.findByText('common.userProfile.logout'))
-
-    await waitFor(() => {
-      expect(mockLogout).toHaveBeenCalledOnce()
-      expect(resetUser).toHaveBeenCalledOnce()
-      expect(mockPush).toHaveBeenCalledWith('/signin')
-    })
-  })
+  it.each(['main navigation', 'account page', 'education'] as const)(
+    'logs out through the shared session boundary from %s',
+    async (surface) => {
+      const user = userEvent.setup()
+      if (surface === 'main navigation') {
+        renderAccountDropdown()
+      } else {
+        renderWithConsoleQuery(
+          surface === 'account page' ? <AccountAvatar /> : <EducationUserInfo />,
+          {
+            queryClient: createAccountProfileQueryClient(userProfile),
+            features: { education: { enabled: false } },
+          },
+        )
+      }
+      if (surface !== 'education') {
+        await user.click(
+          screen.getByRole('button', {
+            name:
+              surface === 'main navigation' ? 'accountSettings.account.account' : 'Current User',
+          }),
+        )
+      }
+      await user.click(
+        await screen.findByRole(surface === 'education' ? 'button' : 'menuitem', {
+          name: 'common.userProfile.logout',
+        }),
+      )
+      expect(mockLogout).toHaveBeenCalledExactlyOnceWith()
+    },
+  )
 })

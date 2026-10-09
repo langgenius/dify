@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { LogSourceIcon } from './source-icon'
 
 export function LogSourceCell({ source }: { source?: AgentLogConversationItemResponse['source'] }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!source) {
     return (

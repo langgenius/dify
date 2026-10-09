@@ -40,7 +40,6 @@ type ApiSpec = {
 }
 
 type ApiJob = {
-  clean?: boolean
   document: SwaggerDocument
   outputPath: string
   plugins?: UserConfig['plugins']
@@ -61,7 +60,16 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
-const strictZodSchemaNames = new Set(['AccountProfilePatchPayload', 'Parameters'])
+const strictZodSchemaNames = new Set([
+  'AccountProfilePatchPayload',
+  'Parameters',
+  'AppTextInputPayload',
+  'AppSelectInputPayload',
+  'AppParagraphInputPayload',
+  'AppNumberInputPayload',
+  'AppCheckboxInputPayload',
+  'AppExternalDataInputPayload',
+])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -262,7 +270,31 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
-const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
+const includeMultipartRequestSchemas = (document: SwaggerDocument) => {
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation) || !isObject(operation.requestBody))
+        continue
+      const content = operation.requestBody.content
+      if (!isObject(content)) continue
+      const json = content['application/json']
+      const multipart = content['multipart/form-data']
+      if (
+        !isObject(json) ||
+        !isObject(json.schema) ||
+        !isObject(multipart) ||
+        !isObject(multipart.schema)
+      )
+        continue
+
+      // hey-api selects JSON for mixed request media; retain the multipart shape
+      // so the generated client can serialize File values as FormData.
+      json.schema = { anyOf: [json.schema, multipart.schema] }
+    }
+  }
+}
+
+const includeNonJsonResponseSchemas = (document: SwaggerDocument) => {
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation)) continue
@@ -273,21 +305,22 @@ const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
         if (!/^2\d\d$/.test(status) || !isObject(response) || !isObject(response.content)) continue
 
         const jsonMedia = response.content['application/json']
-        const eventStreamMedia = response.content['text/event-stream']
-        if (
-          !isObject(jsonMedia) ||
-          !isObject(jsonMedia.schema) ||
-          !isObject(eventStreamMedia) ||
-          !isObject(eventStreamMedia.schema)
-        ) {
-          continue
+        if (!isObject(jsonMedia) || !isObject(jsonMedia.schema)) continue
+
+        const alternatives: SwaggerSchema[] = []
+        for (const [mediaType, media] of Object.entries(response.content)) {
+          if (mediaType === 'application/json' || !isObject(media) || !isObject(media.schema))
+            continue
+          if (mediaType === 'text/event-stream' || media.schema.format === 'binary')
+            alternatives.push(media.schema)
         }
+        if (alternatives.length === 0) continue
 
         // hey-api selects the JSON schema when one status advertises multiple
-        // response media types. Preserve the SSE transport in the generated
+        // response media types. Preserve SSE and binary transports in the generated
         // TypeScript and Zod contracts by making that selected schema a union.
         jsonMedia.schema = {
-          anyOf: [jsonMedia.schema, eventStreamMedia.schema],
+          anyOf: [jsonMedia.schema, ...alternatives],
         }
       }
     }
@@ -370,7 +403,8 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
-  includeEventStreamInJsonResponseSchemas(document)
+  includeMultipartRequestSchemas(document)
+  includeNonJsonResponseSchemas(document)
   // OpenAPI defaults describe server behavior. Keep them in the exported specs,
   // but do not let Zod synthesize omitted transport fields during client-side
   // request or response validation. Non-null defaults remain useful for query
@@ -471,7 +505,7 @@ const consoleContractEntryContent = (segments: string[]) => {
   const contractEntries = contracts
     .map(
       (contract) =>
-        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
+        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen.ts').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
     )
     .join('\n')
 
@@ -498,7 +532,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   })
 
   const imports = contracts
-    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen.ts'`)
     .join('\n')
 
   const communityContractEntries = contracts.map((contract) => `  ${contract.name},`).join('\n')
@@ -506,7 +540,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
 
 ${imports}
-import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen.ts'
 
 const communityContract = {
 ${communityContractEntries}
@@ -527,7 +561,6 @@ const writeConsoleRouterContract = (segments: string[]) => {
 
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
-    clean: false,
     document,
     outputPath: 'generated/api/console',
     plugins: [],
@@ -587,7 +620,8 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
-    ...(job.clean === undefined ? {} : { clean: job.clean }),
+    module: { extension: '.ts' },
+    clean: false,
     entryFile: false,
     fileName: {
       suffix: '.gen',
@@ -603,9 +637,31 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        union: (ctx) => {
+          // The generator's recursive lazy schemas infer `any`. Keep this JSON
+          // leaf typed through Zod so oRPC clients retain the request contract.
+          if (
+            ctx.path['~ref'].some(
+              (segment) =>
+                segment === 'AppConfigJsonValue' || segment === 'AppConfigJsonValueWritable',
+            )
+          )
+            return $(ctx.symbols.z).attr('json').call()
+
+          return ctx.nodes.base(ctx)
+        },
         object: (ctx) => {
           const objectSchema = ctx.nodes.base(ctx)
           const additionalProperties = ctx.schema.additionalProperties
+          // Shaped objects otherwise discard the backend's typed JSON extensions.
+          if (
+            additionalProperties &&
+            typeof additionalProperties !== 'boolean' &&
+            additionalProperties.$ref === '#/components/schemas/AppConfigJsonValue' &&
+            ctx.schema.properties
+          )
+            return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
+
           // openapi-ts normalizes `additionalProperties: false` to `never`, but
           // does not make shaped Zod objects strict.
           const isStrictSchema = ctx.path['~ref'].some(

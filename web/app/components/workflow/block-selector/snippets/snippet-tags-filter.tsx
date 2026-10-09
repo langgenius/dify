@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type SnippetTagsFilterProps = {
   embedded?: boolean
@@ -16,8 +16,7 @@ type SnippetTagsFilterProps = {
 }
 
 const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFilterProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common', 'pluginTags'])
   const [searchText, setSearchText] = useState('')
 
   const { data: tagList = [] } = useQuery(
@@ -46,12 +45,11 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
     ? selectedTags.map((tag) => tag.name).join(', ')
     : t(($) => $['tag.placeholder'], { ns: 'common' })
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
     if (!nextOpen) setSearchText('')
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button

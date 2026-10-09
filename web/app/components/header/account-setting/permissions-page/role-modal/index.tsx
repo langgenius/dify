@@ -13,8 +13,9 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
+import { getDocLanguage } from '@/i18n/language'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'
@@ -34,7 +35,7 @@ type RoleModalProps = {
 }
 
 const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(role?.name ?? '')

@@ -151,7 +151,7 @@ Feature: Agent v2 Access Point
     And a runnable Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    Then the Agent v2 first publication should succeed
     Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API minimal request
     Then the Agent v2 Backend service API request should succeed with the normal E2E marker

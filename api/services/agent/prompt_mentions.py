@@ -13,10 +13,11 @@ Workflow Agent tasks also carry frontend workflow variable markers:
     {{#<node-id>.<output>[.<child>...]#}}
 
 Those frontend markers are a separate path from slash-reference expansion. They
-are parsed here only to derive ``previous_node_output_refs`` from the current
-task text. The markers remain literal in the workflow task prompt, while their
-resolved values appear under the workflow context prompt's ``Previous node
-outputs:`` section. Legacy ``[§node_output:...§]`` mention syntax is not part
+are parsed by ``core.agent.workflow_references``, re-exported here to derive
+``previous_node_output_refs`` from the current task text. The markers remain
+literal in the workflow task prompt, while their resolved values appear under
+the workflow context prompt's ``Previous node outputs:`` section. Legacy
+``[§node_output:...§]`` mention syntax is not part
 of that derivation path.
 
 Frontend output blocks still accept a legacy bare ``§output:...§`` form during
@@ -30,6 +31,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
+from core.agent.workflow_references import (
+    WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES,
+    extract_workflow_node_output_selectors,
+    extract_workflow_variable_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from models.agent_config_entities import (
     AgentHumanContactConfig,
     AgentSoulConfig,
@@ -64,7 +71,6 @@ MENTION_PATTERN = re.compile(
 # requirement keeps legacy ``{{#histories#}}`` / ``{{var}}`` template forms and
 # ordinary bracketed text out of scope.
 _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\]")
-WORKFLOW_VARIABLE_PATTERN = re.compile(r"\{\{#([^{}#]+?\.[^{}#]+?)#\}\}")
 
 MAX_MENTIONS_PER_PROMPT = 200
 # Mention ids are bounded independently of their owning configuration schema.
@@ -93,9 +99,6 @@ SOUL_PROMPT_ALLOWED_KINDS = frozenset(
     }
 )
 NODE_JOB_PROMPT_ALLOWED_KINDS = frozenset({MentionKind.NODE_OUTPUT, MentionKind.OUTPUT, MentionKind.HUMAN})
-WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES = frozenset(
-    {"sys", "env", "conversation", "rag", "current", "last_run", "error_message", "$output"}
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,48 +185,6 @@ def find_malformed_mention_markers(prompt: str) -> list[str]:
     return [match.group(0) for match in _RESIDUAL_MENTION_PATTERN.finditer(prompt) if match.span() not in parsed_spans]
 
 
-def extract_workflow_variable_selectors(prompt: str) -> list[tuple[str, ...]]:
-    """Extract ``{{#node.output#}}``-style selectors from workflow prompts."""
-    selectors: list[tuple[str, ...]] = []
-    for match in WORKFLOW_VARIABLE_PATTERN.finditer(prompt or ""):
-        parts = tuple(part.strip() for part in match.group(1).split(".") if part.strip())
-        if len(parts) >= 2:
-            selectors.append(parts)
-    return selectors
-
-
-def extract_workflow_node_output_selectors(prompt: str) -> list[tuple[str, ...]]:
-    """Extract previous-node selectors from frontend workflow variable markers.
-
-    Reserved Dify namespaces such as ``sys`` are excluded because they are not
-    previous nodes.
-    """
-    selectors: list[tuple[str, ...]] = []
-    seen: set[tuple[str, ...]] = set()
-    for selector in extract_workflow_variable_selectors(prompt):
-        if selector[0] in WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES:
-            continue
-        if selector in seen:
-            continue
-        selectors.append(selector)
-        seen.add(selector)
-    return selectors
-
-
-def workflow_previous_node_output_refs_from_selectors(
-    selectors: list[tuple[str, ...]],
-) -> list[WorkflowPreviousNodeOutputRef]:
-    """Materialize persisted previous-node refs from parsed frontend selectors."""
-    return [
-        WorkflowPreviousNodeOutputRef(
-            selector=list(selector),
-            node_id=selector[0],
-            output=selector[1],
-        )
-        for selector in selectors
-    ]
-
-
 def scrub_mention_markers(text: str) -> str:
     """Degrade any residual mention-shaped ``[§kind:…§]`` marker to readable text."""
 
@@ -301,7 +262,7 @@ def build_node_job_mention_resolver(node_job: WorkflowNodeJobConfig) -> MentionR
                     if selector and f"{selector[0]}.{selector[1]}" == mention.ref_id:
                         return ref.name or mention.label or mention.ref_id
             case MentionKind.OUTPUT:
-                for output in effective_declared_outputs(node_job.declared_outputs):
+                for output in effective_declared_outputs(node_job.declared_outputs, node_job.output_routes):
                     if output.name == mention.ref_id:
                         return _format_output_mention(output)
             case MentionKind.HUMAN:

@@ -48,7 +48,7 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     timeout: 3,
     timeout_unit: 'day',
   },
-  checkValid(payload: HumanInputNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: HumanInputNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     if (!errorMessages && !payload.delivery_methods.length)
       errorMessages = t(($) => $[`${i18nPrefix}.noDeliveryMethod`], { ns: 'workflow' })

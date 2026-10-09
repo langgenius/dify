@@ -41,7 +41,7 @@ describe('Label', () => {
     const tooltipText = 'Test Tooltip'
     render(<Label {...defaultProps} tooltip={tooltipText} />)
 
-    await user.hover(screen.getByRole('button', { name: tooltipText }))
+    await user.hover(screen.getByRole('button', { name: 'Test Label' }))
     expect(await screen.findByText(tooltipText)).toBeInTheDocument()
   })
 

@@ -1,6 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -15,7 +14,7 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { useDocLink } from '@/context/i18n'
-import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
@@ -27,11 +26,13 @@ const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefin
 }
 
 export const useAvailableNodesMetaData = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const shouldUseAgentV2 = agentV2Enabled && !isChatMode
+  // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
+  // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
+  const shouldUseAgentV2 = agentV2Enabled && (!isChatMode || isAgentV2InChatflowEnabled())
 
   const startNodeMetaData = useMemo(
     () => ({
@@ -67,10 +68,7 @@ export const useAvailableNodesMetaData = () => {
         const titleKey =
           metaData.type === BlockEnum.HumanInputV2 ? BlockEnum.HumanInput : metaData.type
         const title = t(($) => $[`blocks.${titleKey}`], { ns: 'workflow' })
-        const description = t(
-          ($) => $[`blocksAbout.${titleKey}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
-          { ns: 'workflow' },
-        )
+        const description = t(($) => $[`blocksAbout.${titleKey}`], { ns: 'workflow' })
         const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
         return {
           ...node,

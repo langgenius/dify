@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useHover } from 'ahooks'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import { isValidServerID, isValidUrl, useMCPModalForm } from './hooks/use-mcp-modal-form'
@@ -63,14 +63,13 @@ type MCPModalContentProps = {
 }
 
 const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const serverUrlInputId = useId()
   const nameInputId = useId()
   const serverIdentifierInputId = useId()
   const serverIdentifierDescriptionId = useId()
 
-  const { isCreate, originalServerUrl, originalServerID, appIconRef, state, actions } =
-    useMCPModalForm(data)
+  const { isCreate, originalServerUrl, originalServerID, state, actions } = useMCPModalForm(data)
 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   // SAML has no refresh_token model, so the enterprise side can't mint
@@ -80,8 +79,6 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
   const isForwardIdentitySupported =
     systemFeatures.sso_enforced_for_signin &&
     (ssoProtocol === zSsoProtocol.enum.oidc || ssoProtocol === zSsoProtocol.enum.oauth2)
-
-  const isHovering = useHover(appIconRef)
 
   const authMethods = [
     {
@@ -136,7 +133,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
     if (isCreate) onHide()
   }
 
-  const handleIconSelect = (payload: AppIconSelection) => {
+  const handleIconSelect = (payload: IconPickerValue) => {
     actions.setAppIcon(payload)
   }
 
@@ -198,37 +195,34 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
               placeholder={t(($) => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
             />
           </div>
-          <div className="pt-2" ref={appIconRef}>
-            <AppIcon
-              iconType={state.appIcon.type}
-              icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
-              background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
-              imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
-              innerIcon={
-                shouldUseMcpIconForAppIcon(
-                  state.appIcon.type,
-                  state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                ) ? (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                  />
-                ) : undefined
-              }
-              size="xxl"
-              className="relative cursor-pointer rounded-2xl"
-              coverElement={
-                isHovering ? (
-                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
+          <div className="pt-2">
+            <IconButton
+              aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
+              className="group/edit-icon size-14 rounded-2xl p-0"
+              onClick={() => actions.setShowIconPicker(true)}
+            >
+              <AppIcon
+                decorative
+                iconType={state.appIcon.type}
+                icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
+                background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
+                imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
+                innerIcon={
+                  shouldUseMcpIconForAppIcon(
+                    state.appIcon.type,
+                    state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                  ) ? (
                     <span
                       aria-hidden
-                      className="i-ri-edit-line size-6 text-text-primary-on-surface"
+                      className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
                     />
-                  </div>
-                ) : null
-              }
-              onClick={() => actions.setShowAppIconPicker(true)}
-            />
+                  ) : undefined
+                }
+                size="xxl"
+                className="relative rounded-2xl"
+                showEditIcon
+              />
+            </IconButton>
           </div>
         </div>
 
@@ -342,18 +336,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
       </div>
 
-      {state.showAppIconPicker && (
-        <AppIconPicker
-          open={state.showAppIconPicker}
-          initialEmoji={
-            state.appIcon.type === 'emoji'
-              ? { icon: state.appIcon.icon, background: state.appIcon.background }
-              : undefined
-          }
-          onOpenChange={actions.setShowAppIconPicker}
-          onSelect={handleIconSelect}
-        />
-      )}
+      <IconPickerDialog
+        open={state.showIconPicker}
+        defaultValue={state.appIcon}
+        onOpenChange={actions.setShowIconPicker}
+        onConfirm={handleIconSelect}
+      />
     </>
   )
 }

@@ -6,11 +6,13 @@ vi.mock('../pdf-highlighter-adapter', () => ({
   PdfLoader: ({
     children,
     beforeLoad,
+    workerSrc,
   }: {
     children: (doc: unknown) => ReactNode
     beforeLoad: ReactNode
+    workerSrc?: string
   }) => (
-    <div data-testid="pdf-loader">
+    <div data-testid="pdf-loader" data-worker-src={workerSrc}>
       {beforeLoad}
       {children({ numPages: 1 })}
     </div>
@@ -63,11 +65,12 @@ describe('PdfPreview', () => {
   it('should render the pdf preview portal with overlay and loading indicator', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
     expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should zoom in when zoom in control is clicked', () => {
@@ -108,7 +111,7 @@ describe('PdfPreview', () => {
   it('should zoom in when ArrowUp key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
 
     expect(getScaleContainer().getAttribute('style')).toContain('scale(1.2)')
   })
@@ -116,7 +119,7 @@ describe('PdfPreview', () => {
   it('should zoom out when ArrowDown key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
 
     expect(getScaleContainer().getAttribute('style')).toMatch(/scale\(0\.8333/)
   })
@@ -142,5 +145,30 @@ describe('PdfPreview', () => {
 
     fireEvent.click(getScaleContainer())
     expect(mockOnCancel).not.toHaveBeenCalled()
+  })
+
+  it('should load the pdf worker from the configured base path', async () => {
+    vi.resetModules()
+    vi.doMock('@/utils/var', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@/utils/var')>()
+      return { ...actual, basePath: '/dify' }
+    })
+    const { default: SubPathPdfPreview } = await import('../pdf-preview')
+
+    render(<SubPathPdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    expect(screen.getByTestId('pdf-loader')).toHaveAttribute(
+      'data-worker-src',
+      '/dify/pdf.worker.min.mjs',
+    )
+  })
+
+  it('should load the pdf worker from the origin root when no base path is configured', () => {
+    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    expect(screen.getByTestId('pdf-loader')).toHaveAttribute(
+      'data-worker-src',
+      '/pdf.worker.min.mjs',
+    )
   })
 })

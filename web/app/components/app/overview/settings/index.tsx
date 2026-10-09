@@ -1,7 +1,13 @@
 'use client'
+
+import type {
+  AppDetailSiteResponse,
+  AppDetailWithSite,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import type { AppIconType, Language, SiteConfig } from '@/types/app'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import type { Language } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -24,21 +30,28 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Divider from '@/app/components/base/divider'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { languages } from '@/i18n-config/language'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 type ISettingsModalProps = {
@@ -48,11 +61,11 @@ type ISettingsModalProps = {
   isShow: boolean
   defaultValue?: string
   onClose: () => void
-  onSave?: (params: ConfigParams) => Promise<void>
+  onSave?: (params: AppSiteUpdatePayload) => Promise<void>
 }
 
 type SettingsSiteInfo = Pick<
-  SiteConfig,
+  AppDetailSiteResponse,
   | 'title'
   | 'description'
   | 'default_language'
@@ -71,7 +84,8 @@ type SettingsSiteInfo = Pick<
 >
 
 type SettingsAppIconSelection =
-  | AppIconSelection
+  | IconPickerValue
+  | null
   | {
       type: 'link'
       icon: string
@@ -80,32 +94,12 @@ type SettingsAppIconSelection =
 
 export type SettingsAppInfo = {
   id: string
-  mode: AppModeEnum
-  enable_sso?: boolean
+  mode: AppDetailWithSite['mode']
   site: SettingsSiteInfo
 }
 
-export type ConfigParams = {
-  title: string
-  description: string
-  default_language: string
-  chat_color_theme: string
-  chat_color_theme_inverted: boolean
-  prompt_public: boolean
-  copyright: string
-  privacy_policy: string
-  custom_disclaimer: string
-  input_placeholder: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string
-  show_workflow_steps: boolean
-  use_icon_as_answer_icon: boolean
-  enable_sso?: boolean
-}
-
 const INPUT_PLACEHOLDER_MAX_LENGTH = 64
-const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppModeEnum> = [
+const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppDetailWithSite['mode']> = [
   AppModeEnum.CHAT,
   AppModeEnum.AGENT_CHAT,
   AppModeEnum.ADVANCED_CHAT,
@@ -135,34 +129,35 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
 
   return {
     title,
-    desc: description,
-    chatColorTheme: chat_color_theme,
+    desc: description ?? '',
+    chatColorTheme: chat_color_theme ?? '',
     chatColorThemeInverted: chat_color_theme_inverted,
-    copyright,
+    copyright: copyright ?? '',
     copyrightSwitchValue: !!copyright,
-    privacyPolicy: privacy_policy,
+    privacyPolicy: privacy_policy ?? '',
     customDisclaimer: custom_disclaimer,
     inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
-    enable_sso: appInfo.enable_sso,
   }
 }
 
 const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIconSelection => {
   const { icon_type, icon, icon_background, icon_url } = appInfo.site
 
-  if (icon_type === 'image') return { type: 'image', url: icon_url!, fileId: icon }
+  if (icon_type === 'image' && icon) return { type: 'image', url: icon_url ?? '', fileId: icon }
 
-  if (icon_type === 'link') return { type: 'link', icon, url: icon }
+  if (icon_type === 'link' && icon) return { type: 'link', icon, url: icon }
 
-  return { type: 'emoji', icon, background: icon_background! }
+  if (icon_type === 'emoji' && icon && icon_background)
+    return { type: 'emoji', icon, background: icon_background }
+
+  return null
 }
 
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
   JSON.stringify([
     appInfo.id,
-    appInfo.enable_sso,
     appInfo.site.title,
     appInfo.site.description,
     appInfo.site.chat_color_theme,
@@ -196,31 +191,37 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [inputInfo, setInputInfo] = useState(nextInputInfo)
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
-  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
-  const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = enableBilling && plan.type === 'sandbox'
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: webappCopyrightEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.webapp_copyright_enabled,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const canCustomizePlaceholder = deploymentEdition !== 'CLOUD' || webappCopyrightEnabled === true
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
-  const inputPlaceholderValue = isCloudSandboxPlan ? '' : (inputInfo.inputPlaceholder ?? '')
-  const copyrightSwitchValue = isCloudSandboxPlan ? false : inputInfo.copyrightSwitchValue
+  const invertedThemeLabelId = React.useId()
+  const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
+  const copyrightSwitchValue = inputInfo.copyrightSwitchValue
   const showInputPlaceholderPreview =
-    !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+    canCustomizePlaceholder && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
   const inputPlaceholderField = (
     <div
       className={cn(
         'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
-        !isCloudSandboxPlan &&
+        canCustomizePlaceholder &&
           inputPlaceholderFocused &&
           'border-components-input-border-active bg-components-input-bg-active',
-        isCloudSandboxPlan && 'cursor-not-allowed opacity-60',
+        !canCustomizePlaceholder && 'cursor-not-allowed opacity-60',
       )}
     >
       <input
@@ -230,7 +231,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         onChange={(e) => setInputInfo((item) => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
-        disabled={isCloudSandboxPlan}
+        disabled={!canCustomizePlaceholder}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
@@ -243,7 +244,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
-          isCloudSandboxPlan && 'cursor-not-allowed',
+          !canCustomizePlaceholder && 'cursor-not-allowed',
         )}
       />
       <span
@@ -260,8 +261,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     if (nextLanguage) setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    setShowPricingModal()
-  }, [setShowPricingModal])
+    setPricing('open')
+  }, [setPricing])
 
   const shouldResetForm =
     isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
@@ -318,24 +319,31 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright:
-        !webappCopyrightEnabled || isCloudSandboxPlan
-          ? ''
-          : copyrightSwitchValue
-            ? inputInfo.copyright
-            : '',
+      copyright: !webappCopyrightEnabled
+        ? undefined
+        : copyrightSwitchValue
+          ? inputInfo.copyright
+          : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      input_placeholder:
-        isCloudSandboxPlan || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
+      input_placeholder: !canCustomizePlaceholder
+        ? undefined
+        : !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
           ? ''
           : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      icon_type: appIcon?.type ?? appInfo.site.icon_type,
+      icon: appIcon
+        ? appIcon.type === 'image'
+          ? appIcon.fileId
+          : appIcon.icon
+        : appInfo.site.icon,
+      icon_background: appIcon
+        ? appIcon.type === 'emoji'
+          ? appIcon.background
+          : undefined
+        : appInfo.site.icon_background,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
-      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -433,17 +441,39 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
                     </Field>
-                    <AppIcon
-                      size="xxl"
-                      onClick={() => {
-                        setShowAppIconPicker(true)
-                      }}
-                      className="mt-2 cursor-pointer"
-                      iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
-                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                      background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                      imageUrl={appIcon.type === 'emoji' ? undefined : appIcon.url}
-                    />
+                    <button
+                      type="button"
+                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                      className="mt-2 shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => setShowIconPicker(true)}
+                    >
+                      <AppIcon
+                        decorative
+                        size="xxl"
+                        iconType={
+                          appIcon
+                            ? appIcon.type === 'link'
+                              ? 'image'
+                              : appIcon.type
+                            : appInfo.site.icon_type
+                        }
+                        icon={
+                          appIcon
+                            ? appIcon.type === 'image'
+                              ? appIcon.fileId
+                              : appIcon.icon
+                            : (appInfo.site.icon ?? undefined)
+                        }
+                        background={
+                          appIcon?.type === 'emoji'
+                            ? appIcon.background
+                            : appInfo.site.icon_background
+                        }
+                        imageUrl={
+                          appIcon && appIcon.type !== 'emoji' ? appIcon.url : appInfo.site.icon_url
+                        }
+                      />
+                    </button>
                   </div>
                   {/* description */}
                   <Field name="description">
@@ -463,7 +493,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   {/* answer icon */}
                   {isChat && (
                     <Field name="use_icon_as_answer_icon" className="w-full">
@@ -536,12 +566,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                           placeholder="E.g #A020F0"
                         />
                         <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
-                          <span>
+                          <span id={invertedThemeLabelId}>
                             {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
                               ns: 'appOverview',
                             })}
                           </span>
                           <Switch
+                            aria-labelledby={invertedThemeLabelId}
                             checked={inputInfo.chatColorThemeInverted}
                             onCheckedChange={(v) =>
                               setInputInfo({ ...inputInfo, chatColorThemeInverted: v })
@@ -574,7 +605,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {t(($) => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}
                     </FieldDescription>
                   </Field>
-                  <Divider className="my-0 h-px" />
+                  <Separator className="my-0" />
                   <div className="space-y-5">
                     {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
                       <div className="w-full">
@@ -588,12 +619,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 ns: 'appOverview',
                               })}
                             </div>
-                            {isCloudSandboxPlan && (
+                            {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                               <div className="h-4.5 select-none">
                                 <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                   <span
                                     aria-hidden="true"
-                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                    className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                   />
                                   <div className="system-xs-medium">
                                     <span className="p-1">
@@ -613,7 +644,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                         </p>
-                        {isCloudSandboxPlan ? (
+                        {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
                             <TooltipContent className="w-45">
@@ -625,7 +656,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         ) : (
                           inputPlaceholderField
                         )}
-                        {!isCloudSandboxPlan && (
+                        {canCustomizePlaceholder && (
                           <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                             {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
                           </div>
@@ -640,12 +671,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                           </div>
                           {/* upgrade button */}
-                          {isCloudSandboxPlan && (
+                          {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                             <div className="h-4.5 select-none">
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span
                                   aria-hidden="true"
-                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+                                  className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
                                 />
                                 <div className="system-xs-medium">
                                   <span className="p-1">
@@ -656,8 +687,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             </div>
                           )}
                         </div>
-                        {webappCopyrightEnabled ? (
+                        {webappCopyrightEnabled !== false ? (
                           <Switch
+                            disabled={webappCopyrightEnabled !== true}
                             aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
                               ns: 'appOverview',
                             })}
@@ -701,6 +733,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                           className="mt-2 h-10"
+                          disabled={webappCopyrightEnabled !== true}
                           value={inputInfo.copyright}
                           onChange={onChange('copyright')}
                           placeholder={
@@ -793,15 +826,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </Form>
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={showAppIconPicker}
-        initialEmoji={
-          appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined
-        }
-        onOpenChange={setShowAppIconPicker}
-        onSelect={setAppIcon}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={appIcon?.type === 'link' ? undefined : (appIcon ?? undefined)}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setAppIcon}
       />
     </>
   )

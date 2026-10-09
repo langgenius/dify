@@ -1,10 +1,10 @@
 'use client'
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
 
@@ -13,12 +13,12 @@ type Props = Readonly<{
     app_id: string
     inputs: Record<string, unknown>
   }
-  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
   onFormChange: (value: Record<string, unknown>) => void
 }>
 
 const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
 
   const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })
@@ -34,7 +34,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
     <div className={cn('flex max-h-60 flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && (
         <div className="pt-3">
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         </div>
       )}
       {!isLoading && isError && (

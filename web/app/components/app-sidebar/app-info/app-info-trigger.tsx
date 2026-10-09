@@ -1,7 +1,6 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { Operation } from './app-operations'
 import type { AppInfoModalType } from './use-app-info-actions'
-import type { App, AppSSO } from '@/types/app'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -10,12 +9,11 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
-import AppIcon from '../../base/app-icon'
+import AppInfoHeader from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
-import AppOperations from './app-operations'
 
 type AppInfoTriggerProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: AppDetailWithSite
   expand: boolean
   openModal: (modal: Exclude<AppInfoModalType, null>) => void
   isExporting: boolean
@@ -29,7 +27,7 @@ const AppInfoTrigger = ({
   isExporting,
   exportCheck,
 }: AppInfoTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -68,7 +66,7 @@ const AppInfoTrigger = ({
       ? [
           {
             id: 'export',
-            title: t(($) => $.export, { ns: 'app' }),
+            title: t(($) => $.exportApp, { ns: 'app' }),
             icon: 'i-ri-file-download-line',
             onClick: exportCheck,
             loading: isExporting,
@@ -80,7 +78,7 @@ const AppInfoTrigger = ({
       ? [
           {
             id: 'import',
-            title: t(($) => $['common.importDSL'], { ns: 'workflow' }),
+            title: t(($) => $.importApp, { ns: 'app' }),
             icon: 'i-ri-file-upload-line',
             onClick: () => openModal('importDSL'),
           },
@@ -114,44 +112,16 @@ const AppInfoTrigger = ({
       : []
 
   return (
-    <div
-      className={cn(
-        'rounded-xl',
-        expand ? 'flex items-start gap-2 p-2' : 'flex items-center justify-center px-1 py-1.5',
-      )}
-    >
-      <div className="flex shrink-0 items-center">
-        <div>
-          <AppIcon
-            size={expand ? 'large' : 'medium'}
-            iconType={appDetail.icon_type}
-            icon={appDetail.icon}
-            background={appDetail.icon_background}
-            imageUrl={appDetail.icon_url}
-          />
-        </div>
-      </div>
-      {expand && (
-        <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
-          <div className="flex w-full min-w-0 items-center gap-2 pr-1">
-            <div className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary">
-              {appDetail.name}
-            </div>
-            <AppOperations
-              appName={appDetail.name}
-              operationGroups={[
-                mainOperations,
-                destructiveOperations,
-                workflowConversionOperations,
-              ]}
-            />
-          </div>
-          <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
-            {modeLabel}
-          </div>
-        </div>
-      )}
-    </div>
+    <AppInfoHeader
+      expand={expand}
+      appName={appDetail.name}
+      modeLabel={modeLabel}
+      iconType={appDetail.icon_type}
+      icon={appDetail.icon ?? undefined}
+      background={appDetail.icon_background}
+      imageUrl={appDetail.icon_url}
+      operationGroups={[mainOperations, destructiveOperations, workflowConversionOperations]}
+    />
   )
 }
 

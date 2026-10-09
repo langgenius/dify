@@ -1,13 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, userEvent, within } from 'storybook/test'
 import {
+  createDropdownMenuHandle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuLinkItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -19,18 +21,20 @@ import {
   DropdownMenuTrigger,
 } from '.'
 
-const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
-  <DropdownMenuTrigger
-    render={
-      <button
-        type="button"
-        className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      />
-    }
-  >
-    {label}
-  </DropdownMenuTrigger>
-)
+function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
+  return (
+    <DropdownMenuTrigger
+      render={
+        <button
+          type="button"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        />
+      }
+    >
+      {label}
+    </DropdownMenuTrigger>
+  )
+}
 
 const meta = {
   title: 'Base/UI/DropdownMenu',
@@ -86,13 +90,13 @@ export const WithGroupLabel: Story = {
       <TriggerButton />
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuGroupLabel>Actions</DropdownMenuGroupLabel>
           <DropdownMenuItem>Edit</DropdownMenuItem>
           <DropdownMenuItem>Duplicate</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Export</DropdownMenuLabel>
+          <DropdownMenuGroupLabel>Export</DropdownMenuGroupLabel>
           <DropdownMenuItem>Export as PDF</DropdownMenuItem>
           <DropdownMenuItem>Export as CSV</DropdownMenuItem>
         </DropdownMenuGroup>
@@ -140,7 +144,7 @@ export const WithSubmenu: Story = {
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
-const WithRadioItemsDemo = () => {
+function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
@@ -170,7 +174,7 @@ export const WithRadioItems: Story = {
   render: () => <WithRadioItemsDemo />,
 }
 
-const WithCheckboxItemsDemo = () => {
+function WithCheckboxItemsDemo() {
   const [showToolbar, setShowToolbar] = React.useState(true)
   const [showSidebar, setShowSidebar] = React.useState(false)
   const [showStatusBar, setShowStatusBar] = React.useState(true)
@@ -265,7 +269,7 @@ export const WithLinkItems: Story = {
 
 type SortOrder = 'newest' | 'oldest' | 'name'
 
-const ComplexDemo = () => {
+function ComplexDemo() {
   const [sortOrder, setSortOrder] = React.useState<SortOrder>('newest')
   const [showArchived, setShowArchived] = React.useState(false)
 
@@ -274,7 +278,7 @@ const ComplexDemo = () => {
       <TriggerButton label="Actions" />
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Edit</DropdownMenuLabel>
+          <DropdownMenuGroupLabel>Edit</DropdownMenuGroupLabel>
           <DropdownMenuItem>
             <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
             Rename
@@ -311,7 +315,7 @@ const ComplexDemo = () => {
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+          <DropdownMenuGroupLabel>Sort by</DropdownMenuGroupLabel>
           <DropdownMenuRadioGroup<SortOrder> value={sortOrder} onValueChange={setSortOrder}>
             <DropdownMenuRadioItem<SortOrder> value="newest">
               Newest first
@@ -345,4 +349,52 @@ const ComplexDemo = () => {
 
 export const Complex: Story = {
   render: () => <ComplexDemo />,
+}
+
+function DetachedTriggerDemo() {
+  const handle = React.useMemo(() => createDropdownMenuHandle<{ name: string }>(), [])
+  const [selected, setSelected] = React.useState('')
+  return (
+    <React.Fragment>
+      <DropdownMenuTrigger
+        handle={handle}
+        payload={{ name: 'Report' }}
+        className="rounded-lg border border-divider-subtle px-3 py-1.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      >
+        Report actions
+      </DropdownMenuTrigger>
+      <DropdownMenu handle={handle}>
+        {({ payload }) => (
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuGroupLabel>{payload?.name}</DropdownMenuGroupLabel>
+              <DropdownMenuItem onClick={() => setSelected(payload?.name ?? '')}>
+                Archive
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        )}
+      </DropdownMenu>
+      <output aria-label="Archived document">{selected}</output>
+    </React.Fragment>
+  )
+}
+
+export const DetachedTrigger: Story = {
+  render: () => <DetachedTriggerDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'Report actions' })
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const archive = await body.findByRole('menuitem', { name: 'Archive' })
+    await expect(archive).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getByRole('status', { name: 'Archived document' })).toHaveTextContent(
+      'Report',
+    )
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(trigger).toHaveFocus()
+  },
 }

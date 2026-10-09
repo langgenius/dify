@@ -3,15 +3,26 @@ import type { UpdateWorkflowNodesMapPayload } from '../index'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useSelectOrDelete } from '../../../hooks'
 import WorkflowVariableBlockComponent from '../component'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../index'
 import { WorkflowVariableBlockNode } from '../node'
+
+const render: typeof renderWithConsoleQuery = (ui, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [],
+    plugins: {},
+  })
+  return renderWithConsoleQuery(ui, { ...options, queryClient })
+}
 
 const { mockVarLabel, mockIsExceptionVariable, mockForcedVariableKind } = vi.hoisted(() => ({
   mockVarLabel: vi.fn(),

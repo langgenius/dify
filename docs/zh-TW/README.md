@@ -120,7 +120,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 ## 使用 Dify
 
 - **雲端服務 </br>**
-  我們提供 [Dify Cloud](https://dify.ai) 服務，任何人都可以零配置嘗試。它提供與自部署版本相同的所有功能，並在沙盒計劃中包含 200 次免費 GPT-4 調用。
+  我們提供 [Dify Cloud](https://cloud.dify.ai)，無需管理伺服器即可體驗 Dify。最新方案與用量額度請參閱[定價頁面](https://dify.ai/pricing)。
 
 - **自託管 Dify 社區版</br>**
   使用這份[快速指南](#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B)在您的環境中快速運行 Dify。
@@ -145,7 +145,7 @@ Dify 歡迎各種形式的貢獻：
 
 - **程式碼**：閱讀[貢獻指南](./CONTRIBUTING.md)，再瀏覽[適合新手的議題](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)。
 - **想法與意見**：發起或加入 [GitHub Discussions](https://github.com/langgenius/dify/discussions)。
-- **翻譯**：依照[國際化指南](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)新增或更新語言。
+- **翻譯**：依照[國際化指南](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)新增或更新語言。
 - **社群**：分享您建立的應用程式、協助其他使用者，並向更多人介紹 Dify。
 
 ### 貢獻者
@@ -168,7 +168,7 @@ Dify 歡迎各種形式的貢獻：
 
 ## 安全揭露
 
-為保護您的隱私，請避免在 GitHub 上發布安全性問題。請將您的問題發送至 security@dify.ai，我們將為您提供更詳細的答覆。
+請依照[安全政策](../../SECURITY.md)，透過 GitHub Security Advisories 私下回報漏洞，不要在公開議題、討論或 PR 中揭露。
 
 ## 授權條款
 

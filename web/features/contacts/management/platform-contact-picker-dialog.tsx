@@ -25,7 +25,7 @@ export function PlatformContactPickerDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
   const [search, setSearch] = useState('')

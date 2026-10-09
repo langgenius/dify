@@ -247,7 +247,7 @@ describe('ConfigContent', () => {
 
       // Assert
       expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
       expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
       expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     })
@@ -337,7 +337,7 @@ describe('ConfigContent', () => {
           selectedDatasets={selectedDatasets}
         />,
       )
-      await user.click(screen.getByText('common.modelProvider.rerankModel.key'))
+      await user.click(screen.getByText('modelProvider.modelProvider.rerankModel.key'))
 
       // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')

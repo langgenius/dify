@@ -3,17 +3,17 @@ import type { Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
 import FormContent from '../components/form-content'
 import FormContentPreview from '../components/form-content-preview'
@@ -54,7 +54,9 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
   id,
   config,
 }: HumanInputSharedPanelSectionsProps<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common', 'share'])
+  const actionsLabelId = useId()
+  const formContentLabelId = useId()
   const {
     readOnly,
     inputs,
@@ -72,10 +74,15 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
   } = config
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) =>
-      [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(
-        varPayload.type,
-      ),
+    filterVar: (varPayload: Var) => {
+      const supportedVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.secret,
+        VarType.arrayString,
+      ]
+      return supportedVariableTypes.includes(varPayload.type)
+    },
   })
   const [isExpandFormContent, { toggle: toggleExpandFormContent }] = useBoolean(false)
   const [isPreview, { toggle: togglePreview, setFalse: hidePreview }] = useBoolean(false)
@@ -86,7 +93,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
     handleUserActionAdd({
       id: `action_${index}`,
       title: t(($) => $[`${i18nPrefix}.userActions.defaultTitle`], {
-        ns: 'workflow',
+        ns: 'workflowHumanInput',
         index,
       }),
       button_style: UserActionButtonType.Default,
@@ -99,19 +106,23 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
         className={cn(
           'px-4 py-2',
           isExpandFormContent &&
-            'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
+            'fixed top-61 right-1 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
         )}
         style={{ width: isExpandFormContent ? nodePanelWidth : '100%' }}
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}
-            </div>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+            <div
+              id={formContentLabelId}
+              className="system-sm-semibold-uppercase text-text-secondary"
             >
-              {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflowHumanInput' })}
+            </div>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={formContentLabelId} />
+              <InfotipContent aria-labelledby={formContentLabelId}>
+                {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflowHumanInput' })}
+              </InfotipContent>
             </Infotip>
           </div>
           {!readOnly && (
@@ -127,7 +138,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
               >
                 <span className="i-ri-eye-line size-3.5" aria-hidden />
                 <span className="system-xs-medium">
-                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflowHumanInput' })}
                 </span>
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular" />
@@ -183,13 +194,14 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}
+            <div id={actionsLabelId} className="system-sm-semibold-uppercase text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflowHumanInput' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
-            >
-              {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={actionsLabelId} />
+              <InfotipContent aria-labelledby={actionsLabelId}>
+                {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflowHumanInput' })}
+              </InfotipContent>
             </Infotip>
           </div>
           {!readOnly && (
@@ -205,14 +217,16 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
         </div>
         {!inputs.user_actions.length && (
           <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-            {t(($) => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflowHumanInput' })}
           </div>
         )}
         {!!inputs.user_actions.length && (
           <div className="space-y-2">
             {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                key={action.id || index}
+                // Action IDs are editable; keep each input mounted while its ID changes.
+                // oxlint-disable-next-line react/no-array-index-key -- Editable action IDs cannot provide stable keys while typing.
+                key={`${id}-${index}`}
                 data={action}
                 onChange={(data) => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}

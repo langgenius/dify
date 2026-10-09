@@ -13,7 +13,7 @@ type Params = {
 }
 
 function checkTaskStatus() {
-  let nextStatus = TaskStatus.running
+  let nextStatus: TaskStatus = TaskStatus.running
   let isStop = false
 
   const doCheckStatus = async ({ taskId, pluginUniqueIdentifier }: Params) => {

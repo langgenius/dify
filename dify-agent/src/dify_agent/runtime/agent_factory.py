@@ -11,7 +11,7 @@ optional JSON Schema output layer share the same ``Agent`` construction path.
 """
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any, Final, cast
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import UserContent
@@ -19,6 +19,9 @@ from pydantic_ai.models import Model
 from pydantic_ai.output import OutputSpec
 
 from agenton.layers.types import PydanticAITool
+
+
+DIFY_AGENT_RUN_NAME: Final[str] = "dify-agent"
 
 
 def create_agent(
@@ -35,7 +38,13 @@ def create_agent(
     carries the Pydantic hooks needed for schema exposure and runtime validation,
     so agent construction does not need to register a separate validator.
     """
-    return cast(Agent[None, object], Agent(model, output_type=output_type, tools=tools))
+    # TODO: propagate roster name, so gen_ai.agent.name can pick that up
+    agent = cast(
+        Agent[None, object],
+        Agent(model, name=DIFY_AGENT_RUN_NAME, output_type=output_type, tools=tools),
+    )
+    agent.instrument = False
+    return agent
 
 
 def normalize_user_input(user_prompts: Sequence[UserContent]) -> str | Sequence[UserContent]:
@@ -45,4 +54,4 @@ def normalize_user_input(user_prompts: Sequence[UserContent]) -> str | Sequence[
     return list(user_prompts)
 
 
-__all__ = ["create_agent", "normalize_user_input"]
+__all__ = ["DIFY_AGENT_RUN_NAME", "create_agent", "normalize_user_input"]

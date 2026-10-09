@@ -1,7 +1,7 @@
-import type { Topic } from '../../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ClassItem from '../class-item'
+import ClassItem from '../../../_base/components/branch-list/class-item'
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
   __esModule: true,

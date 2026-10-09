@@ -2,11 +2,11 @@
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -22,9 +22,9 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ApiKeyTable } from './api-key-table'
 import { CreatedApiKeyDialog } from './created-api-key-dialog'
 import { DatasetScopeDialog } from './dataset-scope-dialog'
@@ -43,7 +43,7 @@ type ApiKeyModalProps = {
 }
 
 export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [deleteKeyId, setDeleteKeyId] = useState<string>()
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
@@ -211,7 +211,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
           />
           {isLoading && (
             <div className="flex min-h-24 items-center border-y border-divider-subtle px-6">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {!!apiKeys?.length && (
@@ -245,14 +245,14 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
               {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       <CreatedApiKeyDialog

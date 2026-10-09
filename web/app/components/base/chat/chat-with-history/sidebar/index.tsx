@@ -1,11 +1,12 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -23,12 +24,13 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
+  toggleButtonRef?: Ref<HTMLButtonElement>
   isPanel?: boolean
   panelVisible?: boolean
 }>
 
-const Sidebar = ({ isPanel }: Props) => {
-  const { t } = useTranslation()
+const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,
@@ -116,6 +118,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!isMobile && !isSidebarCollapsed && (
           <IconButton
+            ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
             size="lg"
             onClick={() => handleSidebarCollapse(true)}
@@ -200,14 +203,14 @@ const Sidebar = ({ isPanel }: Props) => {
                 {deleteConversationContent}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {showRename && (

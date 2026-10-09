@@ -145,7 +145,7 @@ export function translateLegacy(t: any) {
     it('should follow aliased translation factory bindings without trusting shadowed names', () => {
       // Arrange
       const source = `import { useTranslation as useI18n } from 'react-i18next'
-import { getTranslation as loadTranslation } from '@/i18n-config/server'
+import { getTranslation as loadTranslation } from '@/i18n/server'
 
 function renderUnrelated(useI18n: () => { t: (key: string) => string }) {
   const { t } = useI18n()
@@ -164,7 +164,7 @@ export async function Example() {
 
       // Assert
       expect(result.output).toBe(`import { useTranslation as useI18n } from 'react-i18next'
-import { getTranslation as loadTranslation } from '@/i18n-config/server'
+import { getTranslation as loadTranslation } from '@/i18n/server'
 
 function renderUnrelated(useI18n: () => { t: (key: string) => string }) {
   const { t } = useI18n()

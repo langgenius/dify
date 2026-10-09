@@ -5,7 +5,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { isToolAuthorizationRequired } from '@/app/components/workflow/nodes/tool/auth'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 export const getToolCheckParams = (
   toolData: ToolNodeType,
@@ -21,7 +21,7 @@ export const getToolCheckParams = (
       : provider_type === CollectionType.custom
         ? customTools
         : workflowTools
-  const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+  const currCollection = currentTools.find((item) => matchesProviderReference(item, provider_id))
   const currTool = currCollection?.tools.find((tool) => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const toolInputVarSchema = formSchemas.filter((item) => item.form === 'llm')

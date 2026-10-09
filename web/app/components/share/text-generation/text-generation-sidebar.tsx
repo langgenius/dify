@@ -70,7 +70,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   textToSpeechConfig,
   visionConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {

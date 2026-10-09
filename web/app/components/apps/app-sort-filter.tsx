@@ -21,7 +21,7 @@ type AppSortFilterProps = {
 }
 
 export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const options = useMemo(
     () =>

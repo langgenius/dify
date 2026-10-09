@@ -50,7 +50,9 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
+    const stringVariableTypes: readonly VarType[] = [VarType.string]
+
+    return stringVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleInputVarChange = useCallback(
@@ -190,7 +192,9 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    const scalarVariableTypes: readonly VarType[] = [VarType.number, VarType.string]
+
+    return scalarVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {

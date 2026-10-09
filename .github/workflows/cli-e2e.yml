@@ -78,7 +78,7 @@ jobs:
       ws2_app_id: ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -87,10 +87,9 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
-          package_json_field: packageManager
-          run_install: false
+          install: false
 
       - name: Install CLI dependencies
         working-directory: cli
@@ -122,7 +121,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -131,11 +130,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run framework + output + error-handling
@@ -172,7 +166,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -181,11 +175,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run discovery suite
@@ -238,7 +227,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -247,11 +236,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: 'Run run/${{ matrix.name }}'
@@ -282,7 +266,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-run-${{ matrix.name }}-${{ github.run_id }}
           path: cli/test-results/
@@ -303,7 +287,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -312,11 +296,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run auth/login + status + whoami
@@ -362,7 +341,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -371,11 +350,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run use / devices / logout / agent (serial)
@@ -422,7 +396,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-last-${{ github.run_id }}
           path: cli/test-results/

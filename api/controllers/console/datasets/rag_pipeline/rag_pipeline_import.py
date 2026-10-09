@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleDataResponse
+from controllers.common.rbac import DatasetByPipeline, RBACCheck, Workspace
 from controllers.common.schema import (
     JsonResponseWithStatus,
     query_params_from_model,
@@ -13,7 +14,6 @@ from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -81,9 +81,7 @@ class RagPipelineImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @with_current_user
     @model_validate(RagPipelineImportPayload)
     def post(self, req_data: RagPipelineImportPayload, current_user: Account) -> JsonResponseWithStatus:
@@ -128,9 +126,7 @@ class RagPipelineImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @with_current_user
     def post(self, current_user: Account, import_id: str) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
@@ -160,7 +156,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetByPipeline()))
     def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
@@ -178,7 +174,7 @@ class RagPipelineExportApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_IMPORT_EXPORT_DSL, DatasetByPipeline()))
     @model_validate(IncludeSecretQuery)
     def get(self, req_data: IncludeSecretQuery, pipeline: Pipeline) -> JsonResponseWithStatus:
         # Add include_secret params

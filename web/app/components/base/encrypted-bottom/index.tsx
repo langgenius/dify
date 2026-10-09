@@ -16,7 +16,7 @@ const DEFAULT_FRONT_KEY: EncryptedKey = 'provider.encrypted.front'
 const DEFAULT_BACK_KEY: EncryptedKey = 'provider.encrypted.back'
 
 export const EncryptedBottom = (props: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { frontTextKey = DEFAULT_FRONT_KEY, backTextKey = DEFAULT_BACK_KEY, className } = props
 
   return (

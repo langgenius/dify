@@ -1,14 +1,14 @@
 import type { Area } from 'react-easy-crop'
-import { createImage } from '@/app/components/base/app-icon-picker/utils'
+import { createImage } from '@/app/components/base/icon-picker/image-crop'
 import {
   createAvatarImageFile,
   createCroppedAvatarImage,
   getBoundedAvatarImageSize,
 } from '../avatar-image'
 
-vi.mock('@/app/components/base/app-icon-picker/utils', async (importOriginal) => {
+vi.mock('@/app/components/base/icon-picker/image-crop', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('@/app/components/base/app-icon-picker/utils')>()
+    await importOriginal<typeof import('@/app/components/base/icon-picker/image-crop')>()
   return {
     ...actual,
     createImage: vi.fn(),

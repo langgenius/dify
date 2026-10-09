@@ -32,7 +32,7 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
     timeout: 36,
     timeout_unit: 'hour',
   },
-  checkValid(payload, t: TFunction<'workflow'>) {
+  checkValid(payload, t: TFunction<['workflow']>) {
     let errorMessage = ''
     if (payload.version !== '2')
       errorMessage = t(($) => $['nodes.humanInputV2.error.version'], { ns: 'workflow' })

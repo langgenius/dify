@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "रद्द करें",
+  "operation.now": "अब",
+  "operation.ok": "ठीक है",
+  "operation.pickDate": "तारीख़ चुनें",
+  "picker.chooseMonthAndYear": "महीना और वर्ष चुनें",
+  "picker.endDate": "समाप्ति तिथि",
+  "picker.hour": "घंटा",
+  "picker.minute": "मिनट",
+  "picker.month": "महीना",
+  "picker.nextMonth": "अगला महीना",
+  "picker.period": "पूर्वाह्न/अपराह्न",
+  "picker.previousMonth": "पिछला महीना",
+  "picker.required": "कोई मान चुनें।",
+  "picker.requiredLabel": "आवश्यक",
+  "picker.startDate": "आरंभ तिथि",
+  "picker.unavailable": "यह तारीख या समय उपलब्ध नहीं है।",
+  "picker.year": "वर्ष",
+  "title.pickTime": "समय चुनें"
+}

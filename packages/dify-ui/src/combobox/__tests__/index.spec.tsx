@@ -7,9 +7,9 @@ import {
   ComboboxChipRemove,
   ComboboxChips,
   ComboboxClear,
+  ComboboxCollection,
   ComboboxEmpty,
   ComboboxGroup,
-  ComboboxGroupLabel,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxInputTrigger,
@@ -21,11 +21,58 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
-  ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
 } from '../index'
+
+type ResourceOption = {
+  id: string
+  label: string
+}
+
+const resourceOptions: ResourceOption[] = [
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'dataset', label: 'Dataset' },
+]
+const resourceItems = createComboboxItems(resourceOptions, {
+  getValue: (item) => item.id,
+  getLabel: (item) => item.label,
+})
+
+function ComboboxTypeExamples() {
+  return (
+    <React.Fragment>
+      <Combobox<string, true, ResourceOption>
+        multiple
+        items={resourceItems}
+        value={['workflow']}
+        filter={(item, query) => item.label.includes(query)}
+        onValueChange={(value) => {
+          const selectedIds: string[] = value
+          void selectedIds
+        }}
+      >
+        <ComboboxValue<string, true>>{(value) => value?.join(', ') ?? ''}</ComboboxValue>
+        <ComboboxList<ResourceOption>>
+          {(item) => <ComboboxItem<string> value={item.id}>{item.label}</ComboboxItem>}
+        </ComboboxList>
+        <ComboboxGroup<ResourceOption> items={resourceOptions}>
+          <ComboboxCollection<ResourceOption>>
+            {(item) => <ComboboxItem<string> value={item.id}>{item.label}</ComboboxItem>}
+          </ComboboxCollection>
+        </ComboboxGroup>
+        {/* @ts-expect-error item anatomy accepts the derived string value, not the source object */}
+        <ComboboxItem<string> value={resourceOptions[0]} />
+      </Combobox>
+      {/* @ts-expect-error root value uses the derived string domain, not the source object */}
+      <Combobox<string, false, ResourceOption> items={resourceItems} value={resourceOptions[0]} />
+    </React.Fragment>
+  )
+}
+
+void ComboboxTypeExamples
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -113,6 +160,33 @@ describe('Combobox wrappers', () => {
         .element(screen.getByRole('combobox', { name: 'Resource type' }))
         .toBeInTheDocument()
     })
+
+    it('should expose readonly styling state while allowing options to be inspected', async () => {
+      const screen = await render(
+        <Combobox readOnly defaultValue="workflow" items={['workflow', 'dataset']}>
+          <ComboboxTrigger aria-label="Resource type">
+            <ComboboxValue />
+          </ComboboxTrigger>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Resource type">
+                <ComboboxList>
+                  <ComboboxItem value="workflow">Workflow</ComboboxItem>
+                  <ComboboxItem value="dataset">Dataset</ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
+        </Combobox>,
+      )
+      const trigger = screen.getByRole('combobox', { name: 'Resource type' })
+
+      await expect.element(trigger).toHaveAttribute('data-readonly')
+      await trigger.click()
+      await expect.element(screen.getByRole('option', { name: 'Dataset' })).toBeVisible()
+      await screen.getByRole('option', { name: 'Dataset' }).click()
+      await expect.element(trigger).toHaveTextContent('workflow')
+    })
   })
 
   describe('Input group and controls', () => {
@@ -130,13 +204,13 @@ describe('Combobox wrappers', () => {
         .not.toBe(restingBoxShadow)
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderInputCombobox({
         children: (
           <ComboboxInputGroup>
             <ComboboxInput
               aria-label="Search resources"
-              className="custom-input"
+
               placeholder="Find a resource"
               required
             />
@@ -153,9 +227,6 @@ describe('Combobox wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search resources' }))
         .toBeRequired()
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search resources' }))
-        .toHaveClass('custom-input')
     })
 
     it('should not inject input-only attributes into a custom textarea', async () => {
@@ -206,6 +277,35 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Popup anatomy and options', () => {
+    it('should render source objects while exposing primitive selected values', async () => {
+      const onValueChange = vi.fn()
+      const screen = await render(
+        <Combobox<string, false, ResourceOption>
+          defaultOpen
+          items={resourceItems}
+          defaultValue="workflow"
+          filter={(item, query) => item.label.toLowerCase().includes(query.toLowerCase())}
+          onValueChange={(nextValue) => onValueChange(nextValue)}
+        >
+          <ComboboxInput aria-label="Filter resources" />
+          <ComboboxList<ResourceOption>>
+            {(item) => (
+              <ComboboxItem<string> key={item.id} value={item.id}>
+                {item.label}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </Combobox>,
+      )
+
+      await expect
+        .element(screen.getByRole('option', { name: 'Workflow' }))
+        .toHaveAttribute('aria-selected', 'true')
+      await userEvent.click(screen.getByRole('option', { name: 'Dataset' }))
+
+      expect(onValueChange).toHaveBeenCalledWith('dataset')
+    })
+
     it('should use default overlay placement', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 
@@ -298,43 +398,6 @@ describe('Combobox wrappers', () => {
       expect(status.element().getBoundingClientRect().height).toBe(0)
     })
 
-    it('should forward custom classes to group label separator item text and indicator', async () => {
-      const screen = await renderWithSafeViewport(
-        <Combobox open defaultValue="workflow" items={['workflow']}>
-          <ComboboxTrigger aria-label="Resource type">
-            <ComboboxValue />
-          </ComboboxTrigger>
-          <ComboboxPortal>
-            <ComboboxPositioner>
-              <ComboboxPopup aria-label="Choose a resource">
-                <ComboboxInput aria-label="Filter resources" />
-                <ComboboxList data-testid="custom-list">
-                  <ComboboxGroup items={['workflow']}>
-                    <ComboboxGroupLabel className="custom-label">Resources</ComboboxGroupLabel>
-                    <ComboboxSeparator className="custom-separator" data-testid="separator" />
-                    <ComboboxItem value="workflow" className="custom-item">
-                      <ComboboxItemText className="custom-text">Workflow</ComboboxItemText>
-                      <ComboboxItemIndicator className="custom-indicator" data-testid="indicator" />
-                    </ComboboxItem>
-                  </ComboboxGroup>
-                </ComboboxList>
-              </ComboboxPopup>
-            </ComboboxPositioner>
-          </ComboboxPortal>
-        </Combobox>,
-      )
-
-      await expect.element(screen.getByText('Resources')).toHaveClass('custom-label')
-      await expect.element(screen.getByTestId('separator')).toHaveClass('custom-separator')
-      await expect
-        .element(screen.getByRole('option', { name: 'Workflow' }))
-        .toHaveClass('custom-item')
-      await expect
-        .element(screen.getByTestId('custom-list').getByText('Workflow'))
-        .toHaveClass('custom-text')
-      await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
-    })
-
     it('should navigate function-rendered items with arrow keys', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox defaultValue="workflow" items={['workflow', 'dataset', 'app']}>
@@ -420,16 +483,16 @@ describe('Combobox wrappers', () => {
       await expect.element(screen.getByText('No reviewers selected')).toBeInTheDocument()
     })
 
-    it('should render chip wrappers and default remove button label', async () => {
+    it('should give chip remove buttons a default accessible name and non-submit type', async () => {
       const screen = await renderWithSafeViewport(
         <Combobox multiple defaultValue={['maya']} items={['maya', 'nora']}>
           <ComboboxInputGroup>
-            <ComboboxChips className="custom-chips" data-testid="chips">
+            <ComboboxChips data-testid="chips">
               <ComboboxValue<string, true>>
                 {(selectedValue) => (
                   <React.Fragment>
                     {selectedValue?.map((item) => (
-                      <ComboboxChip key={item} className="custom-chip">
+                      <ComboboxChip key={item}>
                         <span>{item}</span>
                         <ComboboxChipRemove data-testid="remove-chip" />
                       </ComboboxChip>
@@ -443,10 +506,6 @@ describe('Combobox wrappers', () => {
         </Combobox>,
       )
 
-      await expect.element(screen.getByTestId('chips')).toHaveClass('custom-chips')
-      await expect
-        .element(screen.getByText('maya').element().parentElement!)
-        .toHaveClass('custom-chip')
       await expect
         .element(screen.getByRole('button', { name: 'Remove selected item' }))
         .toHaveAttribute('type', 'button')

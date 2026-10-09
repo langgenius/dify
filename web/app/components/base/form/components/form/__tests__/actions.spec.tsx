@@ -60,6 +60,14 @@ describe('Actions', () => {
     expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
   })
 
+  it('should keep the pending submit button focusable when canSubmit includes submitting state', () => {
+    renderWithForm({ canSubmit: false, isSubmitting: true })
+    const submitButton = screen.getByRole('button', { name: 'common.operation.submit' })
+
+    expect(submitButton).not.toBeDisabled()
+    expect(submitButton).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('should call form submit when users click submit button', async () => {
     const submitSpy = vi.fn()
     renderWithForm({ onSubmit: submitSpy })

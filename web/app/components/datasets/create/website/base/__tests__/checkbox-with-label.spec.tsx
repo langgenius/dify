@@ -23,12 +23,12 @@ describe('CheckboxWithLabel', () => {
         tooltip="Help text"
       />,
     )
-    expect(screen.getByLabelText('Help text')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Option' })).toBeInTheDocument()
   })
 
   it('should not render tooltip when not provided', () => {
     render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Option" />)
-    expect(screen.queryByLabelText('Help text')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Option' })).not.toBeInTheDocument()
   })
 
   it('should toggle checked state on checkbox click', () => {

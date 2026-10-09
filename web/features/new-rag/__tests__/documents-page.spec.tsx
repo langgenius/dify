@@ -143,7 +143,7 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
+vi.mock('@/app/notifications', () => ({ toast: toastMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
@@ -181,7 +181,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: getTaskSnapshot,
@@ -442,7 +442,7 @@ describe('DocumentsPage', () => {
       query: { limit: 100 },
     })
     expect(sourceOptions?.getNextPageParam({ nextCursor: 'next' })).toBe('next')
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('restores document search and status filters from the URL', async () => {
@@ -1201,7 +1201,7 @@ describe('DocumentsPage', () => {
 
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
   })
 
@@ -1912,7 +1912,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
-    expect(within(panel).getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(within(panel).getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(
       within(panel).queryByText('dataset.newKnowledge.noBackgroundTasks'),
     ).not.toBeInTheDocument()
@@ -5294,10 +5294,6 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
 
     expect(await screen.findByText('dataset.newKnowledge.taskActionFailed')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toHaveAttribute(
-      'aria-busy',
-      'false',
-    )
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
@@ -5399,7 +5395,7 @@ describe('DocumentsPage', () => {
     rendered.unmount()
   })
 
-  it('announces upload and re-index operations as busy', async () => {
+  it('keeps upload and re-index actions focusable and unavailable while pending', async () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -5409,7 +5405,7 @@ describe('DocumentsPage', () => {
     )
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    ).toHaveAttribute('aria-disabled', 'true')
     emptyPage.unmount()
 
     reindexMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
@@ -5419,7 +5415,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('locks uploads after a write mutation reveals revoked permission', async () => {

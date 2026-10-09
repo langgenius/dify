@@ -1,13 +1,21 @@
+import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
+import type { TFunction } from 'i18next'
 import type { ModerationConfig } from '@/models/debug'
 import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
+import { buildConfigurationDatasetConfigs } from '@/app/components/app/configuration/hooks/configuration-lifecycle/dataset'
+import { createPublishHandler } from '@/app/components/app/configuration/hooks/configuration-lifecycle/publish'
+import { buildPublishedConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/published-config'
+import { createFeaturesStore } from '@/app/components/base/features/store'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },
@@ -974,6 +982,144 @@ describe('ModerationSettingModal', () => {
 
     expect(screen.getByText(/apiBasedExtension\.link/))!.toBeInTheDocument()
   })
+
+  it.each<{
+    scenario: string
+    initialConfig: NonNullable<ModerationConfig['config']>
+    clear: boolean
+    expectedValue?: AppConfigJsonValue
+    displayedValue?: string
+  }>([
+    { scenario: 'without editing an absent optional value', initialConfig: {}, clear: false },
+    {
+      scenario: 'after explicitly clearing an optional value',
+      initialConfig: { optional_token: 'old-token' },
+      clear: true,
+      expectedValue: '',
+    },
+    {
+      scenario: 'without editing a null extension value',
+      initialConfig: { optional_token: null },
+      clear: false,
+      expectedValue: null,
+    },
+    {
+      scenario: 'without editing a false extension value',
+      initialConfig: { optional_token: false },
+      clear: false,
+      expectedValue: false,
+    },
+    {
+      scenario: 'without editing a zero extension value',
+      initialConfig: { optional_token: 0 },
+      clear: false,
+      expectedValue: 0,
+      displayedValue: '0',
+    },
+    {
+      scenario: 'without editing a numeric extension value',
+      initialConfig: { optional_token: 42 },
+      clear: false,
+      expectedValue: 42,
+      displayedValue: '42',
+    },
+  ])(
+    'publishes a saved custom moderation configuration $scenario',
+    async ({ initialConfig, clear, expectedValue, displayedValue }) => {
+      const user = userEvent.setup()
+      mockCodeBasedExtensions = {
+        data: {
+          data: [
+            {
+              name: 'custom-ext',
+              label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
+              form_schema: [
+                {
+                  variable: 'optional_token',
+                  label: { 'en-US': 'Optional token', 'zh-Hans': '可选令牌' },
+                  type: 'text-input',
+                  required: false,
+                  default: '',
+                  placeholder: 'Optional token',
+                  options: [],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      const featuresStore = createFeaturesStore()
+      await renderModal(
+        <ModerationSettingModal
+          data={{
+            enabled: true,
+            type: 'custom-ext',
+            config: {
+              ...initialConfig,
+              inputs_config: { enabled: true, preset_response: 'Blocked' },
+              outputs_config: { enabled: false },
+            },
+          }}
+          onCancel={vi.fn()}
+          onSave={(moderation) => {
+            const { features, setFeatures } = featuresStore.getState()
+            setFeatures({ ...features, moderation })
+          }}
+        />,
+      )
+      const optionalToken = screen.getByPlaceholderText('Optional token')
+      if (clear) await user.clear(optionalToken)
+      else expect(optionalToken).toHaveValue(displayedValue ?? '')
+
+      if (clear) await user.keyboard('{Enter}')
+      else await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      const backendModelConfig = createAppModelConfigFixture({
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+      })
+      const config = buildPublishedConfig({
+        backendModelConfig,
+        collectionList: [],
+        datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
+        mode: AppModeEnum.CHAT,
+        nextDataSets: [],
+      })
+      const publish = createPublishHandler({
+        appId: 'app-1',
+        chatPromptConfig: config.chatPromptConfig,
+        completionParamsState: config.completionParams,
+        completionPromptConfig: config.completionPromptConfig,
+        contextVarEmpty: false,
+        dataSets: [],
+        datasetConfigs: config.datasetConfigs,
+        externalDataToolsConfig: [],
+        hasSetBlockStatus: { history: true, query: true },
+        isAdvancedMode: false,
+        isFunctionCall: false,
+        mode: AppModeEnum.CHAT,
+        modelConfig: config.modelConfig,
+        promptEmpty: false,
+        promptMode: 'simple',
+        resolvedModelModeType: ModelModeType.chat,
+        setCanReturnToSimpleMode: vi.fn(),
+        setPublishedConfig: vi.fn(),
+        t: withSelectorKey((key: string) => key) as TFunction<['appDebug', 'common']>,
+      })
+      const updateModelConfig = vi.fn<Parameters<typeof publish>[0]>().mockResolvedValue(undefined)
+      await publish(updateModelConfig, undefined, featuresStore.getState().features)
+
+      expect(updateModelConfig).toHaveBeenCalledTimes(1)
+      const moderation = updateModelConfig.mock.calls[0]?.[0].body.sensitive_word_avoidance
+      expect(moderation).toMatchObject({
+        enabled: true,
+        type: 'custom-ext',
+        config: { inputs_config: { enabled: true, preset_response: 'Blocked' } },
+      })
+      if (expectedValue !== undefined)
+        expect(moderation?.config).toHaveProperty('optional_token', expectedValue)
+      else expect(moderation?.config).not.toHaveProperty('optional_token')
+    },
+  )
 
   it('should fallback missing inputs_config to disabled in formatted save data', async () => {
     await renderModal(

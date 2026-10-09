@@ -24,7 +24,7 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     output_type: VarType.any,
     variables: [],
   },
-  checkValid(payload: VariableAssignerNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: VariableAssignerNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { variables, advanced_settings } = payload
     const { group_enabled = false, groups = [] } = advanced_settings || {}

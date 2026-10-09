@@ -7,7 +7,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import DatasetDetailContext from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -51,10 +51,10 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
     return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
   if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
 
-  return t(($) => $['menus.datasets'], { ns: 'common' })
+  return t(($) => $['menus.datasets'], { ns: 'navigation' })
 }
 
 const isDocumentDetailPath = (pathname: string) =>
@@ -86,7 +86,7 @@ const getDatasetRedirectionPath = (
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { children, datasetId } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -132,7 +132,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
       (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
   const pageTitle = datasetDetailPageTitle(pathname, t)
-  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')
@@ -153,7 +153,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     shouldRedirectUnauthorizedRoute
   const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
-    <Loading type="app" />
+    <LoadingPlaceholder className="h-full" />
   ) : (
     <div
       className={cn(

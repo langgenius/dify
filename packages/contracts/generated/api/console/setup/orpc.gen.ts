@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetSetupResponse, zPostSetupBody, zPostSetupResponse } from './zod.gen'
+import { zGetSetupResponse, zPostSetupBody, zPostSetupResponse } from './zod.gen.ts'
 
 /**
  * Get system setup status.

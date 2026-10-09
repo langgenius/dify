@@ -1,6 +1,6 @@
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback } from 'react'
@@ -30,14 +30,16 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [
+    const arrayVariableTypes: readonly VarType[] = [
       VarType.array,
       VarType.arrayString,
       VarType.arrayBoolean,
       VarType.arrayNumber,
       VarType.arrayObject,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return arrayVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback(

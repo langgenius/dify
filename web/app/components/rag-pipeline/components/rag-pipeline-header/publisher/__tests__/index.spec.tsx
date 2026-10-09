@@ -1,13 +1,16 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
@@ -15,31 +18,6 @@ vi.mock('@/features/system-features/state', async () => {
     deploymentEditionAtom: atom('CLOUD'),
   }
 })
-
-const hotkeyHandlers = vi.hoisted(() => new Map<string, (event: KeyboardEvent) => void>())
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: (event: KeyboardEvent) => void) => {
-      hotkeyHandlers.set(hotkey, handler)
-    },
-  }
-})
-
-const triggerHotkey = (hotkey: string) => {
-  const handler = hotkeyHandlers.get(hotkey)
-  if (!handler) return
-
-  act(() => {
-    handler({ preventDefault: vi.fn() } as unknown as KeyboardEvent)
-  })
-}
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ datasetId: 'test-dataset-id' }),
-}))
 
 vi.mock('@/next/link', () => ({
   default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
@@ -119,27 +97,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const mockSetShowPricingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ): T => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAllowPublishAsCustomKnowledgePipelineTemplate:
-      mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-  }),
-  useProviderContextSelector: <T,>(
-    selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T,
-  ): T =>
-    selector({
-      isAllowPublishAsCustomKnowledgePipelineTemplate:
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-    }),
-}))
+let publishEnabled = true
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -148,7 +106,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -246,6 +204,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        staleTime: Infinity,
       },
     },
   })
@@ -254,18 +213,31 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ datasetId: 'test-dataset-id' }) }))
+
+function publishWithKeyboard() {
+  const target = screen.getByRole('button', { name: /workflow.common.publish(?:Update|ed)?/i })
+  fireEvent.keyDown(target, { key: 'P', ctrlKey: true, shiftKey: true })
+  fireEvent.keyUp(target, { key: 'P', ctrlKey: true, shiftKey: true })
 }
 
 describe('publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyHandlers.clear()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
     mockPipelineId.mockReturnValue('test-pipeline-id')
-    mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+    publishEnabled = true
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockDatasetPermissionKeys = ['dataset.acl.use']
     mockDatasetMaintainer = undefined
@@ -360,7 +332,7 @@ describe('publisher', () => {
 
       it('should close the outer popover before opening publish-as follow-up flow', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -374,7 +346,9 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(screen.queryByText('pipeline.common.publishAs')).not.toBeInTheDocument()
         })
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
     })
   })
@@ -429,7 +403,7 @@ describe('publisher', () => {
 
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
 
         renderWithQueryClient(<Popup />)
 
@@ -438,7 +412,7 @@ describe('publisher', () => {
 
       it('should not show premium badge when publish as template is allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
 
         renderWithQueryClient(<Popup />)
 
@@ -500,7 +474,7 @@ describe('publisher', () => {
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Popup />)
 
         const publishAsButton = screen
@@ -508,12 +482,14 @@ describe('publisher', () => {
           .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
 
       it('should show publish as knowledge pipeline modal when permitted', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -530,7 +506,7 @@ describe('publisher', () => {
 
       it('should close publish as knowledge pipeline modal when cancel is clicked', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -851,7 +827,7 @@ describe('publisher', () => {
 
     describe('Prop Variations', () => {
       it('should display correct width when permission is allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
@@ -859,7 +835,7 @@ describe('publisher', () => {
       })
 
       it('should display correct width when permission is not allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
@@ -906,7 +882,7 @@ describe('publisher', () => {
         mockPublishWorkflow.mockResolvedValue({ created_at: 1700100000 })
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        publishWithKeyboard()
 
         await waitFor(() => {
           expect(mockPublishWorkflow).toHaveBeenCalled()
@@ -929,7 +905,7 @@ describe('publisher', () => {
 
         vi.clearAllMocks()
 
-        triggerHotkey('Mod+Shift+P')
+        publishWithKeyboard()
 
         expect(mockPublishWorkflow).not.toHaveBeenCalled()
       })
@@ -938,7 +914,7 @@ describe('publisher', () => {
         mockPublishedAt.mockReturnValue(null)
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        publishWithKeyboard()
 
         await waitFor(() => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
@@ -956,7 +932,7 @@ describe('publisher', () => {
         )
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        publishWithKeyboard()
 
         await waitFor(() => {
           const publishButton = screen.getByRole('button', {
@@ -965,7 +941,7 @@ describe('publisher', () => {
           expect(publishButton).toBeDisabled()
         })
 
-        triggerHotkey('Mod+Shift+P')
+        publishWithKeyboard()
 
         expect(mockPublishWorkflow).toHaveBeenCalledTimes(1)
 

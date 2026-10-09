@@ -5,7 +5,7 @@ import * as z from 'zod'
 import {
   zPostRuleStructuredOutputGenerateBody,
   zPostRuleStructuredOutputGenerateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Generate structured output rules using LLM

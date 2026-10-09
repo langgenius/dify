@@ -1,5 +1,3 @@
-import { ChevronRight } from '../../icons/src/vender/line/arrows'
-
 export default function ContentSwitch({
   count,
   currentIndex,
@@ -25,7 +23,10 @@ export default function ContentSwitch({
           disabled={prevDisabled}
           onClick={() => !prevDisabled && switchSibling('prev')}
         >
-          <ChevronRight className="h-3.5 w-3.5 rotate-180 text-text-primary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5 rotate-180 text-text-primary"
+          />
         </button>
         <span className="px-2 text-xs text-text-primary">
           {currentIndex + 1} /{count}
@@ -37,7 +38,10 @@ export default function ContentSwitch({
           disabled={nextDisabled}
           onClick={() => !nextDisabled && switchSibling('next')}
         >
-          <ChevronRight className="h-3.5 w-3.5 text-text-primary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5 text-text-primary"
+          />
         </button>
       </div>
     )

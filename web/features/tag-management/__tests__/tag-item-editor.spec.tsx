@@ -44,7 +44,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       byTagId: {
@@ -70,7 +70,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
 }))
 
@@ -113,11 +113,13 @@ describe('TagItemEditor', () => {
 
   // Rendering behavior for initial tag display.
   describe('Rendering', () => {
-    it('should render tag name and binding count', () => {
+    it('shows a resource-neutral explanation for the binding count', async () => {
+      const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
       expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
+      await user.hover(screen.getByText('3'))
+      expect(await screen.findByText('common.tag.boundItems')).toBeVisible()
     })
   })
 

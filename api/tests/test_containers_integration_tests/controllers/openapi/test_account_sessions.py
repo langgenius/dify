@@ -1,24 +1,30 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
-from uuid import uuid4
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi._models import SessionListQuery
 from controllers.openapi.account import (
     AccountSessionByIdApi,
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from extensions.ext_redis import redis_client
 from models import Account
-from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
-from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, auth_for
+from models.oauth import OAuthAccessToken
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
+
+
+@dataclass(frozen=True, slots=True)
+class _MintResult:
+    token_id: UUID
 
 
 def _mint_account_token(
@@ -27,19 +33,21 @@ def _mint_account_token(
     *,
     client_id: str = "integration-cli",
     device_label: str = "Test Device",
-) -> MintResult:
+) -> _MintResult:
     """Mint a real, persisted ``dfoa_`` access token for ``account``."""
-    return mint_oauth_token(
-        redis_client,
+    record = OAuthAccessToken(
         subject_email=account.email,
-        subject_issuer=None,
+        subject_issuer="dify:account",
         account_id=str(account.id),
         client_id=client_id,
         device_label=device_label,
-        prefix=PREFIX_OAUTH_ACCOUNT,
-        ttl_days=14,
-        session=db_session,
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
+        token_hash=f"integration-{uuid4().hex}",
+        expires_at=datetime.now(UTC) + timedelta(days=14),
     )
+    db_session.add(record)
+    db_session.commit()
+    return _MintResult(token_id=UUID(str(record.id)))
 
 
 class TestSessionList:
@@ -51,18 +59,16 @@ class TestSessionList:
 
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                    query=SessionListQuery(),
-                )
+            result = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
+                query=SessionListQuery(),
+            )
 
         assert result.total == 1
         row = result.data[0]
         assert row.id == str(mint.token_id)
-        assert row.prefix == PREFIX_OAUTH_ACCOUNT
+        assert row.prefix == TokenType.OAUTH_ACCOUNT.prefix
         assert row.device_label == "Laptop"
 
     def test_excludes_other_accounts_sessions(
@@ -76,13 +82,11 @@ class TestSessionList:
 
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mine.token_id):
-                result = unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mine.token_id),
-                    query=SessionListQuery(),
-                )
+            result = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, token_id=mine.token_id),
+                query=SessionListQuery(),
+            )
 
         assert {row.id for row in result.data} == {str(mine.token_id)}
 
@@ -96,23 +100,20 @@ class TestSessionRevoke:
 
         revoke_api = AccountSessionsSelfApi()
         with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(revoke_api.delete)(
-                    revoke_api, db_session_with_containers, auth_data=auth_for(account, token_id=mint.token_id)
-                )
+            result = revoke_api.delete.__handler__(
+                revoke_api, context_for(account, session=db_session_with_containers, token_id=mint.token_id)
+            )
 
         assert result.status == "revoked"
 
         # Revocation persisted: the real list path no longer returns it.
         list_api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            with account_auth_context(account, token_id=mint.token_id):
-                listing = unwrap(list_api.get)(
-                    list_api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                    query=SessionListQuery(),
-                )
+            listing = list_api.get.__handler__(
+                list_api,
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
+                query=SessionListQuery(),
+            )
         assert listing.total == 0
 
     def test_revoke_by_id_for_own_session(
@@ -123,14 +124,14 @@ class TestSessionRevoke:
         session_id = str(mint.token_id)
 
         api = AccountSessionByIdApi()
+        ctx = context_for(
+            account,
+            session=db_session_with_containers,
+            view_args={"session_id": session_id},
+            token_id=mint.token_id,
+        )
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.delete)(
-                    api,
-                    db_session_with_containers,
-                    session_id=session_id,
-                    auth_data=auth_for(account, token_id=mint.token_id),
-                )
+            result = api.delete.__handler__(api, ctx, session_id)
 
         assert result.status == "revoked"
 
@@ -138,19 +139,15 @@ class TestSessionRevoke:
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
     ) -> None:
         """A token id owned by another subject must be indistinguishable from a
-        missing one (404), so token ids can't be probed across subjects."""
+        missing one (404), so token ids can't be probed across subjects. The
+        access service makes that call; the handler only maps it to 404."""
         owner = make_account()
         outsider = make_account()
         foreign = _mint_account_token(db_session_with_containers, owner)
 
-        api = AccountSessionByIdApi()
         session_id = str(foreign.token_id)
+        ctx = context_for(outsider, session=db_session_with_containers, view_args={"session_id": session_id})
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            with account_auth_context(outsider, token_id=uuid4()):
-                with pytest.raises(NotFound):
-                    unwrap(api.delete)(
-                        api,
-                        db_session_with_containers,
-                        session_id=session_id,
-                        auth_data=auth_for(outsider, token_id=uuid4()),
-                    )
+            api = AccountSessionByIdApi()
+            with pytest.raises(NotFound):
+                api.delete.__handler__(api, ctx, session_id)

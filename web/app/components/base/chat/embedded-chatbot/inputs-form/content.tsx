@@ -24,7 +24,7 @@ type Props = Readonly<{
 }>
 
 const InputsFormContent = ({ showTip }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share', 'workflow'])
   const baseId = useId()
   const {
     appParams,

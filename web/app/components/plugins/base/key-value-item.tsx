@@ -21,7 +21,7 @@ function KeyValueItem({
   maskedValue,
   valueMaxWidthClassName = 'max-w-[162px]',
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isCopied, setIsCopied] = useState(false)
   const labelId = useId()
   const handleCopy = useCallback(() => {

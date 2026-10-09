@@ -298,7 +298,7 @@ export const ReadOnly: Story = {
   ),
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
@@ -336,7 +336,7 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
-const MultipleControlledDemo = () => {
+function MultipleControlledDemo() {
   const [value, setValue] = React.useState<DeploymentRegion[]>(['us-east', 'eu-west'])
 
   return (

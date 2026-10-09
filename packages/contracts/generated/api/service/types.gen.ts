@@ -585,7 +585,6 @@ export type DatasetDetailResponse = {
   maintainer?: string | null
   name: string
   permission: string
-  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -626,7 +625,6 @@ export type DatasetDetailWithPartialMembersResponse = {
   name: string
   partial_member_list?: Array<string> | null
   permission: string
-  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -1801,8 +1799,10 @@ export type PipelineUploadFileResponse = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+  id: PreProcessingRuleKey
 }
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
 export type ProcessRule = {
   mode: ProcessRuleMode
@@ -1879,17 +1879,26 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
   document_id?: string | null
   document_name?: string | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
   message_id?: string
+  page?: number | null
   position: number
+  retriever_from?: string | null
   score?: number | null
   segment_id?: string | null
   segment_position?: number | null
   summary?: string | null
+  title?: string | null
   word_count?: number | null
 }
 
@@ -2522,7 +2531,6 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
@@ -2698,7 +2706,6 @@ export type PostCompletionMessagesErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
   429: unknown
   500: unknown
 }
@@ -3053,7 +3060,6 @@ export type DeleteDatasetsByDatasetIdErrors = {
   401: unknown
   403: unknown
   404: unknown
-  409: unknown
 }
 
 export type DeleteDatasetsByDatasetIdResponses = {
@@ -3342,7 +3348,6 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -4234,9 +4239,9 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
+  400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetInfoResponses = {
@@ -4327,9 +4332,9 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
+  400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetMetaResponses = {
@@ -4349,7 +4354,6 @@ export type GetParametersErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetParametersResponses = {
@@ -4462,7 +4466,6 @@ export type PostWorkflowsRunErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
   429: unknown
   500: unknown
 }

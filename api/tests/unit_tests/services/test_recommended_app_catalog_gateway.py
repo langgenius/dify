@@ -60,6 +60,21 @@ def _detail_payload() -> dict[str, object]:
     }
 
 
+def test_agent_template_accepts_package_url_without_yaml() -> None:
+    source = {**_detail_payload(), "mode": "agent", "package_url": "https://templates.example/agent.ifpkg"}
+    source.pop("export_data")
+    detail = gateway_module._map_detail(source)
+    assert detail.package_url == "https://templates.example/agent.ifpkg"
+    assert detail.export_data == ""
+
+
+def test_non_agent_template_still_requires_yaml() -> None:
+    source = _detail_payload()
+    source.pop("export_data")
+    with pytest.raises(KeyError):
+        gateway_module._map_detail(source)
+
+
 def _expected_page(*, categories: tuple[str, ...] = ("Workflow",)) -> RecommendedAppCatalogPage:
     return RecommendedAppCatalogPage(
         recommended_apps=(

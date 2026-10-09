@@ -16,7 +16,7 @@ owner:
 | Forms and field semantics                  | `packages/dify-ui/docs/forms.md`                                     |
 | Selection and typed values                 | `packages/dify-ui/docs/selection.md`                                 |
 | Portals, layers, and floating surfaces     | `packages/dify-ui/docs/overlays.md`                                  |
-| Tailwind and radius tokens                 | `packages/dify-ui/docs/styling.md`                                   |
+| State styling, callbacks, and Tailwind     | `packages/dify-ui/docs/styling.md`                                   |
 | Package tests and Storybook                | `packages/dify-ui/docs/testing.md`                                   |
 
 For consumer code under `web/`, also read `web/AGENTS.md` for application-owned reuse policy and

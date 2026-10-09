@@ -71,8 +71,8 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(passwordInput, VALID_PASSWORD)
       await user.type(confirmPasswordInput, VALID_PASSWORD)
       await user.keyboard('{Enter}')
@@ -95,8 +95,11 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), VALID_PASSWORD)
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        VALID_PASSWORD,
+      )
       await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
 
       expect(
@@ -109,7 +112,7 @@ describe('ChangePasswordForm', () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
 
       await user.type(passwordInput, 'weak')
@@ -138,12 +141,12 @@ describe('ChangePasswordForm', () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       await user.type(passwordInput, VALID_PASSWORD)
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
 
-      const error = await screen.findByText('common.account.notEqual')
+      const error = await screen.findByText('accountSettings.account.notEqual')
       expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
       expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
       expect(confirmPasswordInput).toHaveFocus()
@@ -153,7 +156,7 @@ describe('ChangePasswordForm', () => {
       await user.type(passwordInput, 'DifferentPass123!')
 
       await waitFor(() => {
-        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+        expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
       })
       expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
       expect(mockChangePassword).not.toHaveBeenCalled()
@@ -172,8 +175,11 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), VALID_PASSWORD)
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        VALID_PASSWORD,
+      )
 
       const submitButton = screen.getByRole('button', { name: /common\.operation\.reset/ })
       await user.click(submitButton)

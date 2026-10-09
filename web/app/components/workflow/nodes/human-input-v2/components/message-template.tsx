@@ -6,6 +6,7 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -21,15 +22,13 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { getInputVars } from '@/app/components/base/prompt-editor/constants'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import MailBodyInput from '../../human-input/components/delivery-method/mail-body-input'
 import { isOutput } from '../../human-input/utils'
@@ -67,7 +66,7 @@ const MessageTemplate = ({
   availableVars,
   availableNodes,
 }: MessageTemplateProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
   const [submitted, setSubmitted] = useState(false)
@@ -200,7 +199,9 @@ const MessageTemplate = ({
       } catch {
         setTestError(
           variable.type === VarType.number
-            ? t(($) => $['nodes.agent.outputVars.defaultValueNumberInvalid'], { ns: 'workflow' })
+            ? t(($) => $['nodes.agent.outputVars.defaultValueNumberInvalid'], {
+                ns: 'workflowAgent',
+              })
             : t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: variable.label }),
         )
         document.getElementById(`${nodeId}-test-${variable.key}`)?.focus()
@@ -254,13 +255,6 @@ const MessageTemplate = ({
       pendingRef.current = false
     }
   }
-  const insertSubjectVariable = (selector: ValueSelector) => {
-    resetTestResult()
-    setDraft((current) => ({
-      ...current,
-      subject: `${current.subject}{{#${selector.join('.')}#}}`,
-    }))
-  }
 
   return (
     <section className="px-4">
@@ -277,10 +271,13 @@ const MessageTemplate = ({
           >
             {t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
           </button>
-          <Infotip
-            aria-label={t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
-          >
-            {t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
+            />
+            <InfotipContent>
+              {t(($) => $['nodes.humanInputV2.template.description'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -335,33 +332,12 @@ const MessageTemplate = ({
             </header>
             <div className="max-h-[60vh] min-h-[260px] space-y-5 overflow-y-auto px-6 py-3">
               <div>
-                <div className="mb-1 flex h-6 items-center justify-between">
-                  <label
-                    htmlFor={`${nodeId}-message-subject`}
-                    className="system-sm-medium text-text-secondary"
-                  >
-                    {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
-                  </label>
-                  {!readonly && (
-                    <VarReferencePicker
-                      nodeId={nodeId}
-                      readonly={readonly || pending}
-                      value={[]}
-                      availableVars={availableVars}
-                      availableNodes={availableNodes}
-                      trigger={
-                        <Button variant="ghost" size="small" disabled={pending}>
-                          {t(($) => $['nodes.humanInputV2.template.insertVariable'], {
-                            ns: 'workflow',
-                          })}
-                        </Button>
-                      }
-                      onChange={(selector) => {
-                        if (Array.isArray(selector)) insertSubjectVariable(selector)
-                      }}
-                    />
-                  )}
-                </div>
+                <label
+                  htmlFor={`${nodeId}-message-subject`}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
+                </label>
                 <Input
                   id={`${nodeId}-message-subject`}
                   value={draft.subject}

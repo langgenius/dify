@@ -19,7 +19,7 @@ export function ApiKeyTable({
   showScope = false,
   onDeleteRequest,
 }: ApiKeyTableProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common', 'time'])
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
 
@@ -63,14 +63,14 @@ export function ApiKeyTable({
               <td className="truncate px-3 py-2">
                 {formatTime(
                   Number(apiKey.created_at),
-                  t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                 )}
               </td>
               <td className="truncate px-3 py-2">
                 {apiKey.last_used_at
                   ? formatTime(
                       Number(apiKey.last_used_at),
-                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                     )
                   : t(($) => $.never, { ns: 'appApi' })}
               </td>

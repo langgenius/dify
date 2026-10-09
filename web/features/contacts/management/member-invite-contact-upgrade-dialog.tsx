@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -24,24 +24,20 @@ export function MemberInviteContactUpgradeDialog({
   open: boolean
   pending: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {conflictCount === 1
-              ? t(($) => $['memberInviteUpgrade.title_one'])
-              : t(($) => $['memberInviteUpgrade.title_other'])}
+            {t(($) => $['memberInviteUpgrade.title'], { count: conflictCount })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
-            {conflictCount === 1
-              ? t(($) => $['memberInviteUpgrade.description_one'])
-              : t(($) => $['memberInviteUpgrade.description_other'], { count: conflictCount })}
+            {t(($) => $['memberInviteUpgrade.description'], { count: conflictCount })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             {t(($) => $['action.cancel'])}
           </AlertDialogCancelButton>
@@ -53,7 +49,7 @@ export function MemberInviteContactUpgradeDialog({
           >
             {t(($) => $['memberInviteUpgrade.confirm'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

@@ -16,7 +16,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const {
     currentFile,
     handleFile,
@@ -79,15 +79,14 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
                 file={currentFile}
                 updateFile={handleFile}
                 className="mt-0! w-full"
-                accept=".pipeline"
-                displayName="PIPELINE"
+                importType="pipeline"
               />
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch pt-5">
             <Button onClick={onCancel}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
             <Button
-              disabled={!currentFile || loading}
+              disabled={!currentFile}
               variant="primary"
               tone="destructive"
               onClick={handleImport}

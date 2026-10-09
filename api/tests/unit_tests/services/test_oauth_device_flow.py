@@ -1,219 +1,191 @@
-from __future__ import annotations
+import json
+from dataclasses import dataclass, field
 
-import uuid
-from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
-
-import pytest
-from sqlalchemy.orm import Session
-
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType, TokenType
-from models.oauth import OAuthAccessToken
-from services.oauth_device_flow import (
-    list_active_sessions,
-    revoke_oauth_token,
-    subject_match_clauses,
-    token_belongs_to_subject,
-)
-
-ACCOUNT_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
-OTHER_ACCOUNT_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
-TOKEN_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
-OTHER_TOKEN_ID = uuid.UUID("44444444-4444-4444-4444-444444444444")
+from services.oauth_device_contracts import ApprovalTransitionConfirmation, DeviceFlowStatus, PollPayload
+from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
 
-def _token(
-    *,
-    token_id: uuid.UUID = TOKEN_ID,
-    account_id: uuid.UUID | None = ACCOUNT_ID,
-    subject_email: str = "user@example.com",
-    subject_issuer: str = "dify:account",
-    token_hash: str | None = "live-hash",
-    expires_at: datetime | None = None,
-    revoked_at: datetime | None = None,
-    created_at: datetime | None = None,
-) -> OAuthAccessToken:
-    token = OAuthAccessToken(
-        subject_email=subject_email,
-        subject_issuer=subject_issuer,
-        account_id=str(account_id) if account_id is not None else None,
+@dataclass
+class _Redis:
+    response: str
+    delete_error: Exception | None = None
+    deleted: list[str] = field(default_factory=list)
+    script_sources: list[str] = field(default_factory=list)
+    script_calls: list[tuple[str, tuple[str, ...], tuple[object, ...]]] = field(default_factory=list)
+
+    def set(self, name: str, value: str, *, nx: bool, ex: int) -> bool:
+        _ = (name, value, nx, ex)
+        return True
+
+    def delete(self, name: str) -> None:
+        if self.delete_error is not None:
+            raise self.delete_error
+        self.deleted.append(name)
+
+    def get(self, _name: str) -> str:
+        return self.response
+
+    def register_script(self, script: str):
+        self.script_sources.append(script)
+
+        def execute(*, keys, args=()):
+            self.script_calls.append((script, tuple(keys), tuple(args or ())))
+            if "return raw" in script:
+                return self.response
+            return 1
+
+        return execute
+
+
+def test_consume_on_poll_uses_one_cluster_safe_script_key() -> None:
+    state = DeviceFlowState(
+        user_code="ABCD-EFGH",
         client_id="difyctl",
-        device_label="test-device",
-        prefix="dfoa_" if account_id is not None else "dfoe_",
-        token_hash=token_hash,
-        expires_at=expires_at or datetime.now(UTC) + timedelta(days=1),
-        revoked_at=revoked_at,
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
     )
-    token.id = str(token_id)
-    if created_at is not None:
-        token.created_at = created_at
-    return token
+    redis = _Redis(response=state.to_json())
+    store = DeviceFlowRedis(redis)
+
+    result = store.consume_on_poll("device-1")
+
+    assert result is not None
+    assert result.user_code == "ABCD-EFGH"
+    consume_script = next(source for source in redis.script_sources if "return raw" in source)
+    assert "KEYS[2]" not in consume_script
+    assert [(keys, args) for source, keys, args in redis.script_calls if source == consume_script] == [
+        (("device_code:device-1",), ())
+    ]
+    assert redis.deleted == ["user_code:ABCD-EFGH"]
 
 
-def _account_ctx(*, account_id: uuid.UUID = ACCOUNT_ID) -> AuthContext:
-    return AuthContext(
-        subject_type=SubjectType.ACCOUNT,
-        subject_email="user@example.com",
-        subject_issuer="dify:account",
-        account_id=account_id,
+def test_user_code_cleanup_failure_does_not_lose_consumed_token() -> None:
+    state = DeviceFlowState(
+        user_code="ABCD-EFGH",
         client_id="difyctl",
-        scopes=frozenset({"full"}),
-        token_id=uuid.uuid4(),
-        token_type=TokenType.OAUTH_ACCOUNT,
-        expires_at=None,
-        token_hash="h1",
-        verified_tenants={},
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
     )
+    redis = _Redis(response=state.to_json(), delete_error=ConnectionError("redis unavailable"))
+
+    result = DeviceFlowRedis(redis).consume_on_poll("device-1")
+
+    assert result is not None
+    assert result.user_code == "ABCD-EFGH"
 
 
-def _sso_ctx() -> AuthContext:
-    return AuthContext(
-        subject_type=SubjectType.EXTERNAL_SSO,
-        subject_email="sso@partner.com",
-        subject_issuer="https://idp.partner.com",
-        account_id=None,
+def test_approve_and_deny_share_atomic_pending_transition_script() -> None:
+    redis = _Redis(response="")
+    store = DeviceFlowRedis(redis)
+    poll_payload: PollPayload = {
+        "token": "secret-token",
+        "expires_at": "2030-01-01T00:00:00+00:00",
+        "subject_type": "account",
+        "account": {"id": "account-1"},
+        "workspaces": [],
+        "default_workspace_id": None,
+        "token_id": "token-1",
+    }
+
+    store.approve("device-1", "approve-1", "token-1", poll_payload)
+    store.deny("device-2", "deny-1")
+
+    transition_script = next(source for source in redis.script_sources if "decoded.status ~= 'pending'" in source)
+    transition_calls = [(keys, args) for source, keys, args in redis.script_calls if source == transition_script]
+    assert "redis.call('SETEX'" in transition_script
+    assert "decoded.transition_id" not in transition_script
+    assert [args[0] for _, args in transition_calls] == ["approved", "denied"]
+    assert transition_calls[0][1][1] == "transition:approve-1:token-1"
+    assert [keys for keys, _ in transition_calls] == [("device_code:device-1",), ("device_code:device-2",)]
+
+
+def test_approval_confirmation_reads_marker_from_existing_token_id_field() -> None:
+    state = DeviceFlowState(
+        user_code="ABCD-EFGH",
         client_id="difyctl",
-        scopes=frozenset({"apps:run"}),
-        token_id=uuid.uuid4(),
-        token_type=TokenType.OAUTH_EXTERNAL_SSO,
-        expires_at=None,
-        token_hash="h1",
-        verified_tenants={},
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
+        token_id="transition:approve-1:token-1",
     )
+    store = DeviceFlowRedis(_Redis(response=state.to_json()))
+
+    assert store.confirm_approval("device-1", "approve-1", "token-1") is ApprovalTransitionConfirmation.PUBLISHED
+    assert store.confirm_approval("device-1", "approve-2", "token-1") is ApprovalTransitionConfirmation.NOT_PUBLISHED
 
 
-# ---------------------------------------------------------------------------
-# subject_match_clauses
-# ---------------------------------------------------------------------------
+def test_approval_guard_release_compares_owner_before_delete() -> None:
+    redis = _Redis(response="")
+    store = DeviceFlowRedis(redis)
+
+    assert store.try_acquire_approval("rotation-1", "owner-1", 900) is True
+    store.release_approval("rotation-1", "owner-1")
+
+    release_script = next(source for source in redis.script_sources if "ARGV[1]" in source and "DEL" in source)
+    assert "redis.call('GET', KEYS[1]) == ARGV[1]" in release_script
+    assert redis.script_calls[-1][1:] == (("oauth_device:approval_guard:rotation-1",), ("owner-1",))
 
 
-def test_subject_match_clauses_account_matches_only_account_id():
-    clauses = subject_match_clauses(_account_ctx())
-    assert len(clauses) == 1
-    assert "account_id" in str(clauses[0])
+def test_approved_state_stores_plaintext_token_only_in_poll_payload() -> None:
+    poll_payload: PollPayload = {
+        "token": "secret-token",
+        "expires_at": "2030-01-01T00:00:00+00:00",
+        "subject_type": "account",
+        "account": {"id": "account-1"},
+        "workspaces": [],
+        "default_workspace_id": None,
+        "token_id": "token-1",
+    }
+    serialized = DeviceFlowState(
+        user_code="ABCD-EFGH",
+        client_id="difyctl",
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
+        token_id="transition:approve-1:token-1",
+        poll_payload=poll_payload,
+    ).to_json()
+    data = json.loads(serialized)
+
+    assert data["poll_payload"]["token"] == "secret-token"
+    assert serialized.count("secret-token") == 1
+    assert {"subject_email", "account_id", "subject_issuer", "minted_token", "transition_id"}.isdisjoint(data)
 
 
-def test_subject_match_clauses_external_sso_requires_null_account_id():
-    """External SSO must additionally require ``account_id IS NULL`` so a
-    same-email account-flow row from a federated tenant cannot be
-    enumerated/revoked through an SSO bearer.
-    """
-    clauses = subject_match_clauses(_sso_ctx())
-    assert len(clauses) == 3
-    rendered = " ".join(str(c) for c in clauses)
-    assert "subject_email" in rendered
-    assert "subject_issuer" in rendered
-    assert "account_id IS NULL" in rendered
+def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
+    serialized = DeviceFlowState(
+        user_code="ABCD-EFGH",
+        client_id="difyctl",
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
+        token_id="transition:approve-1:token-1",
+        poll_payload=None,
+    ).to_json()
+    old_schema_fields = {
+        "user_code",
+        "client_id",
+        "device_label",
+        "status",
+        "token_id",
+        "created_at",
+        "created_ip",
+        "last_poll_at",
+        "poll_payload",
+    }
+
+    assert set(json.loads(serialized)) <= old_schema_fields
 
 
-# ---------------------------------------------------------------------------
-# revoke_oauth_token
-# ---------------------------------------------------------------------------
+def test_state_reader_tolerates_legacy_approval_fields() -> None:
+    legacy = {
+        "user_code": "ABCD-EFGH",
+        "client_id": "difyctl",
+        "device_label": "CLI",
+        "status": "pending",
+        "subject_email": "legacy@example.com",
+        "account_id": "account-1",
+        "subject_issuer": "dify:account",
+        "minted_token": "legacy-token",
+    }
 
+    state = DeviceFlowState.from_json(json.dumps(legacy))
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_revoke_oauth_token_invalidates_redis_cache_when_live_hash_seen(sqlite_session: Session):
-    """Happy path: snapshot finds a live ``token_hash`` → UPDATE runs +
-    Redis cache entry is DEL'd so the next bearer probe re-reads the now
-    revoked row from DB.
-    """
-    sqlite_session.add(_token())
-    sqlite_session.commit()
-
-    redis = MagicMock()
-
-    revoke_oauth_token(redis, str(TOKEN_ID), session=sqlite_session)
-
-    assert not sqlite_session.in_transaction()
-    persisted = sqlite_session.get(OAuthAccessToken, str(TOKEN_ID))
-    assert persisted is not None
-    assert persisted.token_hash is None
-    assert persisted.revoked_at is not None
-    redis.delete.assert_called_once_with(TOKEN_CACHE_KEY_FMT.format(hash="live-hash"))
-
-
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_revoke_oauth_token_is_idempotent_when_already_revoked(sqlite_session: Session):
-    """Second call (or race-loser): no live hash → UPDATE still runs (it
-    is itself idempotent thanks to ``WHERE revoked_at IS NULL``) but the
-    Redis invalidation is skipped because there's no cache entry to
-    drop.
-    """
-    revoked_at = datetime.now(UTC) - timedelta(minutes=1)
-    sqlite_session.add(_token(token_hash=None, revoked_at=revoked_at))
-    sqlite_session.commit()
-
-    redis = MagicMock()
-
-    revoke_oauth_token(redis, str(TOKEN_ID), session=sqlite_session)
-
-    assert not sqlite_session.in_transaction()
-    persisted = sqlite_session.get(OAuthAccessToken, str(TOKEN_ID))
-    assert persisted is not None
-    assert persisted.token_hash is None
-    assert persisted.revoked_at is not None
-    redis.delete.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# list_active_sessions / token_belongs_to_subject
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_list_active_sessions_returns_only_live_subject_tokens(sqlite_session: Session):
-    """Only live, hashed rows for the authenticated subject are returned newest-first."""
-
-    now = datetime.now(UTC)
-    active_new = _token(token_id=TOKEN_ID, created_at=now - timedelta(minutes=1))
-    active_old = _token(token_id=OTHER_TOKEN_ID, created_at=now - timedelta(minutes=2))
-    expired = _token(
-        token_id=uuid.UUID(int=5),
-        expires_at=now - timedelta(seconds=1),
-        created_at=now - timedelta(minutes=3),
-    )
-    revoked = _token(
-        token_id=uuid.UUID(int=6),
-        token_hash=None,
-        revoked_at=now - timedelta(seconds=1),
-        created_at=now - timedelta(minutes=4),
-    )
-    hashless = _token(
-        token_id=uuid.UUID(int=7),
-        token_hash=None,
-        created_at=now - timedelta(minutes=5),
-    )
-    other_account = _token(
-        token_id=uuid.UUID(int=8),
-        account_id=OTHER_ACCOUNT_ID,
-        created_at=now - timedelta(minutes=6),
-    )
-    external_sso = _token(
-        token_id=uuid.UUID(int=9),
-        account_id=None,
-        subject_email="user@example.com",
-        subject_issuer="https://idp.example.com",
-        created_at=now - timedelta(minutes=7),
-    )
-    sqlite_session.add_all([active_new, active_old, expired, revoked, hashless, other_account, external_sso])
-    sqlite_session.commit()
-
-    out = list_active_sessions(_account_ctx(), now, session=sqlite_session)
-
-    assert [token.id for token in out] == [str(TOKEN_ID), str(OTHER_TOKEN_ID)]
-
-
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_token_belongs_to_subject_true_when_row_present(sqlite_session: Session):
-    sqlite_session.add(_token())
-    sqlite_session.commit()
-
-    assert token_belongs_to_subject(str(TOKEN_ID), _account_ctx(), session=sqlite_session) is True
-
-
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_token_belongs_to_subject_false_for_other_account(sqlite_session: Session):
-    sqlite_session.add(_token(account_id=OTHER_ACCOUNT_ID))
-    sqlite_session.commit()
-
-    assert token_belongs_to_subject(str(TOKEN_ID), _account_ctx(), session=sqlite_session) is False
+    assert state.status is DeviceFlowStatus.PENDING

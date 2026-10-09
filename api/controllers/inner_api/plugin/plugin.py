@@ -33,6 +33,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
@@ -351,6 +352,7 @@ class PluginInvokeAppApi(Resource):
             stream=payload.response_mode == "streaming",
             inputs=payload.inputs,
             files=payload.files,
+            end_users=application_services().app_scoped_end_users.commands,
         )
 
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))

@@ -1,7 +1,6 @@
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -54,8 +53,6 @@ const mockLearnDifyApp = vi.hoisted(
         icon_background: '#fff',
         icon_url: '',
         name: 'Learn Dify Template',
-        description: 'Learn how to build with Dify',
-        use_icon_as_answer_icon: false,
       },
       description: 'Learn how to build with Dify',
       copyright: '',
@@ -64,12 +61,8 @@ const mockLearnDifyApp = vi.hoisted(
       categories: ['Assistant'],
       position: 1,
       is_listed: true,
-      install_count: 0,
-      installed: false,
-      editable: false,
-      is_agent: false,
       can_trial: true,
-    }) satisfies App,
+    }) satisfies RecommendedAppResponse,
 )
 
 let mockSearchParams = new URLSearchParams('')
@@ -79,7 +72,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: {
       get: vi.fn(),
@@ -131,12 +124,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-const mockOnPlanInfoChanged = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    onPlanInfoChanged: mockOnPlanInfoChanged,
-  }),
-}))
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -275,7 +262,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
@@ -288,11 +275,9 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateFromDSLModal({
         show,
         onClose,
-        onSuccess,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
       }) {
         if (!show) return null
         return React.createElement(
@@ -305,7 +290,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-dsl-modal' },
+            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
             'Success',
           ),
         )
@@ -315,12 +300,10 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateAppModal({
         show,
         onClose,
-        onSuccess,
         onCreateFromTemplate,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
         onCreateFromTemplate: () => void
       }) {
         if (!show) return null
@@ -334,7 +317,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-create-modal' },
+            { onClick: onClose, 'data-testid': 'success-create-modal' },
             'Success',
           ),
           React.createElement(
@@ -349,12 +332,10 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateAppTemplateDialog({
         show,
         onClose,
-        onSuccess,
         onCreateFromBlank,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
         onCreateFromBlank: () => void
       }) {
         if (!show) return null
@@ -368,7 +349,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-template-dialog' },
+            { onClick: onClose, 'data-testid': 'success-template-dialog' },
             'Success',
           ),
           React.createElement(
@@ -458,8 +439,8 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
     onTry,
   }: {
     title?: string
-    onCreate?: (app: App) => void
-    onTry?: (params: TryAppSelection) => void
+    onCreate?: (app: RecommendedAppResponse) => void
+    onTry?: (app: RecommendedAppResponse) => void
   }) =>
     React.createElement(
       'section',
@@ -469,7 +450,7 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
         'button',
         {
           type: 'button',
-          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+          onClick: () => onTry?.(mockLearnDifyApp),
         },
         'Preview Learn Dify template',
       ),
@@ -502,8 +483,8 @@ beforeAll(() => {
 })
 
 type RenderListOptions = {
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
@@ -901,7 +882,7 @@ describe('List', () => {
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
       )
-      expect(screen.getByRole('button', { name: /app\.importDSL/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /app\.importApp/ })).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
       )
@@ -1015,7 +996,7 @@ describe('List', () => {
       fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
       expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
+      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
@@ -1032,10 +1013,7 @@ describe('List', () => {
       })
 
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
-      expect(onTryLearnDify).toHaveBeenCalledWith({
-        appId: mockLearnDifyApp.app_id,
-        app: mockLearnDifyApp,
-      })
+      expect(onTryLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
 
       await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
       expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
@@ -1112,7 +1090,7 @@ describe('List', () => {
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.apps' })
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
       expect(scrollContainer).not.toContainElement(searchBox)
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo
@@ -1226,7 +1204,7 @@ describe('List', () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.importDSL'))
+      fireEvent.click(await screen.findByText('app.importApp'))
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })

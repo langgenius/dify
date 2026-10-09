@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -73,13 +72,13 @@ describe('ConfigDocument', () => {
   it('should not render when the document configuration is hidden', () => {
     renderConfigDocument({ isVisible: false })
 
-    expect(screen.queryByText('appDebug.feature.documentUpload.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('fileUpload.feature.documentUpload.title')).not.toBeInTheDocument()
   })
 
   it('should show document toggle badge when configuration is visible', () => {
     renderConfigDocument({ allowedTypes: [SupportUploadFileTypes.document] })
 
-    expect(screen.getByText('appDebug.feature.documentUpload.title')).toBeInTheDocument()
+    expect(screen.getByText('fileUpload.feature.documentUpload.title')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 

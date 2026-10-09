@@ -1,110 +1,95 @@
 @agent-v2 @authenticated @publish
 Feature: Agent v2 publish
-  @core
-  Scenario: Publish is blocked until a model is configured
+  Background:
     Given I am signed in as the default E2E admin
-    And an Agent v2 test agent has been created via API
-    And the Agent v2 composer draft uses the normal E2E prompt
-    When I open the Agent v2 configure page
-    And I try to publish the Agent v2 draft without a model
-    Then Agent v2 publish should be blocked until a model is configured
-    And the Agent v2 draft should remain unpublished
 
   @core @prepared @stable-model
   Scenario: Publish a configured Agent v2 draft
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    Given the Agent Builder stable chat model is available
     And a runnable Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I switch to the Agent v2 Access Point section
-    Then Agent v2 Web app access should be in service
-    And Agent v2 Backend service API access should be in service
+    Then the Agent v2 first publication should succeed
 
   @core @prepared @stable-model
-  Scenario: Publish action follows unpublished changes
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+  Scenario: Publish guidance opens Agent v2 access methods
+    Given the Agent Builder stable chat model is available
     And a runnable Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
-    Then the Agent v2 publish action should be available for unpublished changes
-    When I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    And the Agent v2 publish action should be unavailable while up to date
-    When I fill the Agent v2 prompt editor with the updated E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the Agent v2 publish action should be available for unpublished changes
+    And I publish the Agent v2 draft
+    And I follow the access methods link in the Agent v2 publish guidance
+    Then the Agent v2 Access Point should open
+
+  @core @prepared @stable-model @published-web-app
+  Scenario: Publish guidance opens the Agent v2 Web app
+    Given the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I publish the Agent v2 draft
+    And I follow the Web app link in the Agent v2 publish guidance
+    Then the Agent v2 Web app should open in a new tab
+
+  @core @prepared @stable-model
+  Scenario: Editing a published Agent v2 enables Publish update
+    Given the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And the Agent v2 draft has been published via API
+    When I open the Agent v2 configure page
+    And I fill the Agent v2 prompt editor with the updated E2E prompt
+    Then the Agent v2 Publish update action should be available
+
+  @core @prepared @stable-model
+  Scenario: Publishing Agent v2 draft changes shows update guidance
+    Given the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And the Agent v2 draft has been published via API
+    When I open the Agent v2 configure page
+    And I fill the Agent v2 prompt editor with the updated E2E prompt
+    And I publish the Agent v2 draft
+    Then the Agent v2 update publication should succeed
+
+  @core @prepared @stable-model
+  Scenario: Viewing a published Agent v2 version is read-only
+    Given the Agent Builder stable chat model is available
+    And an Agent v2 has original and updated published prompts
+    When I view the original Agent v2 published version in version history
+    Then the original Agent v2 version should be view-only
 
   @core @prepared @stable-model
   Scenario: Restoring a published Agent v2 version shows the restored configuration in Builder
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I fill the Agent v2 prompt editor with the updated E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the normal Agent v2 draft should use the updated E2E prompt
-    When I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I open the Agent v2 version history
-    And I select Agent v2 published version 1
-    Then the selected Agent v2 version should be displayed in view-only mode
-    And I should see the normal E2E prompt in the Agent v2 prompt editor
-    When I restore the selected Agent v2 version
-    Then I should see the normal E2E prompt in the Agent v2 prompt editor
-    And the normal Agent v2 draft should use the normal E2E prompt
-    And the Agent v2 publish action should be available for unpublished changes
+    Given the Agent Builder stable chat model is available
+    And an Agent v2 has original and updated published prompts
+    When I view the original Agent v2 published version in version history
+    And I restore the selected Agent v2 version
+    Then the original Agent v2 configuration should be an unpublished draft
 
   @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Agent v2 answers through Web app
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    Given the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the normal E2E marker
-    When I close the Agent v2 Web app
 
   @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Web app remains isolated from unpublished Agent v2 draft edits
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    Given the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I fill the Agent v2 prompt editor with the updated E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the normal Agent v2 draft should use the updated E2E prompt
+    And the Agent v2 draft has been published via API
+    And the Agent v2 draft has unpublished updated prompt changes
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the normal E2E marker
     And the Agent v2 Web app response should not include the updated E2E marker
-    When I close the Agent v2 Web app
 
   @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Web app uses the latest Agent v2 published configuration
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    Given the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
-    And a runnable Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I fill the Agent v2 prompt editor with the updated E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the normal Agent v2 draft should use the updated E2E prompt
-    When I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    And an Agent v2 has original and updated published prompts
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the updated E2E marker
-    When I close the Agent v2 Web app

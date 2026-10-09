@@ -343,7 +343,7 @@ export class CollaborationManager {
   }
 
   private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'prompt_template', 'parameters'])
+    const listFields = new Set(['variables', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
     container.set('position', toLoroValue(node.position))
@@ -392,7 +392,8 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (listFields.has(key)) this.syncList(container, key, Array.isArray(value) ? value : [])
+      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
+        this.syncList(container, key, Array.isArray(value) ? value : [])
       else dataContainer.set(key, toLoroValue(value))
     })
 
@@ -895,6 +896,18 @@ export class CollaborationManager {
     this.graphReloadRequired = false
     this.emitGraphReadyState()
     if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    return true
+  }
+
+  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
+    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // A server-side import or restore replaces the whole draft. Its graph must also replace
+    // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
+    this.syncNodes(this.getNodes(), nodes)
+    this.syncEdges(this.getEdges(), edges)
+    this.doc.commit()
+    this.clearUndoStack()
     return true
   }
 

@@ -3,17 +3,19 @@ import type { FC } from 'react'
 import type { IndexingType } from '../create/step-two'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import { checkShowMultiModalTip } from '../settings/utils'
 
@@ -26,7 +28,7 @@ type Props = Readonly<{
 }>
 const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, onSave }) => {
   const ref = useRef(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
   const embeddingModel = useDatasetDetailContextWithSelector(
@@ -39,8 +41,18 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
   //   if (ref)
   //     onHide()
   // }, ref)
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const handleSave = () => {
     if (
       !isReRankModelSelected({
@@ -80,16 +92,22 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
   ])
   if (!isShow) return null
   return (
-    <div
+    <form
       className="flex w-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9"
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSave()
+      }}
     >
       <div className="flex h-15 shrink-0 justify-between px-3 pt-3.5 pb-1">
         <div className="text-base font-semibold text-text-primary">
-          <div>{t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
+          <DrawerTitle>
+            {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+          </DrawerTitle>
           <div className="text-xs leading-4.5 font-normal text-text-tertiary">
             <a
               target="_blank"
@@ -132,11 +150,11 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
         <Button className="mr-2 shrink-0" onClick={onHide}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="shrink-0" onClick={handleSave}>
+        <Button type="submit" variant="primary" className="shrink-0">
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
-    </div>
+    </form>
   )
 }
 export default React.memo(ModifyRetrievalModal)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import enUS from '@/i18n/en-US/workflow.json'
-import zhHans from '@/i18n/zh-Hans/workflow.json'
+import enUS from '@/i18n/locales/en-US/workflow.json'
+import zhHans from '@/i18n/locales/zh-Hans/workflow.json'
 
 const MIGRATION_PREFIX = 'nodes.humanInputMigration.'
 

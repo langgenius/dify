@@ -17,7 +17,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const files = runInputData.files
   const setFiles = useCallback(
     (newFiles: []) => {

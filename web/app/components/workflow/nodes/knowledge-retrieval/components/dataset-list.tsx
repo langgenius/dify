@@ -32,7 +32,7 @@ const DatasetList: FC<Props> = ({
   settingsDrawerPopupClassName,
   settingsModalHeight,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

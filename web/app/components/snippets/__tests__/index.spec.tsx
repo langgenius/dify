@@ -209,7 +209,7 @@ describe('SnippetPage', () => {
 
     render(<SnippetPage snippetId="missing-snippet" />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should keep the detail route shell while orchestrate data is loading', () => {
@@ -220,7 +220,7 @@ describe('SnippetPage', () => {
 
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 })

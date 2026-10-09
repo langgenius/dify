@@ -1,14 +1,18 @@
 import type { ReactNode } from 'react'
-import type { TimePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
-import type { dayjsToTimeOfDay } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import {
+  TimePicker,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+  TimePickerValue,
+} from '@/app/components/base/date-time-picker/time-picker'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -18,7 +22,7 @@ import {
   AUTO_UPDATE_MODE,
   AUTO_UPDATE_STRATEGY,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
-import { convertLocalSecondsToUTCDaySeconds } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
+import { convertTimezoneToOffsetStr } from '@/utils/timezone'
 import UpdateSettingOptionCard from './update-setting-option-card'
 
 type Option<Value extends string> = {
@@ -34,12 +38,10 @@ type UpdateSettingDialogFormProps = {
   strategyOptions: Option<AUTO_UPDATE_STRATEGY>[]
   timezone: string
   updateTimeValue: string
-  minuteFilter: (minutes: string[]) => string[]
   onAutoUpgradeChange: (payload: Partial<AutoUpdateConfig>) => void
   onPluginsChange: (newPlugins: string[]) => void
   onRequestClose: () => void
-  onUpdateTimeChange: (value: Parameters<typeof dayjsToTimeOfDay>[0]) => void
-  renderTimePickerTrigger: NonNullable<TimePickerProps['renderTrigger']>
+  onUpdateTimeChange: (value: string | null) => void
 }
 
 const updateSettingFormLabelClassName =
@@ -81,14 +83,12 @@ const UpdateSettingDialogForm = ({
   strategyOptions,
   timezone,
   updateTimeValue,
-  minuteFilter,
   onAutoUpgradeChange,
   onPluginsChange,
   onRequestClose,
   onUpdateTimeChange,
-  renderTimePickerTrigger,
 }: UpdateSettingDialogFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [previewStrategy, setPreviewStrategy] = useState<AUTO_UPDATE_STRATEGY>()
   const displayedStrategy = previewStrategy ?? autoUpgrade.strategy_setting
   const getStrategyDescription = (strategy: AUTO_UPDATE_STRATEGY) => {
@@ -137,33 +137,41 @@ const UpdateSettingDialogForm = ({
         <>
           <div className="h-px w-full bg-divider-subtle" />
           <div className="flex w-full flex-col items-start gap-1">
-            <div className="flex w-full items-center gap-2">
-              <div className={cn(updateSettingFormLabelClassName, 'min-w-0 flex-1')}>
-                {t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
-              </div>
-              <div className="body-xs-regular text-text-tertiary">
-                <Trans
-                  i18nKey={($) => $['autoUpdate.changeTimezone']}
-                  ns="plugin"
-                  components={{
-                    setTimezone: <SettingTimeZone onRequestClose={onRequestClose} />,
-                  }}
-                />
-              </div>
-            </div>
             <TimePicker
-              value={updateTimeValue}
-              timezone={timezone}
-              onChange={onUpdateTimeChange}
-              onClear={() =>
-                onAutoUpgradeChange({
-                  upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(0, timezone),
-                })
-              }
-              title={t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
-              minuteFilter={minuteFilter}
-              renderTrigger={renderTimePickerTrigger}
-            />
+              timeZone={timezone}
+              value={updateTimeValue || null}
+              onValueChange={onUpdateTimeChange}
+              minuteStep={15}
+            >
+              <div className="flex w-full items-center gap-2">
+                <TimePickerLabel className={cn(updateSettingFormLabelClassName, 'min-w-0 flex-1')}>
+                  {t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
+                </TimePickerLabel>
+                <div className="body-xs-regular text-text-tertiary">
+                  <Trans
+                    i18nKey={($) => $['autoUpdate.changeTimezone']}
+                    ns="plugin"
+                    components={{
+                      setTimezone: <SettingTimeZone onRequestClose={onRequestClose} />,
+                    }}
+                  />
+                </div>
+              </div>
+              <TimePickerTrigger className="w-full px-2">
+                <span aria-hidden="true" className="i-ri-time-line size-4 text-text-tertiary" />
+                <TimePickerValue className="flex min-w-0 flex-1 items-center justify-between gap-1">
+                  {(displayValue) => (
+                    <>
+                      <span>{displayValue}</span>
+                      <span className="text-text-tertiary">
+                        {convertTimezoneToOffsetStr(timezone)}
+                      </span>
+                    </>
+                  )}
+                </TimePickerValue>
+              </TimePickerTrigger>
+              <TimePickerContent />
+            </TimePicker>
           </div>
           <div className="flex w-full flex-col items-start gap-2">
             <div className="flex h-15 w-full flex-col items-start gap-1">

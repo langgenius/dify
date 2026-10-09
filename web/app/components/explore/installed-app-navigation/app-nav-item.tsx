@@ -7,25 +7,20 @@ import ItemOperation from '@/app/components/explore/item-operation'
 import Link from '@/next/link'
 
 type IAppNavItemProps = {
-  ariaLabel: string
   app: InstalledAppResponse
   isSelected: boolean
   onTogglePin: (id: string, isPinned: boolean) => void
-  onDelete: (id: string) => void
 }
 
 export default function AppNavItem({
-  ariaLabel,
   app: installedApp,
   isSelected,
   onTogglePin,
-  onDelete,
 }: IAppNavItemProps) {
   const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const {
     id,
     is_pinned: isPinned,
-    uninstallable,
     app: { name, icon_type, icon, icon_background, icon_url },
   } = installedApp
   const url = buildInstalledAppPath(id)
@@ -41,11 +36,10 @@ export default function AppNavItem({
         onMouseEnter={() => setIsPrefetchEnabled(true)}
         onFocus={() => setIsPrefetchEnabled(true)}
         aria-current={isSelected ? 'page' : undefined}
-        aria-label={ariaLabel}
-        title={name}
         className="flex min-w-0 flex-1 items-center gap-2 outline-hidden"
       >
         <AppIcon
+          decorative
           size="tiny"
           className="size-5 rounded-md text-sm"
           iconType={icon_type}
@@ -62,8 +56,6 @@ export default function AppNavItem({
           itemName={name}
           isPinned={isPinned}
           togglePin={() => onTogglePin(id, !isPinned)}
-          isShowDelete={!uninstallable && !isSelected}
-          onDelete={() => onDelete(id)}
         />
       </div>
     </div>

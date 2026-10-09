@@ -61,7 +61,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => 
   ),
 }))
 
-vi.mock('../components/class-list', () => ({
+vi.mock('../../_base/components/branch-list/class-list', () => ({
   __esModule: true,
   default: () => <div>class-list</div>,
 }))

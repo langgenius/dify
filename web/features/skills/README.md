@@ -1,15 +1,7 @@
 # Skills
 
-Workspace Skill management UI. This module owns the Skills list, filters, and list-level actions.
+Workspace Skill management, including the list, file editing, publishing, and version restoration.
 
-## Internal Modules
+Routes enter through `page.tsx` for the list and `detail-page.tsx` for a Skill's detail. Navigation uses `permissions.ts` for visibility; Agent V2 consumes the shared Skill error handling from `error.ts`.
 
-None.
-
-## External Modules
-
-- app/components/base/search-input
-- app/components/base/skeleton
-- app/components/base/tooltip
-- hooks/use-document-title
-- hooks/use-timestamp
+File editing, draft coordination, publishing, and version UI remain internal to `detail/`.

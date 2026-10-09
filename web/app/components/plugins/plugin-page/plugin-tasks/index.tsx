@@ -1,12 +1,12 @@
-import type { DropdownMenuPositionerProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { PopoverPositionerProps } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -16,16 +16,12 @@ import { usePluginTaskStatus } from './hooks'
 
 type PluginTasksProps = {
   animatedSlot?: boolean
-  dropdownAnchor?: () => Element | null
-  dropdownPlacement?: DropdownMenuPositionerProps['placement']
+  anchor?: () => Element | null
+  placement?: PopoverPositionerProps['placement']
 }
 
-const PluginTasks = ({
-  animatedSlot = false,
-  dropdownAnchor,
-  dropdownPlacement = 'bottom',
-}: PluginTasksProps) => {
-  const { t } = useTranslation()
+const PluginTasks = ({ animatedSlot = false, anchor, placement = 'bottom' }: PluginTasksProps) => {
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,
@@ -44,7 +40,7 @@ const PluginTasks = ({
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
   const hasPluginTasks = totalPluginsLength > 0
-  const canOpenMenu =
+  const canOpenPopover =
     isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
 
   // Generate tooltip text based on status
@@ -124,8 +120,8 @@ const PluginTasks = ({
 
   return (
     <div className={rootClassName}>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
           render={
             <TaskStatusIndicator
               id="plugin-task-trigger"
@@ -137,18 +133,13 @@ const PluginTasks = ({
               isFailed={isFailed}
               successPluginsLength={successPluginsLength}
               runningPluginsLength={runningPluginsLength}
-              data-menu-open={open ? '' : undefined}
             />
           }
-          disabled={!canOpenMenu}
+          disabled={!canOpenPopover}
         />
-        <DropdownMenuPortal>
-          <DropdownMenuPositioner
-            placement={dropdownPlacement}
-            sideOffset={4}
-            anchor={dropdownAnchor}
-          >
-            <DropdownMenuPopup>
+        <PopoverPortal>
+          <PopoverPositioner placement={placement} sideOffset={4} anchor={anchor}>
+            <PopoverPopup aria-label={tip}>
               <PluginTaskList
                 runningPlugins={runningPlugins}
                 successPlugins={successPlugins}
@@ -158,10 +149,10 @@ const PluginTasks = ({
                 onClearErrors={handleClearErrors}
                 onClearSingle={handleClearSingle}
               />
-            </DropdownMenuPopup>
-          </DropdownMenuPositioner>
-        </DropdownMenuPortal>
-      </DropdownMenu>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
     </div>
   )
 }

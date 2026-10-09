@@ -11,7 +11,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
-from core.db.session_factory import session_factory
+from core.db.session_factory import get_session_maker, session_factory
 from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
@@ -56,6 +56,7 @@ from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyH
 from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -433,6 +434,11 @@ class DifyNodeFactory(NodeFactory):
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
         node: Node | None = None
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
+            BuiltinNodeTypes.DATASOURCE: lambda: {
+                "datasource_credentials": build_data_source_credentials(
+                    database_client=get_session_maker()
+                ).providers.get_datasource_credentials,
+            },
             BuiltinNodeTypes.CODE: lambda: {
                 "code_executor": self._code_executor,
                 "code_limits": self._code_limits,

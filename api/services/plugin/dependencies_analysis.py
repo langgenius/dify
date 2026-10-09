@@ -1,16 +1,81 @@
 import re
+from collections.abc import Mapping
+from typing import Any
+
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
-from models.provider_ids import ModelProviderID, ToolProviderID
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from graphon.enums import BuiltinNodeTypes
+from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 
 # Compile regex pattern for version extraction at module level for better performance
 _VERSION_REGEX = re.compile(r":(?P<version>[0-9]+(?:\.[0-9]+){2}(?:[+-][0-9A-Za-z.-]+)?)(?:@|$)")
 
 
 class DependenciesAnalysisService:
+    @classmethod
+    def analyze_tool_provider_reference(cls, provider: str) -> str:
+        if re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+", provider):
+            return provider
+        return cls.analyze_tool_dependency(provider)
+
+    @classmethod
+    def extract_external_node_dependencies(cls, node_data: Mapping[str, Any]) -> list[str]:
+        """Extract plugin IDs from workflow nodes that contain direct plugin references."""
+        node_type = node_data.get("type")
+        if node_type == TRIGGER_PLUGIN_NODE_TYPE:
+            plugin_id = node_data.get("plugin_id")
+            return [plugin_id] if isinstance(plugin_id, str) and plugin_id else []
+
+        if node_type == BuiltinNodeTypes.DATASOURCE:
+            plugin_id = node_data.get("plugin_id")
+            if node_data.get("provider_type") != "local_file" and isinstance(plugin_id, str) and plugin_id:
+                return [plugin_id]
+            return []
+
+        if node_type != BuiltinNodeTypes.AGENT or node_data.get("agent_node_kind") == "dify_agent":
+            return []
+
+        dependencies = []
+        strategy_provider = node_data.get("agent_strategy_provider_name")
+        if isinstance(strategy_provider, str) and strategy_provider:
+            try:
+                if re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+", strategy_provider):
+                    dependencies.append(strategy_provider)
+                else:
+                    dependencies.append(GenericProviderID(strategy_provider).plugin_id)
+            except (ValueError, NotFound):
+                pass
+
+        parameters = node_data.get("agent_parameters")
+        if not isinstance(parameters, Mapping):
+            return dependencies
+        for parameter in parameters.values():
+            if not isinstance(parameter, Mapping) or not isinstance(parameter.get("value"), list):
+                continue
+            for tool in parameter["value"]:
+                if not isinstance(tool, Mapping):
+                    continue
+                provider_type = tool.get("provider_type", tool.get("type"))
+                if provider_type not in (None, "builtin", "plugin"):
+                    continue
+                plugin_id = tool.get("plugin_id")
+                if isinstance(plugin_id, str) and plugin_id:
+                    dependencies.append(plugin_id)
+                    continue
+                provider = tool.get("provider_id") or tool.get("provider_name") or tool.get("provider")
+                if not isinstance(provider, str):
+                    continue
+                try:
+                    dependencies.append(cls.analyze_tool_provider_reference(provider))
+                except (ValueError, NotFound):
+                    pass
+        return dependencies
+
     @classmethod
     def analyze_tool_dependency(cls, tool_id: str) -> str:
         """

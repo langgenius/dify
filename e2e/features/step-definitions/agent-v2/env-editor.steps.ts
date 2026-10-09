@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
-import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
+import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources.ts'
+import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentEnvVariableAbsent,
   expectAgentEnvVariableHidden,
@@ -14,7 +14,7 @@ import {
   getCurrentAgentId,
   getEnvVariableKey,
   openAgentAdvancedSettings,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 When(
   'I add the plain Agent v2 environment variable from Advanced Settings',

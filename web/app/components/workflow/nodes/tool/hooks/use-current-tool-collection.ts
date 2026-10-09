@@ -8,7 +8,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 const useCurrentToolCollection = (
   providerType: ToolNodeType['provider_type'],
@@ -35,7 +35,7 @@ const useCurrentToolCollection = (
   }, [buildInTools, customTools, mcpTools, providerType, workflowTools])
 
   const currCollection = useMemo(() => {
-    return currentTools.find((item) => canFindTool(item.id, providerId))
+    return currentTools.find((item) => matchesProviderReference(item, providerId))
   }, [currentTools, providerId])
 
   return {

@@ -1,17 +1,17 @@
 import json
 import logging
 import operator
+from collections.abc import Callable
 from typing import Any, cast, override
 
 import httpx
 from sqlalchemy import update
 
-from configs import dify_config
+from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
-from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -41,36 +41,21 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: DocumentModel | None = None,
+        document_model: StoredDocumentExtractionInput | None = None,
         notion_access_token: str | None = None,
         credential_id: str | None = None,
+        *,
+        notion_token_loader: Callable[[], str],
     ):
         self._notion_access_token = None
         self._document_model = document_model
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
-        self._credential_id = credential_id
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            try:
-                self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
-            except Exception as e:
-                logger.warning(
-                    (
-                        "Failed to get Notion access token from datasource credentials: %s, "
-                        "falling back to environment variable NOTION_INTEGRATION_TOKEN"
-                    ),
-                    e,
-                )
-                integration_token = dify_config.NOTION_INTEGRATION_TOKEN
-                if integration_token is None:
-                    raise ValueError(
-                        "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
-                    ) from e
-
-                self._notion_access_token = integration_token
+            self._notion_access_token = notion_token_loader()
 
     @override
     def extract(self) -> list[Document]:
@@ -135,10 +120,9 @@ class NotionExtractor(BaseExtractor):
                         for multi_select in multi_select_list:
                             value.append(multi_select["name"])
                     elif type in {"rich_text", "title"}:
-                        if len(property_value[type]) > 0:
-                            value = property_value[type][0]["plain_text"]
-                        else:
-                            value = ""
+                        # Notion splits formatted text into multiple segments;
+                        # join them all so no part of the value is dropped.
+                        value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
                         if property_value[type]:
                             value = property_value[type]["name"]
@@ -206,9 +190,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 cur_result_text_arr.append(text)
 
                     result_block_id = result["id"]
@@ -264,9 +247,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 prefix = "\t" * num_tabs
                                 cur_result_text_arr.append(prefix + text)
                     result_block_id = result["id"]
@@ -289,6 +271,13 @@ class NotionExtractor(BaseExtractor):
 
         result_lines = "\n".join(result_lines_arr)
         return result_lines
+
+    @staticmethod
+    def _get_cell_text(cell: list[dict[str, Any]]) -> str:
+        # A cell is an array of rich text segments (text, mention, equation);
+        # join them so one cell always maps to one Markdown column, keeping
+        # empty cells as empty columns so the column count stays stable.
+        return "".join(segment.get("plain_text") or segment.get("text", {}).get("content", "") for segment in cell)
 
     def _read_table_rows(self, block_id: str) -> str:
         """Read table rows."""
@@ -316,12 +305,7 @@ class NotionExtractor(BaseExtractor):
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
             for table_header_cell in table_header_cells:
-                if table_header_cell:
-                    for table_header_cell_text in table_header_cell:
-                        text = table_header_cell_text["text"]["content"]
-                        table_header_cell_texts.append(text)
-                else:
-                    table_header_cell_texts.append("")
+                table_header_cell_texts.append(self._get_cell_text(table_header_cell))
             # Initialize Markdown table with headers
             markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
             markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
@@ -331,11 +315,8 @@ class NotionExtractor(BaseExtractor):
             for i in range(len(results) - 1):
                 column_texts = []
                 table_column_cells = data["results"][i + 1]["table_row"]["cells"]
-                for j in range(len(table_column_cells)):
-                    if table_column_cells[j]:
-                        for table_column_cell_text in table_column_cells[j]:
-                            column_text = table_column_cell_text["text"]["content"]
-                            column_texts.append(column_text)
+                for table_column_cell in table_column_cells:
+                    column_texts.append(self._get_cell_text(table_column_cell))
                 # Add row to Markdown table
                 markdown_table += "| " + " | ".join(column_texts) + " |\n"
             result_lines_arr.append(markdown_table)
@@ -348,7 +329,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: DocumentModel | None):
+    def update_last_edited_time(self, document_model: StoredDocumentExtractionInput | None):
         if not document_model:
             return
 
@@ -359,8 +340,12 @@ class NotionExtractor(BaseExtractor):
 
         db.session.execute(
             update(DocumentModel)
-            .where(DocumentModel.id == document_model.id)
-            .values(data_source_info=json.dumps(data_source_info))
+            .where(
+                DocumentModel.id == document_model.id,
+                DocumentModel.tenant_id == document_model.tenant_id,
+                DocumentModel.dataset_id == document_model.dataset_id,
+            )
+            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
         )
         db.session.commit()
 
@@ -389,20 +374,3 @@ class NotionExtractor(BaseExtractor):
 
         data = res.json()
         return cast(str, data["last_edited_time"])
-
-    @classmethod
-    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
-        # get credential from tenant_id and credential_id
-        if not credential_id:
-            raise Exception(f"No credential id found for tenant {tenant_id}")
-        datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=tenant_id,
-            credential_id=credential_id,
-            provider="notion_datasource",
-            plugin_id="langgenius/notion_datasource",
-        )
-        if not credential:
-            raise Exception(f"No notion credential found for tenant {tenant_id} and credential {credential_id}")
-
-        return cast(str, credential["integration_secret"])

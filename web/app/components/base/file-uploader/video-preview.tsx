@@ -8,7 +8,7 @@ type VideoPreviewProps = {
   onCancel: () => void
 }
 const VideoPreview: FC<VideoPreviewProps> = ({ url, title, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog

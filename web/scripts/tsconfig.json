@@ -1,0 +1,9 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true
+  },
+  "include": ["*.ts", "*.js", "*.mjs"]
+}

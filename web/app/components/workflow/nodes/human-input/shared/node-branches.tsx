@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../../_base/components/node-handle'
 
 const HumanInputNodeBranches = <T extends HumanInputSharedNodeType>(props: NodeProps<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { user_actions: userActions } = props.data
 
   return (

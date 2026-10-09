@@ -6,6 +6,7 @@ export type DocumentContextValue = {
   documentId?: string
   docForm?: ChunkingMode
   parentMode?: ParentMode
+  canEdit?: boolean
 }
 
 export const DocumentContext = createContext<DocumentContextValue>({})

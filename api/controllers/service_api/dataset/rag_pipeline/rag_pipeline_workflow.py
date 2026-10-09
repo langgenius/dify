@@ -32,6 +32,7 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
 from libs.helper import dump_response
@@ -183,7 +184,11 @@ class DatasourcePluginsApi(DatasetApiResource):
 
         rag_pipeline_service = RagPipelineService(db.session())
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
-            tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=query.is_published
+            tenant_id=tenant_id,
+            dataset_id=dataset_id_str,
+            is_published=query.is_published,
+            credential_query=application_services().credential_queries,
+            datasource_providers=application_services().data_sources.providers,
         )
         return dump_response(DatasourcePluginListResponse, datasource_plugins), 200
 
@@ -247,6 +252,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
                     datasource_type=datasource_node_run_api_entity.datasource_type,
                     is_published=datasource_node_run_api_entity.is_published,
                     credential_id=datasource_node_run_api_entity.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -310,6 +316,7 @@ class PipelineRunApi(DatasetApiResource):
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,

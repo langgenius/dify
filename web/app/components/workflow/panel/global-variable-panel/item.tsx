@@ -2,7 +2,6 @@ import type { GlobalVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
 
 type Props = Readonly<{
   payload: GlobalVariable
@@ -17,7 +16,10 @@ const Item = ({ payload }: Props) => {
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
-          <GlobalVariableIcon className="size-4 text-util-colors-orange-orange-600" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-others-global-variable size-4 text-util-colors-orange-orange-600"
+          />
           <div className="system-sm-medium text-text-primary">
             <span className="text-text-tertiary">sys.</span>
             {payload.name}

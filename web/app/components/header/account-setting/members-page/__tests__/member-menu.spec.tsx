@@ -1,9 +1,9 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { ContactsManagementMockProvider } from '@/features/contacts/management/composition'
 import {
   ContactsMockScenario,
@@ -23,7 +23,7 @@ vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@/service/common', () => ({
   deleteMemberOrCancelInvitation: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
   },
@@ -125,14 +125,18 @@ describe('MemberMenu', () => {
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
 
-    expect(screen.getByRole('menuitem', { name: /common\.members\.editRole/i })).toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: /common\.members\.assignRoles/i }),
+      screen.getByRole('menuitem', { name: /workspaceMembers\.members\.editRole/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: /workspaceMembers\.members\.assignRoles/i }),
     ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: /common\.members\.editRole/i }))
+    await user.click(screen.getByRole('menuitem', { name: /workspaceMembers\.members\.editRole/i }))
 
-    expect(screen.getByRole('dialog', { name: /common\.members\.editRole/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: /workspaceMembers\.members\.editRole/i }),
+    ).toBeInTheDocument()
   })
 
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
@@ -180,18 +184,26 @@ describe('MemberMenu', () => {
 
     renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
       queryClient,
+      currentWorkspace: { name: 'LangGenius' },
     })
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
 
     const dialog = screen.getByRole('alertdialog', {
-      name: /common\.members\.removeFromTeamConfirmTitle:\{"memberName":"Member User"\}/i,
+      name: /contacts\.memberRemoval\.workspaceTitle:/i,
     })
-    expect(dialog).toHaveTextContent('common.members.removeFromTeamConfirmDescription')
+    expect(dialog).toHaveAccessibleName(/"memberName":"Member User","workspaceName":"LangGenius"/)
+    expect(within(dialog).getByText('Member User')).toBeInTheDocument()
+    expect(within(dialog).getByText('member@example.com')).toBeInTheDocument()
+    expect(dialog).toHaveTextContent(
+      'contacts.memberRemoval.accessImpact:{"memberName":"Member User"}',
+    )
+    expect(dialog).toHaveTextContent('contacts.memberRemoval.contentImpact')
+    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
     expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
 
-    await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
 
     await waitFor(() => {
       expect(deleteMemberOrCancelInvitation).toHaveBeenCalledWith({
@@ -232,6 +244,44 @@ describe('MemberMenu', () => {
     expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
   })
 
+  it('closes the member confirmation without changing membership when cancelled', async () => {
+    const user = userEvent.setup()
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />)
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps the member confirmation open after a failed removal and allows retry', async () => {
+    const user = userEvent.setup()
+    vi.mocked(deleteMemberOrCancelInvitation).mockRejectedValueOnce(new Error('Request failed'))
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />)
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }),
+      ).toBeEnabled()
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(toast.success).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(deleteMemberOrCancelInvitation).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledOnce()
+  })
+
   it('keeps the existing invitation cancellation path when Contacts mock is enabled', async () => {
     const user = userEvent.setup()
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
@@ -245,7 +295,7 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
     const dialog = screen.getByRole('alertdialog', {
-      name: /common\.members\.removeFromTeamConfirmTitle/,
+      name: /workspaceMembers\.members\.removeFromTeamConfirmTitle/,
     })
     expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
@@ -267,7 +317,7 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
     const dialog = screen.getByRole('alertdialog', {
-      name: /common\.members\.removeFromTeamConfirmTitle/,
+      name: /workspaceMembers\.members\.removeFromTeamConfirmTitle/,
     })
     await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
 

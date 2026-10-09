@@ -1,8 +1,9 @@
-import * as amplitude from '@amplitude/analytics-browser'
+import type { Types } from '@amplitude/analytics-browser'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { getIsAmplitudeInitialized } from './init'
+import { getAmplitudeClient } from './init'
 
-const canUseAmplitude = () => getAnalyticsConsent() === 'granted' && getIsAmplitudeInitialized()
+const getConsentedClient = () =>
+  getAnalyticsConsent() === 'granted' ? getAmplitudeClient() : undefined
 
 /**
  * Track custom event
@@ -12,15 +13,17 @@ const canUseAmplitude = () => getAnalyticsConsent() === 'granted' && getIsAmplit
 export const trackEvent = (
   eventName: string,
   eventProperties?: Record<string, unknown>,
-  eventOptions?: amplitude.Types.EventOptions,
+  eventOptions?: Types.EventOptions,
 ) => {
-  if (!canUseAmplitude()) return
+  const amplitude = getConsentedClient()
+  if (!amplitude) return
   if (eventOptions) return amplitude.track(eventName, eventProperties, eventOptions)
   return amplitude.track(eventName, eventProperties)
 }
 
 export const flushEvents = () => {
-  if (!canUseAmplitude()) return
+  const amplitude = getConsentedClient()
+  if (!amplitude) return
   return amplitude.flush()
 }
 
@@ -29,7 +32,8 @@ export const flushEvents = () => {
  * @param userId User ID
  */
 export const setUserId = (userId: string) => {
-  if (!canUseAmplitude()) return
+  const amplitude = getConsentedClient()
+  if (!amplitude) return
   amplitude.setUserId(userId)
 }
 
@@ -37,10 +41,9 @@ export const setUserId = (userId: string) => {
  * Set user properties
  * @param properties User properties
  */
-export const setUserProperties = (
-  properties: Record<string, amplitude.Types.ValidPropertyType>,
-) => {
-  if (!canUseAmplitude()) return
+export const setUserProperties = (properties: Record<string, Types.ValidPropertyType>) => {
+  const amplitude = getConsentedClient()
+  if (!amplitude) return
   const identifyEvent = new amplitude.Identify()
   Object.entries(properties).forEach(([key, value]) => {
     identifyEvent.set(key, value)
@@ -52,6 +55,7 @@ export const setUserProperties = (
  * Reset user (e.g., when user logs out)
  */
 export const resetUser = () => {
-  if (!canUseAmplitude()) return
+  const amplitude = getConsentedClient()
+  if (!amplitude) return
   amplitude.reset()
 }

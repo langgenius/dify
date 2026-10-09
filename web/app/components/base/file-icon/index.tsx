@@ -1,17 +1,5 @@
 import type { FC } from 'react'
-import { Notion } from '@/app/components/base/icons/src/public/common'
-import {
-  Csv,
-  Doc,
-  Docx,
-  Html,
-  Json,
-  Md,
-  Pdf,
-  Txt,
-  Unknown,
-  Xlsx,
-} from '@/app/components/base/icons/src/public/files'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type FileIconProps = {
   type: string
@@ -21,31 +9,33 @@ type FileIconProps = {
 const FileIcon: FC<FileIconProps> = ({ type, className }) => {
   switch (type) {
     case 'csv':
-      return <Csv className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-csv h-8.5 w-8', className)} />
     case 'doc':
-      return <Doc className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-doc h-8.5 w-8', className)} />
     case 'docx':
-      return <Docx className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-docx h-8.5 w-8', className)} />
     case 'htm':
     case 'html':
-      return <Html className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-html h-8.5 w-8', className)} />
     case 'json':
-      return <Json className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-json h-8.5 w-8', className)} />
     case 'md':
     case 'markdown':
     case 'mdx':
-      return <Md className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-md h-8.5 w-8', className)} />
     case 'pdf':
-      return <Pdf className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-pdf h-8.5 w-8', className)} />
     case 'txt':
-      return <Txt className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-txt h-8.5 w-8', className)} />
     case 'xls':
     case 'xlsx':
-      return <Xlsx className={className} />
+      return <span aria-hidden className={cn('i-custom-public-files-xlsx h-6.5 w-6', className)} />
     case 'notion':
-      return <Notion className={className} />
+      return <span aria-hidden className={cn('i-custom-public-common-notion h-5 w-5', className)} />
     default:
-      return <Unknown className={className} />
+      return (
+        <span aria-hidden className={cn('i-custom-public-files-unknown h-8.5 w-8', className)} />
+      )
   }
 }
 

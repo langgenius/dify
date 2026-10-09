@@ -18,7 +18,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     props.data,
   )
   const renderI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent'])
   const models = useMemo(() => {
     if (!inputs) return []
     // if selected, show in node
@@ -26,7 +26,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     // if not required and not selected, show nothing
     const models =
       currentStrategy?.parameters
-        .filter((param) => param.type === FormTypeEnum.modelSelector)
+        ?.filter((param) => param.type === FormTypeEnum.modelSelector)
         .reduce(
           (acc, param) => {
             const item = inputs.agent_parameters?.[param.name]?.value
@@ -48,22 +48,12 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
 
   const tools = useMemo(() => {
     const tools: Array<ToolIconProps> = []
-    currentStrategy?.parameters.forEach((param, i) => {
-      if (param.type === FormTypeEnum.toolSelector) {
-        const field = param.name
-        const value = inputs.agent_parameters?.[field]?.value
-        if (value) {
-          tools.push({
-            id: `${param.name}-${i}`,
-            providerName: value.provider_name as any,
-          })
-        }
-      }
+    currentStrategy?.parameters?.forEach((param) => {
       if (param.type === FormTypeEnum.multiToolSelector) {
         const field = param.name
         const value = inputs.agent_parameters?.[field]?.value
-        if (value) {
-          ;(value as unknown as any[]).forEach((item, idx) => {
+        if (Array.isArray(value)) {
+          value.forEach((item, idx) => {
             tools.push({
               id: `${param.name}-${idx}`,
               providerName: item.provider_name,
@@ -78,18 +68,18 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     <div className="mb-1 space-y-1 px-3">
       {inputs.agent_strategy_name ? (
         <SettingItem
-          label={t(($) => $['nodes.agent.strategy.shortLabel'], { ns: 'workflow' })}
+          label={t(($) => $['nodes.agent.strategy.shortLabel'], { ns: 'workflowAgent' })}
           status={
             currentStrategyStatus && !currentStrategyStatus.isExistInPlugin ? 'error' : undefined
           }
           tooltip={
             currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
               ? t(($) => $['nodes.agent.strategyNotInstallTooltip'], {
-                  ns: 'workflow',
+                  ns: 'workflowAgent',
                   plugin: pluginDetail?.declaration.label
                     ? renderI18nObject(pluginDetail?.declaration.label)
                     : undefined,
-                  strategy: inputs.agent_strategy_label,
+                  strategy: inputs.agent_strategy_label ?? inputs.agent_strategy_name,
                 })
               : undefined
           }
@@ -97,18 +87,18 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           {inputs.agent_strategy_label}
         </SettingItem>
       ) : (
-        <SettingItem label={t(($) => $['nodes.agent.strategyNotSet'], { ns: 'workflow' })} />
+        <SettingItem label={t(($) => $['nodes.agent.strategyNotSet'], { ns: 'workflowAgent' })} />
       )}
       {models.length > 0 && (
         <Group
           label={
             <GroupLabel className="mt-1">
-              {t(($) => $['nodes.agent.model'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.model'], { ns: 'workflowAgent' })}
             </GroupLabel>
           }
         >
           {models.map((model) => {
-            return <ModelBar {...model} key={model.param} />
+            return <ModelBar key={model.param} {...model} />
           })}
         </Group>
       )}
@@ -116,13 +106,13 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         <Group
           label={
             <GroupLabel className="mt-1">
-              {t(($) => $['nodes.agent.toolbox'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.toolbox'], { ns: 'workflowAgent' })}
             </GroupLabel>
           }
         >
           <div className="grid grid-cols-10 gap-0.5">
             {tools.map((tool, i) => (
-              <ToolIcon {...tool} key={tool.id + i} />
+              <ToolIcon key={tool.id + i} {...tool} />
             ))}
           </div>
         </Group>

@@ -8,7 +8,7 @@ import {
   zGetWebsiteCrawlStatusByJobIdResponse,
   zPostWebsiteCrawlBody,
   zPostWebsiteCrawlResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get website crawl status

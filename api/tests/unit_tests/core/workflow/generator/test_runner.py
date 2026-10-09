@@ -339,6 +339,58 @@ class TestDynamicToolRouting:
         assert "reason=unmatched_query" in caplog.text
         assert "candidates=80" in caplog.text
 
+    def test_unmatched_router_query_logs_capped_omitted_tool_preview(self, caplog: pytest.LogCaptureFixture):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(
+            json.dumps(
+                {
+                    "needs_tools": True,
+                    "queries": [{"capability": "quantum melody", "keywords": ["qubits", "music"]}],
+                }
+            )
+        )
+        entries = [_tool_entry("provider", f"tool_{index:03d}", description="Manage records.") for index in range(101)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Create something external",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert "reason=unmatched_query" in caplog.text
+        assert "candidates=80" in caplog.text
+        assert "omitted=21" in caplog.text
+        assert "overflow=0" in caplog.text
+        assert "omitted_tools=provider/tool_080" in caplog.text
+        assert "provider/tool_099,...(+1)" in caplog.text
+
+    def test_router_exception_logs_pinned_fallback_tool(self, caplog: pytest.LogCaptureFixture):
+        model = MagicMock()
+        model.invoke_llm.side_effect = RuntimeError("router unavailable")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Use provider/tool_099 exactly.",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert "reason=RuntimeError" in caplog.text
+        assert "candidates=80" in caplog.text
+        assert "omitted=20" in caplog.text
+        assert "pinned=1" in caplog.text
+        assert "overflow=0" in caplog.text
+
     def test_router_failure_does_not_surface_as_model_error(self):
         planner = json.dumps(
             {

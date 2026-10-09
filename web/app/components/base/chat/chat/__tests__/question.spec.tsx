@@ -1,11 +1,11 @@
 import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
+import { toast } from '@/app/notifications'
 import { createTheme } from '../../embedded-chatbot/theme/theme'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
@@ -105,7 +105,6 @@ const renderWithProvider = (
       config={{} as unknown as ChatConfig | undefined}
       isResponding={false}
       chatList={[]}
-      showPromptLog={false}
       questionIcon={props.questionIcon}
       answerIcon={props.answerIcon}
       onSend={vi.fn()}
@@ -961,7 +960,6 @@ describe('Question component', () => {
         config={{} as unknown as ChatConfig}
         isResponding={false}
         chatList={[]}
-        showPromptLog={false}
         onSend={vi.fn()}
         onRegenerate={undefined as unknown as OnRegenerate}
         onAnnotationEdited={vi.fn()}

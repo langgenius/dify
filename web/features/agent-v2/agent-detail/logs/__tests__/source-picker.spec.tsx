@@ -111,6 +111,28 @@ describe('AgentLogSourcePicker', () => {
     expect(workflowOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
 
+  it('should preserve selected source ids that are outside the current result set', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(<AgentLogSourcePicker {...commonProps} value={['missing-source']} onChange={onChange} />)
+
+    expect(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    ).toHaveTextContent('common.dynamicSelect.selected:{"count":1}')
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    )
+    await user.click(screen.getByRole('option', { name: /Book Translation/ }))
+
+    expect(onChange).toHaveBeenCalledWith(['missing-source', sources.webapp.id])
+  })
+
   it('should show one named popup state and keep retry outside the listbox', async () => {
     const user = userEvent.setup()
     const onRetry = vi.fn()

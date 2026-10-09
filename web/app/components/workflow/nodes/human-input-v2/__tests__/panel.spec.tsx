@@ -1,6 +1,7 @@
 import type { HumanInputV2NodeType } from '../types'
 import type useHumanInputV2Config from '../use-config'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -8,6 +9,13 @@ import { HumanInputV2Panel } from '../panel'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockSharedPanel = vi.hoisted(() => vi.fn())
+
+vi.mock('@/features/account-profile/client', () => ({
+  userProfileQueryOptions: () => ({
+    queryKey: ['test-current-user-profile'],
+    queryFn: async () => ({ profile: { email: 'reviewer@example.com' } }),
+  }),
+}))
 
 vi.mock('../use-config', () => ({
   __esModule: true,
@@ -92,11 +100,15 @@ describe('Human Input v2 panel composition', () => {
   it('composes v2 sections with shared fields and never renders Delivery Method', async () => {
     const user = userEvent.setup()
     render(
-      <HumanInputV2Panel
-        id="human-input-v2"
-        data={data}
-        panelProps={{} as NodePanelProps<HumanInputV2NodeType>['panelProps']}
-      />,
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <HumanInputV2Panel
+          id="human-input-v2"
+          data={data}
+          panelProps={{} as NodePanelProps<HumanInputV2NodeType>['panelProps']}
+        />
+      </QueryClientProvider>,
     )
 
     expect(screen.getByText('shared-human-input-sections')).toBeInTheDocument()

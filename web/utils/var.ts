@@ -36,7 +36,10 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
+export const getNewVarInWorkflow = (
+  key: string,
+  type: InputVarType = InputVarType.textInput,
+): InputVar => {
   const { ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
@@ -171,7 +174,7 @@ export function getMarketplaceUrl(
   if (params) {
     Object.keys(params).forEach((key) => {
       const value = params[key]
-      if (value !== undefined && value !== null) searchParams.append(key, value)
+      if (value !== undefined && value !== null) searchParams.set(key, value)
     })
   }
 

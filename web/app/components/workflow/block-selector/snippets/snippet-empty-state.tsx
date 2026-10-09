@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 const SnippetEmptyState = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="flex min-h-120 flex-col items-center justify-center gap-2 px-4">

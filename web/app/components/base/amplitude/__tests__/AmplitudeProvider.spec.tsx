@@ -1,6 +1,6 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { render } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mockConfig = vi.hoisted(() => ({
@@ -22,6 +22,12 @@ vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
   setOptOut: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+  setUserId: vi.fn(),
+  Identify: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
@@ -42,8 +48,9 @@ describe('AmplitudeProvider', () => {
   })
 
   describe('Component', () => {
-    it('initializes amplitude when enabled', () => {
+    it('initializes amplitude when enabled', async () => {
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
       expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
@@ -51,11 +58,12 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.setOptOut).toHaveBeenCalledWith(false)
     })
 
-    it('does not re-initialize amplitude on remount', () => {
+    it('does not re-initialize amplitude on remount', async () => {
       const { unmount } = render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
 
       unmount()
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
       expect(amplitude.init).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
@@ -83,8 +91,9 @@ describe('AmplitudeProvider', () => {
       },
     )
 
-    it('opts out on revoke and resumes without reinitializing', () => {
+    it('opts out on revoke and resumes without reinitializing', async () => {
       const { rerender } = render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
       mockConsent.value = 'denied'
       rerender(<AmplitudeProvider />)
@@ -100,16 +109,37 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
 
-    it('opts out when the analytics layout runtime unmounts', () => {
+    it('opts out when the analytics layout runtime unmounts', async () => {
       const { unmount } = render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
       unmount()
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
     })
 
+    it.each(['revoke', 'unmount'] as const)(
+      'does not start tracking when %s happens during SDK loading',
+      async (action) => {
+        const { rerender, unmount } = render(<AmplitudeProvider />)
+        if (action === 'revoke') {
+          mockConsent.value = 'denied'
+          rerender(<AmplitudeProvider />)
+        } else {
+          unmount()
+        }
+
+        await act(async () => {
+          await vi.dynamicImportSettled()
+        })
+        expect(amplitude.init).not.toHaveBeenCalled()
+        expect(sessionReplayPlugin).not.toHaveBeenCalled()
+      },
+    )
+
     it('pageNameEnrichmentPlugin logic works as expected', async () => {
       render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
       const plugin = vi.mocked(amplitude.add).mock.calls[0]?.[0] as
         | amplitude.Types.EnrichmentPlugin
         | undefined

@@ -11,8 +11,6 @@ import type {
   TracingProvider,
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { Dependency } from '@/app/components/plugins/types'
-import type { App, AppModeEnum } from '@/types/app'
 
 export const DSLImportMode = {
   YAML_CONTENT: 'yaml-content',
@@ -27,30 +25,6 @@ export const DSLImportStatus = {
   FAILED: 'failed',
 } as const
 export type DSLImportStatus = (typeof DSLImportStatus)[keyof typeof DSLImportStatus]
-
-export type DSLImportWarning = {
-  code: string
-  path: string
-  message: string
-  details: Record<string, unknown>
-}
-
-export type AppDetailResponse = App
-
-export type DSLImportResponse = {
-  id: string
-  status: DSLImportStatus
-  app_mode: AppModeEnum
-  app_id?: string
-  current_dsl_version?: string
-  imported_dsl_version?: string
-  error: string
-  leaked_dependencies: Dependency[]
-  permission_keys: string[]
-  warnings?: DSLImportWarning[]
-}
-
-export type UpdateAppModelConfigResponse = { result: string }
 
 export type WorkflowOnlineUser = {
   user_id?: string

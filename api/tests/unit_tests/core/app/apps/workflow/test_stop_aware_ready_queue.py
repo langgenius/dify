@@ -76,23 +76,3 @@ def test_attach_stop_aware_ready_queue_wraps_once() -> None:
 
     assert isinstance(first, StopAwareReadyQueue)
     assert runtime_state.ready_queue is first
-
-
-def test_stop_aware_queue_delegates_reads() -> None:
-    inner = Mock()
-    inner.get.return_value = _start_task("queued")
-    inner.qsize.return_value = 1
-    inner.drain.return_value = [_start_task("queued")]
-    inner.dumps.return_value = "{}"
-    queue = StopAwareReadyQueue(inner, task_id="task-1", graph_execution=_graph_execution())
-
-    assert queue.get(timeout=0.1) == _start_task("queued")
-    queue.task_done()
-    assert queue.qsize() == 1
-    assert queue.drain() == [_start_task("queued")]
-    assert queue.dumps() == "{}"
-    queue.loads("{}")
-
-    inner.get.assert_called_once_with(timeout=0.1)
-    inner.task_done.assert_called_once()
-    inner.loads.assert_called_once_with("{}")

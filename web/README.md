@@ -19,10 +19,6 @@ First, install the dependencies:
 pnpm install
 ```
 
-> [!NOTE]
-> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`.
-> Install dependencies and run the commands below from the repository root.
-
 Then, configure the environment variables.
 Create `web/.env.local` and copy the contents from `web/.env.example`.
 Modify the values of these environment variables according to your requirements:
@@ -49,6 +45,24 @@ Open <http://localhost:3000> with your browser to see the result.
 You can start editing the files under `web/app`.
 The page auto-updates as you edit the file.
 
+### Vinext toolchain
+
+The workspace catalog pins vinext to `1.0.0-beta.13`. Following the
+[versioned vinext guide], `dev:vinext` and `build:vinext` use the project-local
+Vite+ CLI (`vp dev` / `vp build`); the vinext plugin owns the development and multi-environment build
+lifecycle. Keep the Next.js scripts available for compatibility comparisons.
+
+When upgrading, run the installed compatibility scanner and verify the application:
+
+```bash
+pnpm -C web exec vinext check
+pnpm -C web run build:vinext
+pnpm -C web run start:vinext
+```
+
+The scanner is a starting point; also check sign-in, redirects, and the workflows
+affected by the upgrade. See the [vinext migration guide] for validation guidance.
+
 ## Deploy
 
 ### Deploy on server
@@ -74,8 +88,20 @@ docker build -f web/Dockerfile -t dify-web .
 If you want to customize the host and port:
 
 ```bash
-pnpm -C web run start --port=3001 --host=0.0.0.0
+PORT=3001 HOSTNAME=0.0.0.0 pnpm -C web run start
 ```
+
+### Vinext standalone Node server
+
+`pnpm -C web run build:vinext` honors `output: 'standalone'` in `next.config.ts`
+and emits `web/dist/standalone`. To run the self-contained production server:
+
+```bash
+HOST=0.0.0.0 PORT=3000 node web/dist/standalone/server.js
+```
+
+Vinext uses `HOST` for the bind address; Next.js standalone uses `HOSTNAME`.
+Use `start:vinext` for local production testing. See [vinext Node deployment].
 
 ## Storybook
 
@@ -91,31 +117,20 @@ Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+For VS Code, copy `.vscode/settings.example.json` to `.vscode/settings.json`, or merge it into your existing settings.
 
 Then follow the [Lint Documentation] to lint the code.
 
 ## Test
 
-We use [Vitest] and [React Testing Library] for Unit Testing.
-
-**📖 Frontend Testing Guide**: See the [Frontend Testing Guide] for the canonical testing policy and workflow.
-
-> [!IMPORTANT]
-> As we are using Vite+, the `vitest` command is not available.
-> Please make sure to run tests with `vp` commands.
-> For example, use `vp test` instead of `vitest`.
-
-Run test:
+We use [Vitest] and [React Testing Library] through Vite+. Run unit tests in `happy-dom` with:
 
 ```bash
 cd web
 vp test run --project unit
 ```
 
-The standard unit command runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands. Always select a project explicitly: bare `vp test` runs every registered project, including Browser Mode.
-
-If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
+Select a project explicitly; bare `vp test` also runs Browser Mode. Use `vp` instead of the standalone `vitest` command. The [Frontend Testing Guide] owns test policy, Browser Mode admission, and diagnostic commands.
 
 ## Documentation
 
@@ -135,4 +150,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
 [pnpm]: https://pnpm.io
+[versioned vinext guide]: https://github.com/cloudflare/vinext/blob/vinext%401.0.0-beta.13/README.md
+[vinext Node deployment]: https://vinext.dev/docs/deploying/other-platforms
+[vinext migration guide]: https://vinext.dev/docs/getting-started/migrating
 [vinext]: https://github.com/cloudflare/vinext

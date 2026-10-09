@@ -22,7 +22,6 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -42,7 +41,7 @@ import { useMultipleModelDebug } from './configuration-lifecycle/use-multiple-mo
 import { usePublishedConfigSync } from './configuration-lifecycle/use-published-config-sync'
 
 export const useConfiguration = (): ConfigurationViewModel => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [_settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
     settingsQueryParser,
@@ -54,11 +53,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
     currentWorkspace,
     isLoadingCurrentWorkspace,
     serverLatestPublishedAt,
-    setShowAppConfigureFeaturesModal,
-    showAppConfigureFeaturesModal,
     updateModelConfig,
   } = useConfigurationAppContext()
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
@@ -128,7 +126,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
-  const { isAPIKeySet } = useProviderContext()
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelConfig.provider,
     model: modelConfig.model_id,
@@ -146,7 +143,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     modelModeTypeRef.current = resolvedModelModeType
   }, [modelModeTypeRef, resolvedModelModeType])
 
-  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
 
@@ -356,6 +353,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     model: modelConfiguration,
     base: {
       appId,
+      onOpenFeatures: () => setShowAppConfigureFeaturesModal(true),
       canReturnToSimpleMode,
       canTestAndRun: appACLCapabilities.canTestAndRun,
       collectionList,
@@ -367,7 +365,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
       isAdvancedMode,
       isAgent,
       isAllowVideoUpload,
-      isAPIKeySet,
       isFunctionCall,
       isOpenAI: modelConfig.provider === 'langgenius/openai/openai',
       isShowAudioConfig,
@@ -397,6 +394,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
+      appId,
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (serverLatestPublishedAt || 0) * 1000,

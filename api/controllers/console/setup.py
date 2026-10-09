@@ -7,11 +7,8 @@ from controllers.fastopenapi import console_router
 from extensions.ext_application_services import application_services
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
-from services.setup_service import (
-    InitializationValidationRequiredError,
-    SetupAlreadyCompletedError,
-    SetupInput,
-)
+from services.account.contracts import SetupInput
+from services.setup_service import InitializationValidationRequiredError, SetupAlreadyCompletedError
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import is_init_validated

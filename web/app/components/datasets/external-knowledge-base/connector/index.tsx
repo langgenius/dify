@@ -1,12 +1,12 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'
@@ -14,9 +14,9 @@ import { createExternalKnowledgeBase } from '@/service/datasets'
 const ExternalKnowledgeBaseConnector = () => {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'onboarding'])
   useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'common' }),
+    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'onboarding' }),
   )
 
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {

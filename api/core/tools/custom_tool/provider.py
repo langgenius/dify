@@ -4,6 +4,7 @@ from typing import override
 
 from pydantic import Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_provider import ToolProviderController
@@ -36,7 +37,9 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
         self.tools = []
 
     @classmethod
-    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> ApiToolProviderController:
+    def from_db(
+        cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType, *, session: Session
+    ) -> ApiToolProviderController:
         credentials_schema = [
             ProviderConfig(
                 name="auth_type",
@@ -104,7 +107,7 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
         elif auth_type == ApiProviderAuthType.NONE:
             pass
 
-        user = db_provider.user
+        user = db_provider.user(session=session)
         user_name = user.name if user else ""
 
         return ApiToolProviderController(

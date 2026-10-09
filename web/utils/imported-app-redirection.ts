@@ -1,5 +1,5 @@
 import type { AppRedirectionTarget } from '@/utils/app-redirection'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 export const resolveImportedAppRedirectionTarget = async (

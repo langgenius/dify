@@ -157,7 +157,7 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
@@ -192,7 +192,7 @@ vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: toastErrorMock,
     info: toastInfoMock,
@@ -848,7 +848,7 @@ describe('Workflow edge event wiring', () => {
 
     await waitFor(() => {
       expect(toastInfoMock).toHaveBeenCalledWith(
-        'workflow.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
+        'workflowHistory.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
       )
     })
   })

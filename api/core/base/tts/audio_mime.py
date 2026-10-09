@@ -1,11 +1,12 @@
 import logging
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Iterator
 from itertools import chain
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from libs.stream import close_stream
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -140,32 +141,73 @@ def resolve_audio_mime_type(
     return normalized_declared_mime_type or DEFAULT_TTS_AUDIO_MIME_TYPE
 
 
+type _AudioChunk = bytes | bytearray | memoryview | TTSAudioChunk
+
+
+class AudioStream(Iterator[bytes]):
+    """Own a MIME-checked stream, including resources opened while peeking."""
+
+    def __init__(
+        self, chunks: Generator[bytes, None, None], *, source: Iterable[_AudioChunk], iterator: Iterator[_AudioChunk]
+    ) -> None:
+        self._chunks: Generator[bytes, None, None] = chunks
+        self._source: Iterable[_AudioChunk] = source
+        self._iterator: Iterator[_AudioChunk] = iterator
+        self._closed: bool = False
+
+    @override
+    def __next__(self) -> bytes:
+        try:
+            return next(self._chunks)
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        # The validation generator may never have started, but peeking has
+        # already opened the provider. Close its source explicitly as well.
+        close_stream(self._chunks)
+        close_stream(self._iterator)
+        if self._source is not self._iterator:
+            close_stream(self._source)
+
+
 def inspect_audio_stream(
-    audio_stream: Iterable[bytes | bytearray | memoryview | TTSAudioChunk], declared_mime_type: str | None = None
-) -> tuple[Generator[bytes, None, None], str]:
-    """Peek at and validate a TTS stream without dropping its leading bytes."""
-    iterator = iter(audio_stream)
+    audio_stream: Iterable[_AudioChunk], declared_mime_type: str | None = None
+) -> tuple[AudioStream, str]:
+    """Peek and validate without dropping bytes; the returned stream owns cleanup."""
+    iterator: Iterator[_AudioChunk] | None = None
     leading_chunks: list[bytes] = []
     signature = bytearray()
     reported_mime_type: str | None = None
 
-    while len(signature) < _SIGNATURE_SIZE:
-        try:
-            chunk, chunk_mime_type = _extract_audio_chunk(next(iterator))
-        except StopIteration:
-            break
-        normalized_chunk_mime_type = _normalize_reported_mime_type(chunk_mime_type, "chunk")
-        if normalized_chunk_mime_type:
-            if reported_mime_type and reported_mime_type != normalized_chunk_mime_type:
-                raise InvokeBadRequestError(
-                    "TTS provider changed MIME type within one audio response: "
-                    f"{reported_mime_type} then {normalized_chunk_mime_type}"
-                )
-            reported_mime_type = normalized_chunk_mime_type
-        leading_chunks.append(chunk)
-        signature.extend(chunk[: _SIGNATURE_SIZE - len(signature)])
+    try:
+        iterator = iter(audio_stream)
+        while len(signature) < _SIGNATURE_SIZE:
+            try:
+                chunk, chunk_mime_type = _extract_audio_chunk(next(iterator))
+            except StopIteration:
+                break
+            normalized_chunk_mime_type = _normalize_reported_mime_type(chunk_mime_type, "chunk")
+            if normalized_chunk_mime_type:
+                if reported_mime_type and reported_mime_type != normalized_chunk_mime_type:
+                    raise InvokeBadRequestError(
+                        "TTS provider changed MIME type within one audio response: "
+                        f"{reported_mime_type} then {normalized_chunk_mime_type}"
+                    )
+                reported_mime_type = normalized_chunk_mime_type
+            leading_chunks.append(chunk)
+            signature.extend(chunk[: _SIGNATURE_SIZE - len(signature)])
 
-    mime_type = resolve_audio_mime_type(signature, declared_mime_type, reported_mime_type)
+        mime_type = resolve_audio_mime_type(signature, declared_mime_type, reported_mime_type)
+    except BaseException:
+        close_stream(iterator)
+        if audio_stream is not iterator:
+            close_stream(audio_stream)
+        raise
 
     def validated_stream() -> Generator[bytes, None, None]:
         for chunk in chain(leading_chunks, iterator):
@@ -178,4 +220,4 @@ def inspect_audio_stream(
                 )
             yield audio
 
-    return validated_stream(), mime_type
+    return AudioStream(validated_stream(), source=audio_stream, iterator=iterator), mime_type

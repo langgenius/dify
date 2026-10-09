@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   getInstalledAppParameters: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
@@ -92,7 +92,6 @@ const createInstalledApp = (mode: AppMode = 'chat'): InstalledAppResponse => ({
   editable: true,
   is_pinned: false,
   last_used_at: null,
-  uninstallable: true,
   app: {
     id: 'app-123',
     name: 'Test App',

@@ -7,16 +7,16 @@ import type {
 } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
   fetchSavedMessage as doFetchSavedMessage,
@@ -78,7 +78,7 @@ export const useTextGenerationAppState = ({
   isInstalledApp,
   isWorkflow,
 }: UseTextGenerationAppStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appData = useWebAppStore((s) => s.appInfo)
@@ -152,7 +152,7 @@ export const useTextGenerationAppState = ({
         ...file_upload,
         transfer_methods:
           file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       } as VisionSettings)
       setPromptConfig({

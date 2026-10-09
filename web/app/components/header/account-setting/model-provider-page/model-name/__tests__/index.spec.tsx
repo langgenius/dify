@@ -10,12 +10,9 @@ import ModelName from '../index'
 
 let mockLocale = 'en-US'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    i18n: {
-      language: mockLocale,
-    },
-  }),
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale,
 }))
 
 const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({

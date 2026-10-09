@@ -1,9 +1,7 @@
 'use client'
 
 import type { Dayjs } from 'dayjs'
-import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
   SelectContent,
@@ -13,11 +11,10 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import dayjs from 'dayjs'
-import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { MonitoringDateRangePicker } from '@/app/components/app/monitoring/date-range-picker'
 import { formatToLocalTime } from '@/utils/format'
 
 export type AgentMonitoringPeriod = {
@@ -41,7 +38,6 @@ type AgentMonitoringTimeRangePickerProps = {
   onChange: (period: AgentMonitoringPeriod) => void
 }
 
-const today = dayjs()
 const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 const timeRangeOptions: TimeRangeOption[] = [
@@ -51,6 +47,7 @@ const timeRangeOptions: TimeRangeOption[] = [
 ]
 
 const getRangePeriod = (option: TimeRangeOption): AgentMonitoringPeriod => {
+  const today = dayjs()
   const end = today.endOf('day')
   const start =
     option.days === 0 ? today.startOf('day') : today.subtract(option.days, 'day').startOf('day')
@@ -64,98 +61,11 @@ const getRangePeriod = (option: TimeRangeOption): AgentMonitoringPeriod => {
   }
 }
 
-function DateRangePart({
-  start,
-  end,
-  onStartChange,
-  onEndChange,
-}: {
-  start: Dayjs
-  end: Dayjs
-  onStartChange: (date?: Dayjs) => void
-  onEndChange: (date?: Dayjs) => void
-}) {
-  const locale = useLocale()
-
-  const renderDate: DatePickerProps['renderTrigger'] = (
-    props,
-    _state,
-    { value, handleClickTrigger },
-  ) => (
-    <div
-      {...props}
-      role="button"
-      tabIndex={0}
-      className={cn(
-        'flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
-        props.className,
-      )}
-      onClick={(event) => {
-        handleClickTrigger(event)
-        props.onClick?.(event)
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return
-
-        event.preventDefault()
-        event.currentTarget.click()
-      }}
-    >
-      {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
-    </div>
-  )
-
-  const availableStartDate = end.subtract(30, 'day')
-  const isStartDateDisabled = (date: Dayjs) => {
-    if (date.isAfter(today, 'date')) return true
-
-    return !(
-      (date.isAfter(availableStartDate, 'date') || date.isSame(availableStartDate, 'date')) &&
-      (date.isBefore(end, 'date') || date.isSame(end, 'date'))
-    )
-  }
-
-  const availableEndDate = start.add(30, 'day')
-  const isEndDateDisabled = (date: Dayjs) => {
-    if (date.isAfter(today, 'date')) return true
-
-    return !(
-      (date.isAfter(start, 'date') || date.isSame(start, 'date')) &&
-      (date.isBefore(availableEndDate, 'date') || date.isSame(availableEndDate, 'date'))
-    )
-  }
-
-  return (
-    <div className="flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2">
-      <span aria-hidden className="i-ri-calendar-line size-3.5 text-text-tertiary" />
-      <DatePicker
-        value={start}
-        onChange={onStartChange}
-        renderTrigger={renderDate}
-        needTimePicker={false}
-        onClear={noop}
-        noConfirm
-        getIsDateDisabled={isStartDateDisabled}
-      />
-      <span className="system-sm-regular text-text-tertiary">-</span>
-      <DatePicker
-        value={end}
-        onChange={onEndChange}
-        renderTrigger={renderDate}
-        needTimePicker={false}
-        onClear={noop}
-        noConfirm
-        getIsDateDisabled={isEndDateDisabled}
-      />
-    </div>
-  )
-}
-
 export function AgentMonitoringTimeRangePicker({
   value,
   onChange,
 }: AgentMonitoringTimeRangePickerProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const locale = useLocale()
   const [selectedRange, setSelectedRange] = useState<TimeRangeKey | 'custom'>('today')
   const [start, setStart] = useState(() => dayjs(value.query.start))
@@ -231,7 +141,7 @@ export function AgentMonitoringTimeRangePicker({
         aria-hidden
         className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal"
       />
-      <DateRangePart
+      <MonitoringDateRangePicker
         start={start}
         end={end}
         onStartChange={handleDateChange('start')}

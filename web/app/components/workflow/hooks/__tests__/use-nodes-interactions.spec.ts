@@ -5,6 +5,7 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import HumanInputDefault from '../../nodes/human-input/default'
 import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
@@ -31,6 +32,7 @@ const runtimeNodesMetaDataMap = vi.hoisted(() => ({
 }))
 
 const runtimeState = vi.hoisted(() => ({
+  isChatMode: false,
   nodesReadOnly: false,
   workflowReadOnly: false,
 }))
@@ -43,6 +45,7 @@ vi.mock('reactflow', async () =>
 )
 
 vi.mock('../use-workflow', () => ({
+  useIsChatMode: () => runtimeState.isChatMode,
   useWorkflow: () => ({
     getAfterNodesInSameBranch: () => [],
   }),
@@ -118,6 +121,7 @@ describe('useNodesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetReactFlowMockState()
+    runtimeState.isChatMode = false
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
     mockCreateInlineAgentBinding.mockImplementation(
@@ -1240,6 +1244,86 @@ describe('useNodesInteractions', () => {
     expect(rfState.setNodes).toHaveBeenCalled()
   })
 
+  describe('pasted conversation memory', () => {
+    const memory = {
+      window: { enabled: false, size: 50 },
+      query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+    }
+    const promptTemplate = [{ role: 'user', text: '{{#start.query#}}' }]
+
+    it.each(
+      [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ].flatMap((type) => [
+        { type, isChatMode: false },
+        { type, isChatMode: true },
+      ]),
+    )(
+      'pastes $type with conversation memory only when isChatMode=$isChatMode',
+      async ({ type, isChatMode }) => {
+        runtimeState.isChatMode = isChatMode
+        runtimeNodesMetaDataMap.value = {
+          [type]: { defaultValue: { type, title: type, desc: '' } },
+        }
+        const sourceNode = createNode({
+          id: 'source-node',
+          data: { type, memory, prompt_template: promptTemplate },
+        })
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        store.setState({ clipboardElements: [sourceNode], clipboardEdges: [] })
+
+        await act(async () => {
+          await result.current.handleNodesPaste()
+        })
+
+        const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+        const pastedNode = pastedNodes.find((node) => node.data.type === type)!
+        if (isChatMode) expect(pastedNode.data).toHaveProperty('memory', memory)
+        else expect(pastedNode.data).not.toHaveProperty('memory')
+        expect(pastedNode.data).toHaveProperty('prompt_template', promptTemplate)
+        expect(store.getState().clipboardElements[0]?.data).toHaveProperty('memory', memory)
+      },
+    )
+
+    it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+      'clears memory from LLM children when pasting a %s into Workflow',
+      async (containerType) => {
+        runtimeNodesMetaDataMap.value = {
+          [containerType]: {
+            defaultValue: { type: containerType, title: containerType, desc: '' },
+          },
+          [BlockEnum.LLM]: { defaultValue: { type: BlockEnum.LLM, title: 'LLM', desc: '' } },
+        }
+        const sourceContainer = createNode({
+          id: 'source-container',
+          data: { type: containerType },
+        })
+        const sourceChild = createNode({
+          id: 'source-child',
+          parentId: sourceContainer.id,
+          data: { type: BlockEnum.LLM, memory, prompt_template: promptTemplate },
+        })
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        store.setState({ clipboardElements: [sourceContainer, sourceChild], clipboardEdges: [] })
+
+        await act(async () => {
+          await result.current.handleNodesPaste()
+        })
+
+        const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+        const pastedChild = pastedNodes.find((node) => node.data.type === BlockEnum.LLM)!
+        expect(pastedChild.parentId).toBe(
+          pastedNodes.find((node) => node.data.type === containerType)?.id,
+        )
+        expect(pastedChild.data).not.toHaveProperty('memory')
+        expect(sourceChild.data).toHaveProperty('memory', memory)
+      },
+    )
+  })
+
   // Paste title handling should preserve original names until the destination canvas conflicts.
   describe('paste title handling', () => {
     beforeEach(() => {
@@ -1488,7 +1572,7 @@ describe('useNodesInteractions', () => {
     })
 
     const pasteNodeIntoContainer = async (
-      containerType: BlockEnum.Iteration | BlockEnum.Loop,
+      containerType: typeof BlockEnum.Iteration | typeof BlockEnum.Loop,
       nodeType: BlockEnum,
     ) => {
       runtimeNodesMetaDataMap.value = {
@@ -1526,6 +1610,7 @@ describe('useNodesInteractions', () => {
             id: `${nodeType}-clipboard-node`,
             position: { x: 100, y: 100 },
             data: {
+              ...(nodeType === BlockEnum.HumanInput ? HumanInputDefault.defaultValue : {}),
               type: nodeType,
               title: `${nodeType} clipboard node`,
               desc: '',

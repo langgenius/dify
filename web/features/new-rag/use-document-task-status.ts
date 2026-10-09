@@ -7,7 +7,7 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { responseStatus } from './document-detail-model'
 import { newestTaskByDocument } from './document-model'
 

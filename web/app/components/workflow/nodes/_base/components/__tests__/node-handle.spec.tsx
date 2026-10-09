@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
@@ -314,6 +314,20 @@ describe('node-handle', () => {
 
   // Auto-open tests cover workflow start-trigger variants, chat-mode bypass, and store fallback paths.
   describe('NodeSourceHandle auto-open', () => {
+    it('restores the previous focus when the start selector opens automatically', async () => {
+      const user = userEvent.setup()
+      render(<button type="button">Previous action</button>)
+      const previousAction = screen.getByRole('button', { name: 'Previous action' })
+      await user.click(previousAction)
+      mockStoreState.shouldAutoOpenStartNodeSelector = true
+
+      renderSourceHandle({ type: BlockEnum.Start })
+      await screen.findByRole('dialog')
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(previousAction).toHaveFocus())
+    })
+
     it.each([
       BlockEnum.Start,
       BlockEnum.TriggerSchedule,

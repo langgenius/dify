@@ -1,8 +1,8 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { ReactElement } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal from '../index'
 import { CreateFromDSLModalTab } from '../types'
@@ -22,11 +22,8 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
   warning: vi.fn(),
 }))
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
-}))
-let mockPlanUsage = 0
-let mockPlanTotal = 10
+let appCount = 0
+let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
@@ -35,34 +32,12 @@ vi.mock('ahooks', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: () => void, options?: { enabled?: boolean }) => {
-      hotkeyMocks.handlers.set(hotkey, { handler, options })
-    },
-  }
-})
-
-const triggerHotkey = (hotkey: string) => {
-  const registration = hotkeyMocks.handlers.get(hotkey)
-  if (registration?.options?.enabled === false) return
-  registration?.handler()
-}
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: {
@@ -76,6 +51,7 @@ vi.mock('@/service/client', async (importOriginal) => {
     },
     consoleQuery: {
       ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
       account: {
         profile: {
           get: {
@@ -122,20 +98,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: {
-        buildApps: mockPlanUsage,
-      },
-      total: {
-        buildApps: mockPlanTotal,
-      },
-    },
-    enableBilling: true,
-  }),
-}))
-
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
 }))
@@ -145,7 +107,7 @@ vi.mock('@/utils/imported-app-redirection', () => ({
     mockResolveImportedAppRedirectionTarget(target),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((...args: unknown[]) => toastMocks.call(...args), {
     success: (...args: unknown[]) => toastMocks.success(...args),
     error: (...args: unknown[]) => toastMocks.error(...args),
@@ -157,12 +119,29 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: { size: appCount, limit: appLimit } },
+  })
+}
+
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
+function submitWithKeyboard() {
+  const target =
+    screen.queryByRole('textbox') ??
+    screen.queryByRole('button', { name: /operation\.create/i }) ??
+    document.body
+  fireEvent.keyDown(target, { key: 'Enter', ctrlKey: true })
+  fireEvent.keyUp(target, { key: 'Enter', ctrlKey: true })
+}
+
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.handlers.clear()
-    mockPlanUsage = 0
-    mockPlanTotal = 10
+    appCount = 0
+    appLimit = 10
     mockWorkspacePermissionKeys = ['app.create_and_management']
     Object.defineProperty(File.prototype, 'text', {
       configurable: true,
@@ -170,7 +149,64 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
-  const getCreateButton = () => screen.getByRole('button', { name: /newApp\.Create/i })
+  const getCreateButton = () => screen.getByRole('button', { name: /operation\.create/i })
+
+  it.each(['agent.ifpkg', 'agent.IFPKG'])(
+    'imports %s as a binary file and handles Agent warnings',
+    async (filename) => {
+      const user = userEvent.setup()
+      const file = new File([new Uint8Array([0x50, 0x4b, 0x00, 0xff])], filename)
+      const readText = vi.spyOn(file, 'text')
+      const onClose = vi.fn()
+      mockImportDSL.mockResolvedValue({
+        id: 'package-import',
+        status: 'completed-with-warnings',
+        app_id: 'agent-app',
+        app_mode: AppModeEnum.AGENT,
+        warnings: [
+          { code: 'agent_skill_missing', path: 'skills.s_000001', message: 'Missing Skill' },
+        ],
+      })
+      render(<CreateFromDSLModal show onClose={onClose} droppedFile={file} />)
+      await user.click(getCreateButton())
+
+      await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
+      expect(readText).not.toHaveBeenCalled()
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.any(String), {
+        type: 'warning',
+        description: expect.anything(),
+      })
+      expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
+        id: 'agent-app',
+        mode: AppModeEnum.AGENT,
+        permission_keys: undefined,
+      })
+    },
+  )
+
+  it('accepts an ifpkg from the file picker even when the ordinary App quota is full', async () => {
+    const user = userEvent.setup()
+    appCount = 10
+    appLimit = 10
+    mockImportDSL.mockResolvedValue({
+      id: 'import',
+      status: 'completed',
+      app_mode: AppModeEnum.AGENT,
+    })
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(input).not.toBeNull()
+    if (!input) throw new Error('Missing file picker')
+    const file = new File(['PK'], 'agent.ifpkg')
+    await user.upload(input, file)
+
+    expect(await screen.findByText('agent.ifpkg')).toBeInTheDocument()
+    expect(screen.getByText('app.appPackage')).toBeInTheDocument()
+    expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
+    await user.click(getCreateButton())
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
+  })
 
   it('should render the file tab and show the dropped file', async () => {
     render(
@@ -192,14 +228,14 @@ describe('CreateFromDSLModal', () => {
     const handleClose = vi.fn()
     render(<CreateFromDSLModal show onClose={handleClose} />)
 
-    triggerHotkey('Mod+Enter')
+    submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
 
     await act(async () => {
       fireEvent.click(screen.getByText(/(?:^|\.)importFromDSLUrl(?=$|:)/))
     })
     expect(
-      screen.getByPlaceholderText(/(?:^|\.)importFromDSLUrlPlaceholder(?=$|:)/),
+      screen.getByPlaceholderText(/(?:^|\.)importAppUrlPlaceholder(?=$|:)/),
     )!.toBeInTheDocument()
 
     const closeTrigger = screen
@@ -236,7 +272,7 @@ describe('CreateFromDSLModal', () => {
     render(<CreateFromDSLModal show onClose={vi.fn()} />)
 
     const fileTab = screen.getByRole('tab', {
-      name: /(?:^|\.)importFromDSLFile(?=$|:)/,
+      name: /(?:^|\.)importFromFile(?=$|:)/,
     })
     const browseButton = screen.getByRole('button', {
       name: /(?:^|\.)dslUploader\.browse(?=$|:)/,
@@ -292,7 +328,7 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)importFromDSLUrlPlaceholder(?=$|:)/), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)importAppUrlPlaceholder(?=$|:)/), {
       target: { value: 'https://example.com/app.yml' },
     })
 
@@ -473,7 +509,7 @@ describe('CreateFromDSLModal', () => {
       expect(getCreateButton())!.toBeDisabled()
     })
 
-    triggerHotkey('Mod+Enter')
+    submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
@@ -531,6 +567,40 @@ describe('CreateFromDSLModal', () => {
       },
     )
   })
+
+  it.each([false, true])(
+    'navigates after a dependency check fails for an import (confirmed: %s)',
+    async (confirmed) => {
+      const user = userEvent.setup()
+      const completed = {
+        status: DSLImportStatus.COMPLETED,
+        app_id: 'created-app',
+        app_mode: AppModeEnum.WORKFLOW,
+      }
+      mockImportDSL.mockResolvedValue(
+        confirmed ? { id: 'pending-import', status: DSLImportStatus.PENDING } : completed,
+      )
+      mockImportDSLConfirm.mockResolvedValue(completed)
+      // The dependency owner has already reported its request failure.
+      mockHandleCheckPluginDependencies.mockResolvedValue(false)
+      const onClose = vi.fn()
+      render(
+        <CreateFromDSLModal
+          show
+          onClose={onClose}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+          dslUrl="https://example.com/app.yml"
+        />,
+      )
+      await user.click(getCreateButton())
+      if (confirmed)
+        await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
+
+      await waitFor(() => expect(mockGetRedirection).toHaveBeenCalled())
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(toastMocks.error).not.toHaveBeenCalled()
+    },
+  )
 
   it('should surface Agent warnings after confirming a pending import', async () => {
     mockImportDSL.mockResolvedValue({
@@ -693,7 +763,7 @@ describe('CreateFromDSLModal', () => {
     })
     fireEvent.click(getCreateButton())
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/(?:^|\.)importFromDSLFile(?=$|:)/).closest('button')).toHaveAttribute(
+    expect(screen.getByText(/(?:^|\.)importFromFile(?=$|:)/).closest('button')).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -775,7 +845,7 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
-  it('should handle keyboard shortcut and quota guard', async () => {
+  it('submits a URL through the keyboard shortcut', async () => {
     const handleClose = vi.fn()
     mockImportDSL.mockResolvedValue({
       id: 'import-shortcut',
@@ -794,7 +864,13 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    triggerHotkey('Mod+Enter')
+    fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(document.body, { key: 'Enter', ctrlKey: true })
+    const input = screen.getByRole('textbox')
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+    fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    submitWithKeyboard()
 
     await waitFor(() => {
       expect(mockImportDSL).toHaveBeenCalledWith({
@@ -802,21 +878,73 @@ describe('CreateFromDSLModal', () => {
         yaml_url: 'https://example.com/app.yml',
       })
     })
+  })
 
-    mockPlanUsage = 1
-    mockPlanTotal = 1
+  it.each(['https://example.com/agent.ifpkg', 'https://example.com/download'])(
+    'lets the server classify URL imports when the ordinary App quota is full: %s',
+    async (url) => {
+      const user = userEvent.setup()
+      appCount = 10
+      mockImportDSL.mockResolvedValue({
+        id: 'package-import',
+        status: 'completed',
+        app_mode: AppModeEnum.AGENT,
+      })
+      render(<CreateFromDSLModal show onClose={vi.fn()} />)
+      expect(screen.getByText('apps-full')).toBeInTheDocument()
+      await user.click(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))
+      expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: 'app.importFromDSLUrl' }), url)
+      await user.click(getCreateButton())
+      await waitFor(() =>
+        expect(mockImportDSL).toHaveBeenCalledWith({ mode: 'yaml-url', yaml_url: url }),
+      )
+    },
+  )
+
+  it('keeps the ordinary App quota guard for local DSL files', async () => {
+    const user = userEvent.setup()
+    appCount = 10
     render(
       <CreateFromDSLModal
         show
         onClose={vi.fn()}
-        activeTab={CreateFromDSLModalTab.FROM_URL}
-        dslUrl="https://example.com/app.yml"
+        droppedFile={new File(['app: demo'], 'demo.yaml')}
       />,
     )
+    expect(screen.getByText('apps-full')).toBeInTheDocument()
+    expect(getCreateButton()).toBeDisabled()
+    await user.click(getCreateButton())
+    submitWithKeyboard()
+    expect(mockImportDSL).not.toHaveBeenCalled()
+  })
 
-    expect(screen.getByText('apps-full'))!.toBeInTheDocument()
-    triggerHotkey('Mod+Enter')
-    expect(mockImportDSL).toHaveBeenCalledTimes(1)
+  it('shows supported formats, rejects unsupported files, and allows a package dropped into the dialog', async () => {
+    const user = userEvent.setup()
+    mockImportDSL.mockResolvedValue({
+      id: 'package-import',
+      status: 'completed',
+      app_mode: AppModeEnum.AGENT,
+    })
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    expect(
+      screen.getByRole('button', { name: 'app.dslUploader.browse' }),
+    ).toHaveAccessibleDescription('app.importAppFormats')
+    const panel = screen.getByRole('tabpanel', { name: 'app.importFromFile' })
+    const dropTarget = screen.getByText('app.importAppFormats')
+    fireEvent.drop(dropTarget, { dataTransfer: { files: [new File(['no'], 'invalid.zip')] } })
+    expect(getCreateButton()).toBeDisabled()
+    expect(panel).not.toHaveTextContent('invalid.zip')
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      expect.stringContaining('dslUploader.invalidFileType'),
+    )
+    const file = new File(['PK'], 'Agent.IFPKG')
+    fireEvent.drop(dropTarget, { dataTransfer: { files: [file] } })
+    expect(screen.getByRole('group', { name: 'Agent.IFPKG' })).toHaveAccessibleDescription(
+      expect.stringContaining('app.appPackage'),
+    )
+    await user.click(getCreateButton())
+    await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
   })
 
   it('should show failure toasts for failed and rejected imports', async () => {
@@ -825,7 +953,9 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.FAILED,
       error: 'Invalid YAML format',
     })
-    mockImportDSL.mockRejectedValueOnce(new Error('boom'))
+    mockImportDSL.mockRejectedValueOnce(
+      Response.json({ message: 'Package checksum mismatch' }, { status: 400 }),
+    )
 
     const { rerender } = render(
       <CreateFromDSLModal
@@ -839,7 +969,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Invalid YAML format')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Invalid YAML format' },
+    )
 
     rerender(
       <CreateFromDSLModal
@@ -856,8 +989,50 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'Package checksum mismatch' },
     )
   })
+
+  it.each([
+    [
+      'JSON',
+      () => Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      'Import confirmation expired',
+    ],
+    ['empty', () => new Response(null, { status: 500 }), undefined],
+  ] as const)(
+    'reports a %s HTTP failure when confirming an import',
+    async (_, response, description) => {
+      const user = userEvent.setup()
+      mockImportDSL.mockResolvedValue({
+        id: 'pending-import',
+        status: DSLImportStatus.PENDING,
+        imported_dsl_version: '1.0.0',
+        current_dsl_version: '2.0.0',
+      })
+      mockImportDSLConfirm.mockRejectedValueOnce(response())
+      const onClose = vi.fn()
+      render(
+        <CreateFromDSLModal
+          show
+          onClose={onClose}
+          activeTab={CreateFromDSLModalTab.FROM_URL}
+          dslUrl="https://example.com/app.yml"
+        />,
+      )
+
+      await user.click(getCreateButton())
+      await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
+
+      await waitFor(() => {
+        expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+          expect.stringMatching(/newApp\.appCreateFailed/),
+          { description },
+        )
+      })
+      expect(onClose).not.toHaveBeenCalled()
+    },
+  )
 
   it('should handle pending import confirmation failures and cancellation', async () => {
     mockImportDSL.mockResolvedValue({
@@ -899,7 +1074,10 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/newApp\.appCreateFailed/),
+      { description: 'Confirm failed' },
+    )
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
@@ -907,6 +1085,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith(
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
+      { description: 'boom' },
     )
   })
 })

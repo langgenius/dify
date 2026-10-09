@@ -14,7 +14,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import {
   normalizePluginCategoryListLanguage,
   useInstalledPluginList,
@@ -80,7 +80,7 @@ const PluginsPanel = ({
   onSwitchToMarketplace,
   toolbarAction,
 }: PluginsPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useGetLanguage()
   const filters = usePluginPageContext((v) => v.filters) as FilterState
   const setFilters = usePluginPageContext((v) => v.setFilters)

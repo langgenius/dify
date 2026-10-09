@@ -5,7 +5,7 @@ Both render through the ErrorBody formatter: TooManyRequests -> code "too_many_r
 """
 
 import pytest
-from werkzeug.exceptions import TooManyRequests
+from werkzeug.exceptions import BadRequest, TooManyRequests
 
 from controllers.openapi.app_run import _translate_service_errors
 from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
@@ -39,3 +39,13 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
             raise TriggerWorkflowServiceModeUnavailableServiceError()
     assert exc.value.error_code == "trigger_workflow_service_mode_unavailable"
     assert exc.value.code == 403
+
+
+def test_translate_maps_value_error_to_a_fixed_bad_request():
+    # Regression guard: an unpublished workflow used to surface as a detail-less 500.
+    # The service message names internals, so the client gets a fixed text.
+    with pytest.raises(BadRequest) as exc:
+        with _translate_service_errors():
+            raise ValueError("variable 'secret_key' of node 42 is missing")
+    assert exc.value.code == 400
+    assert exc.value.description == "invalid run input"

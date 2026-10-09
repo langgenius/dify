@@ -122,7 +122,7 @@ describe('IterationLogTrigger', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: /workflow\.nodes\.iteration\.iteration/ }),
+        screen.getByRole('button', { name: /workflowLogic\.nodes\.iteration\.iteration/ }),
       ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))
@@ -180,7 +180,7 @@ describe('IterationLogTrigger', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: /workflow\.nodes\.iteration\.error/i }),
+        screen.getByRole('button', { name: /workflowLogic\.nodes\.iteration\.error/i }),
       ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))

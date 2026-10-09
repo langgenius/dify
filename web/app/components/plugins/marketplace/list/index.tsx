@@ -8,6 +8,7 @@ import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
+import { GRID_CLASS } from './collection-constants'
 import ListWithCollection from './list-with-collection'
 
 type ListProps = {
@@ -20,6 +21,8 @@ type ListProps = {
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   emptyClassName?: string
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
+  deferOffscreenCollections?: boolean
+  cardSection?: string
 }
 const List = ({
   marketplaceCollections,
@@ -31,6 +34,8 @@ const List = ({
   cardRender,
   emptyClassName,
   onCollectionMoreClick,
+  deferOffscreenCollections,
+  cardSection = 'list',
 }: ListProps) => {
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
   const pluginIds = useMemo(() => {
@@ -69,10 +74,11 @@ const List = ({
           cardRender={cardRender}
           onCollectionMoreClick={onCollectionMoreClick}
           installedPluginIds={installedPluginIds}
+          deferOffscreenCollections={deferOffscreenCollections}
         />
       )}
       {plugins && !!plugins.length && (
-        <div className={cn('grid grid-cols-4 gap-3', cardContainerClassName)}>
+        <div className={cn(GRID_CLASS, cardContainerClassName)}>
           {plugins.map((plugin) => {
             if (cardRender) return cardRender(plugin)
 
@@ -83,6 +89,7 @@ const List = ({
                 showInstallButton={showInstallButton}
                 isInstalled={installedPluginIds.has(plugin.plugin_id)}
                 linkToMarketplaceDetail={linkToMarketplaceDetail}
+                section={cardSection}
               />
             )
           })}

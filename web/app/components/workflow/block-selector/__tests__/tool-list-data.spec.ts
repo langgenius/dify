@@ -67,12 +67,9 @@ describe('createToolListData', () => {
     ])
   })
 
-  it('maps workflow and data source providers to distinct categories', () => {
+  it('maps workflow providers to their own category', () => {
     const result = createToolListData(
-      [
-        createToolProvider({ id: 'workflow', type: CollectionType.workflow }),
-        createToolProvider({ id: 'data-source', type: 'local_file' }),
-      ],
+      [createToolProvider({ id: 'workflow', type: CollectionType.workflow })],
       () => 'A',
     )
 
@@ -81,11 +78,6 @@ describe('createToolListData', () => {
         kind: 'category',
         category: 'workflow',
         tools: [expect.objectContaining({ id: 'workflow' })],
-      },
-      {
-        kind: 'category',
-        category: 'data-source',
-        tools: [expect.objectContaining({ id: 'data-source' })],
       },
     ])
   })

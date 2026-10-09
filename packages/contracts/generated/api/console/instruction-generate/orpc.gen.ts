@@ -7,7 +7,7 @@ import {
   zPostInstructionGenerateResponse,
   zPostInstructionGenerateTemplateBody,
   zPostInstructionGenerateTemplateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get instruction generation template

@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
@@ -14,7 +16,7 @@ import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useStore } from '../store'
 
 const VariableInspectTrigger: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowDebug'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const showVariableInspectPanel = useStore((s) => s.showVariableInspectPanel)
@@ -62,12 +64,16 @@ const VariableInspectTrigger: FC = () => {
 
   if (showVariableInspectPanel) return null
 
+  // React Flow reserves Space for panning unless the target is inside .nokey.
   return (
-    <div className={cn('flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
+    <div className={cn('nokey flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
       {!isRunning && !currentVars.length && (
-        <div
+        <Button
+          size="small"
+          variant="secondary"
+          disabled={nodesReadOnly}
           className={cn(
-            'flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
+            'flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
             nodesReadOnly &&
               'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
@@ -76,12 +82,15 @@ const VariableInspectTrigger: FC = () => {
             setShowVariableInspectPanel(true)
           }}
         >
-          {t(($) => $['debug.variableInspect.trigger.normal'], { ns: 'workflow' })}
-        </div>
+          {t(($) => $['debug.variableInspect.trigger.normal'], { ns: 'workflowDebug' })}
+        </Button>
       )}
       {!isRunning && currentVars.length > 0 && (
         <>
-          <div
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={nodesReadOnly}
             className={cn(
               'flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent',
               nodesReadOnly &&
@@ -92,9 +101,12 @@ const VariableInspectTrigger: FC = () => {
               setShowVariableInspectPanel(true)
             }}
           >
-            {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflow' })}
-          </div>
-          <div
+            {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflowDebug' })}
+          </Button>
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={nodesReadOnly}
             className={cn(
               'flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent',
               nodesReadOnly &&
@@ -105,35 +117,43 @@ const VariableInspectTrigger: FC = () => {
               handleClearAll()
             }}
           >
-            {t(($) => $['debug.variableInspect.trigger.clear'], { ns: 'workflow' })}
-          </div>
+            {t(($) => $['debug.variableInspect.trigger.clear'], { ns: 'workflowDebug' })}
+          </Button>
         </>
       )}
       {isRunning && (
         <>
-          <div
+          <Button
+            size="small"
+            variant="secondary"
             className="flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <RiLoader2Line className="size-4 shrink-0 animate-spin" />
+            <RiLoader2Line aria-hidden="true" className="size-4 shrink-0 animate-spin" />
             <span className="text-text-accent">
-              {t(($) => $['debug.variableInspect.trigger.running'], { ns: 'workflow' })}
+              {t(($) => $['debug.variableInspect.trigger.running'], { ns: 'workflowDebug' })}
             </span>
-          </div>
+          </Button>
           {isPreviewRunning && (
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <div
+                  <IconButton
+                    aria-label={t(($) => $['debug.variableInspect.trigger.stop'], {
+                      ns: 'workflowDebug',
+                    })}
                     className="flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
                     onClick={handleStop}
                   >
-                    <RiStopCircleFill className="size-4 shrink-0 text-text-accent" />
-                  </div>
+                    <RiStopCircleFill
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-text-accent"
+                    />
+                  </IconButton>
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
           )}

@@ -126,7 +126,7 @@ describe('tool/tool-form/item', () => {
       />,
     )
 
-    const infotipTrigger = screen.getByRole('button', { name: 'Select from tools' })
+    const infotipTrigger = screen.getByRole('button', { name: 'Tool Config' })
     fireEvent.click(infotipTrigger)
     expect(screen.getByText('Select from tools'))!.toBeInTheDocument()
 

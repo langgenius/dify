@@ -1,5 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
+import { zAppExternalDataToolPayload } from '@dify/contracts/api/console/apps/zod.gen'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -33,18 +34,21 @@ const getStringArray = (value: unknown) => {
     : []
 }
 
-const getStringRecord = (value: unknown) => {
-  if (!isRecord(value)) return undefined
-
-  const record: Record<string, string | undefined> = {}
-  Object.entries(value).forEach(([key, item]) => {
-    if (typeof item === 'string') record[key] = item
-  })
-  return record
-}
-
 const getRecord = (value: unknown) => {
   return isRecord(value) ? value : {}
+}
+
+const getFileInputConfig = (content: Record<string, unknown>, numberLimits?: number) => {
+  const config: Record<string, unknown> = {}
+  for (const key of [
+    'allowed_file_types',
+    'allowed_file_extensions',
+    'allowed_file_upload_methods',
+  ] as const) {
+    if (content[key] !== undefined) config[key] = content[key]
+  }
+  if (numberLimits !== undefined) config.number_limits = numberLimits
+  return config
 }
 
 const getInputFormContent = (item: Record<string, unknown>) => {
@@ -128,12 +132,7 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: 1,
-        },
+        config: getFileInputConfig(content, 1),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
@@ -143,12 +142,7 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: getNumber(content.max_length),
-        },
+        config: getFileInputConfig(content, getNumber(content.max_length)),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
@@ -241,7 +235,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             enabled: item.enabled,
             type: item.type,
-            config: getStringRecord(item.config),
+            config: item.config
+              ? (zAppExternalDataToolPayload.parse({ config: item.config }).config ?? undefined)
+              : undefined,
             required: item.required,
             icon: item.icon,
             icon_background: item.icon_background,

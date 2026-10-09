@@ -10,7 +10,7 @@ type EducationShellProps = {
 }
 
 export default function EducationShell({ children }: EducationShellProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const pageTitle = t(($) => $.toVerified, { ns: 'education' })
   useDocumentTitle(pageTitle)
 

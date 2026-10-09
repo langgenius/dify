@@ -9,11 +9,11 @@ describe('useFilterOptions', () => {
     expect(result.current).toEqual([
       {
         key: WorkflowVersionFilterOptions.all,
-        name: 'workflow.versionHistory.filter.all',
+        name: 'workflowHistory.versionHistory.filter.all',
       },
       {
         key: WorkflowVersionFilterOptions.onlyYours,
-        name: 'workflow.versionHistory.filter.onlyYours',
+        name: 'workflowHistory.versionHistory.filter.onlyYours',
       },
     ])
   })

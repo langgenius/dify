@@ -25,7 +25,7 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
-from services.external_knowledge_service import ExternalDatasetService
+from services.knowledge.external.service import ExternalDatasetService
 
 
 class ExternalDatasetServiceTestDataFactory:
@@ -415,7 +415,7 @@ class TestExternalDatasetServiceValidateAPIList:
 class TestExternalDatasetServiceCreateAPI:
     """Test create_external_knowledge_api operations."""
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
+    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_success_full(
         self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -442,7 +442,7 @@ class TestExternalDatasetServiceCreateAPI:
         persisted_api = sqlite_session.get(ExternalKnowledgeApis, result.id)
         assert persisted_api is result
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
+    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_minimal_fields(
         self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -485,7 +485,7 @@ class TestExternalDatasetServiceCreateAPI:
         with pytest.raises(ValueError, match="settings is required"):
             ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, session=sqlite_session)
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
+    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_settings_json_serialization(
         self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -508,7 +508,7 @@ class TestExternalDatasetServiceCreateAPI:
         parsed_settings = json.loads(result.settings)
         assert parsed_settings == settings
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
+    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_unicode_handling(
         self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -529,7 +529,7 @@ class TestExternalDatasetServiceCreateAPI:
         assert result.name == "测试API"
         assert result.description == "テストの説明"
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
+    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_long_description(
         self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -555,7 +555,7 @@ class TestExternalDatasetServiceCreateAPI:
 class TestExternalDatasetServiceCheckEndpoint:
     """Test check_endpoint_and_api_key operations - extensive coverage."""
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_success_https(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful validation with HTTPS endpoint."""
         # Arrange
@@ -569,7 +569,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         ExternalDatasetService.check_endpoint_and_api_key(settings)
         mock_proxy.post.assert_called_once()
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_success_http(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful validation with HTTP endpoint."""
         # Arrange
@@ -582,7 +582,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         # Act & Assert - should not raise
         ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_sends_json_body(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Regression for #39402: the validation probe must POST a JSON body matching the
         External Knowledge API retrieval contract, not a body-less request that providers
@@ -688,7 +688,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="invalid endpoint"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_connection_timeout(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails on connection timeout."""
         # Arrange
@@ -699,7 +699,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="failed to connect to the endpoint"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_network_error(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails on network error."""
         # Arrange
@@ -710,7 +710,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="failed to connect to the endpoint"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_502_bad_gateway(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 502 Bad Gateway."""
         # Arrange
@@ -724,7 +724,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="Bad Gateway.*failed to connect"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_404_not_found(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 404 Not Found."""
         # Arrange
@@ -738,7 +738,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="Not Found.*failed to connect"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_403_forbidden(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 403 Forbidden (auth failure)."""
         # Arrange
@@ -752,7 +752,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_403_message_does_not_echo_api_key(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -789,7 +789,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         assert "sk-abcdef" not in message
         assert "CDEF" not in message
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
@@ -803,7 +803,7 @@ class TestExternalDatasetServiceCheckEndpoint:
             # Act & Assert - should not raise
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_5xx_codes_except_502_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that 5xx codes except 502 don't raise exceptions."""
         # Arrange
@@ -817,7 +817,7 @@ class TestExternalDatasetServiceCheckEndpoint:
             # Act & Assert - should not raise
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_with_port_number(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation with endpoint including port number."""
         # Arrange
@@ -830,7 +830,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         # Act & Assert - should not raise
         ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_with_path(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation with endpoint including path."""
         # Arrange
@@ -846,7 +846,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         call_args = mock_proxy.post.call_args
         assert "/retrieval" in call_args[0][0]
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_authorization_header_format(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -900,7 +900,7 @@ class TestExternalDatasetServiceGetAPI:
 class TestExternalDatasetServiceUpdateAPI:
     """Test update_external_knowledge_api operations."""
 
-    @patch("services.external_knowledge_service.naive_utc_now")
+    @patch("services.knowledge.external.service.naive_utc_now")
     def test_update_external_knowledge_api_success_all_fields(
         self, mock_now, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1271,7 +1271,7 @@ class TestExternalDatasetServiceDocumentValidate:
 class TestExternalDatasetServiceProcessAPI:
     """Test process_external_api operations - comprehensive HTTP method coverage."""
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_get_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing GET request."""
         # Arrange
@@ -1287,7 +1287,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert result == mock_response
         mock_proxy.get.assert_called_once()
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_post_request_with_data(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -1307,7 +1307,7 @@ class TestExternalDatasetServiceProcessAPI:
         call_kwargs = mock_proxy.post.call_args.kwargs
         assert "data" in call_kwargs
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_put_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing PUT request."""
         # Arrange
@@ -1323,7 +1323,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert result == mock_response
         mock_proxy.put.assert_called_once()
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_delete_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing DELETE request."""
         # Arrange
@@ -1339,7 +1339,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert result == mock_response
         mock_proxy.delete.assert_called_once()
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_patch_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing PATCH request."""
         # Arrange
@@ -1355,7 +1355,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert result == mock_response
         mock_proxy.patch.assert_called_once()
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_head_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing HEAD request."""
         # Arrange
@@ -1380,7 +1380,7 @@ class TestExternalDatasetServiceProcessAPI:
         with pytest.raises(Exception, match="Invalid http method"):
             ExternalDatasetService.process_external_api(settings, None)
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_with_files(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing request with file uploads."""
         # Arrange
@@ -1399,7 +1399,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert "files" in call_kwargs
         assert call_kwargs["files"] == files
 
-    @patch("services.external_knowledge_service.ssrf_proxy")
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_process_external_api_follow_redirects(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that follow_redirects is enabled."""
         # Arrange
@@ -1663,7 +1663,7 @@ class TestExternalDatasetServiceCreateDataset:
 class TestExternalDatasetServiceFetchRetrieval:
     """Test fetch_external_knowledge_retrieval operations."""
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_success_with_results(
         self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1722,7 +1722,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "tenant-123", "dataset-123", "query", {}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_empty_results(
         self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1743,7 +1743,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         # Assert
         assert len(result) == 0
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_with_score_threshold(
         self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1777,7 +1777,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         call_args = mock_process.call_args[0][0]
         assert call_args.params["retrieval_setting"]["score_threshold"] == 0.75
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_non_200_status_raises_exception(
         self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1809,7 +1809,7 @@ class TestExternalDatasetServiceFetchRetrieval:
             (503, "Service Unavailable: Maintenance mode"),
         ],
     )
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_various_error_status_codes(
         self,
         mock_process,
@@ -1836,7 +1836,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 tenant_id, dataset_id, "query", {"top_k": 5}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_empty_response_text(
         self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -1855,7 +1855,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_invalid_json_response(
         self, mock_process, factory, sqlite_session: Session
     ):
@@ -1872,7 +1872,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_invalid_success_payload_shape(
         self, mock_process, factory, sqlite_session: Session
     ):
@@ -1889,7 +1889,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_invalid_records_shape(
         self, mock_process, factory, sqlite_session: Session
     ):
@@ -1906,7 +1906,7 @@ class TestExternalDatasetServiceFetchRetrieval:
                 "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
             )
 
-    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_wraps_transport_errors(
         self, mock_process, factory, sqlite_session: Session
     ):

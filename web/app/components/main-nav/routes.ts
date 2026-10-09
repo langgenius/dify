@@ -17,7 +17,6 @@ export type MainNavRouteConfig = {
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
-  canManageAgents: boolean
   canViewContacts: boolean
   contactsEnabled: boolean
   canViewSkills: boolean
@@ -32,7 +31,6 @@ export type DetailSidebarVisibilityOptions = Pick<
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
-const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
 const CAN_VIEW_CONTACTS: MainNavRouteVisibility = (options) => options.canViewContacts
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
   options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
@@ -46,7 +44,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
+    active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home-v2',
     activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
@@ -70,7 +68,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-agent',
     activeIcon: 'i-custom-vender-main-nav-agent-active',
-    visibility: CAN_MANAGE_AGENTS,
+    visibility: VISIBLE_TO_ALL,
     feature: 'agentV2',
   },
   {
@@ -116,7 +114,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
     icon: 'i-custom-vender-main-nav-marketplace-v2',
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,

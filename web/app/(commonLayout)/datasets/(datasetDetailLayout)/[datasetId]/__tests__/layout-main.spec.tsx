@@ -99,7 +99,7 @@ describe('DatasetDetailLayout', () => {
       ['/datasets/dataset-1/pipeline', 'common.datasetMenus.pipeline'],
       ['/datasets/dataset-1/hitTesting', 'common.datasetMenus.hitTesting'],
       ['/datasets/dataset-1/settings', 'common.datasetMenus.settings'],
-      ['/datasets/dataset-1/access-config', 'common.settings.resourceAccess'],
+      ['/datasets/dataset-1/access-config', 'navigation.settings.resourceAccess'],
       ['/datasets/dataset-1/api', 'common.appMenus.apiAccess'],
     ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
       mockUsePathname.mockReturnValue(pathname)

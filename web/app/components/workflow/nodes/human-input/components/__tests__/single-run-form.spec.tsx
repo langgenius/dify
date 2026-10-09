@@ -8,7 +8,7 @@ import { UserActionButtonType } from '../../types'
 import SingleRunForm from '../single-run-form'
 
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: { error: mockToastError } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: mockToastError } }))
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   __esModule: true,

@@ -1,3 +1,4 @@
+import io
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -66,12 +67,12 @@ def test_extract_images_formats(
     expected_mime: str,
     expected_ext: str,
     inject_session: bool,
-):
+) -> None:
     # Mock page and image objects
     mock_page = MagicMock()
     mock_image_obj = MagicMock()
 
-    def mock_extract(buf, fb_format=None):
+    def mock_extract(buf: io.BytesIO, fb_format: str | None = None) -> None:
         buf.write(image_bytes)
 
     mock_image_obj.extract.side_effect = mock_extract
@@ -118,8 +119,10 @@ def test_extract_images_formats(
 )
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
 def test_extract_images_get_objects_scenarios(
-    mock_dependencies: _Dependencies, get_objects_side_effect, get_objects_return_value
-):
+    mock_dependencies: _Dependencies,
+    get_objects_side_effect: Exception | None,
+    get_objects_return_value: list[object] | None,
+) -> None:
     mock_page = MagicMock()
     if get_objects_side_effect:
         mock_page.get_objects.side_effect = get_objects_side_effect
@@ -136,7 +139,7 @@ def test_extract_images_get_objects_scenarios(
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
-def test_extract_calls_extract_images(mock_dependencies: _Dependencies, monkeypatch: pytest.MonkeyPatch):
+def test_extract_calls_extract_images(mock_dependencies: _Dependencies, monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock pypdfium2
     mock_pdf_doc = MagicMock()
     mock_page = MagicMock()
@@ -166,7 +169,7 @@ def test_extract_calls_extract_images(mock_dependencies: _Dependencies, monkeypa
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
-def test_extract_images_failures(mock_dependencies: _Dependencies):
+def test_extract_images_failures(mock_dependencies: _Dependencies) -> None:
     # Mock page and image objects
     mock_page = MagicMock()
     mock_image_obj_fail = MagicMock()
@@ -178,7 +181,7 @@ def test_extract_images_failures(mock_dependencies: _Dependencies):
     # Second image is OK (JPEG)
     jpeg_bytes = b"\xff\xd8\xff some image data"
 
-    def mock_extract(buf, fb_format=None):
+    def mock_extract(buf: io.BytesIO, fb_format: str | None = None) -> None:
         buf.write(jpeg_bytes)
 
     mock_image_obj_ok.extract.side_effect = mock_extract
@@ -196,3 +199,15 @@ def test_extract_images_failures(mock_dependencies: _Dependencies):
     assert upload_file is not None
     assert f"![image](http://files.local/files/{upload_file.id}/file-preview)" in result
     assert mock_dependencies.storage.saves == [(upload_file.key, jpeg_bytes)]
+
+
+def test_extract_images_skipped_without_tenant_context() -> None:
+    """PDFs loaded from a URL have no tenant/user context; image extraction must be skipped."""
+    mock_page = MagicMock()
+
+    extractor = pe.PdfExtractor(file_path="test.pdf")
+
+    result = extractor._extract_images(mock_page)
+
+    assert result == ""
+    mock_page.get_objects.assert_not_called()

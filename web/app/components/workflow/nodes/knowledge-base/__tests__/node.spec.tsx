@@ -11,17 +11,9 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelListQuery = vi.hoisted(() => vi.fn())
 const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: () => ({ data: undefined }),
-  }
-})
 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/hooks',
@@ -33,7 +25,6 @@ vi.mock(
     return {
       ...actual,
       useLanguage: () => 'en_US',
-      useModelList: mockUseModelList,
     }
   },
 )
@@ -81,7 +72,7 @@ const createNodeData = (
 describe('KnowledgeBaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockReturnValue({ data: [] })
+    mockModelListQuery.mockReturnValue({ data: [] })
     mockUseSettingsDisplay.mockReturnValue({
       [IndexMethodEnum.QUALIFIED]: 'High Quality',
       [RetrievalSearchMethodEnum.semantic]: 'Vector Search',
@@ -113,7 +104,7 @@ describe('KnowledgeBaseNode', () => {
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
       expect(
-        screen.getByText('common.modelProvider.selector.configureRequired'),
+        screen.getByText('modelProvider.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
     })
 
@@ -127,7 +118,7 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.selector.disabled')).toBeInTheDocument()
     })
 
     it('should render incompatible when embedding model status is incompatible', () => {
@@ -140,7 +131,9 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
     })
 
     it('should render configure model prompt when no embedding model is selected', () => {
@@ -193,19 +186,22 @@ describe('KnowledgeBaseNode', () => {
     })
 
     it('should render a warning value for retrieval settings when reranking is incomplete', () => {
-      mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
-        if (modelType === ModelTypeEnum.textEmbedding) {
-          return {
-            data: [
-              {
-                provider: 'openai',
-                models: [createModelItem()],
-              },
-            ],
+      mockModelListQuery.mockImplementation(
+        ({ input }: { input: { params: { model_type: string } } }) => {
+          const modelType = input.params.model_type
+          if (modelType === ModelTypeEnum.textEmbedding) {
+            return {
+              data: [
+                {
+                  provider: 'openai',
+                  models: [createModelItem()],
+                },
+              ],
+            }
           }
-        }
-        return { data: [] }
-      })
+          return { data: [] }
+        },
+      )
 
       render(
         <Node
@@ -238,4 +234,15 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.queryByText('Text Embedding 3 Large')).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
+      options.queryKey?.[0].includes('modelTypes')
+        ? mockModelListQuery(options)
+        : { data: undefined },
+  }
 })

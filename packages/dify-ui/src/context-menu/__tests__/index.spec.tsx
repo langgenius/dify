@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ContextMenu,
@@ -266,4 +266,25 @@ describe('context-menu wrapper', () => {
       expect(screen.getByRole('separator').elements()).toHaveLength(1)
     })
   })
+})
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <ContextMenu>
+      <ContextMenuTrigger>Open audit menu</ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuSub open>
+          <ContextMenuSubTrigger>More audit actions</ContextMenuSubTrigger>
+          <ContextMenuSubContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+            <ContextMenuItem>Audit action</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      </ContextMenuContent>
+    </ContextMenu>,
+  )
+
+  await screen.getByText('Open audit menu').click({ button: 'right' })
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
 })

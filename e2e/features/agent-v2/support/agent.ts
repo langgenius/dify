@@ -6,13 +6,13 @@ import type {
   AgentReferencingWorkflowsResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
-import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
+import type { ConsoleClient } from '../../../support/api/console-client.ts'
+import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming.ts'
 import {
   createPublishableAgentSoulConfig,
   defaultAgentSoulConfig,
   normalAgentSoulConfig,
-} from './agent-soul'
+} from './agent-soul.ts'
 
 export type CreateTestAgentOptions = {
   description?: string

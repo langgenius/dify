@@ -122,7 +122,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -260,6 +260,23 @@ describe('ChatInputArea', () => {
         <ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />,
       )
       expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
+    })
+
+    it('keeps a visible label for the input after typing', async () => {
+      const user = userEvent.setup()
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          customPlaceholder="Describe your agent"
+          inputLabel="Describe your agent"
+        />,
+      )
+
+      const input = screen.getByRole('textbox', { name: 'Describe your agent' })
+      await user.type(input, 'A research assistant')
+
+      expect(input).toHaveValue('A research assistant')
+      expect(screen.getByText('Describe your agent')).toBeVisible()
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
@@ -1006,7 +1023,6 @@ describe('ChatInputArea', () => {
       const footerNotice = 'Agent runs in a Linux sandbox.'
       const footerNoticeTooltip =
         'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
-      const accessibleName = `common.operation.learnMore: ${footerNotice}`
       render(
         <ChatInputArea
           visionConfig={mockVisionConfig}
@@ -1018,9 +1034,10 @@ describe('ChatInputArea', () => {
       expect(screen.getByText(footerNotice)).toBeInTheDocument()
       expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: accessibleName }))
+      await user.click(screen.getByRole('button', { name: footerNotice }))
 
-      expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
+      const dialog = await screen.findByRole('dialog', { name: footerNotice })
+      expect(dialog).toHaveTextContent(footerNoticeTooltip)
     })
 
     it('should render feature bar when showFeatureBar is true', () => {

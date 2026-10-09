@@ -5,7 +5,7 @@ describe('PromptToast', () => {
   it('should render the note title and markdown message', () => {
     render(<PromptToast message="Prompt body" />)
 
-    expect(screen.getByText('appDebug.generate.optimizationNote')).toBeInTheDocument()
+    expect(screen.getByText('appGeneration.generate.optimizationNote')).toBeInTheDocument()
     expect(screen.getByTestId('markdown-body')).toBeInTheDocument()
   })
 

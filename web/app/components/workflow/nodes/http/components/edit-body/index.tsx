@@ -42,6 +42,8 @@ const bodyTextMap = {
 }
 
 const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
+  const keyValueBodyTypes: readonly BodyType[] = [BodyType.formData, BodyType.xWwwFormUrlencoded]
+
   const { type, data } = payload
   const bodyPayload = useMemo(() => {
     if (typeof data === 'string') {
@@ -50,9 +52,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
     }
     return data
   }, [data])
-  const stringValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(type)
-    ? ''
-    : bodyPayload[0]?.value || ''
+  const stringValue = keyValueBodyTypes.includes(type) ? '' : bodyPayload[0]?.value || ''
 
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -63,8 +63,13 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
 
   const handleTypeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      const keyValueBodyTypes: readonly BodyType[] = [
+        BodyType.formData,
+        BodyType.xWwwFormUrlencoded,
+      ]
+
       const newType = e.target.value as BodyType
-      const hasKeyValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newType)
+      const hasKeyValue = keyValueBodyTypes.includes(newType)
       onChange({
         type: newType,
         data: hasKeyValue
@@ -105,7 +110,9 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleBodyValueChange = useCallback(

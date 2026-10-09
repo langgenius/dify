@@ -127,6 +127,24 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="inputs_config.preset_response must be less than 100 characters"):
             KeywordsModeration.validate_config("test-tenant", config)
 
+    def test_moderation_for_inputs_crlf_keywords_match(self, keywords_config: dict[str, Any]):
+        """Keywords pasted with Windows line endings still match."""
+        keywords_config["keywords"] = "spam\r\nfree money"
+        moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
+
+        result = moderation.moderation_for_inputs({}, query="this is spam")
+
+        assert result.flagged is True
+
+    def test_moderation_whitespace_only_keyword_row_is_ignored(self, keywords_config: dict[str, Any]):
+        """A whitespace-only keyword row must not flag every message."""
+        keywords_config["keywords"] = "spam\n   \n "
+        moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
+
+        result = moderation.moderation_for_inputs({}, query="a perfectly normal message")
+
+        assert result.flagged is False
+
     def test_moderation_for_inputs_no_violation(self, keywords_moderation: KeywordsModeration):
         """Test input moderation when no keywords are matched."""
         inputs = {"user_input": "This is a clean message"}

@@ -38,7 +38,7 @@ const Blocks = ({
   availableBlocksTypes = [],
   blocks: blocksFromProps,
 }: BlocksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
@@ -198,7 +198,7 @@ const Blocks = ({
                       )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
-                          text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflow' })}
+                          text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflowLogic' })}
                           className="ml-2 shrink-0"
                         />
                       )}

@@ -7,7 +7,7 @@ and storage containers to ensure proper cleanup of documents, segments, and file
 
 import json
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -21,6 +21,7 @@ from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.batch_clean_document_task import batch_clean_document_task
 
 
@@ -31,25 +32,20 @@ class TestBatchCleanDocumentTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("extensions.ext_storage.storage") as mock_storage,
-            patch("core.rag.index_processor.index_processor_factory.IndexProcessorFactory") as mock_index_factory,
-            patch("core.tools.utils.web_reader_tool.get_image_upload_file_ids") as mock_get_image_ids,
+            patch("tasks.batch_clean_document_task.storage") as mock_storage,
+            patch("services.knowledge.indexing.adapters.cleanup.Vector", autospec=True) as mock_vector,
+            patch("tasks.batch_clean_document_task.get_image_upload_file_ids") as mock_get_image_ids,
+            patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
         ):
             # Setup default mock returns
             mock_storage.delete.return_value = None
-
-            # Mock index processor
-            mock_index_processor = Mock()
-            mock_index_processor.clean.return_value = None
-            mock_index_factory.return_value.init_index_processor.return_value = mock_index_processor
 
             # Mock image file ID extraction
             mock_get_image_ids.return_value = []
 
             yield {
                 "storage": mock_storage,
-                "index_factory": mock_index_factory,
-                "index_processor": mock_index_processor,
+                "vector": mock_vector.return_value,
                 "get_image_ids": mock_get_image_ids,
             }
 
@@ -95,7 +91,7 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account
 
@@ -121,6 +117,7 @@ class TestBatchCleanDocumentTask:
             created_by=account.id,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
+            indexing_technique="high_quality",
         )
 
         db_session_with_containers.add(dataset)
@@ -251,15 +248,18 @@ class TestBatchCleanDocumentTask:
         # Store original IDs for verification
         document_id = document.id
         segment_id = segment.id
+        index_node_id = segment.index_node_id
         file_id = upload_file.id
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
-        # Verify that the task completed successfully
-        # The task should have processed the segment and cleaned up the database
+        mock_external_service_dependencies["vector"].delete_by_ids.assert_called_once_with([index_node_id])
 
         # Verify database cleanup
         db_session_with_containers.commit()  # Ensure all changes are committed
@@ -311,7 +311,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=[],
         )
 
         # Verify database cleanup
@@ -351,7 +354,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully
@@ -402,7 +408,7 @@ class TestBatchCleanDocumentTask:
         )
 
         # Verify that no index processing occurred
-        mock_external_service_dependencies["index_processor"].clean.assert_not_called()
+        mock_external_service_dependencies["vector"].delete_by_ids.assert_not_called()
 
         # Verify that no storage operations occurred
         mock_external_service_dependencies["storage"].delete.assert_not_called()
@@ -446,7 +452,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully despite storage failure
@@ -504,7 +513,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with multiple documents
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         # Verify that the task completed successfully for all documents
@@ -641,7 +653,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task with large batch
         batch_clean_document_task(
-            document_ids=document_ids, dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=file_ids
+            document_ids=document_ids,
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=file_ids,
         )
 
         end_time = time.perf_counter()
@@ -734,7 +749,10 @@ class TestBatchCleanDocumentTask:
 
         # Execute the task
         batch_clean_document_task(
-            document_ids=[document_id], dataset_id=dataset.id, doc_form=dataset.doc_form, file_ids=[file_id]
+            document_ids=[document_id],
+            dataset_id=dataset.id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            file_ids=[file_id],
         )
 
         # Verify that the task completed successfully

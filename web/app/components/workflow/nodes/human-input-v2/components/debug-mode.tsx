@@ -3,11 +3,12 @@
 import type { HumanInputV2DebugMode } from '../types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
 import { HUMAN_INPUT_V2_DEBUG_CHANNELS, isHumanInputV2DebugChannel } from '../types'
 
@@ -19,10 +20,11 @@ type DebugModeProps = {
   value: HumanInputV2DebugMode
   onChange: (value: HumanInputV2DebugMode) => void
   readonly: boolean
+  email?: string
 }
 
-const DebugMode = ({ value, onChange, readonly }: DebugModeProps) => {
-  const { t } = useTranslation()
+const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
+  const { t } = useTranslation(['workflow'])
   const errorId = useId()
   const [open, setOpen] = useState(false)
   const channels = value.channels as string[]
@@ -30,6 +32,7 @@ const DebugMode = ({ value, onChange, readonly }: DebugModeProps) => {
   const selected = channels.filter(isHumanInputV2DebugChannel)
 
   const toggleChannel = (channel: (typeof HUMAN_INPUT_V2_DEBUG_CHANNELS)[number]) => {
+    if (readonly || (selected.length === 1 && selected[0] === channel)) return
     const nextChannels = channels.includes(channel)
       ? channels.filter((item) => item !== channel)
       : [...channels, channel]
@@ -62,8 +65,13 @@ const DebugMode = ({ value, onChange, readonly }: DebugModeProps) => {
           <div className="truncate system-sm-medium text-text-secondary">
             {t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}
           </div>
-          <Infotip aria-label={t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}>
-            {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.humanInputV2.debug.title'], { ns: 'workflow' })}
+            />
+            <InfotipContent>
+              {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <Popover open={open} onOpenChange={(nextOpen) => !readonly && setOpen(nextOpen)}>
@@ -104,21 +112,51 @@ const DebugMode = ({ value, onChange, readonly }: DebugModeProps) => {
             <div className="px-2 pt-1 pb-0.5 system-xs-medium text-text-tertiary">
               {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
             </div>
-            {HUMAN_INPUT_V2_DEBUG_CHANNELS.map((channel) => (
-              <label
-                key={channel}
-                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-2 hover:bg-state-base-hover"
-              >
-                <Checkbox
-                  checked={channels.includes(channel)}
-                  onCheckedChange={() => toggleChannel(channel)}
-                />
-                <ContactChannelIcon provider={channel} className="size-4" />
-                <span className="system-md-regular text-text-secondary">
-                  {t(($) => $[`nodes.humanInputV2.debug.channel.${channel}`], { ns: 'workflow' })}
-                </span>
-              </label>
-            ))}
+            {HUMAN_INPUT_V2_DEBUG_CHANNELS.map((channel) => {
+              const isLastChannel = selected.length === 1 && selected[0] === channel
+              const label = t(($) => $[`nodes.humanInputV2.debug.channel.${channel}`], {
+                ns: 'workflow',
+              })
+              return (
+                <Tooltip key={channel}>
+                  <TooltipTrigger
+                    disabled={!isLastChannel}
+                    render={
+                      <label className="flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid">
+                        <Checkbox
+                          aria-labelledby={`${errorId}-${channel}-label`}
+                          aria-describedby={isLastChannel ? `${errorId}-keep-channel` : undefined}
+                          checked={channels.includes(channel)}
+                          disabled={isLastChannel || readonly}
+                          onCheckedChange={() => toggleChannel(channel)}
+                        />
+                        <ContactChannelIcon provider={channel} className="ml-1 size-4 shrink-0" />
+                        <span
+                          id={`${errorId}-${channel}-label`}
+                          className="shrink-0 system-md-regular text-text-secondary"
+                        >
+                          {label}
+                        </span>
+                        {channel === 'email' && email && (
+                          <span
+                            className="truncate system-xs-regular text-text-tertiary"
+                            title={email}
+                          >
+                            {email}
+                          </span>
+                        )}
+                      </label>
+                    }
+                  />
+                  <TooltipContent
+                    role="tooltip"
+                    id={isLastChannel ? `${errorId}-keep-channel` : undefined}
+                  >
+                    {t(($) => $['nodes.humanInputV2.debug.keepOneChannel'], { ns: 'workflow' })}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
           </PopoverContent>
         </Popover>
         <div className="relative h-3 w-1.25 shrink-0 border-l border-divider-regular" />

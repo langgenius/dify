@@ -1,74 +1,41 @@
 'use client'
 
-import type { ComponentProps } from 'react'
-import type { NavIcon } from './nav-link'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
-import Annotations from '@/app/components/base/icons/src/vender/Annotations'
+import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
-import { useAppInfoActions } from './app-info/use-app-info-actions'
+import AppInfoHeader from './app-info/app-info-header'
+import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
 type AppDetailNavItem = {
   name: string
   href: string
-  icon: NavIcon
-  selectedIcon: NavIcon
+  icon: string
+  selectedIcon: string
 }
-
-const AnnotationNavIcon = ({ className, ...props }: ComponentProps<typeof Annotations>) => (
-  <Annotations {...props} className={cn(className, 'size-4')} />
-)
-
-AnnotationNavIcon.displayName = 'Annotations'
-
-const createClassNameNavIcon = (iconClassName: string) => {
-  const ClassNameNavIcon = ({ className }: ComponentProps<'svg'>) => (
-    <span aria-hidden className={cn(iconClassName, className)} />
-  )
-
-  ClassNameNavIcon.displayName = 'ClassNameNavIcon'
-
-  return ClassNameNavIcon
-}
-
-const accessPointNavIcon = createClassNameNavIcon('i-custom-vender-agent-v2-access-point')
-const terminalWindowLineNavIcon = createClassNameNavIcon('i-ri-terminal-window-line')
-const terminalWindowFillNavIcon = createClassNameNavIcon('i-ri-terminal-window-fill')
-const instanceLineNavIcon = createClassNameNavIcon('i-ri-instance-line')
-const instanceFillNavIcon = createClassNameNavIcon('i-ri-instance-fill')
-const fileListLineNavIcon = createClassNameNavIcon('i-ri-file-list-3-line')
-const fileListFillNavIcon = createClassNameNavIcon('i-ri-file-list-3-fill')
-const dashboardLineNavIcon = createClassNameNavIcon('i-ri-dashboard-2-line')
-const dashboardFillNavIcon = createClassNameNavIcon('i-ri-dashboard-2-fill')
-const lockLineNavIcon = createClassNameNavIcon('i-ri-lock-2-line')
-const lockFillNavIcon = createClassNameNavIcon('i-ri-lock-2-fill')
 
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
 const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
 
 const renderNavDivider = (key: string, expand: boolean) => (
   <div key={key} className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
-    <Divider
-      type="horizontal"
-      bgStyle={expand ? 'gradient' : 'solid'}
-      className={cn(
-        'my-0 h-px',
-        expand
-          ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
-          : 'bg-divider-subtle',
-      )}
+    <Separator
+      orientation="horizontal"
+      variant={expand ? 'gradient' : 'solid'}
+      className={cn('my-0', expand ? 'from-divider-subtle' : 'bg-divider-subtle')}
     />
   </div>
 )
@@ -78,22 +45,30 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
-  const { t } = useTranslation()
   const pathname = usePathname()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const appId = getAppIdFromPathname(pathname)
+  if (!appId) return null
+  return <AppDetailContent key={appId} appId={appId} expand={expand} />
+}
+
+function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
+  const { t } = useTranslation(['app', 'common', 'navigation'])
+  const pathname = usePathname()
+  const [detailQuery, featuresQuery, profileQuery] = useQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+      systemFeaturesQueryOptions(),
+      userProfileQueryOptions(),
+    ],
   })
+  const systemFeatures = featuresQuery.data
+  const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const appDetail = useStore((state) => state.appDetail)
-  const appInfoActions = useAppInfoActions({
-    resetKey: appDetail?.id,
-  })
+  const isRbacEnabled = systemFeatures?.rbac_enabled
+  const appDetail = detailQuery.data
 
   const navigation = useMemo<AppDetailNavItem[]>(() => {
-    if (!appDetail) return []
+    if (!appDetail || !systemFeatures || !currentUserId) return []
 
     const appId = appDetail.id
     const isWorkflowApp =
@@ -114,8 +89,8 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.promptEng'], { ns: 'common' }),
               href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
-              icon: terminalWindowLineNavIcon,
-              selectedIcon: terminalWindowFillNavIcon,
+              icon: 'i-ri-terminal-window-line',
+              selectedIcon: 'i-ri-terminal-window-fill',
             },
           ]
         : []),
@@ -124,8 +99,8 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),
               href: `/app/${appId}/access-point`,
-              icon: accessPointNavIcon,
-              selectedIcon: accessPointNavIcon,
+              icon: 'i-custom-vender-agent-v2-access-point',
+              selectedIcon: 'i-custom-vender-agent-v2-access-point',
             },
           ]
         : []),
@@ -134,8 +109,8 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.deploy'], { ns: 'common' }),
               href: `/app/${appId}/deploy`,
-              icon: instanceLineNavIcon,
-              selectedIcon: instanceFillNavIcon,
+              icon: 'i-ri-instance-line',
+              selectedIcon: 'i-ri-instance-fill',
             },
           ]
         : []),
@@ -144,8 +119,8 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.logs'], { ns: 'common' }),
               href: `/app/${appId}/logs`,
-              icon: fileListLineNavIcon,
-              selectedIcon: fileListFillNavIcon,
+              icon: 'i-ri-file-list-3-line',
+              selectedIcon: 'i-ri-file-list-3-fill',
             },
           ]
         : []),
@@ -154,8 +129,8 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.annotations'], { ns: 'common' }),
               href: `/app/${appId}/annotations`,
-              icon: AnnotationNavIcon,
-              selectedIcon: AnnotationNavIcon,
+              icon: 'i-custom-vender-line-general-annotations size-4',
+              selectedIcon: 'i-custom-vender-line-general-annotations size-4',
             },
           ]
         : []),
@@ -164,25 +139,28 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             {
               name: t(($) => $['appMenus.overview'], { ns: 'common' }),
               href: `/app/${appId}/overview`,
-              icon: dashboardLineNavIcon,
-              selectedIcon: dashboardFillNavIcon,
+              icon: 'i-ri-dashboard-2-line',
+              selectedIcon: 'i-ri-dashboard-2-fill',
             },
           ]
         : []),
       ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/app/${appId}/access-config`,
-              icon: lockLineNavIcon,
-              selectedIcon: lockFillNavIcon,
+              icon: 'i-ri-lock-2-line',
+              selectedIcon: 'i-ri-lock-2-fill',
             },
           ]
         : []),
     ]
-  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled])
+  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
 
-  if (!appDetail) return null
+  const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
+    (query) => query.isError && !query.data,
+  )
+  const appTitle = appDetail?.name ?? t(($) => $['menus.appDetail'], { ns: 'navigation' })
 
   const hasLogsNavigation = navigation.some(isLogsNavItem)
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
@@ -191,17 +169,46 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
       {!expand && (
         <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
-          <Divider
-            type="horizontal"
-            bgStyle="solid"
-            className="my-0 h-px w-6.75 bg-divider-subtle"
+          <Separator
+            decorative
+            orientation="horizontal"
+            variant="solid"
+            className="my-0 w-6.75 bg-divider-subtle"
           />
         </div>
       )}
-      <div className="px-1 py-2">
-        <AppInfoView expand={expand} actions={appInfoActions} />
+      <div className={cn('px-1 py-2', expand && '-mx-2')}>
+        {appDetail && systemFeatures && currentUserId ? (
+          <AppInfoView appDetail={appDetail} expand={expand} />
+        ) : (
+          <AppInfoHeader
+            expand={expand}
+            appName={appTitle}
+            modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
+            iconType={appDetail?.icon_type}
+            icon={appDetail?.icon ?? undefined}
+            background={appDetail?.icon_background}
+            imageUrl={appDetail?.icon_url}
+            operationGroups={[]}
+          />
+        )}
       </div>
-      <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
+      {failedQuery && (
+        <div role="alert" className="flex flex-col gap-2 px-1 py-2">
+          {expand && (
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+            </p>
+          )}
+          <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
+            {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+      <nav
+        aria-label={appTitle}
+        className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}
+      >
         {navigation.map((item) => {
           const shouldRenderDividerBefore =
             isLogsNavItem(item) || (!hasLogsNavigation && isAnnotationsNavItem(item))

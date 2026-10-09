@@ -1,17 +1,15 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,9 +19,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import {
@@ -44,7 +43,6 @@ type EnvironmentWebAppCardProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
-  canReleaseAndVersion: boolean
   highlighted?: boolean
 }
 
@@ -52,12 +50,18 @@ export function EnvironmentWebAppCard({
   appId,
   environmentId,
   canManageAccessPoint,
-  canReleaseAndVersion,
   highlighted,
 }: EnvironmentWebAppCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
+  const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
@@ -89,7 +93,7 @@ export function EnvironmentWebAppCard({
     ...subjectsQueryOptions,
     enabled:
       siteQuery.isSuccess &&
-      canReleaseAndVersion &&
+      canManageAccessPoint &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
   const accessConfigured =
@@ -169,7 +173,7 @@ export function EnvironmentWebAppCard({
             <AppIcon
               size="large"
               iconType={appInfo.icon_type}
-              icon={appInfo.icon}
+              icon={appInfo.icon ?? undefined}
               background={appInfo.icon_background}
               imageUrl={appInfo.icon_url}
             />
@@ -199,11 +203,11 @@ export function EnvironmentWebAppCard({
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!appInfo || !siteQuery.isSuccess || !canManageAccessPoint}
+              disabled={!appInfo?.site || !siteQuery.isSuccess || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
+              {t(($) => $['settings.settings'], { ns: 'navigation' })}
             </Button>
           </>
         }
@@ -235,7 +239,7 @@ export function EnvironmentWebAppCard({
               accessConfigured={accessConfigured}
               accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
               accessLabel={accessLabel}
-              disabled={!canReleaseAndVersion}
+              disabled={!canManageAccessPoint}
               onClick={() => setShowAccess(true)}
             />
           ) : (
@@ -243,11 +247,11 @@ export function EnvironmentWebAppCard({
           ))}
       </AccessPointCard>
 
-      {appInfo && (
+      {appInfo?.site && (
         <SettingsModal
           isChat={false}
           canDeploy
-          appInfo={appInfo}
+          appInfo={{ id: appInfo.id, mode: appInfo.mode, site: appInfo.site }}
           isShow={showSettings}
           onClose={() => setShowSettings(false)}
           onSave={actions.saveSiteConfig}
@@ -265,7 +269,7 @@ export function EnvironmentWebAppCard({
           appId={appId}
           environmentId={environmentId}
           accessMode={accessMode}
-          canManage={canReleaseAndVersion}
+          canManage={canManageAccessPoint}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />
@@ -282,7 +286,7 @@ export function EnvironmentWebAppCard({
               })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -292,7 +296,7 @@ export function EnvironmentWebAppCard({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

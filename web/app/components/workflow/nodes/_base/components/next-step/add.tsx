@@ -17,7 +17,7 @@ type AddProps = {
   isFailBranch?: boolean
 }
 const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()

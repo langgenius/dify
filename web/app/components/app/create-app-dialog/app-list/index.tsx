@@ -1,61 +1,55 @@
 'use client'
 
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App } from '@/models/explore'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
+import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { getTemplateImportSource } from '@/app/components/explore/template-import'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { fetchAppDetail } from '@/service/explore'
-import { useExploreAppList } from '@/service/use-explore'
+import { useCanImportAgents } from '@/features/agent-v2/permissions'
+import { useImportDSL } from '@/hooks/use-import-dsl'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
+const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
+
 type AppsProps = {
-  onSuccess?: () => void
+  onClose: () => void
   onCreateFromBlank?: () => void
+  templateMode?: 'agent'
 }
 
-// export enum PageType {
-//   EXPLORE = 'explore',
-//   CREATE = 'create',
-// }
-
-const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
-  const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
+const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
+  const { t } = useTranslation(['app', 'common'])
+  const locale = useLocale()
+  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canImportAgents = useCanImportAgents()
   const canCreateAppFromTemplate = hasPermission(
     workspacePermissionKeys,
     'app.create_and_management',
   )
-  const { push } = useRouter()
-  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
+  const canCreateTemplate = (mode?: string | null) =>
+    mode === 'agent' ? canImportAgents : canCreateAppFromTemplate
+  const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
@@ -71,45 +65,57 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
-  const { data, isLoading } = useExploreAppList()
+  const { data, isLoading } = useQuery(
+    consoleQuery.explore.apps.get.queryOptions({
+      input: { query: { language: locale } },
+    }),
+  )
+  const allList = useMemo(
+    () =>
+      [...(data?.recommended_apps ?? [])]
+        .filter((item) =>
+          templateMode ? item.app?.mode === templateMode : item.app?.mode !== AppModeEnum.AGENT,
+        )
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+    [data?.recommended_apps, templateMode],
+  )
 
   const visibleCategories = useMemo(() => {
     if (!data) return []
 
     const categoriesWithApps = new Set<string>()
-    data.allList.forEach((app) => {
-      app.categories.forEach((category) => categoriesWithApps.add(category))
+    allList.forEach((app) => {
+      app.categories?.forEach((category) => categoriesWithApps.add(category))
     })
 
     return data.categories.filter((category) => categoriesWithApps.has(category))
-  }, [data])
+  }, [data, allList])
 
   const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
 
   const filteredList = useMemo(() => {
     if (!data) return []
-    const { allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (activeCategory === allCategoriesEn) return true
       return item.categories?.includes(activeCategory) ?? false
     })
     if (currentType.length === 0) return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT) return true
+      if (currentType.includes(AppModeEnum.CHAT) && item.app?.mode === AppModeEnum.CHAT) return true
       if (
         currentType.includes(AppModeEnum.ADVANCED_CHAT) &&
-        item.app.mode === AppModeEnum.ADVANCED_CHAT
+        item.app?.mode === AppModeEnum.ADVANCED_CHAT
       )
         return true
-      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app.mode === AppModeEnum.AGENT_CHAT)
+      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app?.mode === AppModeEnum.AGENT_CHAT)
         return true
-      if (currentType.includes(AppModeEnum.COMPLETION) && item.app.mode === AppModeEnum.COMPLETION)
+      if (currentType.includes(AppModeEnum.COMPLETION) && item.app?.mode === AppModeEnum.COMPLETION)
         return true
-      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app.mode === AppModeEnum.WORKFLOW)
+      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app?.mode === AppModeEnum.WORKFLOW)
         return true
       return false
     })
-  }, [currentType, activeCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data, allList])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
@@ -118,13 +124,17 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 
     return filteredList.filter(
       (item) =>
-        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+        item.app &&
+        [item.app.name, item.description].some((value) =>
+          value?.toLowerCase().includes(lowerCaseSearchKeywords),
+        ),
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = React.useState<App | null>(null)
+  const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
+  const [previewApp, setPreviewApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const { handleCheckPluginDependencies } = usePluginDependencies()
+  const [showDSLConfirmModal, setShowDSLConfirmModal] = React.useState(false)
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -132,46 +142,68 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
     icon_background,
     description,
   }) => {
-    const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
+    if (!currApp || !canCreateTemplate(currApp.app?.mode)) return
     try {
-      const app = await importApp({
-        body: {
-          mode: 'yaml-content',
-          yaml_content: export_data,
+      const detail = await queryClient.query({
+        ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+          input: { params: { app_id: currApp.app_id } },
+        }),
+        staleTime: 0,
+      })
+      if (
+        !canCreateTemplate(detail.mode) ||
+        (templateMode ? detail.mode !== templateMode : detail.mode === AppModeEnum.AGENT)
+      )
+        throw new Error('Template mode does not match this picker')
+      await handleImportDSL(
+        {
+          ...getTemplateImportSource(detail),
           name,
           icon_type,
           icon,
           icon_background,
           description,
         },
-      })
-      if (!app.app_id || !app.app_mode) throw new Error('Completed import is missing app metadata')
-
-      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
-
-      setIsShowCreateModal(false)
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (onSuccess) onSuccess()
-      await handleCheckPluginDependencies(app.app_id)
-      getRedirection(
-        { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
-        push,
         {
-          currentUserId,
-          resourceMaintainer: currentUserId,
-          workspacePermissionKeys,
-          isRbacEnabled,
+          onSuccess: (response) => {
+            if (response.app_mode) {
+              trackCreateApp({
+                source: 'studio_template_list',
+                appMode: response.app_mode,
+                templateId: currApp.app_id,
+              })
+            }
+            setIsShowCreateModal(false)
+            onClose()
+          },
+          onPending: () => setShowDSLConfirmModal(true),
         },
       )
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
+  const onConfirmDSL = async () => {
+    await handleImportDSLConfirm({
+      onSuccess: (response) => {
+        if (response.app_mode) {
+          trackCreateApp({
+            source: 'studio_template_list',
+            appMode: response.app_mode,
+            templateId: currApp?.app_id,
+          })
+        }
+        setShowDSLConfirmModal(false)
+        setIsShowCreateModal(false)
+        onClose()
+      },
+    })
+  }
 
   if (isLoading) {
     return (
       <div className="flex h-full items-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -185,10 +217,14 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           </span>
         </div>
         <div className="flex max-w-137 flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
-          <AppTypeSelector value={currentType} onChange={setCurrentType} />
-          <div className="h-3.5">
-            <Divider type="vertical" />
-          </div>
+          {!templateMode && (
+            <>
+              <AppTypeSelector value={currentType} onChange={setCurrentType} />
+              <div className="h-3.5">
+                <Separator decorative className="mx-2" orientation="vertical" />
+              </div>
+            </>
+          )}
           <InputGroup className="flex-1 bg-transparent hover:border-transparent hover:bg-transparent">
             <InputGroupInput
               ref={searchInputRef}
@@ -222,7 +258,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
         {!searchKeywords && (
           <div className="h-full w-50 p-4">
             <Sidebar
-              current={activeCategory as AppCategories}
+              current={activeCategory}
               categories={visibleCategories}
               onClick={(category) => {
                 setCurrCategory(category)
@@ -250,22 +286,19 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
                 ) : (
                   <div className="flex h-5.5 items-center">
                     <AppCategoryLabel
-                      category={activeCategory as AppCategories}
+                      category={activeCategory}
                       className="title-md-semi-bold text-text-primary"
                     />
                   </div>
                 )}
               </div>
-              <div
-                className={cn(
-                  'grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3',
-                )}
-              >
+              <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3">
                 {searchFilteredList.map((app) => (
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={canCreateAppFromTemplate}
+                    canCreate={canCreateTemplate(app.app?.mode)}
+                    onPreview={() => setPreviewApp(app)}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)
@@ -280,15 +313,44 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
       </div>
       {isShowCreateModal && (
         <CreateAppModal
-          appIconType={currApp?.app.icon_type || 'emoji'}
-          appIcon={currApp?.app.icon || ''}
-          appIconBackground={currApp?.app.icon_background || ''}
-          appIconUrl={currApp?.app.icon_url}
-          appName={currApp?.app.name || ''}
-          appDescription={currApp?.app.description || ''}
+          appIconType={
+            currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
+              ? currApp.app.icon_type
+              : 'emoji'
+          }
+          appIcon={currApp?.app?.icon ?? ''}
+          appIconBackground={currApp?.app?.icon_background ?? ''}
+          appIconUrl={currApp?.app?.icon_url}
+          appName={currApp?.app?.name ?? ''}
+          appDescription=""
           show={isShowCreateModal}
           onConfirm={onCreate}
+          confirmLoading={isFetching}
           onHide={() => setIsShowCreateModal(false)}
+        />
+      )}
+      {showDSLConfirmModal && (
+        <DSLConfirmModal
+          versions={versions}
+          onCancel={() => setShowDSLConfirmModal(false)}
+          onConfirm={onConfirmDSL}
+          confirmLoading={isFetching}
+        />
+      )}
+      {previewApp && (
+        <TryApp
+          appId={previewApp.app_id}
+          canTrial={previewApp.can_trial}
+          categories={previewApp.categories}
+          templateName={previewApp.app?.name}
+          templateMode={previewApp.app?.mode}
+          canCreate={canCreateTemplate(previewApp.app?.mode)}
+          onClose={() => setPreviewApp(null)}
+          onCreate={() => {
+            setCurrApp(previewApp)
+            setPreviewApp(null)
+            setIsShowCreateModal(true)
+          }}
         />
       )}
     </div>
@@ -298,7 +360,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 export default React.memo(Apps)
 
 function NoTemplateFound() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">

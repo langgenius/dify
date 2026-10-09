@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const docLink = useDocLink()
   const [url, setUrl] = useState('')
   const handleUrlChange = useCallback((url: string | number) => {
@@ -30,7 +30,7 @@ const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
     <div className="flex items-center justify-between gap-x-2">
       <Input value={url} onChange={handleUrlChange} placeholder={docLink()} />
       <Button variant="primary" onClick={handleOnRun} loading={isRunning}>
-        {!isRunning ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' }) : ''}
+        {t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' })}
       </Button>
     </div>
   )

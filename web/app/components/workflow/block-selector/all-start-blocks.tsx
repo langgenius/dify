@@ -4,11 +4,11 @@ import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './marketplace-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -31,13 +31,13 @@ const DEFAULT_TAGS: string[] = []
 
 const SectionDivider = () => (
   <div className="px-4 py-1" aria-hidden>
-    <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 bg-divider-subtle" />
   </div>
 )
 
 const MarketplaceFooterDivider = () => (
   <div className="flex h-2 w-8 items-center" aria-hidden>
-    <Divider type="horizontal" className="my-0 h-px w-8 bg-divider-subtle" />
+    <Separator decorative orientation="horizontal" className="my-0 w-8 bg-divider-subtle" />
   </div>
 )
 
@@ -64,7 +64,7 @@ function AllStartBlocks({
   hasTriggerNode = false,
   variant = 'popover',
 }: AllStartBlocksProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
   const { data: enable_marketplace } = useSuspenseQuery({
@@ -117,9 +117,12 @@ function AllStartBlocks({
   )
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
-  const marketplacePlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+  const notInstalledPlugins = useMemo(
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !providerMap.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, providerMap],
   )
 
   const shouldShowFeatured = enableTriggerPlugin && enable_marketplace && !hasFilter
@@ -136,7 +139,7 @@ function AllStartBlocks({
 
   const hasInstalledPluginContent = enableTriggerPlugin && hasPluginContent
   const hasMarketplaceContent =
-    enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+    enableTriggerPlugin && enable_marketplace && notInstalledPlugins.length > 0
   const hasAnyContent =
     hasStartBlocksContent ||
     hasInstalledPluginContent ||
@@ -231,7 +234,7 @@ function AllStartBlocks({
                 <PluginList
                   ref={pluginRef}
                   wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-                  list={marketplacePlugins}
+                  list={notInstalledPlugins}
                   searchText={trimmedSearchText}
                   category={PluginCategoryEnum.trigger}
                   tags={tags}

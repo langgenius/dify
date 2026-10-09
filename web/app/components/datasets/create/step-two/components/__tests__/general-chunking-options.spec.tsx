@@ -1,4 +1,5 @@
 import type { PreProcessingRule } from '@/models/datasets'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
@@ -24,7 +25,9 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
 
 const ns = 'datasetCreation'
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
+  renderWithConsoleQuery(<RadioGroup aria-label="Chunking mode">{ui}</RadioGroup>, {
+    systemFeatures: { deployment_edition: 'COMMUNITY' },
+  })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },
@@ -109,22 +112,6 @@ describe('GeneralChunkingOptions', () => {
       render(<GeneralChunkingOptions {...defaultProps} onRuleToggle={onRuleToggle} />)
       fireEvent.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
-    })
-
-    it('should call onDocFormChange with text mode when card switched', () => {
-      const onDocFormChange = vi.fn()
-      render(
-        <GeneralChunkingOptions
-          {...defaultProps}
-          isActive={false}
-          onDocFormChange={onDocFormChange}
-        />,
-      )
-      // OptionCard fires onSwitched which calls onDocFormChange(ChunkingMode.text)
-      // Since isActive=false, clicking the card triggers the switch
-      const titleEl = screen.getByText(`${ns}.stepTwo.general`)
-      fireEvent.click(titleEl.closest('[class*="rounded-xl"]')!)
-      expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.text)
     })
   })
 

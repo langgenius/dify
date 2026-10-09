@@ -2,7 +2,7 @@ import type { ILanguageSelectProps } from '../index'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import LanguageSelect from '../index'
 
 const supportedLanguages = languages.filter((language) => language.supported)

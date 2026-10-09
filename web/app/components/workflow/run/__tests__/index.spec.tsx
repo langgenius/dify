@@ -1,6 +1,7 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
@@ -21,7 +22,7 @@ vi.mock('@/service/log', () => ({
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -138,6 +139,7 @@ describe('RunPanel', () => {
   })
 
   it('switches between detail, tracing, and result tabs with real child panels', async () => {
+    const user = userEvent.setup()
     renderWorkflowComponent(
       <RunPanel
         activeTab="RESULT"
@@ -152,16 +154,21 @@ describe('RunPanel', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByText('SUCCESS').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('appLog.status.succeeded').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByText('runLog.tracing'))
+    expect(screen.getByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
 
     await waitFor(() => {
       expect(screen.getByText('Trace Node')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('runLog.result'))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
 
     await waitFor(() => {
       expect(mockFetchRunDetail).toHaveBeenCalledTimes(2)
@@ -169,6 +176,38 @@ describe('RunPanel', () => {
         'workflow output',
       )
     })
+  })
+
+  it('lets keyboard users switch the logs detail and tracing panels when result is hidden', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel
+        hideResult
+        activeTab="DETAIL"
+        runDetailUrl="/console/api/runs/run-1"
+        tracingListUrl="/console/api/runs/run-1/tracing"
+      />,
+    )
+
+    const detailPanel = await screen.findByRole('tabpanel', { name: 'runLog.detail' })
+    await waitFor(() =>
+      expect(within(detailPanel).getAllByText('appLog.status.succeeded').length).toBeGreaterThan(0),
+    )
+    expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
+
+    await user.tab()
+    expect(screen.getByRole('tab', { name: 'runLog.detail' })).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+
+    const tracingTab = screen.getByRole('tab', { name: 'runLog.tracing' })
+    expect(tracingTab).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(tracingTab).toHaveAttribute('aria-selected', 'true')
+    const tracingPanel = screen.getByRole('tabpanel', { name: 'runLog.tracing' })
+    expect(tracingTab).toHaveAttribute('aria-controls', tracingPanel.id)
+    expect(within(tracingPanel).getByText('Trace Node')).toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel', { name: 'runLog.detail' })).not.toBeInTheDocument()
+    await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
   })
 
   it('reports run-detail and tracing failures through toast.error', async () => {
@@ -186,5 +225,219 @@ describe('RunPanel', () => {
       expect(mockToastError).toHaveBeenCalledWith('Error: detail boom')
       expect(mockToastError).toHaveBeenCalledWith('Error: tracing boom')
     })
+  })
+
+  it.each(['RESULT', 'DETAIL', 'TRACING'] as const)(
+    'refreshes data when the already selected %s tab is clicked',
+    async (activeTab) => {
+      const user = userEvent.setup()
+      renderWorkflowComponent(
+        <RunPanel
+          activeTab={activeTab}
+          runDetailUrl="/console/api/runs/run-1"
+          tracingListUrl="/console/api/runs/run-1/tracing"
+        />,
+      )
+
+      await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(1))
+      await user.click(screen.getByRole('tab', { name: `runLog.${activeTab.toLowerCase()}` }))
+
+      await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
+      expect(mockFetchRunDetail).toHaveBeenCalledTimes(activeTab === 'RESULT' ? 2 : 1)
+    },
+  )
+  it('keeps the new record and selected tab when an old detail response arrives late', async () => {
+    const user = userEvent.setup()
+    const handleResult = vi.fn()
+    let resolveOldResponse: (detail: WorkflowRunDetailResponse) => void = () => {}
+    mockFetchRunDetail
+      .mockReturnValueOnce(
+        new Promise<WorkflowRunDetailResponse>((resolve) => {
+          resolveOldResponse = resolve
+        }),
+      )
+      .mockResolvedValue(createRunDetail({ id: 'new-run', outputs: 'New result' }))
+    const { rerender } = renderWorkflowComponent(
+      <RunPanel
+        runDetailUrl="/runs/old-run"
+        tracingListUrl="/runs/old-run/tracing"
+        getResultCallback={handleResult}
+      />,
+    )
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+    rerender(
+      <RunPanel
+        runDetailUrl="/runs/new-run"
+        tracingListUrl="/runs/new-run/tracing"
+        getResultCallback={handleResult}
+      />,
+    )
+    expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await screen.findByText('Trace Node')
+    await act(async () => {
+      resolveOldResponse(createRunDetail({ id: 'old-run', outputs: 'Old result' }))
+    })
+    expect(handleResult).toHaveBeenCalledTimes(1)
+    expect(handleResult).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-run' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    expect(((await screen.findByTestId('monaco-editor')) as HTMLTextAreaElement).value).toContain(
+      'New result',
+    )
+  })
+
+  it('clears the previous result while the destination record is loading and ignores old failures', async () => {
+    const user = userEvent.setup()
+    const { rerender } = renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/first" tracingListUrl="/runs/first/tracing" />,
+    )
+    await screen.findByTestId('monaco-editor')
+    let rejectRefresh: (error: Error) => void = () => {}
+    mockFetchRunDetail
+      .mockReturnValueOnce(
+        new Promise<WorkflowRunDetailResponse>((_, reject) => {
+          rejectRefresh = reject
+        }),
+      )
+      .mockResolvedValue(createRunDetail({ id: 'next', outputs: 'Next result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    rerender(<RunPanel runDetailUrl="/runs/next" tracingListUrl="/runs/next/tracing" />)
+    expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument()
+    await screen.findByTestId('monaco-editor')
+    await act(async () => {
+      rejectRefresh(new Error('Old refresh failed'))
+    })
+    expect(mockToastError).not.toHaveBeenCalled()
+    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+      'Next result',
+    )
+  })
+
+  it('ignores tracing that completes after its record has been replaced', async () => {
+    let resolveOldTrace: (value: NodeTracingListResponse) => void = () => {}
+    mockFetchTracingList
+      .mockReturnValueOnce(
+        new Promise<NodeTracingListResponse>((resolve) => {
+          resolveOldTrace = resolve
+        }),
+      )
+      .mockResolvedValue({ data: [createTracingNode({ title: 'New trace' })] })
+    const { rerender } = renderWorkflowComponent(
+      <RunPanel activeTab="TRACING" runDetailUrl="/runs/old" tracingListUrl="/runs/old/tracing" />,
+    )
+    await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(1))
+    rerender(
+      <RunPanel activeTab="TRACING" runDetailUrl="/runs/new" tracingListUrl="/runs/new/tracing" />,
+    )
+    await screen.findByText('New trace')
+    await act(async () => {
+      resolveOldTrace({ data: [createTracingNode({ title: 'Old trace' })] })
+    })
+    expect(screen.getByText('New trace')).toBeInTheDocument()
+    expect(screen.queryByText('Old trace')).not.toBeInTheDocument()
+  })
+  it('does not restart the record request when its result callback changes', async () => {
+    const user = userEvent.setup()
+    const firstCallback = vi.fn()
+    const nextCallback = vi.fn()
+    const { rerender } = renderWorkflowComponent(
+      <RunPanel
+        runDetailUrl="/runs/record"
+        tracingListUrl="/runs/record/tracing"
+        getResultCallback={firstCallback}
+      />,
+    )
+    await screen.findByTestId('monaco-editor')
+    rerender(
+      <RunPanel
+        runDetailUrl="/runs/record"
+        tracingListUrl="/runs/record/tracing"
+        getResultCallback={nextCallback}
+      />,
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(mockFetchRunDetail).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await waitFor(() => expect(nextCallback).toHaveBeenCalledTimes(1))
+    expect(firstCallback).toHaveBeenCalledTimes(1)
+  })
+  it('keeps the latest refresh when requests for the same record resolve out of order', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    await screen.findByTestId('monaco-editor')
+    let resolveEarlierRefresh: (detail: WorkflowRunDetailResponse) => void = () => {}
+    mockFetchRunDetail
+      .mockReturnValueOnce(
+        new Promise<WorkflowRunDetailResponse>((resolve) => {
+          resolveEarlierRefresh = resolve
+        }),
+      )
+      .mockResolvedValue(createRunDetail({ outputs: 'Latest result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await waitFor(() =>
+      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+        'Latest result',
+      ),
+    )
+    await act(async () => {
+      resolveEarlierRefresh(createRunDetail({ outputs: 'Outdated result' }))
+    })
+    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+      'Latest result',
+    )
+  })
+  it('keeps the latest tracing refresh and suppresses an older failed detail refresh', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    await screen.findByTestId('monaco-editor')
+    let rejectEarlierDetail: (error: Error) => void = () => {}
+    let resolveEarlierTrace: (value: NodeTracingListResponse) => void = () => {}
+    mockFetchRunDetail.mockReturnValueOnce(
+      new Promise<WorkflowRunDetailResponse>((_, reject) => {
+        rejectEarlierDetail = reject
+      }),
+    )
+    mockFetchTracingList
+      .mockReturnValueOnce(
+        new Promise<NodeTracingListResponse>((resolve) => {
+          resolveEarlierTrace = resolve
+        }),
+      )
+      .mockResolvedValue({ data: [createTracingNode({ title: 'Latest trace' })] })
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await waitFor(() => expect(mockFetchRunDetail).toHaveBeenCalledTimes(3))
+    await act(async () => {
+      rejectEarlierDetail(new Error('Outdated failure'))
+      resolveEarlierTrace({ data: [createTracingNode({ title: 'Outdated trace' })] })
+    })
+    mockFetchTracingList.mockReturnValue(new Promise(() => {}))
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+    expect(screen.getByText('Latest trace')).toBeInTheDocument()
+    expect(screen.queryByText('Outdated trace')).not.toBeInTheDocument()
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
+  it('finishes loading from a newer refresh without waiting for the initial request', async () => {
+    const user = userEvent.setup()
+    mockFetchRunDetail
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockResolvedValue(createRunDetail({ outputs: 'Refreshed result' }))
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    expect(((await screen.findByTestId('monaco-editor')) as HTMLTextAreaElement).value).toContain(
+      'Refreshed result',
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

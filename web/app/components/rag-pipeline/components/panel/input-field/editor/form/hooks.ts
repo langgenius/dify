@@ -12,7 +12,7 @@ import { formatFileSize } from '@/utils/format'
 import { TEXT_MAX_LENGTH } from './schema'
 
 export const useHiddenFieldNames = (type: PipelineInputVarType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const hiddenFieldNames = useMemo(() => {
     let fieldNames = []
     switch (type) {
@@ -71,12 +71,17 @@ export const useConfigurations = (props: {
   setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void
   supportFile: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { getFieldValue, setFieldValue, supportFile } = props
 
   const handleTypeChange = useCallback(
     (type: PipelineInputVarType) => {
-      if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type)) {
+      const fileInputTypes: readonly PipelineInputVarType[] = [
+        PipelineInputVarType.singleFile,
+        PipelineInputVarType.multiFiles,
+      ]
+
+      if (fileInputTypes.includes(type)) {
         setFieldValue(
           'allowedFileUploadMethods',
           DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods,
@@ -208,7 +213,7 @@ export const useConfigurations = (props: {
 }
 
 export const useHiddenConfigurations = (props: { options: string[] | undefined }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   const { options } = props
 

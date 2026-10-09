@@ -28,7 +28,7 @@ const codeLanguages = [
   },
 ]
 const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const {
     readOnly,

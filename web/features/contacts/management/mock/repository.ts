@@ -54,6 +54,15 @@ export function createContactsMockRepository({
 
   return {
     supportsIMBindings: false,
+    async listIMChannels() {
+      await wait()
+      const providers = new Set(
+        scenario.contacts.flatMap((contact) =>
+          contact.type === 'external' ? [] : contact.im_bindings.map((binding) => binding.provider),
+        ),
+      )
+      return [...providers].map((provider) => ({ id: `channel-${provider}`, provider }))
+    },
     async listIMIdentities() {
       throw new Error('IM identity fixtures are not configured')
     },

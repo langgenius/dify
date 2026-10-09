@@ -17,7 +17,7 @@ export const buildHumanInputOutputVars = (inputs: FormInputItem[]): Var[] =>
 
 export const getHumanInputSharedValidationError = (
   payload: Pick<HumanInputSharedConfig, 'user_actions'>,
-  t: TFunction<'workflow'>,
+  t: TFunction<['workflow']>,
 ): string => {
   if (!payload.user_actions.length)
     return t(($) => $['nodes.humanInput.errorMsg.noUserActions'], { ns: 'workflow' })

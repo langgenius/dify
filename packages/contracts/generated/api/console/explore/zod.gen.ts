@@ -13,6 +13,8 @@ export const zRecommendedAppDetailResponse = z.object({
   id: z.string(),
   mode: z.string(),
   name: z.string(),
+  package_url: z.string().nullish(),
+  version_id: z.string().nullish(),
 })
 
 /**
@@ -137,7 +139,7 @@ export const zLearnDifyAppListResponseWritable = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -146,7 +148,7 @@ export const zGetExploreAppsQuery = z.object({
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
 export const zGetExploreAppsLearnDifyQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**

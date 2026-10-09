@@ -1,24 +1,15 @@
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from events.app_event import app_was_created
-from models.model import InstalledApp
+from services.app_creation_records import create_installed_app_record
 
 
 @app_was_created.connect
-def handle(sender, *, session: Session, **_kwargs) -> None:
-    """Create an installed app when an app is created."""
-    app = sender
-    installed_app_id = session.scalar(
-        select(InstalledApp.id).where(InstalledApp.tenant_id == app.tenant_id, InstalledApp.app_id == app.id).limit(1)
-    )
-    if installed_app_id:
+def handle(sender, *, session: Session | None = None, created_records_initialized: bool = False, **kwargs) -> None:
+    """Create the installation in the caller's transaction unless it was already initialized."""
+    if created_records_initialized:
         return
-
-    installed_app = InstalledApp(
-        tenant_id=app.tenant_id,
-        app_id=app.id,
-        app_owner_tenant_id=app.tenant_id,
-    )
-    session.add(installed_app)
-    session.flush()
+    if session is None:
+        raise TypeError("session is required to initialize app creation records")
+    app = sender
+    create_installed_app_record(app=app, session=session)

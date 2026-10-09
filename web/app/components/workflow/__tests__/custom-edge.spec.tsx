@@ -43,6 +43,8 @@ vi.mock('reactflow', () => ({
   useStoreApi: () => ({
     getState: () => ({ getNodes: () => [] }),
   }),
+  useStore: (selector: (state: { nodeInternals: Map<string, unknown> }) => unknown) =>
+    selector({ nodeInternals: new Map() }),
 }))
 
 vi.mock('../hooks/use-available-blocks', async (importOriginal) => {

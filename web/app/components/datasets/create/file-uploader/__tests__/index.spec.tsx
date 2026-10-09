@@ -1,12 +1,22 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { PROGRESS_NOT_STARTED } from '../constants'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 import FileUploader from '../index'
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['pdf', 'docx', 'txt'],
+  })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+}
 
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', async () => {
@@ -27,11 +37,8 @@ vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
     data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
   }),
-  useFileSupportTypes: () => ({
-    data: { allowed_extensions: ['pdf', 'docx', 'txt'] },
-  }),
 }))
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
@@ -57,7 +64,7 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 }))
 
 // Mock SimplePieChart
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     const Component = ({ percentage }: { percentage: number }) => (
       <div data-testid="pie-chart">{percentage}%</div>
@@ -157,42 +164,45 @@ describe('FileUploader', () => {
   })
 
   describe('event handlers', () => {
-    it('should handle file preview click', () => {
+    it('should handle file preview click', async () => {
+      const user = userEvent.setup()
       const onPreview = vi.fn()
       const fileItem = createMockFileItem({
         file: createMockFile({ id: 'file-id' } as Partial<File>),
       })
 
-      const { container } = render(
-        <FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />,
-      )
+      render(<FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />)
 
-      // Find the file list item container by its class pattern
-      const fileElement = container.querySelector('[class*="flex h-12"]')
-      if (fileElement) fireEvent.click(fileElement)
+      await user.click(
+        screen.getByRole('button', { name: 'datasetCreation.stepOne.filePreview test.pdf' }),
+      )
 
       expect(onPreview).toHaveBeenCalledWith(fileItem.file)
     })
 
-    it('should handle file remove click', () => {
+    it('keeps other uploaded files when removing one after mounting with an existing list', async () => {
+      const user = userEvent.setup()
       const onFileListUpdate = vi.fn()
-      const fileItem = createMockFileItem()
+      const firstFile = createMockFileItem({
+        fileID: 'first',
+        file: createMockFile({ name: 'first.pdf', id: 'first-id' }),
+      })
+      const secondFile = createMockFileItem({
+        fileID: 'second',
+        file: createMockFile({ name: 'second.pdf', id: 'second-id' }),
+      })
 
-      const { container } = render(
+      render(
         <FileUploader
           {...defaultProps}
-          fileList={[fileItem]}
+          fileList={[firstFile, secondFile]}
           onFileListUpdate={onFileListUpdate}
         />,
       )
 
-      // Find the delete button (the span with cursor-pointer containing the icon)
-      const deleteButtons = container.querySelectorAll('[class*="cursor-pointer"]')
-      // Get the last one which should be the delete button (not the browse label)
-      const deleteButton = deleteButtons[deleteButtons.length - 1]
-      if (deleteButton) fireEvent.click(deleteButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove first.pdf' }))
 
-      expect(onFileListUpdate).toHaveBeenCalled()
+      expect(onFileListUpdate).toHaveBeenCalledWith([secondFile])
     })
 
     it('should handle browse button click', () => {
@@ -201,6 +211,78 @@ describe('FileUploader', () => {
       // The browse label should trigger file input click
       const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
       expect(browseLabel).toHaveClass('cursor-pointer')
+    })
+  })
+
+  describe('upload announcements', () => {
+    it('keeps a live status mounted before any upload starts', () => {
+      render(<FileUploader {...defaultProps} />)
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
+    it('keeps progress announcements stable until the server confirms the file', () => {
+      const fileItem = createMockFileItem({ fileID: 'upload-1', progress: 0 })
+      const { rerender } = render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
+      const status = screen.getByRole('status')
+      expect(status).toHaveTextContent('test.pdf: common.loading')
+
+      for (const progress of [25, 75, PROGRESS_COMPLETE]) {
+        rerender(<FileUploader {...defaultProps} fileList={[{ ...fileItem, progress }]} />)
+        expect(screen.getByRole('status')).toHaveTextContent('test.pdf: common.loading')
+        expect(screen.getByRole('status')).not.toHaveTextContent(
+          'datasetCreation.stepOne.uploader.completed',
+        )
+      }
+
+      rerender(
+        <FileUploader
+          {...defaultProps}
+          fileList={[
+            {
+              ...fileItem,
+              progress: PROGRESS_COMPLETE,
+              file: createMockFile({ id: 'server-file-id' }),
+            },
+          ]}
+        />,
+      )
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'test.pdf: datasetCreation.stepOne.uploader.completed',
+      )
+      expect(screen.getByRole('status')).not.toHaveTextContent('common.loading')
+    })
+
+    it('announces failed and completed files by name within a batch', () => {
+      const pendingFiles = [
+        createMockFileItem({
+          fileID: 'upload-1',
+          file: createMockFile({ name: 'first.pdf' }),
+          progress: 10,
+        }),
+        createMockFileItem({
+          fileID: 'upload-2',
+          file: createMockFile({ name: 'second.pdf' }),
+          progress: 20,
+        }),
+      ]
+      const { rerender } = render(<FileUploader {...defaultProps} fileList={pendingFiles} />)
+      rerender(
+        <FileUploader
+          {...defaultProps}
+          fileList={[
+            { ...pendingFiles[0]!, progress: PROGRESS_ERROR },
+            {
+              ...pendingFiles[1]!,
+              progress: PROGRESS_COMPLETE,
+              file: createMockFile({ name: 'second.pdf', id: 'second-server-id' }),
+            },
+          ]}
+        />,
+      )
+      const status = screen.getByRole('status')
+      expect(status).toHaveTextContent('first.pdf: datasetCreation.stepOne.uploader.failed')
+      expect(status).toHaveTextContent('second.pdf: datasetCreation.stepOne.uploader.completed')
+      expect(status).toHaveAttribute('aria-atomic', 'false')
     })
   })
 
@@ -245,12 +327,6 @@ describe('FileUploader', () => {
   })
 
   describe('styling', () => {
-    it('should have correct container width', () => {
-      const { container } = render(<FileUploader {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('w-160')
-    })
-
     it('should have proper spacing', () => {
       const { container } = render(<FileUploader {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement

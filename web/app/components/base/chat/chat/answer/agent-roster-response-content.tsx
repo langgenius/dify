@@ -1,13 +1,13 @@
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
-import { renderI18nObject } from '@/i18n-config'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem
@@ -66,7 +66,7 @@ function getToolActivities(
     }
   } catch {}
 
-  const labelLanguage = getLanguage(language as Locale)
+  const labelLanguage = getPluginLanguage(language as Locale)
 
   return toolNames.filter(Boolean).map((name, index) => ({
     kind: SHELL_TOOL_NAMES.has(name) ? 'shell' : 'tool',
@@ -179,7 +179,7 @@ function ResponseMessage({ content }: { content: string }) {
 }
 
 function ToolActivityItem({ tool }: { tool: ToolActivity }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'tools'])
   const hasDetails = !!tool.input || !!tool.output
   const label =
     tool.name === 'shell_run' && tool.label === tool.name
@@ -217,7 +217,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover">
+          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
@@ -261,8 +261,8 @@ function AgentActivityItem({
   thought: ThoughtItem
   responding?: boolean
 }) {
-  const { i18n } = useTranslation()
-  const tools = getToolActivities(thought, i18n.language, responding)
+  const locale = useLocale()
+  const tools = getToolActivities(thought, locale, responding)
 
   return (
     <div className="flex w-full max-w-full min-w-0 flex-col py-0.5">
@@ -293,7 +293,7 @@ function AgentActivityDisclosure({
   responding?: boolean
   defaultOpen?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding
@@ -308,7 +308,7 @@ function AgentActivityDisclosure({
     <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
       <CollapsibleTrigger
         aria-label={title}
-        className="group/thinking h-6 min-h-0 w-auto max-w-full justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary hover:not-data-disabled:bg-state-base-hover focus-visible:bg-state-base-hover"
+        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
       >
         <span>{thinking}</span>
         {duration && (

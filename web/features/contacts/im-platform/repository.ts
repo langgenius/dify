@@ -21,7 +21,7 @@ import type {
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
@@ -45,6 +45,59 @@ export type ContactImPlatformRepository = {
   saveCredentials: (command: SaveContactImCredentialsCommand) => Promise<ContactImIntegrationView>
   startSync: (command: ContactImOrganizationCommand) => Promise<ContactImSyncRunView>
   testConnection: (command: TestContactImConnectionCommand) => Promise<ContactImIntegrationView>
+}
+
+const syncReportResults = [
+  ContactImSyncResult.Added,
+  ContactImSyncResult.NotMatched,
+  ContactImSyncResult.Failed,
+  ContactImSyncResult.Removed,
+  ContactImSyncResult.Skipped,
+]
+
+/** Export a completed run in full, refusing stale runs or incomplete result pages. */
+export async function loadContactImSyncReport(
+  repository: Pick<ContactImPlatformRepository, 'getSyncRun' | 'getSyncItems'>,
+  runId: string,
+) {
+  const run = await repository.getSyncRun(runId)
+  if (run.status === ContactImSyncStatus.Queued || run.status === ContactImSyncStatus.Running)
+    throw new ContactImRepositoryError(ContactImRepositoryErrorCode.SyncNotAllowed)
+
+  const items: ContactImSyncItemView[] = []
+  const itemIds = new Set<string>()
+  for (const result of syncReportResults) {
+    let cursor: string | undefined
+    const cursors = new Set<string>()
+    let count = 0
+    do {
+      const page = await repository.getSyncItems({ runId: run.id, result, cursor, pageSize: 20 })
+      for (const item of page.items) {
+        if (item.result !== result || itemIds.has(item.id))
+          throw new ContactImRepositoryError(ContactImRepositoryErrorCode.PageLoadFailed)
+        itemIds.add(item.id)
+        items.push(item)
+        count += 1
+      }
+      if (page.nextCursor && (cursors.has(page.nextCursor) || page.items.length === 0))
+        throw new ContactImRepositoryError(ContactImRepositoryErrorCode.PageLoadFailed)
+      if (page.nextCursor) cursors.add(page.nextCursor)
+      cursor = page.nextCursor ?? undefined
+    } while (cursor)
+    if (count !== (run.counts[result] ?? 0))
+      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.PageLoadFailed)
+  }
+
+  const current = await repository.getSyncRun(run.id)
+  if (
+    current.id !== run.id ||
+    current.status !== run.status ||
+    current.completedAt !== run.completedAt ||
+    syncReportResults.some((result) => current.counts[result] !== run.counts[result])
+  )
+    throw new ContactImRepositoryError(ContactImRepositoryErrorCode.SyncRunNotFound)
+
+  return { run, items }
 }
 
 const apiProviderNames = {

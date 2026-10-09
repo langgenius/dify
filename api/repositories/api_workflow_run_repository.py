@@ -41,7 +41,6 @@ from typing import Protocol, TypedDict
 
 from sqlalchemy.orm import Session
 
-from core.repositories.factory import WorkflowExecutionRepository
 from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowType
@@ -82,7 +81,7 @@ class WorkflowRunCleanupRef:
     created_at: datetime
 
 
-class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
+class APIWorkflowRunRepository(Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 
@@ -430,6 +429,20 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons).
+        """
+        ...
+
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """
+        Delete workflow runs and related records using the caller-owned transaction.
+
+        The implementation must not commit or roll back the supplied session.
         """
         ...
 

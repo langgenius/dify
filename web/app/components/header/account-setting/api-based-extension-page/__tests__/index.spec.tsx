@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ApiBasedExtensionPage } from '../index'
 
@@ -26,7 +27,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
@@ -181,7 +182,7 @@ describe('ApiBasedExtensionPage', () => {
       expect(screen.queryByText('Beta Extension')).not.toBeInTheDocument()
     })
 
-    it('should render a search empty state without showing the onboarding empty state', () => {
+    it('should announce an empty search result without showing the onboarding empty state', async () => {
       // Arrange
       const mockData: ApiBasedExtensionResponse[] = [
         {
@@ -198,14 +199,13 @@ describe('ApiBasedExtensionPage', () => {
 
       // Act
       render(<ApiBasedExtensionPage />)
-      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
-        target: { value: 'missing' },
-      })
+      const user = userEvent.setup()
+      await user.type(screen.getByPlaceholderText('common.operation.search'), 'missing')
 
       // Assert
-      expect(
-        screen.getByText('common.dataSource.notion.selector.noSearchResult'),
-      )!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'common.dataSource.notion.selector.noSearchResult',
+      )
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.queryByText('Alpha Extension')).not.toBeInTheDocument()
     })
@@ -245,8 +245,12 @@ describe('ApiBasedExtensionPage', () => {
 
       // Assert
       expect(screen.getByRole('button', { name: 'common.apiBasedExtension.add' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Extension 1/i }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Extension 1/i }),
+      ).toBeDisabled()
     })
   })
 

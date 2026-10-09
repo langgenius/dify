@@ -51,7 +51,7 @@ const queryMocks = vi.hoisted(() => ({
   environmentRequest: vi.fn(),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { skipToken } = await import('@tanstack/react-query')
 
   return {

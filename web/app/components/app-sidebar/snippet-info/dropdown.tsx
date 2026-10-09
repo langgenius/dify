@@ -3,11 +3,11 @@
 import type { SnippetDetail } from '@/models/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -18,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +26,7 @@ import {
   canCreateAndModifySnippets,
   canManageSnippets,
 } from '@/app/components/snippets/utils/permission'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {
@@ -41,7 +41,7 @@ type SnippetInfoDropdownProps = {
 }
 
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet', 'common'])
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [open, setOpen] = React.useState(false)
@@ -131,7 +131,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           render={
             <IconButton
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-              className="rounded-md data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+              className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </IconButton>
@@ -196,7 +196,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
               {t(($) => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -206,7 +206,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             >
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -6,7 +6,7 @@ import { ACCEPT_TYPES } from '../constants'
 import { useUpload } from '../hooks/use-upload'
 
 const ImageUploader = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const {
     dragging,

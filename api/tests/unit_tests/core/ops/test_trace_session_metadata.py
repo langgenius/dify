@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
@@ -21,12 +21,12 @@ TABLES = (App, Conversation, Message, MessageFile, WorkflowAppLog, WorkflowNodeE
 def _bind_trace_database(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
-    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     """Use real SQLite sessions for ORM lookups without changing trace-domain data."""
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.db",
-        SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
+        SimpleNamespace(engine=sqlite_engine, session=scoped_session(sqlite_session_factory)),
     )
 
 
@@ -84,7 +84,7 @@ def _make_message_data():
         def __init__(self, values):
             self.__dict__.update(values)
 
-        def to_dict(self):
+        def to_dict(self, **_kwargs: object):
             return dict(self.__dict__)
 
     return _MessageData(data)
@@ -152,7 +152,7 @@ def test_message_trace_metadata_includes_trace_session_id(monkeypatch, sqlite_se
     sqlite_session.add_all([app, conversation])
     sqlite_session.commit()
 
-    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id: _make_message_data())
+    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id, session: _make_message_data())
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
     task = TraceTask(

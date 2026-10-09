@@ -45,17 +45,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: (props: { onChange: (value: string[]) => void }) => (
-    <button
-      type="button"
-      aria-label="insert-subject-variable"
-      onClick={() => props.onChange(['start', 'email'])}
-    />
-  ),
-}))
-
 const renderTemplate = (
   overrides: Partial<ComponentProps<typeof MessageTemplate>> = {},
   storeOverrides: Partial<Shape> = {},
@@ -146,25 +135,26 @@ describe('Human Input v2 Message Template', () => {
     vi.restoreAllMocks()
   })
 
-  it('opens from node data, inserts variables, and commits subject/body atomically', async () => {
+  it('preserves existing subject variables while committing subject and body edits together', async () => {
     const user = userEvent.setup()
-    const { props } = renderTemplate()
+    const { props } = renderTemplate({
+      value: { subject: 'Original subject{{#start.email#}}', body: 'Original body' },
+    })
     await openTemplate(user)
 
     const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
     const body = screen.getByLabelText('message-body-editor')
-    expect(subject).toHaveValue('Original subject')
+    expect(subject).toHaveValue('Original subject{{#start.email#}}')
     expect(body).toHaveValue('Original body')
 
-    await user.click(screen.getByRole('button', { name: 'insert-subject-variable' }))
-    expect(subject).toHaveValue('Original subject{{#start.email#}}')
+    await user.type(subject, ' updated')
     await user.clear(body)
     await user.type(body, 'Updated body without a request URL')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(props.onChange).toHaveBeenCalledTimes(1)
     expect(props.onChange).toHaveBeenCalledWith({
-      subject: 'Original subject{{#start.email#}}',
+      subject: 'Original subject{{#start.email#}} updated',
       body: 'Updated body without a request URL',
     })
   })

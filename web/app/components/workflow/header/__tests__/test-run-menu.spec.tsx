@@ -79,9 +79,34 @@ describe('TestRunMenu', () => {
     })
     expect(screen.getByText('~')).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: '0' })
+    fireEvent.keyDown(screen.getByRole('menu'), { key: '0' })
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-all' }))
+  })
+
+  it('keeps menu accelerators local and ignores composition and modified keys', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(
+      <TestRunMenu
+        options={{
+          userInput: createOption(),
+          triggers: [createOption({ id: 'trigger', name: 'Webhook', type: TriggerType.Webhook })],
+        }}
+        onSelect={onSelect}
+      >
+        <button>Open menu</button>
+      </TestRunMenu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    const menu = screen.getByRole('menu')
+    fireEvent.keyDown(document.body, { key: '0' })
+    fireEvent.keyDown(menu, { key: '0', isComposing: true })
+    fireEvent.keyDown(menu, { key: '0', ctrlKey: true })
+    fireEvent.keyDown(menu, { key: '0', repeat: true })
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.keyDown(menu, { key: '0' })
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'trigger' }))
   })
 
   it('should ignore disabled options in the rendered menu', async () => {

@@ -14,7 +14,6 @@ import {
   ComboboxStatus,
 } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
@@ -22,9 +21,9 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { toast } from '@/app/notifications'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
@@ -40,7 +39,7 @@ export function AgentSelectorContent({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
+  const { t } = useTranslation(['workflow', 'common', 'agentRoster'])
   const appId = useHooksStore((s) => s.configsMap?.flowId)
   const [searchText, setSearchText] = useState('')
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
@@ -58,7 +57,6 @@ export function AgentSelectorContent({
     staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
-  const canManageAgents = useCanManageAgents()
   const handleInputValueChange = (nextSearchText: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press') setSearchText(nextSearchText)
   }
@@ -78,14 +76,12 @@ export function AgentSelectorContent({
   const statusText = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : agentsQuery.isError
-      ? t(($) => $['roster.loadingError'], { ns: 'agentV2' })
+      ? t(($) => $['roster.loadingError'], { ns: 'agentRoster' })
       : agents.length === 0
         ? debouncedSearchText
-          ? t(($) => $['roster.emptySearch'], { ns: 'agentV2' })
-          : t(($) => $['roster.empty'], { ns: 'agentV2' })
+          ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+          : t(($) => $['roster.empty'], { ns: 'agentRoster' })
         : null
-  const hasActions = !!onStartFromScratch || canManageAgents
-
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
       <Combobox<AgentInviteOptionResponse>
@@ -108,8 +104,10 @@ export function AgentSelectorContent({
               className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             />
             <ComboboxInput
-              aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentV2' })}
-              placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentV2' })}
+              aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
+              placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], {
+                ns: 'agentRoster',
+              })}
               className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
             />
           </ComboboxInputGroup>
@@ -125,43 +123,39 @@ export function AgentSelectorContent({
               agents.map((agent) => <AgentSelectorItem key={agent.id} agent={agent} />)}
           </ComboboxList>
         )}
-        {hasActions && (
-          <div className="border-t border-divider-subtle p-1">
-            {onStartFromScratch && (
-              <Button
-                variant="ghost"
-                size="medium"
-                className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
-                onClick={onStartFromScratch}
-              >
-                <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-                <span className="min-w-0 flex-1 truncate">
-                  {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentV2' })}
-                </span>
-              </Button>
+        <div className="border-t border-divider-subtle p-1">
+          {onStartFromScratch && (
+            <Button
+              variant="ghost"
+              size="medium"
+              className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
+              onClick={onStartFromScratch}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+              <span className="min-w-0 flex-1 truncate">
+                {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentRoster' })}
+              </span>
+            </Button>
+          )}
+          <Link
+            href="/agents"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'medium' }),
+              'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
             )}
-            {canManageAgents && (
-              <Link
-                href="/agents"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'medium' }),
-                  'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
-                )}
-                onClick={() => onOpenChange(false)}
-              >
-                <span
-                  aria-hidden
-                  className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
-                />
-                <span className="min-w-0 flex-1 truncate">
-                  {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentV2' })}
-                </span>
-              </Link>
-            )}
-          </div>
-        )}
+            onClick={() => onOpenChange(false)}
+          >
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span className="min-w-0 flex-1 truncate">
+              {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentRoster' })}
+            </span>
+          </Link>
+        </div>
       </Combobox>
     </div>
   )
@@ -243,7 +237,7 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common'])
+  const { t } = useTranslation(['workflow', 'navigation', 'agentRoster'])
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
@@ -267,7 +261,7 @@ export function AgentBlockItem({
             <Badge
               size="xs"
               variant="dimm"
-              text={t(($) => $['menus.status'], { ns: 'common' })}
+              text={t(($) => $['menus.status'], { ns: 'navigation' })}
               className="ml-2 shrink-0"
             />
             <span
@@ -283,7 +277,7 @@ export function AgentBlockItem({
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <PopoverTitle className="sr-only">
-          {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}
+          {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
         </PopoverTitle>
         <AgentSelectorContent
           open={open}

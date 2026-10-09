@@ -5,6 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -14,7 +15,7 @@ from controllers.console.auth.error import (
     InvalidDataSourceApiKeyAuthCredentialsRequestError,
 )
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate
+from controllers.console.wraps import RBACPermission, model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -26,7 +27,7 @@ from services.auth.errors import (
     InvalidDataSourceApiKeyAuthCredentialsError,
     UnsupportedDataSourceApiKeyAuthProviderError,
 )
-from services.entities.data_source_api_key_auth_entities import (
+from services.data_source.entities.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthCredentials,
 )
@@ -79,7 +80,7 @@ class ApiKeyAuthDataSource(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ApiKeyAuthDataSourceListResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):
-        bindings = application_services().data_source_api_key_auth.list_bindings(request_context)
+        bindings = application_services().data_sources.api_key_auth.list_bindings(request_context)
         return dump_response(
             ApiKeyAuthDataSourceListResponse,
             {
@@ -104,9 +105,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_CREATE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace())],
     )
     @model_validate(ApiKeyAuthBindingPayload)
     def post(self, req_data: ApiKeyAuthBindingPayload, request_context: RequestContext):
@@ -121,7 +120,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
             ),
         )
         try:
-            application_services().data_source_api_key_auth.create_binding(request_context, command)
+            application_services().data_sources.api_key_auth.create_binding(request_context, command)
         except UnsupportedDataSourceApiKeyAuthProviderError as exc:
             raise DataSourceApiKeyAuthProviderNotSupportedError() from exc
         except InvalidDataSourceApiKeyAuthCredentialsError as exc:
@@ -138,10 +137,8 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @console_ns.response(HTTPStatus.NO_CONTENT, "Binding deleted successfully")
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
     )
     def delete(self, request_context: RequestContext, binding_id: UUID):
-        application_services().data_source_api_key_auth.delete_binding(request_context, str(binding_id))
+        application_services().data_sources.api_key_auth.delete_binding(request_context, str(binding_id))
         return "", HTTPStatus.NO_CONTENT

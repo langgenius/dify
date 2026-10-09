@@ -10,7 +10,12 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    grant_tool_file_access,
+)
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
@@ -446,6 +451,26 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
     with bind_file_access_scope(unauthorized_scope):
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+
+def test_build_from_mapping_allows_granted_tool_file_for_other_end_user():
+    """Tool files produced in this run must remain readable by later nodes (#41169).
+
+    Workflow-as-tool from an agent binds an EndUser scope. Plugin downloads often
+    store ToolFile.user_id as a different identity, so a grant is required.
+    """
+    unauthorized_scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="different-end-user",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    with bind_file_access_scope(unauthorized_scope):
+        grant_tool_file_access([TEST_TOOL_FILE_ID])
+        file = build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
+    assert file.type == FileType.DOCUMENT
 
 
 def test_disallowed_file_types():

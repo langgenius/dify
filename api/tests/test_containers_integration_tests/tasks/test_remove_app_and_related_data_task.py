@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
@@ -168,7 +167,7 @@ class TestDeleteDraftVariablesBatch:
 
         assert result == 30
         mock_offload_cleanup.assert_called_once()
-        _, called_file_ids = mock_offload_cleanup.call_args.args
+        (called_file_ids,) = mock_offload_cleanup.call_args.args
         assert {str(file_id) for file_id in called_file_ids} == {str(file_id) for file_id in file_id_by_index.values()}
         info_records = [record for record in caplog.records if record.levelno == logging.INFO]
         assert len(info_records) == 2
@@ -186,8 +185,7 @@ class TestDeleteDraftVariableOffloadData:
         upload_file_keys = [upload_file.key for upload_file in offload_data["upload_files"]]
         upload_file_ids = [upload_file.id for upload_file in offload_data["upload_files"]]
 
-        with session_factory.create_session() as session, session.begin():
-            result = _delete_draft_variable_offload_data(session, file_ids)
+        result = _delete_draft_variable_offload_data(file_ids)
 
         assert result == 3
         expected_storage_calls = [call(storage_key) for storage_key in upload_file_keys]
@@ -218,8 +216,7 @@ class TestDeleteDraftVariableOffloadData:
         mock_storage.delete.side_effect = [Exception("Storage error"), None]
 
         with caplog.at_level(logging.ERROR):
-            with session_factory.create_session() as session, session.begin():
-                result = _delete_draft_variable_offload_data(session, file_ids)
+            result = _delete_draft_variable_offload_data(file_ids)
 
         assert result == 1
         assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text

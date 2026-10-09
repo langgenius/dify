@@ -26,7 +26,7 @@ type ChunkDetailModalProps = {
 }
 
 const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -61,8 +61,8 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
     >
       <DialogContent
         className={cn(
-          'max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle',
-          isParentChildRetrieval ? 'w-300 max-w-none! min-w-300!' : 'w-200 max-w-none! min-w-200!',
+          'max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto! border-none p-6 text-left align-middle',
+          isParentChildRetrieval ? 'w-300' : 'w-200',
         )}
       >
         <DialogClose
@@ -79,22 +79,22 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="pr-10 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
         </DialogTitle>
 
-        <div className="mt-4 flex">
-          <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
+        <div className="mt-4 flex flex-col gap-6 lg:flex-row">
+          <div className="min-w-0 flex-1">
             {/* Meta info */}
-            <div className="flex items-center justify-between">
-              <div className="flex grow items-center space-x-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 grow items-center space-x-2">
                 <SegmentIndexTag
                   labelPrefix={labelPrefix}
                   positionId={position}
                   className={cn('w-fit group-hover:opacity-100')}
                 />
                 <Dot />
-                <div className="flex grow items-center space-x-1">
+                <div className="flex min-w-0 grow items-center space-x-1">
                   <FileIcon type={extension} size="sm" />
                   <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
                     {document.name}
@@ -156,7 +156,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
           </div>
 
           {isParentChildRetrieval && (
-            <div className="flex-1 pb-6 pl-6">
+            <div className="min-w-0 flex-1 pb-6">
               <div className="system-xs-semibold-uppercase text-text-secondary">
                 {t(($) => $[`${i18nPrefix}hitChunks`], {
                   ns: 'datasetHitTesting',

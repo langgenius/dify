@@ -13,13 +13,13 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -32,7 +32,11 @@ import {
 } from '../constants'
 import { getNodeUsedVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
-import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
+import {
+  hasAgentV2OutputRoutes,
+  isAgentV2NodeData,
+  needsInlineAgentBindingCreation,
+} from '../nodes/agent-v2/types'
 import {
   canInsertHumanInput,
   isHumanInputInsertion,
@@ -67,7 +71,7 @@ import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
+import { useIsChatMode, useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 // Entry node deletion restriction has been removed to allow empty workflows
@@ -163,7 +167,8 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 }
 
 export const useNodesInteractions = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
+  const isChatMode = useIsChatMode()
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -391,6 +396,7 @@ export const useNodesInteractions = () => {
                   connectingNode.data.type === BlockEnum.VariableAggregator) &&
                 node.data.type !== BlockEnum.IfElse &&
                 node.data.type !== BlockEnum.QuestionClassifier &&
+                !hasAgentV2OutputRoutes(node.data) &&
                 node.data.type !== BlockEnum.HumanInput
               ) {
                 n.data._isEntering = true
@@ -1025,6 +1031,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2
         ) {
@@ -1060,6 +1067,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
@@ -1222,6 +1230,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
@@ -1804,7 +1813,7 @@ export const useNodesInteractions = () => {
     const selectedNodes = nodes.filter((node) => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
     // in use-available-blocks.ts.
-    const commonNestedDisallowPasteNodes = [
+    const commonNestedDisallowPasteNodes: BlockEnum[] = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,
@@ -2155,6 +2164,19 @@ export const useNodesInteractions = () => {
       }
     })
 
+    if (!isChatMode) {
+      const memoryNodeTypes: BlockEnum[] = [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ]
+      nodesToPaste.forEach((node) => {
+        if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
+          delete node.data.memory
+      })
+    }
+
     const newNodes = produce(nodes, (draft: Node[]) => {
       parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
         const p = draft.find((n) => n.id === parentId)
@@ -2181,6 +2203,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
+    isChatMode,
   ])
 
   const handleNodesDuplicate = useCallback(

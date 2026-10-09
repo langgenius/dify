@@ -13,12 +13,18 @@ import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { LogSourceCell } from './source-cell'
 
+export type AgentLogsSort = {
+  field: 'created_at' | 'updated_at'
+  order: 'asc' | 'desc'
+}
+
 export function AgentLogsTable({
   logs,
   isPending,
   isError,
   isSuccess,
   selectedLogId,
+  sort,
   onOpenLog,
   onRetry,
 }: {
@@ -27,10 +33,11 @@ export function AgentLogsTable({
   isError: boolean
   isSuccess: boolean
   selectedLogId?: string
+  sort: AgentLogsSort
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const tableHeaderLabels = {
     unread: t(($) => $['agentDetail.logs.table.unread']),
     title: t(($) => $['agentDetail.logs.table.title']),
@@ -45,10 +52,10 @@ export function AgentLogsTable({
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0 pr-3">
+      <div className="hidden shrink-0 pr-3 lg:block">
         <table aria-hidden="true" className="w-full table-fixed border-collapse">
           <LogsTableColGroup />
-          <LogsTableHeader labels={tableHeaderLabels} />
+          <LogsTableHeader labels={tableHeaderLabels} sort={sort} />
         </table>
       </div>
 
@@ -56,13 +63,13 @@ export function AgentLogsTable({
         <ScrollAreaViewport
           aria-label={t(($) => $['agentDetail.logs.title'])}
           role="region"
-          tabIndex={-1}
-          className="overscroll-contain"
+          tabIndex={0}
+          className="overscroll-contain focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <ScrollAreaContent className="pr-3">
-            <table className="w-full table-fixed border-collapse">
+            <table className="w-full min-w-[56rem] table-fixed border-collapse lg:min-w-0">
               <LogsTableColGroup />
-              <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
+              <LogsTableHeader labels={tableHeaderLabels} sort={sort} rowClassName="lg:sr-only" />
               <AgentLogsTableBody
                 logs={logs}
                 isPending={isPending}
@@ -76,6 +83,9 @@ export function AgentLogsTable({
           </ScrollAreaContent>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+        <ScrollAreaScrollbar orientation="horizontal" className="lg:hidden">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollArea>
@@ -100,8 +110,8 @@ function AgentLogsTableBody({
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const notAvailable = t(($) => $['agentDetail.logs.notAvailable'])
   const formatLogTime = (value?: number | null) =>
@@ -109,7 +119,7 @@ function AgentLogsTableBody({
       ? notAvailable
       : formatTime(
           value,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (
@@ -117,7 +127,7 @@ function AgentLogsTableBody({
       {isPending && <LogsSkeletonRows />}
       {isError && (
         <LogsStateRow>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-start gap-2 lg:justify-center">
             <span>{t(($) => $['agentDetail.logs.loadFailed'])}</span>
             <Button variant="secondary" size="small" onClick={onRetry}>
               {tCommon(($) => $['operation.retry'])}
@@ -130,7 +140,6 @@ function AgentLogsTableBody({
       )}
       {isSuccess &&
         logs.map((log) => {
-          const logTitle = log.title || log.conversation_id
           const isSelected = selectedLogId === log.id
 
           return (
@@ -144,16 +153,19 @@ function AgentLogsTableBody({
             >
               <td className="px-0">
                 <span
+                  aria-hidden
                   className={cn(
                     'mx-auto block size-1.5 rounded-full',
                     log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
                   )}
                 />
+                {log.unread && (
+                  <span className="sr-only">{t(($) => $['agentDetail.logs.table.unread'])}</span>
+                )}
               </td>
               <TableCell>
                 <button
                   type="button"
-                  aria-label={logTitle}
                   className="block w-full truncate rounded-sm text-left system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={(event) => {
                     event.stopPropagation()
@@ -161,6 +173,7 @@ function AgentLogsTableBody({
                   }}
                 >
                   {log.title || notAvailable}
+                  {!log.title && <span className="sr-only"> {log.conversation_id}</span>}
                 </button>
               </TableCell>
               <td className="px-3">
@@ -202,10 +215,13 @@ type LogsTableHeaderLabels = {
 function LogsTableHeader({
   labels,
   rowClassName,
+  sort,
 }: {
   labels: LogsTableHeaderLabels
   rowClassName?: string
+  sort: AgentLogsSort
 }) {
+  const sortDirection = sort.order === 'asc' ? 'ascending' : 'descending'
   return (
     <thead>
       <tr
@@ -223,8 +239,15 @@ function LogsTableHeader({
         <TableHead>{labels.messageCount}</TableHead>
         <TableHead>{labels.userRate}</TableHead>
         <TableHead>{labels.operationRate}</TableHead>
-        <TableHead>{labels.updatedTime}</TableHead>
-        <TableHead className="rounded-r-lg">{labels.createdTime}</TableHead>
+        <TableHead aria-sort={sort.field === 'updated_at' ? sortDirection : undefined}>
+          {labels.updatedTime}
+        </TableHead>
+        <TableHead
+          aria-sort={sort.field === 'created_at' ? sortDirection : undefined}
+          className="rounded-r-lg"
+        >
+          {labels.createdTime}
+        </TableHead>
       </tr>
     </thead>
   )
@@ -249,7 +272,7 @@ function LogsTableColGroup() {
 function LogsStateRow({ children }: { children: ReactNode }) {
   return (
     <tr className="h-20 border-b border-divider-subtle">
-      <td colSpan={9} className="px-3 text-center text-text-tertiary">
+      <td colSpan={9} className="px-3 text-left text-text-tertiary lg:text-center">
         {children}
       </td>
     </tr>

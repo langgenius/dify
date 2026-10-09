@@ -1,17 +1,17 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -29,7 +29,7 @@ export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
   const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const [inputName, setInputName] = useState('')
 
   const handleOpenChange = (open: boolean) => {
@@ -83,8 +83,8 @@ export const DeleteConfirm = (props: Props) => {
                 : t(($) => $[`${tPrefix}.content`], { ns: 'pluginTrigger' })}
             </AlertDialogDescription>
             {workflowsInUse > 0 && (
-              <Field className="mt-6 gap-2" name="confirmation">
-                <FieldLabel className="py-0">
+              <Field className="mt-6" name="confirmation">
+                <FieldLabel>
                   {t(($) => $[`${tPrefix}.confirmInputTip`], {
                     ns: 'pluginTrigger',
                     name: currentName,
@@ -101,14 +101,14 @@ export const DeleteConfirm = (props: Props) => {
               </Field>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton type="submit" loading={isDeleting}>
               {t(($) => $[`${tPrefix}.confirm`], { ns: 'pluginTrigger' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </form>
       </AlertDialogContent>
     </AlertDialog>

@@ -1,10 +1,10 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -28,7 +28,7 @@ const HumanInputMigrationDialog = ({
   onOpenChange,
   onConfirm,
 }: HumanInputMigrationDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common'])
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (pending) return
@@ -67,7 +67,7 @@ const HumanInputMigrationDialog = ({
             </div>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           {pending ? (
             <Button disabled>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           ) : (
@@ -85,7 +85,7 @@ const HumanInputMigrationDialog = ({
               ? t(($) => $['nodes.humanInputMigration.action.migrating'], { ns: 'workflow' })
               : t(($) => $['nodes.humanInputMigration.action.migrate'], { ns: 'workflow' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

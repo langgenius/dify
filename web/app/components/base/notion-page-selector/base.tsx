@@ -8,6 +8,7 @@ import type {
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -17,7 +18,6 @@ import {
   usePreImportNotionPages,
 } from '@/service/knowledge/use-import'
 import Header from '../../datasets/create/website/base/header'
-import Loading from '../loading'
 import NotionConnector from '../notion-connector'
 import WorkspaceSelector from './credential-selector'
 import PageSelector from './page-selector'
@@ -44,7 +44,7 @@ const NotionPageSelector = ({
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [searchValue, setSearchValue] = useState('')
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
@@ -100,6 +100,7 @@ const NotionPageSelector = ({
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
   } = usePreImportNotionPages({ datasetId, credentialId: currentCredentialId })
+  const notionPages = notionsPages?.notion_info?.flatMap((workspace) => workspace.pages) || []
 
   const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] =
     useMemo(() => {
@@ -198,7 +199,7 @@ const NotionPageSelector = ({
               className="flex h-74 items-center justify-center"
               data-testid="notion-page-selector-loading"
             >
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           ) : (
             <PageSelector
@@ -206,7 +207,7 @@ const NotionPageSelector = ({
               value={selectedPagesId}
               disabledValue={pagesMapAndSelectedPagesId[2]}
               searchValue={searchValue}
-              list={notionsPages!.notion_info?.[0]!.pages || []}
+              list={notionPages}
               pagesMap={pagesMapAndSelectedPagesId[0]}
               onSelect={handleSelectPages}
               canPreview={canPreview}

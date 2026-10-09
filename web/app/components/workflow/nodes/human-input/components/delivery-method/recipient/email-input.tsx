@@ -26,7 +26,7 @@ type Props = Readonly<{
 }>
 
 const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const [open, setOpen] = useState(false)
@@ -48,7 +48,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
   const placeholder = useMemo(() => {
     return selectedEmails.length === 0 || isFocus
       ? t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`], {
-          ns: 'workflow',
+          ns: 'workflowHumanInput',
         })
       : ''
   }, [selectedEmails, t, isFocus])
@@ -102,7 +102,9 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation()
 
-    if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
+    if (e.key === 'Tab') {
+      setOpen(false)
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
     } else if (e.key === 'Backspace') {

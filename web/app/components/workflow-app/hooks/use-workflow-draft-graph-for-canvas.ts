@@ -26,7 +26,7 @@ const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
 }
 
 export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const getNodesWithLocalStartPlaceholder = useCallback(
     (nodes: Node[] = [], localStartPlaceholderNodes?: Node[]) => {

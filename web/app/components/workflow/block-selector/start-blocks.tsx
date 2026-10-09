@@ -44,7 +44,7 @@ const StartBlocks = ({
   showUserInputDisabled = false,
   disabled = false,
 }: StartBlocksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools', 'workflow'])
   const nodes = useNodes()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<StartBlockPreviewPayload>())
   const previewDescriptionBaseId = useId()
@@ -159,7 +159,7 @@ const StartBlocks = ({
           <Fragment key={block.type}>
             <Tooltip>
               <TooltipTrigger render={row} />
-              <TooltipContent className="rounded-xl">{disabledReason}</TooltipContent>
+              <TooltipContent>{disabledReason}</TooltipContent>
             </Tooltip>
             <span id={previewDescriptionId} className="sr-only">
               {description}

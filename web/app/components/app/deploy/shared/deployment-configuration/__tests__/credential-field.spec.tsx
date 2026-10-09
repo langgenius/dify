@@ -14,7 +14,7 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
     'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount_other': '{{count}} nodes',
+    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
   })
 })
 

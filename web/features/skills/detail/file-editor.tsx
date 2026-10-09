@@ -1,7 +1,5 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect -- Extracted editor owners intentionally mirror authoritative snapshots into local draft state. */
-
 import type {
   SkillDetailResponse,
   SkillFileResponse,
@@ -11,16 +9,16 @@ import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
 import type { SkillFileMutationCoordinator } from './shared'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
 import { FileTabs } from './file-tabs'
@@ -139,7 +137,7 @@ export function FileEditor({
   selectedVersionId: string | null
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent =
@@ -739,7 +737,7 @@ export function FileEditor({
     event: KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>,
     bodyMode = false,
   ) => {
-    if (!isMarkdown || readonly) return
+    if (!isMarkdown || readonly || event.nativeEvent.isComposing) return
 
     if (
       bodyMode &&
@@ -1075,7 +1073,7 @@ export function FileEditor({
   }
 
   return (
-    <main className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+    <div className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
         endAction={
           onOpenBuilder && (
@@ -1211,7 +1209,8 @@ export function FileEditor({
                               setMetadataKey(event.target.value)
                             }}
                             onKeyDown={(event) => {
-                              if (event.key === 'Escape') handleCancelAddMetadata()
+                              if (!event.nativeEvent.isComposing && event.key === 'Escape')
+                                handleCancelAddMetadata()
                             }}
                           />
                           <button
@@ -1232,6 +1231,7 @@ export function FileEditor({
                             setMetadataValue(event.target.value)
                           }}
                           onKeyDown={(event) => {
+                            if (event.nativeEvent.isComposing) return
                             if (event.key === 'Escape') {
                               handleCancelAddMetadata()
                               return
@@ -1246,7 +1246,7 @@ export function FileEditor({
                             }
                           }}
                           onKeyUp={(event) => {
-                            if (event.key !== 'Enter') return
+                            if (event.nativeEvent.isComposing || event.key !== 'Enter') return
 
                             event.preventDefault()
                             event.stopPropagation()
@@ -1518,6 +1518,6 @@ export function FileEditor({
           onExit={onExitVersion}
         />
       )}
-    </main>
+    </div>
   )
 }

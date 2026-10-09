@@ -10,6 +10,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from constants.oauth_bearer import TokenType
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -101,15 +103,21 @@ def mint_token(flask_app: Flask):
 @pytest.fixture
 def account_token(workspace_account, mint_token) -> str:
     account, _, _ = workspace_account
-    token = "dfoa_" + uuid.uuid4().hex
+    token = TokenType.OAUTH_ACCOUNT.prefix + uuid.uuid4().hex
     mint_token(
         token,
         account_id=account.id,
-        prefix="dfoa_",
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
         subject_email=account.email,
         subject_issuer="dify:account",
     )
     return token
+
+
+@pytest.fixture
+def auth_headers(flask_app: Flask, account_token: str) -> dict[str, str]:
+    """What every guarded request needs: the bearer, and the fingerprint of the catalog it was built from."""
+    return {"Authorization": f"Bearer {account_token}", CATALOG_HEADER: catalog_for(flask_app)[1]}
 
 
 @pytest.fixture(autouse=True)

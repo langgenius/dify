@@ -13,7 +13,7 @@ type StatisticsProps = {
 }
 
 const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const relatedAppsTotal = relatedApps?.total
   const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0

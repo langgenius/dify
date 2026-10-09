@@ -12,11 +12,12 @@ The tests cover multiple crawl providers (Firecrawl, WaterCrawl, JinaReader)
 and ensure proper handling of crawl options, status checking, and data retrieval.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from pytest_mock import MockerFixture
 
+import services.data_source.website_service as website_service_module
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceIdentity,
@@ -27,7 +28,8 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
-from services.website_service import CrawlOptions, CrawlRequest, WebsiteService
+from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.data_source.website_service import CrawlOptions, CrawlRequest, WebsiteService
 
 # ============================================================================
 # Fixtures
@@ -489,8 +491,8 @@ class TestCrawlStatus:
 class TestWebsiteService:
     """Test suite for WebsiteService with multiple providers."""
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_crawl_url_firecrawl(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
         """Test crawling with Firecrawl provider."""
         # Setup mocks
@@ -500,14 +502,14 @@ class TestWebsiteService:
             "base_url": "https://api.firecrawl.dev",
         }
 
-        mock_firecrawl = mocker.patch("services.website_service.FirecrawlApp")
+        mock_firecrawl = mocker.patch("services.data_source.website_service.FirecrawlApp")
         mock_firecrawl_instance = mock_firecrawl.return_value
         mock_firecrawl_instance.crawl_url.return_value = "job-123"
 
         # Mock redis
-        mocker.patch("services.website_service.redis_client")
+        mocker.patch("services.data_source.website_service.redis_client")
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         api_request = WebsiteCrawlApiRequest(
             provider="firecrawl",
@@ -515,13 +517,17 @@ class TestWebsiteService:
             options={"limit": 10, "crawl_sub_pages": True, "only_main_content": True},
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         assert result["status"] == "active"
         assert result["job_id"] == "job-123"
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_crawl_url_watercrawl(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
         """Test crawling with WaterCrawl provider."""
         # Setup mocks
@@ -531,11 +537,11 @@ class TestWebsiteService:
             "base_url": "https://app.watercrawl.dev",
         }
 
-        mock_watercrawl = mocker.patch("services.website_service.WaterCrawlProvider")
+        mock_watercrawl = mocker.patch("services.data_source.website_service.WaterCrawlProvider")
         mock_watercrawl_instance = mock_watercrawl.return_value
         mock_watercrawl_instance.crawl_url.return_value = {"status": "active", "job_id": "job-456"}
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         api_request = WebsiteCrawlApiRequest(
             provider="watercrawl",
@@ -543,13 +549,17 @@ class TestWebsiteService:
             options={"limit": 20, "crawl_sub_pages": True, "max_depth": 2},
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         assert result["status"] == "active"
         assert result["job_id"] == "job-456"
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_crawl_url_jinareader(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
         """Test crawling with JinaReader provider."""
         # Setup mocks
@@ -561,11 +571,11 @@ class TestWebsiteService:
         mock_response = Mock()
         mock_response.json.return_value = {"code": 200, "data": {"taskId": "task-789"}}
         mock_httpx_post = mocker.patch(
-            "services.website_service._adaptive_http_client.post",
+            "services.data_source.website_service._adaptive_http_client.post",
             return_value=mock_response,
         )
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         api_request = WebsiteCrawlApiRequest(
             provider="jinareader",
@@ -573,7 +583,11 @@ class TestWebsiteService:
             options={"limit": 15, "crawl_sub_pages": True, "use_sitemap": True},
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         assert result["status"] == "active"
         assert result["job_id"] == "task-789"
@@ -855,11 +869,11 @@ class TestContentExtraction:
 class TestErrorHandling:
     """Test suite for error handling in crawl operations."""
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_invalid_provider_error(self, mock_provider_service: Mock, mock_current_user: Mock):
         """Test that invalid provider raises ValueError."""
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Setup mocks
         mock_current_user.current_tenant_id = "test_tenant"
@@ -873,7 +887,11 @@ class TestErrorHandling:
 
         # The error should be raised when trying to crawl with invalid provider
         with pytest.raises(ValueError, match="Invalid provider"):
-            WebsiteService.crawl_url(api_request)
+            WebsiteService(
+                providers=website_service_module.DatasourceProviderService(
+                    credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+                )
+            ).crawl_url(api_request)
 
     def test_missing_api_key_error(self, mocker: MockerFixture):
         """Test that missing API key is handled properly at the httpx client level."""
@@ -1267,8 +1285,8 @@ class TestProviderSpecificFeatures:
     unique features and API behaviors that require specific testing.
     """
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_firecrawl_with_prompt_parameter(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
     ):
@@ -1285,14 +1303,14 @@ class TestProviderSpecificFeatures:
             "base_url": "https://api.firecrawl.dev",
         }
 
-        mock_firecrawl = mocker.patch("services.website_service.FirecrawlApp")
+        mock_firecrawl = mocker.patch("services.data_source.website_service.FirecrawlApp")
         mock_firecrawl_instance = mock_firecrawl.return_value
         mock_firecrawl_instance.crawl_url.return_value = "prompt-job-123"
 
         # Mock redis
-        mocker.patch("services.website_service.redis_client")
+        mocker.patch("services.data_source.website_service.redis_client")
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Include a prompt for AI-guided extraction
         api_request = WebsiteCrawlApiRequest(
@@ -1306,7 +1324,11 @@ class TestProviderSpecificFeatures:
             },
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         assert result["status"] == "active"
         assert result["job_id"] == "prompt-job-123"
@@ -1317,8 +1339,8 @@ class TestProviderSpecificFeatures:
         assert "prompt" in params
         assert params["prompt"] == "Extract only technical documentation and API references"
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_jinareader_single_page_mode(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
     ):
@@ -1343,23 +1365,27 @@ class TestProviderSpecificFeatures:
                 "url": "https://example.com/page",
             },
         }
-        mocker.patch("services.website_service._jina_http_client.get", return_value=mock_response)
+        mocker.patch("services.data_source.website_service._jina_http_client.get", return_value=mock_response)
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Single page mode (crawl_sub_pages = False)
         api_request = WebsiteCrawlApiRequest(
             provider="jinareader", url="https://example.com/page", options={"crawl_sub_pages": False, "limit": 1}
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         # In single-page mode, JinaReader returns data immediately
         assert result["status"] == "active"
         assert "data" in result
 
-    @patch("services.website_service.current_user")
-    @patch("services.website_service.DatasourceProviderService")
+    @patch("services.data_source.website_service.current_user")
+    @patch("services.data_source.website_service.DatasourceProviderService")
     def test_watercrawl_with_tag_filtering(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
     ):
@@ -1376,11 +1402,11 @@ class TestProviderSpecificFeatures:
             "base_url": "https://app.watercrawl.dev",
         }
 
-        mock_watercrawl = mocker.patch("services.website_service.WaterCrawlProvider")
+        mock_watercrawl = mocker.patch("services.data_source.website_service.WaterCrawlProvider")
         mock_watercrawl_instance = mock_watercrawl.return_value
         mock_watercrawl_instance.crawl_url.return_value = {"status": "active", "job_id": "tag-filter-job"}
 
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Configure with tag filtering
         api_request = WebsiteCrawlApiRequest(
@@ -1394,7 +1420,11 @@ class TestProviderSpecificFeatures:
             },
         )
 
-        result = WebsiteService.crawl_url(api_request)
+        result = WebsiteService(
+            providers=website_service_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            )
+        ).crawl_url(api_request)
 
         assert result["status"] == "active"
         assert result["job_id"] == "tag-filter-job"
@@ -1451,7 +1481,7 @@ class TestDataStructureValidation:
         This conversion ensures that external API parameters are properly
         mapped to internal data structures.
         """
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Create API request with all options
         api_request = WebsiteCrawlApiRequest(
@@ -1634,7 +1664,7 @@ class TestEdgeCasesAndBoundaries:
         Empty or invalid URLs should fail validation before attempting
         to crawl.
         """
-        from services.website_service import WebsiteCrawlApiRequest
+        from services.data_source.website_service import WebsiteCrawlApiRequest
 
         # Empty URL should raise ValueError during validation
         with pytest.raises(ValueError, match="URL is required"):

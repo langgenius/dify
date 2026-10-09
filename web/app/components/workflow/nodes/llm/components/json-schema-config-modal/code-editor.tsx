@@ -37,7 +37,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   onFocus,
   onBlur,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme } = useTheme()
   const monacoRef = useRef<Monaco | null>(null)
   const editorRef = useRef<MonacoEditor | null>(null)

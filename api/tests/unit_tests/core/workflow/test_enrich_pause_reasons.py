@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 import pytest
 
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
@@ -68,9 +66,9 @@ def test_pause_reason_payload_carries_approval_channels_through_factory():
     assert payload.form_token is None
 
 
+@pytest.mark.usefixtures("sqlite_session_factory")
 def test_resolve_human_input_v1_pause_reason_raises_when_form_record_is_missing():
-    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
-    form_repository.get_by_form_id.return_value = None
+    form_repository = HumanInputFormSubmissionRepository()
 
     with pytest.raises(LookupError, match="form-123"):
         resolve_human_input_v1_pause_reason(

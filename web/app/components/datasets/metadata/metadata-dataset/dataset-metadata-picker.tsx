@@ -58,7 +58,7 @@ export function DatasetMetadataPicker({
   onCreateMetadata,
   onOpenMetadataManagement,
 }: DatasetMetadataPickerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
   const metadataItems = datasetMetaData?.doc_metadata ?? []
   const [open, setOpen] = useState(false)
@@ -173,7 +173,7 @@ function MetadataPickerSelectPanel({
   onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleClearQuery = () => {
@@ -242,7 +242,7 @@ function MetadataPickerActions({
   onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   return (
     <div className="flex items-center justify-between p-1">

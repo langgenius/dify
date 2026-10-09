@@ -14,7 +14,7 @@ type CardProps = {
 }
 
 export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal }: CardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 

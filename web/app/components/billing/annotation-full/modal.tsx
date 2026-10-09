@@ -15,7 +15,7 @@ type Props = Readonly<{
   onHide: () => void
 }>
 const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
 
   return (
     <Dialog

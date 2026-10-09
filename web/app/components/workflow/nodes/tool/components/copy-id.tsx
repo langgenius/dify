@@ -13,7 +13,7 @@ type Props = Readonly<{
 const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyFeedbackNew = ({ content }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const [isCopied, setIsCopied] = useState<boolean>(false)
 
   const onClickCopy = debounce(() => {

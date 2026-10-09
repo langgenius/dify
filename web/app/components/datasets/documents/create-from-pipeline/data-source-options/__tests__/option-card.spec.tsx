@@ -1,86 +1,122 @@
+import type { PropsWithChildren } from 'react'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
 import OptionCard from '../option-card'
 
-const TEST_ICON_URL = 'https://example.com/test-icon.png'
-
-vi.mock('../hooks', () => ({
-  useDatasourceIcon: () => TEST_ICON_URL,
+const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  basePath: '/base',
 }))
 
-vi.mock('../datasource-icon', () => ({
-  default: ({ iconUrl }: { iconUrl: string }) => (
-    <img data-testid="datasource-icon" src={iconUrl} alt="datasource" />
-  ),
-}))
-
-const createMockNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType =>
-  ({
-    title: 'Test Node',
-    desc: '',
-    type: {} as DataSourceNodeType['type'],
-    plugin_id: 'test-plugin',
-    provider_type: 'builtin',
-    provider_name: 'test-provider',
-    datasource_name: 'test-ds',
-    datasource_label: 'Test DS',
-    datasource_parameters: {},
-    datasource_configurations: {},
-    ...overrides,
-  }) as DataSourceNodeType
+const node: DataSourceNodeType = {
+  plugin_id: 'langgenius/file',
+  provider_type: 'local_file',
+  provider_name: 'file',
+  datasource_name: 'local-file',
+  datasource_label: 'Local File',
+  datasource_parameters: {},
+  datasource_configurations: {},
+  title: 'DataSource',
+  desc: '',
+  type: BlockEnum.DataSource,
+}
 
 describe('OptionCard', () => {
-  const defaultProps = {
-    label: 'Google Drive',
-    selected: false,
-    nodeData: createMockNodeData(),
-    onClick: vi.fn(),
-  }
+  let client: QueryClient
+  const key = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()
+    client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
+    request.mockResolvedValue(Response.json([]))
+  })
+  afterEach(() => client.clear())
+
+  it.each([
+    ['/icon.png', '/base/icon.png'],
+    ['/base/icon.png', '/base/icon.png'],
+    ['https://example.com/icon.svg', 'https://example.com/icon.svg'],
+    ['//example.com/icon.svg', '//example.com/icon.svg'],
+  ])('renders %s without changing the shared response', async (icon, expected) => {
+    const provider = createDatasourceProvider()
+    provider.declaration.identity.icon = icon
+    request.mockResolvedValue(Response.json([provider]))
+
+    const { container } = render(<OptionCard label="Local File" selected nodeData={node} />, {
+      wrapper,
+    })
+
+    await waitFor(() =>
+      expect(container.querySelector('.bg-cover')).toHaveStyle({
+        backgroundImage: `url("${expected}")`,
+      }),
+    )
+    expect(client.getQueryData(key)).toEqual([provider])
+    expect(request).toHaveBeenCalledOnce()
   })
 
-  // Rendering: label text and icon
-  describe('Rendering', () => {
-    it('should render label text', () => {
-      render(<OptionCard {...defaultProps} />)
+  it('renders a cached icon while revalidating the catalog', () => {
+    client.setQueryData(key, [createDatasourceProvider()])
+    request.mockReturnValue(new Promise(() => {}))
 
-      expect(screen.getByText('Google Drive')).toBeInTheDocument()
+    const { container } = render(<OptionCard label="Local File" selected nodeData={node} />, {
+      wrapper,
     })
 
-    it('should render datasource icon with correct URL', () => {
-      render(<OptionCard {...defaultProps} />)
-
-      const icon = screen.getByTestId('datasource-icon')
-      expect(icon).toHaveAttribute('src', TEST_ICON_URL)
-    })
-
-    it('should set title attribute on label element', () => {
-      render(<OptionCard {...defaultProps} />)
-
-      expect(screen.getByTitle('Google Drive')).toBeInTheDocument()
+    expect(container.querySelector('.bg-cover')).toHaveStyle({
+      backgroundImage: 'url("/base/datasource.svg")',
     })
   })
 
-  // User interactions: clicking the card
-  describe('User Interactions', () => {
-    it('should call onClick when clicked', () => {
-      render(<OptionCard {...defaultProps} />)
+  it('keeps a missing or pending provider icon empty instead of constructing a URL', async () => {
+    const { container } = render(
+      <OptionCard label="Local File" selected={false} nodeData={node} />,
+      { wrapper },
+    )
 
-      fireEvent.click(screen.getByText('Google Drive'))
-
-      expect(defaultProps.onClick).toHaveBeenCalledOnce()
-    })
-
-    it('should not throw when onClick is undefined', () => {
-      expect(() => {
-        const { container } = render(<OptionCard {...defaultProps} onClick={undefined} />)
-        fireEvent.click(container.firstElementChild!)
-      }).not.toThrow()
-    })
+    expect(container.querySelector<HTMLElement>('.bg-cover')?.style.backgroundImage).toBe('')
+    await waitFor(() => expect(client.getQueryState(key)?.status).toBe('success'))
+    expect(container.querySelector<HTMLElement>('.bg-cover')?.style.backgroundImage).toBe('')
+    expect(screen.getByText('Local File')).toBeInTheDocument()
   })
 
-  // Props: selected state applies different styles
+  it('resolves an older saved provider without plugin metadata', async () => {
+    const provider = createDatasourceProvider()
+    request.mockResolvedValue(Response.json([provider]))
+    const { container } = render(
+      <OptionCard label="Local File" selected={false} nodeData={{ ...node, plugin_id: '' }} />,
+      { wrapper },
+    )
+
+    await waitFor(() =>
+      expect(container.querySelector('.bg-cover')).toHaveStyle({
+        backgroundImage: 'url("/base/datasource.svg")',
+      }),
+    )
+    expect(client.getQueryData(key)).toEqual([provider])
+  })
+
+  it('keeps the label disclosure and selection callback', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(<OptionCard label="Local File" selected={false} nodeData={node} onClick={onClick} />, {
+      wrapper,
+    })
+
+    await user.click(screen.getByText('Local File'))
+
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(screen.getByTitle('Local File')).toBeInTheDocument()
+  })
 })

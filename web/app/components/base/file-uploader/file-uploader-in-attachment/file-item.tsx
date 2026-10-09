@@ -6,7 +6,6 @@ import { RiDeleteBinLine, RiDownloadLine, RiEyeLine } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PreviewMode } from '@/app/components/base/features/types'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { downloadUrl } from '@/utils/download'
@@ -33,7 +32,7 @@ const FileInAttachmentItem = ({
   canPreview,
   previewMode = PreviewMode.CurrentPage,
 }: FileInAttachmentItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
@@ -82,7 +81,10 @@ const FileInAttachmentItem = ({
               className="mr-1"
               onClick={() => onReUpload?.(id)}
             >
-              <ReplayLine aria-hidden="true" className="size-4 text-text-tertiary" />
+              <span
+                aria-hidden="true"
+                className="i-custom-vender-other-replay-line size-4 text-text-tertiary"
+              />
             </IconButton>
           )}
           {showDeleteAction && (

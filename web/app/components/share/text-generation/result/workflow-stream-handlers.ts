@@ -134,11 +134,12 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
   if (!traces) return
 
   const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-    if (
-      [NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(
-        trace.status as NodeRunningStatus,
-      )
-    )
+    const unfinishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Running,
+      NodeRunningStatus.Waiting,
+    ]
+
+    if (unfinishedStatuses.includes(trace.status as NodeRunningStatus))
       trace.status = NodeRunningStatus.Stopped
 
     trace.details?.forEach((detailGroup) => detailGroup.forEach(markTrace))
@@ -155,10 +156,14 @@ const applyWorkflowFinishedState = (
   error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    const errorStatuses: readonly WorkflowRunningStatus[] = [
+      WorkflowRunningStatus.Stopped,
+      WorkflowRunningStatus.Failed,
+    ]
+
     draft.status = status
     draft.error = error
-    if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
-      markNodesStopped(draft.tracing)
+    if (errorStatuses.includes(status)) markNodesStopped(draft.tracing)
   })
 }
 

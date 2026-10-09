@@ -6,11 +6,15 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from extensions.ext_application_services import application_services
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import EndUserType
-from models.model import App, DefaultEndUserSessionID, EndUser
-from services.end_user_service import EndUserService
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
+from models.model import App, EndUser
+
+
+def _service():
+    return application_services().app_scoped_end_users.commands
 
 
 class TestEndUserServiceFactory:
@@ -90,7 +94,7 @@ class TestEndUserServiceFactory:
 
 class TestEndUserServiceGetOrCreateEndUser:
     """
-    Unit tests for EndUserService.get_or_create_end_user method.
+    Unit tests for _service().get_or_create_end_user method.
 
     This test suite covers:
     - Creating new end users
@@ -113,7 +117,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         user_id = "custom-user-123"
 
         # Act
-        result = EndUserService.get_or_create_end_user(app_model=app, user_id=user_id)
+        result = _service().get_or_create_end_user(tenant_id=app.tenant_id, app_id=app.id, user_id=user_id)
 
         # Assert
         assert result.tenant_id == app.tenant_id
@@ -130,10 +134,10 @@ class TestEndUserServiceGetOrCreateEndUser:
         app = factory.create_app_and_account(db_session_with_containers)
 
         # Act
-        result = EndUserService.get_or_create_end_user(app_model=app, user_id=None)
+        result = _service().get_or_create_end_user(tenant_id=app.tenant_id, app_id=app.id, user_id=None)
 
         # Assert
-        assert result.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        assert result.session_id == DEFAULT_END_USER_SESSION_ID
         # Verify _is_anonymous is set correctly (property always returns False)
         assert result._is_anonymous is True
 
@@ -151,7 +155,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         )
 
         # Act
-        result = EndUserService.get_or_create_end_user(app_model=app, user_id=user_id)
+        result = _service().get_or_create_end_user(tenant_id=app.tenant_id, app_id=app.id, user_id=user_id)
 
         # Assert
         assert result.id == existing_user.id
@@ -159,7 +163,7 @@ class TestEndUserServiceGetOrCreateEndUser:
 
 class TestEndUserServiceGetOrCreateEndUserByType:
     """
-    Unit tests for EndUserService.get_or_create_end_user_by_type method.
+    Unit tests for _service().get_or_create_end_user_by_type method.
 
     This test suite covers:
     - Creating end users with different EndUserType values
@@ -184,7 +188,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         user_id = "user-789"
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -208,7 +212,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         user_id = "user-789"
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=EndUserType.BROWSER,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -236,9 +240,9 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             session_id=user_id,
             invoke_type=EndUserType.SERVICE_API,
         )
-        with caplog.at_level(logging.INFO, logger="services.end_user_service"):
+        with caplog.at_level(logging.INFO, logger="services.app_scoped_end_user_service"):
             # Act - Request with different type
-            result = EndUserService.get_or_create_end_user_by_type(
+            result = _service().get_or_create_end_user_by_type(
                 type=EndUserType.BROWSER,
                 tenant_id=tenant_id,
                 app_id=app_id,
@@ -251,7 +255,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         matching_logs = [
             record
             for record in caplog.records
-            if record.name == "services.end_user_service"
+            if record.name == "services.app_scoped_end_user_service"
             and record.levelno == logging.INFO
             and "Upgrading legacy EndUser" in record.message
         ]
@@ -277,8 +281,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         )
 
         # Act - Request with same type
-        with caplog.at_level(logging.INFO, logger="services.end_user_service"):
-            result = EndUserService.get_or_create_end_user_by_type(
+        with caplog.at_level(logging.INFO, logger="services.app_scoped_end_user_service"):
+            result = _service().get_or_create_end_user_by_type(
                 type=EndUserType.SERVICE_API,
                 tenant_id=tenant_id,
                 app_id=app_id,
@@ -301,7 +305,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         app_id = app.id
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -309,10 +313,10 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         )
 
         # Assert
-        assert result.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        assert result.session_id == DEFAULT_END_USER_SESSION_ID
         # Verify _is_anonymous is set correctly (property always returns False)
         assert result._is_anonymous is True
-        assert result.external_user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        assert result.external_user_id == DEFAULT_END_USER_SESSION_ID
 
     def test_query_ordering_prioritizes_matching_type(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
@@ -340,7 +344,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         )
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -362,7 +366,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         user_id = "custom-external-id"
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -393,7 +397,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         user_id = f"user-{uuid4()}"
 
         # Act
-        result = EndUserService.get_or_create_end_user_by_type(
+        result = _service().get_or_create_end_user_by_type(
             type=invoke_type,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -404,51 +408,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.type == invoke_type
 
 
-class TestEndUserServiceGetEndUserById:
-    """Unit tests for EndUserService.get_end_user_by_id."""
-
-    @pytest.fixture
-    def factory(self):
-        """Provide test data factory."""
-        return TestEndUserServiceFactory()
-
-    def test_get_end_user_by_id_returns_end_user(
-        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
-        app = factory.create_app_and_account(db_session_with_containers)
-        existing_user = factory.create_end_user(
-            db_session_with_containers,
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            session_id=f"session-{uuid4()}",
-            invoke_type=EndUserType.SERVICE_API,
-        )
-
-        result = EndUserService.get_end_user_by_id(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            end_user_id=existing_user.id,
-        )
-
-        assert result is not None
-        assert result.id == existing_user.id
-
-    def test_get_end_user_by_id_returns_none(
-        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
-        app = factory.create_app_and_account(db_session_with_containers)
-
-        result = EndUserService.get_end_user_by_id(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            end_user_id=str(uuid4()),
-        )
-
-        assert result is None
-
-
 class TestEndUserServiceCreateBatch:
-    """Integration tests for EndUserService.create_end_user_batch."""
+    """Integration tests for _service().create_end_user_batch."""
 
     @pytest.fixture
     def factory(self):
@@ -486,7 +447,7 @@ class TestEndUserServiceCreateBatch:
         return tenant_id, all_apps
 
     def test_create_batch_empty_app_ids(self, db_session_with_containers: Session):
-        result = EndUserService.create_end_user_batch(
+        result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )
         assert result == {}
@@ -498,7 +459,7 @@ class TestEndUserServiceCreateBatch:
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
 
-        result = EndUserService.create_end_user_batch(
+        result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
@@ -514,13 +475,13 @@ class TestEndUserServiceCreateBatch:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
 
-        result = EndUserService.create_end_user_batch(
+        result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=""
         )
 
         assert len(result) == 2
         for end_user in result.values():
-            assert end_user.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+            assert end_user.session_id == DEFAULT_END_USER_SESSION_ID
             assert end_user._is_anonymous is True
 
     def test_create_batch_deduplicate_app_ids(
@@ -530,7 +491,7 @@ class TestEndUserServiceCreateBatch:
         app_ids = [apps[0].id, apps[1].id, apps[0].id, apps[1].id]
         user_id = f"user-{uuid4()}"
 
-        result = EndUserService.create_end_user_batch(
+        result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
@@ -544,12 +505,12 @@ class TestEndUserServiceCreateBatch:
         user_id = f"user-{uuid4()}"
 
         # Create batch first time
-        first_result = EndUserService.create_end_user_batch(
+        first_result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
         # Create batch second time — should return existing users
-        second_result = EndUserService.create_end_user_batch(
+        second_result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
@@ -564,7 +525,7 @@ class TestEndUserServiceCreateBatch:
         user_id = f"user-{uuid4()}"
 
         # Create for first 2 apps
-        first_result = EndUserService.create_end_user_batch(
+        first_result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_ids=[apps[0].id, apps[1].id],
@@ -572,7 +533,7 @@ class TestEndUserServiceCreateBatch:
         )
 
         # Create for all 3 apps — should reuse first 2, create 3rd
-        all_result = EndUserService.create_end_user_batch(
+        all_result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_ids=[a.id for a in apps],
@@ -594,7 +555,7 @@ class TestEndUserServiceCreateBatch:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=1)
         user_id = f"user-{uuid4()}"
 
-        result = EndUserService.create_end_user_batch(
+        result = _service().create_end_user_batch(
             type=invoke_type, tenant_id=tenant_id, app_ids=[apps[0].id], user_id=user_id
         )
 

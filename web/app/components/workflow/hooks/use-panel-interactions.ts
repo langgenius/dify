@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useWorkflowStore } from '../store'
 import { readWorkflowClipboard } from '../utils'
 

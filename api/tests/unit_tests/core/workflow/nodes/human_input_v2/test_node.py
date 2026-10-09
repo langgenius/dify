@@ -131,6 +131,35 @@ def submit(form: Form) -> Form:
     )
 
 
+@pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
+def test_v1_event_filter_preserves_v2_completion_without_duplicate_events(form, status):
+    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+    from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
+    from graphon.filters import GraphEventFilterContext, filter_graph_events
+    from graphon.graph import Graph
+    from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper
+
+    form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
+    node, _ = build_node(form)
+    events = list(
+        filter_graph_events(
+            node.run(),
+            context=GraphEventFilterContext(
+                graph=Graph(root_node=node),
+                runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+            ),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+    completion_type = (
+        NodeRunHumanInputFormFilledEvent
+        if status == HumanInputFormStatus.SUBMITTED
+        else NodeRunHumanInputFormTimeoutEvent
+    )
+    assert [type(event) for event in events] == [NodeRunStartedEvent, completion_type, NodeRunSucceededEvent]
+
+
 def test_submitted_emits_filled_before_completion_from_frozen_values(form):
     form = submit(form)
     node, runtime = build_node(form)

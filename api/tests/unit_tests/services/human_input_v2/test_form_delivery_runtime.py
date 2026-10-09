@@ -1165,11 +1165,15 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from flask import Flask
 
     from controllers.console.app import workflow_run as controller
+    from machinery.context import RequestContext
+    from services.workflow_run_service import WorkflowRunService
 
-    with context.sessions() as session, Flask(__name__).test_request_context():
-        monkeypatch.setattr(controller, "db", SimpleNamespace(engine=session.get_bind(), session=session))
+    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
+    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(workflow_runs=service))
+    request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
+    with Flask(__name__).test_request_context():
         resource = controller.ConsoleWorkflowPauseDetailsApi()
-        details, status = unwrap(resource.get)(resource, current_tenant_id=_TENANT, workflow_run_id=_RUN)
+        details, status = unwrap(resource.get)(resource, request, workflow_run_id=_RUN)
     assert status == 200
     assert details["paused_nodes"][0]["node_id"] == "approval"
     assert details["paused_nodes"][0]["pause_type"]["form_id"] == prepared.form.id
@@ -1261,6 +1265,118 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
     assert v1.resolved_default_values == {"note": "Legacy default"}
     assert scheduled == scheduling
     assert set(snapshot.v2_forms) == {created.form.id}
+
+
+@pytest.mark.parametrize("initiator", [False, True])
+@pytest.mark.usefixtures("providers")
+def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(context: Context, monkeypatch, initiator):
+    from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+    from core.workflow.nodes.human_input.entities import FormDefinition
+    from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+    from graphon.entities.pause_reason import HitlRequired
+    from graphon.runtime import GraphRuntimeState
+    from machinery.context import RequestContext
+    from models.human_input import HumanInputForm as LegacyForm
+    from models.human_input import HumanInputFormRecipient, RecipientType
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from services.human_input_v2.composition import build_human_input_delivery_service
+    from services.workflow_run_service import WorkflowRunPausedNode, WorkflowRunService
+
+    created = context.prepare(_node(Initiator() if initiator else OnetimeEmail(email="person@example.com")))
+    token = None
+    if initiator:
+        delivered = build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+            form=created.form, recipient=created.recipients[0], message_template=created.message_template
+        )
+        assert delivered.form_token is not None
+        token = delivered.form_token.get_secret_value()
+
+    legacy_id = str(uuid4())
+    with context.sessions.begin() as session:
+        for model in (LegacyForm, HumanInputFormRecipient):
+            model.__table__.create(session.connection())
+        session.add(
+            LegacyForm(
+                id=legacy_id,
+                tenant_id=_TENANT,
+                app_id=_APP,
+                workflow_run_id=_RUN,
+                node_id="legacy-node",
+                form_definition=FormDefinition(
+                    form_content="Legacy approval",
+                    rendered_content="Frozen legacy content",
+                    node_title="Legacy title",
+                    expiration_time=created.form.expiration_time,
+                ).model_dump_json(),
+                rendered_content="Frozen legacy content",
+                expiration_time=created.form.expiration_time,
+            )
+        )
+        session.add(
+            HumanInputFormRecipient(
+                form_id=legacy_id,
+                delivery_id=str(uuid4()),
+                recipient_type=RecipientType.CONSOLE,
+                recipient_payload="{}",
+                access_token="legacy-token",
+            )
+        )
+
+    resumption = WorkflowResumptionContext.loads(_pause_state(created.form.id))
+    runtime = GraphRuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
+    runtime.graph_execution.pause(HitlRequired(session_id=legacy_id, node_id="legacy-node", node_title="Legacy title"))
+    state = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()}).dumps()
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
+    monkeypatch.setattr(
+        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
+    )
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
+    pause = repository.create_workflow_pause(
+        workflow_run_id=_RUN,
+        state_owner_user_id=_ACCOUNT,
+        state=state,
+        pause_reasons=[
+            HumanInputRequired(form_id=legacy_id, node_id="legacy-node", node_title="Legacy title", form_content=""),
+            HumanInputRequired(
+                form_id=str(uuid4()), node_id="stale-node", node_title="Stale approval", form_content=""
+            ),
+        ],
+    )
+    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
+    request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
+
+    result = service.get_pause_details(request, workflow_run_id=_RUN)
+
+    assert result is not None
+    assert result.paused_at == pause.paused_at
+    assert result.paused_nodes == (
+        WorkflowRunPausedNode(node_id="approval", node_title="Frozen", form_id=created.form.id, form_token=token),
+        WorkflowRunPausedNode(
+            node_id="legacy-node", node_title="Legacy title", form_id=legacy_id, form_token="legacy-token"
+        ),
+    )
+    other_workspace = request._replace(active_workspace_id=str(uuid4()))
+    assert service.get_pause_details(other_workspace, workflow_run_id=_RUN) is None
+
+
+@pytest.mark.parametrize("checkpoint", ["invalid", "missing_form"])
+def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(context: Context, monkeypatch, checkpoint):
+    from machinery.context import RequestContext
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from services.workflow_run_service import WorkflowRunService
+
+    state = "invalid checkpoint" if checkpoint == "invalid" else _pause_state(str(uuid4()))
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
+    monkeypatch.setattr(
+        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
+    )
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
+    repository.create_workflow_pause(workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[])
+    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
+    request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
+
+    with pytest.raises(ValueError):
+        service.get_pause_details(request, workflow_run_id=_RUN)
 
 
 def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkeypatch):

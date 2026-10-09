@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuPopup,
   DropdownMenuPortal,
@@ -9,12 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Fragment, memo } from 'react'
+import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
+import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
 
@@ -51,7 +53,8 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   onToggleUserComments,
   isCommentMode = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
+  const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -93,20 +96,24 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
           {
             key: ZoomType.toggleUserComments,
             text: t(($) => $['operator.showUserComments'], { ns: 'workflow' }),
+            checked: showUserComments,
           },
           {
             key: ZoomType.toggleUserCursors,
             text: t(($) => $['operator.showUserCursors'], { ns: 'workflow' }),
+            checked: showUserCursors,
           },
           {
             key: ZoomType.toggleMiniMap,
             text: t(($) => $['operator.showMiniMap'], { ns: 'workflow' }),
+            checked: showMiniMap,
           },
         ]
       : [
           {
             key: ZoomType.toggleMiniMap,
             text: t(($) => $['operator.showMiniMap'], { ns: 'workflow' }),
+            checked: showMiniMap,
           },
         ],
   ]
@@ -145,6 +152,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     handleSyncWorkflowDraft()
   }
 
+  function selectZoom(type: ZoomType) {
+    handleZoom(type)
+    setOpen(false)
+  }
+
   return (
     <div
       className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
@@ -172,7 +184,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             />
           </button>
         </TipPopup>
-        <DropdownMenu>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger
             disabled={getWorkflowReadOnly()}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
@@ -181,74 +193,73 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuPositioner placement="top-start" sideOffset={4} alignOffset={-2}>
-              <DropdownMenuPopup>
+              <DropdownMenuPopup
+                onKeyDown={(event) => {
+                  if (workflowReadOnly) return
+                  handleWorkflowMenuKeyDown(event, [
+                    ['workflow.zoom-to-fit', () => selectZoom(ZoomType.zoomToFit)],
+                    ['workflow.zoom-to-100', () => selectZoom(ZoomType.zoomTo100)],
+                    ['workflow.zoom-to-50', () => selectZoom(ZoomType.zoomTo50)],
+                  ])
+                }}
+              >
                 <div className="w-48 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (
                     <Fragment key={options[0]!.key}>
                       {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
                       <div className="p-1">
-                        {options.map((option) => (
-                          <DropdownMenuItem
-                            key={option.key}
-                            className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
-                            disabled={option.key === ZoomType.toggleUserComments && isCommentMode}
-                            onClick={() => handleZoom(option.key)}
-                          >
-                            <div className="flex items-center gap-2">
-                              {option.key === ZoomType.toggleUserComments && showUserComments && (
-                                <span
-                                  aria-hidden
-                                  className="i-ri-check-line size-4 text-text-accent"
-                                />
-                              )}
-                              {option.key === ZoomType.toggleUserComments && !showUserComments && (
-                                <span aria-hidden className="size-4" />
-                              )}
-                              {option.key === ZoomType.toggleUserCursors && showUserCursors && (
-                                <span
-                                  aria-hidden
-                                  className="i-ri-check-line size-4 text-text-accent"
-                                />
-                              )}
-                              {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
-                                <span aria-hidden className="size-4" />
-                              )}
-                              {option.key === ZoomType.toggleMiniMap && showMiniMap && (
-                                <span
-                                  aria-hidden
-                                  className="i-ri-check-line size-4 text-text-accent"
-                                />
-                              )}
-                              {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
-                                <span aria-hidden className="size-4" />
-                              )}
-                              {option.key === ZoomType.zoomToFit && (
-                                <span
-                                  aria-hidden
-                                  className="i-ri-fullscreen-line size-4 text-text-tertiary"
-                                />
-                              )}
-                              {option.key !== ZoomType.toggleUserComments &&
-                                option.key !== ZoomType.toggleUserCursors &&
-                                option.key !== ZoomType.toggleMiniMap &&
-                                option.key !== ZoomType.zoomToFit && (
+                        {options.map((option) =>
+                          'checked' in option ? (
+                            <DropdownMenuCheckboxItem
+                              key={option.key}
+                              className="gap-2 px-3 py-1.5 system-md-regular text-text-secondary"
+                              checked={option.checked}
+                              disabled={option.key === ZoomType.toggleUserComments && isCommentMode}
+                              closeOnClick
+                              onCheckedChange={() => selectZoom(option.key)}
+                            >
+                              <span
+                                aria-hidden
+                                className={
+                                  option.checked
+                                    ? 'i-ri-check-line size-4 text-text-accent'
+                                    : 'size-4'
+                                }
+                              />
+                              <span>{option.text}</span>
+                            </DropdownMenuCheckboxItem>
+                          ) : (
+                            <DropdownMenuItem
+                              key={option.key}
+                              className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
+                              onClick={() => selectZoom(option.key)}
+                            >
+                              <div className="flex items-center gap-2">
+                                {option.key === ZoomType.zoomToFit && (
+                                  <span
+                                    aria-hidden
+                                    className="i-ri-fullscreen-line size-4 text-text-tertiary"
+                                  />
+                                )}
+                                {option.key !== ZoomType.zoomToFit && (
                                   <span aria-hidden className="size-4" />
                                 )}
-                              <span>{option.text}</span>
-                            </div>
-                            <div className="flex items-center space-x-0.5">
-                              {option.key === ZoomType.zoomToFit && (
-                                <ShortcutKbd shortcut="workflow.zoom-to-fit" />
-                              )}
-                              {option.key === ZoomType.zoomTo50 && (
-                                <ShortcutKbd shortcut="workflow.zoom-to-50" />
-                              )}
-                              {option.key === ZoomType.zoomTo100 && (
-                                <ShortcutKbd shortcut="workflow.zoom-to-100" />
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
+                                <span>{option.text}</span>
+                              </div>
+                              <div className="flex items-center space-x-0.5">
+                                {option.key === ZoomType.zoomToFit && (
+                                  <ShortcutKbd shortcut="workflow.zoom-to-fit" />
+                                )}
+                                {option.key === ZoomType.zoomTo50 && (
+                                  <ShortcutKbd shortcut="workflow.zoom-to-50" />
+                                )}
+                                {option.key === ZoomType.zoomTo100 && (
+                                  <ShortcutKbd shortcut="workflow.zoom-to-100" />
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          ),
+                        )}
                       </div>
                     </Fragment>
                   ))}

@@ -79,7 +79,7 @@ describe('AccessPointCard', () => {
 
     await user.tab()
     expect(accessSwitch).toHaveFocus()
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Publish first')
+    expect(await screen.findByText('Publish first')).toBeVisible()
 
     await user.click(accessSwitch)
     expect(onEnabledChange).not.toHaveBeenCalled()

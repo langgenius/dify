@@ -39,7 +39,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
   taskId,
   workflowProcessData,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog', 'share'])
 
   if (!workflowProcessData) return null
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
+from functools import partial
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,10 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.document_indexing_update_task as task_module
-from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from extensions.storage.storage_type import StorageType
+from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.model import UploadFile
+from services.knowledge.indexing.errors import DocumentIsPausedError
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -32,7 +36,7 @@ def task_harness(
     )
     runner = MagicMock()
     processor = MagicMock()
-    monkeypatch.setattr(task_module, "IndexingRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(task_module, "build_document_indexing_service", MagicMock(return_value=runner))
     monkeypatch.setattr(
         task_module,
         "IndexProcessorFactory",
@@ -97,9 +101,43 @@ def _persist_rows(
     return dataset, document
 
 
-def _complete_indexing(documents: list[Document], _session: Session) -> None:
-    for document in documents:
-        document.indexing_status = IndexingStatus.COMPLETED
+def _complete_indexing(refs, *, bind) -> None:
+    with Session(bind) as writer, writer.begin():
+        for ref in refs:
+            writer.get(Document, ref.document_id).indexing_status = IndexingStatus.COMPLETED
+
+
+def _persist_attachment(
+    session: Session,
+    *,
+    dataset: Dataset,
+    document: Document,
+    segment: DocumentSegment,
+    key: str,
+) -> tuple[UploadFile, SegmentAttachmentBinding]:
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name="image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=document.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    session.add_all([attachment, binding])
+    session.commit()
+    return attachment, binding
 
 
 def test_queues_summary_when_all_persisted_conditions_match(
@@ -109,7 +147,7 @@ def test_queues_summary_when_all_persisted_conditions_match(
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
@@ -150,7 +188,7 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
     for key, value in document_changes.items():
         setattr(document, key, value)
     sqlite_session.commit()
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
@@ -240,7 +278,7 @@ def test_queue_failure_is_swallowed_after_successful_indexing(
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     monkeypatch.setattr(
         task_module.generate_summary_index_task,
         "delay",
@@ -264,7 +302,7 @@ def test_cleans_and_deletes_persisted_segments_with_real_session(
         summary_index_setting={"enable": True},
         with_segment=True,
     )
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
@@ -274,3 +312,147 @@ def test_cleans_and_deletes_persisted_segments_with_real_session(
     assert isinstance(processor.clean.call_args.kwargs["session"], Session)
     assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
     delay.assert_called_once_with(dataset.id, document.id, None)
+
+
+def test_removes_orphaned_multimodal_attachments_during_reindex(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, processor = task_harness
+    dataset, document = _persist_rows(sqlite_session, with_segment=True)
+    dataset.is_multimodal = True
+    segment = sqlite_session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document.id))
+    assert segment is not None
+    attachment, binding = _persist_attachment(
+        sqlite_session,
+        dataset=dataset,
+        document=document,
+        segment=segment,
+        key="attachments/orphaned-image.png",
+    )
+    attachment_id = attachment.id
+    binding_id = binding.id
+    storage_delete = MagicMock()
+    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
+
+    document_indexing_update_task(dataset.id, document.id)
+
+    assert processor.clean.call_count == 2
+    assert processor.clean.call_args_list[0].args[1] == ["node-1"]
+    assert processor.clean.call_args_list[1].kwargs["node_ids"] == [attachment_id]
+    assert processor.clean.call_args_list[1].kwargs["with_keywords"] is False
+    storage_delete.assert_called_once_with("attachments/orphaned-image.png")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+    assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
+    runner.run.assert_called_once()
+
+
+def test_preserves_multimodal_attachment_referenced_by_another_document_during_reindex(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, processor = task_harness
+    dataset, document = _persist_rows(sqlite_session, with_segment=True)
+    dataset.is_multimodal = True
+    segment = sqlite_session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document.id))
+    assert segment is not None
+    attachment, binding = _persist_attachment(
+        sqlite_session,
+        dataset=dataset,
+        document=document,
+        segment=segment,
+        key="attachments/shared-image.png",
+    )
+
+    other_document = Document(
+        id=str(uuid.uuid4()),
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=2,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-2",
+        name="other-document.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=document.created_by,
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    sqlite_session.add(other_document)
+    sqlite_session.flush()
+    other_segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=other_document.id,
+        position=1,
+        content="other segment",
+        word_count=2,
+        tokens=2,
+        created_by=document.created_by,
+        index_node_id="node-2",
+    )
+    sqlite_session.add(other_segment)
+    sqlite_session.flush()
+    shared_binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=other_document.id,
+        segment_id=other_segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add(shared_binding)
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    binding_id = binding.id
+    shared_binding_id = shared_binding.id
+    storage_delete = MagicMock()
+    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
+
+    document_indexing_update_task(dataset.id, document.id)
+
+    processor.clean.assert_called_once()
+    assert processor.clean.call_args.args[1] == ["node-1"]
+    storage_delete.assert_not_called()
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(SegmentAttachmentBinding, shared_binding_id) is not None
+    assert sqlite_session.get(UploadFile, attachment_id) is not None
+    runner.run.assert_called_once()
+
+
+def test_keeps_database_cleanup_when_reindex_attachment_storage_delete_fails(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    runner, _processor = task_harness
+    dataset, document = _persist_rows(sqlite_session, with_segment=True)
+    dataset.is_multimodal = True
+    segment = sqlite_session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document.id))
+    assert segment is not None
+    attachment, binding = _persist_attachment(
+        sqlite_session,
+        dataset=dataset,
+        document=document,
+        segment=segment,
+        key="attachments/failing-image.png",
+    )
+    attachment_id = attachment.id
+    binding_id = binding.id
+    storage_delete = MagicMock(side_effect=RuntimeError("storage unavailable"))
+    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
+
+    with caplog.at_level("ERROR", logger="tasks.document_indexing_update_task"):
+        document_indexing_update_task(dataset.id, document.id)
+
+    storage_delete.assert_called_once_with("attachments/failing-image.png")
+    assert "Failed to delete document attachment from storage during re-indexing" in caplog.text
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+    assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
+    runner.run.assert_called_once()

@@ -1,10 +1,10 @@
 import type { Page } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentWebAppURL } from '../../agent-v2/support/access-point'
-import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
-import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers'
+import { getAgentWebAppURL } from '../../agent-v2/support/access-point.ts'
+import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources.ts'
+import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers.ts'
 
 const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
 

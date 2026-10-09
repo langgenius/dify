@@ -7,44 +7,37 @@
  * - Keyword search
  */
 
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockRuntime = vi.hoisted(() => ({
-  deploymentEdition: 'CLOUD',
-  enableBilling: true,
-  isFetchedPlan: true,
-  isFetchedPlanInfo: true,
-  planType: 'professional',
-}))
+const scenario = {
+  deploymentEdition: 'CLOUD' as DeploymentEdition,
+  planType: 'professional' as CloudPlan,
+}
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: mockRuntime.deploymentEdition }),
-  }
-})
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: () => ({
-      enableBilling: mockRuntime.enableBilling,
-      isFetchedPlan: mockRuntime.isFetchedPlan,
-      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
-      plan: { type: mockRuntime.planType },
-    }),
-  }
-})
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: scenario.deploymentEdition },
+  })
+}
 
 const mockTrackEvent = vi.fn()
 vi.mock('@/app/components/base/amplitude/utils', () => ({
@@ -70,11 +63,8 @@ describe('Filter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRuntime.deploymentEdition = 'CLOUD'
-    mockRuntime.enableBilling = true
-    mockRuntime.isFetchedPlan = true
-    mockRuntime.isFetchedPlanInfo = true
-    mockRuntime.planType = 'professional'
+    scenario.deploymentEdition = 'CLOUD'
+    scenario.planType = 'professional'
   })
 
   // --------------------------------------------------------------------------
@@ -88,7 +78,7 @@ describe('Filter', () => {
 
       // Status chip
       // Status chip
-      expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.all'))!.toBeInTheDocument()
       // Period chip (shows translated key)
       // Period chip (shows translated key)
       expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
@@ -114,7 +104,7 @@ describe('Filter', () => {
 
       // Chip should show Success for succeeded status
       // Chip should show Success for succeeded status
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
     })
 
     it('should open status dropdown when clicked', async () => {
@@ -124,14 +114,14 @@ describe('Filter', () => {
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
-      await user.click(screen.getByText('All'))
+      await user.click(screen.getByText('appLog.status.all'))
 
       // Should show all status options
       await waitFor(() => {
-        expect(screen.getByText('Success'))!.toBeInTheDocument()
-        expect(screen.getByText('Fail'))!.toBeInTheDocument()
-        expect(screen.getByText('Stop'))!.toBeInTheDocument()
-        expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.failed'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.stopped'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.partial-succeeded'))!.toBeInTheDocument()
       })
     })
 
@@ -141,8 +131,8 @@ describe('Filter', () => {
 
       render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'succeeded',
@@ -157,8 +147,8 @@ describe('Filter', () => {
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Fail'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.failed'))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
         workflow_log_filter_status: 'failed',
@@ -176,10 +166,10 @@ describe('Filter', () => {
         />,
       )
 
-      const statusTrigger = screen.getByRole('combobox', { name: 'Success' })
+      const statusTrigger = screen.getByRole('combobox', { name: 'appLog.status.succeeded' })
       const statusChip = statusTrigger.parentElement!
       const clearButton = within(statusChip).getByRole('button', {
-        name: /common\.operation\.clear Success/,
+        name: /common\.operation\.clear appLog\.status\.succeeded/,
       })
 
       await user.click(clearButton)
@@ -190,12 +180,37 @@ describe('Filter', () => {
       })
     })
 
+    it.each(['running', 'paused', 'scheduled'])(
+      'should filter by %s without changing other filters',
+      async (status) => {
+        const user = userEvent.setup()
+        const setQueryParams = vi.fn()
+        render(
+          <Filter
+            queryParams={createDefaultQueryParams({ keyword: 'invoice' })}
+            setQueryParams={setQueryParams}
+          />,
+        )
+
+        await user.click(screen.getByRole('combobox', { name: 'appLog.status.all' }))
+        await user.click(await screen.findByRole('option', { name: `appLog.status.${status}` }))
+
+        expect(setQueryParams).toHaveBeenCalledWith({ status, period: '2', keyword: 'invoice' })
+        expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
+          workflow_log_filter_status: status,
+        })
+      },
+    )
+
     it.each([
-      ['all', 'All'],
-      ['succeeded', 'Success'],
-      ['failed', 'Fail'],
-      ['stopped', 'Stop'],
-      ['partial-succeeded', 'Partial Success'],
+      ['all', 'appLog.status.all'],
+      ['scheduled', 'appLog.status.scheduled'],
+      ['running', 'appLog.status.running'],
+      ['paused', 'appLog.status.paused'],
+      ['succeeded', 'appLog.status.succeeded'],
+      ['failed', 'appLog.status.failed'],
+      ['stopped', 'appLog.status.stopped'],
+      ['partial-succeeded', 'appLog.status.partial-succeeded'],
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
       render(
         <Filter
@@ -214,8 +229,8 @@ describe('Filter', () => {
   describe('Time Period Filter', () => {
     it('should only show supported periods for Cloud sandbox workspaces', async () => {
       const user = userEvent.setup()
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -237,8 +252,8 @@ describe('Filter', () => {
 
     it('should keep all periods for sandbox workspaces outside Cloud', async () => {
       const user = userEvent.setup()
-      mockRuntime.deploymentEdition = 'COMMUNITY'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'COMMUNITY'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -253,8 +268,8 @@ describe('Filter', () => {
     it('should reset the Cloud sandbox period to today when cleared', async () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(
         <Filter
@@ -500,8 +515,8 @@ describe('Filter', () => {
         />,
       )
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'succeeded',
@@ -569,7 +584,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
       expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
       expect(screen.getByDisplayValue('integration test'))!.toBeInTheDocument()
     })

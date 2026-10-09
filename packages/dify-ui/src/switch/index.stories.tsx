@@ -50,7 +50,7 @@ type SwitchDemoProps = Partial<
   checked?: boolean
 }
 
-const SwitchDemo = (args: SwitchDemoProps) => {
+function SwitchDemo(args: SwitchDemoProps) {
   const [enabled, setEnabled] = React.useState(args.checked ?? false)
 
   return (
@@ -113,7 +113,7 @@ export const DisabledOn: Story = {
   },
 }
 
-const AllStatesDemo = () => {
+function AllStatesDemo() {
   const sizes = ['xs', 'sm', 'md', 'lg'] as const
 
   return (
@@ -202,7 +202,7 @@ export const AllStates: Story = {
   },
 }
 
-const SizeComparisonDemo = () => {
+function SizeComparisonDemo() {
   const [states, setStates] = React.useState({
     xs: false,
     sm: false,
@@ -260,7 +260,7 @@ export const SizeComparison: Story = {
   render: () => <SizeComparisonDemo />,
 }
 
-const LoadingDemo = () => {
+function LoadingDemo() {
   const [loading, setLoading] = React.useState(true)
 
   return (
@@ -362,7 +362,7 @@ function useMockUpdateAutoRetrySettingMutation({
   }
 }
 
-const MutationLoadingDemo = () => {
+function MutationLoadingDemo() {
   const autoRetrySetting = useMockAutoRetrySettingQuery()
   const updateAutoRetrySetting = useMockUpdateAutoRetrySettingMutation({
     onSuccess: autoRetrySetting.setData,
@@ -406,26 +406,28 @@ export const MutationLoadingGuard: Story = {
   },
 }
 
-const SkeletonDemo = () => (
-  <div className="flex flex-col items-center space-y-4">
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="xs" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Extra Small skeleton</span>
+function SkeletonDemo() {
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="xs" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Extra Small skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="sm" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Small skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="md" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Regular skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="lg" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Large skeleton</span>
+      </div>
     </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="sm" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Small skeleton</span>
-    </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="md" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Regular skeleton</span>
-    </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="lg" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Large skeleton</span>
-    </div>
-  </div>
-)
+  )
+}
 
 export const Skeleton: Story = {
   render: () => <SkeletonDemo />,

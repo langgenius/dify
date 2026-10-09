@@ -24,14 +24,20 @@ describe('AppDetailTop', () => {
   it('links the combined home control to home', () => {
     render(<AppDetailTop />)
 
-    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 
   it('links the Studio breadcrumb to the Studio page', () => {
     render(<AppDetailTop />)
 
-    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
   })
 
   it('keeps the quick search action', () => {

@@ -22,6 +22,8 @@ Hãy tham gia, đóng góp và cùng nhau xây dựng điều tuyệt vời! �
 
 ### Báo cáo lỗi
 
+Báo cáo lỗ hổng riêng tư theo [chính sách bảo mật](../../SECURITY.md), không tạo issue công khai.
+
 > [!QUAN TRỌNG]\
 > Vui lòng đảm bảo cung cấp các thông tin sau khi gửi báo cáo lỗi:
 
@@ -36,7 +38,7 @@ Cách chúng tôi ưu tiên:
 
 | Loại vấn đề | Mức độ ưu tiên |
 | ----------- | -------------- |
-| Lỗi trong các chức năng cốt lõi (dịch vụ đám mây, không thể đăng nhập, ứng dụng không hoạt động, lỗ hổng bảo mật) | Quan trọng |
+| Lỗi trong các chức năng cốt lõi (dịch vụ đám mây, không thể đăng nhập, ứng dụng không hoạt động) | Quan trọng |
 | Lỗi không nghiêm trọng, cải thiện hiệu suất | Ưu tiên trung bình |
 | Sửa lỗi nhỏ (lỗi chính tả, UI gây nhầm lẫn nhưng vẫn hoạt động) | Ưu tiên thấp |
 
@@ -66,7 +68,7 @@ Cách chúng tôi ưu tiên:
 1. Fork repository
 1. Trước khi soạn PR, vui lòng tạo issue để thảo luận về các thay đổi bạn muốn thực hiện
 1. Tạo nhánh mới cho các thay đổi của bạn
-1. Vui lòng thêm test cho các thay đổi tương ứng
+1. Thêm hoặc cập nhật kiểm thử khi thay đổi ảnh hưởng đến hành vi có thể quan sát được hoặc có nguy cơ hồi quy đáng kể.
 1. Đảm bảo code của bạn vượt qua các test hiện có
 1. Vui lòng liên kết issue trong mô tả PR, `fixes #<số_issue>`
 1. Được merge!
@@ -75,22 +77,11 @@ Cách chúng tôi ưu tiên:
 
 #### Frontend
 
-Để thiết lập dịch vụ frontend, vui lòng tham khảo [hướng dẫn](https://github.com/langgenius/dify/blob/main/web/README.md) chi tiết của chúng tôi trong file `web/README.md`. Tài liệu này cung cấp hướng dẫn chi tiết để giúp bạn thiết lập môi trường frontend một cách đúng đắn.
+Để thiết lập dịch vụ frontend, vui lòng tham khảo [hướng dẫn](../../web/README.md) chi tiết của chúng tôi trong file `web/README.md`. Tài liệu này cung cấp hướng dẫn chi tiết để giúp bạn thiết lập môi trường frontend một cách đúng đắn.
 
 #### Backend
 
-Để thiết lập dịch vụ backend, vui lòng tham khảo [hướng dẫn](https://github.com/langgenius/dify/blob/main/api/README.md) chi tiết của chúng tôi trong file `api/README.md`. Tài liệu này chứa hướng dẫn từng bước để giúp bạn khởi chạy backend một cách suôn sẻ.
-
-#### Các điểm cần lưu ý khác
-
-Chúng tôi khuyến nghị xem xét kỹ tài liệu này trước khi tiến hành thiết lập, vì nó chứa thông tin thiết yếu về:
-
-- Điều kiện tiên quyết và dependencies
-- Các bước cài đặt
-- Chi tiết cấu hình
-- Các mẹo xử lý sự cố phổ biến
-
-Đừng ngần ngại liên hệ nếu bạn gặp bất kỳ vấn đề nào trong quá trình thiết lập.
+Để thiết lập dịch vụ backend, vui lòng tham khảo [hướng dẫn](../../api/README.md) chi tiết của chúng tôi trong file `api/README.md`. Tài liệu này chứa hướng dẫn từng bước để giúp bạn khởi chạy backend một cách suôn sẻ.
 
 ## Nhận trợ giúp
 

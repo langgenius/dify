@@ -1,12 +1,18 @@
 """Application service for building the public Web app runtime bootstrap."""
 
 import json
+import logging
 from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
+from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.errors.file import FileNotExistsError
 from services.file_service import FileService
+from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
+
+logger = logging.getLogger(__name__)
 
 
 class WebAppRuntimeRecord(NamedTuple):
@@ -50,11 +56,13 @@ class WebAppRuntimeQueryService:
         file_service: FileService,
         workspace_features: Callable[[str], FeatureModel],
         files_url: str,
+        deployment_edition: DeploymentEdition,
     ) -> None:
         self._runtime = runtime
         self._file_service = file_service
         self._workspace_features = workspace_features
         self._files_url = files_url
+        self._deployment_edition = deployment_edition
 
     def get_bootstrap(self, app_id: str) -> WebAppBootstrap:
         record = self._runtime.get_runtime_record(app_id)
@@ -62,15 +70,30 @@ class WebAppRuntimeQueryService:
             raise WebAppRuntimeUnavailableError("Site not found")
 
         features = self._workspace_features(record.tenant_id)
-        site_icon_url = (
-            self._file_service.get_icon_url(record.site.icon, record.tenant_id)
-            if record.site.icon_type == "image" and record.site.icon
-            else None
-        )
+        site_icon_unavailable = False
+        try:
+            site_icon_url = (
+                self._file_service.get_icon_url(record.site.icon, record.tenant_id)
+                if record.site.icon_type == "image" and record.site.icon
+                else None
+            )
+        except FileNotExistsError as exc:
+            logger.warning(
+                "Web app site icon is unavailable: app_id=%s tenant_id=%s file_id=%s",
+                record.app_id,
+                record.tenant_id,
+                record.site.icon,
+            )
+            site_icon_url = None
+            site_icon_unavailable = True
 
         site = cast(dict[str, str | bool | None], record.site._asdict())
         site["icon_url"] = site_icon_url
-        if features.billing.enabled and not features.webapp_copyright_enabled:
+        if site_icon_unavailable:
+            site["icon_type"] = DEFAULT_ICON_TYPE.value
+            site["icon"] = DEFAULT_ICON
+            site["icon_background"] = DEFAULT_ICON_BACKGROUND
+        if self._deployment_edition == DeploymentEdition.CLOUD and not features.webapp_copyright_enabled:
             site["copyright"] = None
             site["input_placeholder"] = None
 

@@ -1,9 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ControlMode } from '../types'
 import { CommentCursor } from './cursor'
 
-const mockState = {
+const mockState: {
+  controlMode: ControlMode
+  isCommentPlacing: boolean
+  mousePosition: { elementX: number; elementY: number }
+} = {
   controlMode: ControlMode.Pointer,
   isCommentPlacing: false,
   mousePosition: {
@@ -11,10 +15,6 @@ const mockState = {
     elementY: 20,
   },
 }
-
-vi.mock('@/app/components/base/icons/src/public/other', () => ({
-  Comment: (props: { className?: string }) => <svg data-testid="comment-icon" {...props} />,
-}))
 
 vi.mock('../store', () => ({
   useStore: (selector: (state: typeof mockState) => unknown) => selector(mockState),
@@ -28,29 +28,26 @@ describe('CommentCursor', () => {
   it('renders nothing when not in comment mode', () => {
     mockState.controlMode = ControlMode.Pointer
 
-    render(<CommentCursor />)
+    const { container } = render(<CommentCursor />)
 
-    expect(screen.queryByTestId('comment-icon')).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('renders at current mouse position when in comment mode', () => {
     mockState.controlMode = ControlMode.Comment
     mockState.isCommentPlacing = false
 
-    render(<CommentCursor />)
+    const { container } = render(<CommentCursor />)
 
-    const icon = screen.getByTestId('comment-icon')
-    const container = icon.parentElement as HTMLElement
-
-    expect(container).toHaveStyle({ left: '10px', top: '20px' })
+    expect(container.firstElementChild).toHaveStyle({ left: '10px', top: '20px' })
   })
 
   it('renders nothing when comment is in placing mode', () => {
     mockState.controlMode = ControlMode.Comment
     mockState.isCommentPlacing = true
 
-    render(<CommentCursor />)
+    const { container } = render(<CommentCursor />)
 
-    expect(screen.queryByTestId('comment-icon')).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 })

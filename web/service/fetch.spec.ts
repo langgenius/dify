@@ -8,14 +8,14 @@ import {
 // oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     add: vi.fn(),
     error: vi.fn(),
   },
 }))
 
-const { toast } = await import('@langgenius/dify-ui/toast')
+const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
   beforeEach(() => {

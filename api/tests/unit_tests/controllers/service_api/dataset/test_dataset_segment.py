@@ -17,7 +17,8 @@ Focus on:
 import inspect
 import uuid
 from collections.abc import Callable
-from unittest.mock import ANY, Mock, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -42,7 +43,17 @@ from models.account import Account, Tenant
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import IndexingStatus, SegmentType
 from services.api_token_service import CachedApiToken
-from services.dataset_service import DocumentService, SegmentService
+from services.knowledge.dataset_service import DocumentService, SegmentService
+from services.knowledge.segments.application import SegmentMutationService
+from tests.unit_tests.model_factories import make_account
+
+
+@pytest.fixture(autouse=True)
+def segment_mutations():
+    mutations = create_autospec(SegmentMutationService, instance=True, spec_set=True)
+    services = SimpleNamespace(knowledge=SimpleNamespace(segments=SimpleNamespace(mutations=mutations)))
+    with patch("controllers.service_api.dataset.segment.application_services", return_value=services):
+        yield mutations
 
 
 def _segment_response_dict(summary: str | None = None):
@@ -85,9 +96,9 @@ def mock_tenant() -> Tenant:
 
 
 def _account() -> Account:
-    account = Account(name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com")
-    account.id = str(uuid.uuid4())
-    return account
+    return make_account(
+        account_id=str(uuid.uuid4()), name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com"
+    )
 
 
 def _api_token(tenant_id: str) -> CachedApiToken:
@@ -554,6 +565,7 @@ class TestChildChunkServiceMockedBehavior:
             document=Document(),
             dataset=Dataset(),
             session=unbound_session,
+            actor_id="account-id",
         )
 
         assert result == mock_child_chunk
@@ -626,6 +638,7 @@ class TestChildChunkServiceMockedBehavior:
             document=Document(),
             dataset=Dataset(),
             session=unbound_session,
+            actor_id="account-id",
         )
 
         assert result.content == "Updated content"
@@ -721,7 +734,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_segment_args(self):
         """Test payload with SegmentUpdateArgs."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(content="Updated content")
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -730,7 +743,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_answer_update(self):
         """Test payload with answer update."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(answer="Updated answer")
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -739,7 +752,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_keywords_update(self):
         """Test payload with keywords update."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(keywords=["new", "keywords"])
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -748,7 +761,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_enabled_toggle(self):
         """Test payload with enabled toggle."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(enabled=True)
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -757,7 +770,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_regenerate_child_chunks(self):
         """Test payload with regenerate_child_chunks flag."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(regenerate_child_chunks=True)
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -769,7 +782,7 @@ class TestSegmentUpdateArgs:
 
     def test_args_with_defaults(self):
         """Test args with default values."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs()
         assert args.content is None
@@ -780,14 +793,14 @@ class TestSegmentUpdateArgs:
 
     def test_args_with_content(self):
         """Test args with content update."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs(content="New content here")
         assert args.content == "New content here"
 
     def test_args_with_all_fields(self):
         """Test args with all fields populated."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs(
             content="Full content",
@@ -812,7 +825,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_defaults(self):
         """Test args with default values."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs()
         assert args.content is None
@@ -822,7 +835,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_content_and_answer(self):
         """Test args with content and answer for Q&A mode."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Question?", answer="Answer!")
         assert args.content == "Question?"
@@ -830,7 +843,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_keywords(self):
         """Test args with keywords for search indexing."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Test content", keywords=["machine learning", "AI", "neural networks"])
         assert args.keywords is not None
@@ -842,7 +855,7 @@ class TestChildChunkUpdateArgs:
 
     def test_args_with_content_only(self):
         """Test args with content only."""
-        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+        from services.knowledge.entities.segments import ChildChunkUpdateArgs
 
         args = ChildChunkUpdateArgs(content="Updated chunk content")
         assert args.content == "Updated chunk content"
@@ -850,7 +863,7 @@ class TestChildChunkUpdateArgs:
 
     def test_args_with_id_and_content(self):
         """Test args with both id and content."""
-        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+        from services.knowledge.entities.segments import ChildChunkUpdateArgs
 
         chunk_id = str(uuid.uuid4())
         args = ChildChunkUpdateArgs(id=chunk_id, content="Updated content")
@@ -969,21 +982,27 @@ class TestSegmentPagination:
         assert limit >= 1
         assert limit <= 100
 
-    def test_has_more_calculation(self):
-        """Test has_more pagination flag calculation."""
-        segments_count = 20
+    def test_has_more_false_on_last_page_exact_limit(self):
+        """Last page that fills the limit exactly must not claim more rows."""
+        page = 1
         limit = 20
+        total = 20
+        effective_limit = min(limit, 100)
 
-        has_more = segments_count == limit
-        assert has_more is True
-
-    def test_no_more_when_incomplete_page(self):
-        """Test has_more is False for incomplete page."""
-        segments_count = 15
-        limit = 20
-
-        has_more = segments_count == limit
+        has_more = page * effective_limit < total
+        assert effective_limit == 20
         assert has_more is False
+
+    def test_has_more_true_when_limit_exceeds_cap_with_remaining_rows(self):
+        """Capped pages must still report remaining rows after the first 100."""
+        page = 1
+        limit = 200
+        total = 150
+        effective_limit = min(limit, 100)
+
+        has_more = page * effective_limit < total
+        assert effective_limit == 100
+        assert has_more is True
 
 
 # =============================================================================
@@ -1026,8 +1045,8 @@ class TestSegmentApiGet(SQLiteEndpointTest):
     ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -1069,6 +1088,91 @@ class TestSegmentApiGet(SQLiteEndpointTest):
         assert response["page"] == 1
         mock_dump_segments.assert_called_once_with([mock_segment], {}, session=ANY)
         assert isinstance(mock_dump_segments.call_args.kwargs["session"], Session)
+
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_has_more_false_on_last_page_exact_limit(
+        self,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """A full last page must set has_more false instead of forcing another fetch."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        page_size = 20
+        segments = [mock_segment] * page_size
+        mock_seg_svc.get_segments.return_value = (segments, page_size)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(page_size)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit={page_size}",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_has_more_true_when_limit_exceeds_cap(
+        self,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        returned_count = 100
+        total = 150
+        segments = [mock_segment] * returned_count
+        mock_seg_svc.get_segments.return_value = (segments, total)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(returned_count)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit=200",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     def test_list_segments_dataset_not_found(self, mock_account_fn, app, mock_tenant, mock_dataset):
@@ -1121,7 +1225,6 @@ class TestSegmentApiPost(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1133,8 +1236,8 @@ class TestSegmentApiPost(SQLiteEndpointTest):
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -1335,7 +1438,9 @@ class TestDatasetSegmentApiDelete(SQLiteEndpointTest):
 
         # Assert
         assert response == ("", 204)
-        mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset, self.session)
+        mock_seg_svc.delete_segment.assert_called_once_with(
+            mock_segment, mock_doc, mock_dataset, self.session, mutations=ANY
+        )
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -1464,7 +1569,6 @@ class TestDatasetSegmentApiUpdate(SQLiteEndpointTest):
         """Configure mocks to neutralise billing/auth decorators."""
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -1474,8 +1578,8 @@ class TestDatasetSegmentApiUpdate(SQLiteEndpointTest):
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1627,8 +1731,8 @@ class TestDatasetSegmentApiGetSingle(SQLiteEndpointTest):
     ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1674,8 +1778,8 @@ class TestDatasetSegmentApiGetSingle(SQLiteEndpointTest):
         mock_dump_segment.assert_called_once_with(mock_segment, None, session=ANY)
         assert isinstance(mock_dump_segment.call_args.kwargs["session"], Session)
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
@@ -1693,7 +1797,7 @@ class TestDatasetSegmentApiGetSingle(SQLiteEndpointTest):
         mock_dataset,
         mock_segment,
     ):
-        """Test that single segment response includes summary content from SummaryIndexService."""
+        """Test that single segment response includes summary content from SummaryIndexAdapter."""
         mock_account_fn.return_value = (_account(), mock_tenant.id)
         self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
@@ -1963,7 +2067,6 @@ class TestChildChunkApiPost(SQLiteEndpointTest):
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -2277,7 +2380,6 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()

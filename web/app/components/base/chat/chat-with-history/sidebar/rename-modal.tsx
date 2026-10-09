@@ -18,7 +18,7 @@ type IRenameModalProps = {
 }
 
 const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose, onSave }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [tempName, setTempName] = useState(name)
   const conversationNamePlaceholder =
     t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''
@@ -34,12 +34,12 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
             if (!saveLoading) onSave(tempName)
           }}
         >
-          <Field name="conversationName" className="mt-6 gap-0">
-            <FieldLabel className="py-0 text-sm leading-5.25 font-medium text-text-primary">
+          <Field name="conversationName" className="mt-6">
+            <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
               {t(($) => $['chat.conversationName'], { ns: 'common' })}
             </FieldLabel>
             <Input
-              className="mt-2 h-10"
+              className="h-10"
               value={tempName}
               onValueChange={setTempName}
               placeholder={conversationNamePlaceholder}

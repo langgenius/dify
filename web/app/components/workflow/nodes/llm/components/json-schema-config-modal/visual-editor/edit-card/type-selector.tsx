@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { RiCheckLine } from '@remixicon/react'
-import { useState } from 'react'
 
 export type TypeItem = {
   value: Type | ArrayType
@@ -27,12 +26,8 @@ type TypeSelectorProps = {
 }
 
 const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect }) => {
-  const [open, setOpen] = useState(false)
-
   return (
     <Select<Type | ArrayType>
-      open={open}
-      onOpenChange={setOpen}
       value={currentValue}
       onValueChange={(nextValue) => {
         const selected = items.find((item) => item.value === nextValue)

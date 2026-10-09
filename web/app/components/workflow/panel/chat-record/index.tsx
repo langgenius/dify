@@ -6,7 +6,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { fetchConversationMessages } from '@/service/debug'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
@@ -53,6 +53,7 @@ const ChatRecord = () => {
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
@@ -95,7 +96,7 @@ const ChatRecord = () => {
     >
       {!fetched && (
         <div className="flex h-full items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       )}
       {fetched && (
@@ -106,7 +107,10 @@ const ChatRecord = () => {
               className="flex size-6 cursor-pointer items-center justify-center"
               onClick={() => {
                 handleLoadBackupDraft()
-                workflowStore.setState({ historyWorkflowData: undefined })
+                workflowStore.setState({
+                  historyWorkflowData: undefined,
+                  messageLogItem: undefined,
+                })
               }}
             >
               <RiCloseLine className="size-4 text-text-tertiary" />
@@ -128,7 +132,8 @@ const ChatRecord = () => {
               chatNode={<UserInput />}
               noChatInput
               allToolIcons={{}}
-              showPromptLog
+              onOpenLog={setMessageLogItem}
+              canOpenLog={(item) => !!item.workflow_run_id}
               switchSibling={switchSibling}
               noSpacing
               chatAnswerContainerInner="pr-2!"

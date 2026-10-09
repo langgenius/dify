@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -114,14 +114,14 @@ describe('WorkflowReferencesTable', () => {
 
       renderTable()
 
-      expect(await screen.findByText('Support Workflow')).toBeInTheDocument()
+      expect(await screen.findByRole('cell', { name: 'Support Workflow' })).toBeInTheDocument()
       expect(screen.getByText('v3')).toBeInTheDocument()
       expect(
         screen.getByText('agentV2.agentDetail.access.workflow.nodeCount:{"count":2}'),
       ).toBeInTheDocument()
       expect(screen.getByText('formatted-1781660000')).toBeInTheDocument()
       const studioLink = screen.getByRole('link', {
-        name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}',
+        name: 'agentV2.agentDetail.access.workflow.openInStudio Support Workflow',
       })
       expect(studioLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
       expect(studioLink).toHaveAttribute('target', '_blank')

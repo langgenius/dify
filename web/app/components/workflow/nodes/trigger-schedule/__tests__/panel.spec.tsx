@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -120,14 +119,28 @@ describe('TriggerSchedulePanel', () => {
 
   // The panel should wire the visual and cron controls back to the schedule config handlers.
   describe('Panel Wiring', () => {
+    it('prevents time editing when the workflow is read only', async () => {
+      const user = userEvent.setup()
+      mockUseConfig.mockReturnValue({ ...mockUseConfig('node-1', createData()), readOnly: true })
+      renderPanel('node-1', createData())
+      const trigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
+      await user.click(trigger)
+      expect(trigger).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(handleTimeChange).not.toHaveBeenCalled()
+    })
     it('should render the visual controls and forward their callbacks', async () => {
       const user = userEvent.setup()
       renderPanel('node-1', createData())
 
       await user.click(screen.getByRole('button', { name: 'visual' }))
       await user.click(screen.getByRole('button', { name: 'daily' }))
-      await user.click(screen.getByDisplayValue('11:30 AM'))
-      await user.click(screen.getAllByText('02')[0]!)
+      await user.click(screen.getByText('workflow.nodes.triggerSchedule.time', { exact: true }))
+      const timeTrigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
+      expect(timeTrigger).toHaveFocus()
+      expect(timeTrigger).toHaveAttribute('aria-expanded', 'false')
+      await user.keyboard('{Enter}')
+      await user.click(screen.getByRole('option', { name: '2' }))
       await user.click(screen.getByText('45'))
       await user.click(screen.getByText('PM'))
       await user.click(screen.getByRole('button', { name: /operation\.ok/i }))
@@ -229,7 +242,7 @@ describe('TriggerSchedulePanel', () => {
 
       const { rerender } = renderPanel('node-6', createData({ frequency: undefined }) as any)
       expect(screen.getByRole('button', { name: 'daily' })).toBeInTheDocument()
-      expect(screen.getByDisplayValue('11:30 AM')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /11:30 AM/ })).toBeInTheDocument()
 
       mockUseConfig.mockReturnValueOnce({
         readOnly: false,

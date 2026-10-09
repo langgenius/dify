@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
@@ -115,7 +115,7 @@ describe('InputsPanel', () => {
       )
 
       expect(screen.getByDisplayValue('overridden question')).toHaveFocus()
-      expect(screen.getByRole('spinbutton')).toHaveValue(2)
+      expect(screen.getByRole('textbox', { name: 'Count' })).toHaveValue('2')
       expect(screen.getByText('common.imageUploader.pasteImageLink')).toBeInTheDocument()
     })
   })

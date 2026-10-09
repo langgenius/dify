@@ -11,7 +11,7 @@ export const customI18nHmrPlugin = ({ injectTarget }: CustomI18nHmrPluginOptions
   const i18nHmrClientSnippet = `/* ${i18nHmrClientMarker} */
 if (import.meta.hot) {
   const getI18nUpdateTarget = (file) => {
-    const match = file.match(/[/\\\\]i18n[/\\\\]([^/\\\\]+)[/\\\\]([^/\\\\]+)\\.json$/)
+    const match = file.match(/[/\\\\]i18n[/\\\\]locales[/\\\\]([^/\\\\]+)[/\\\\]([^/\\\\]+)\\.json$/)
     if (!match)
       return null
     const [, locale, namespaceFile] = match
@@ -53,7 +53,7 @@ if (import.meta.hot) {
     name: 'custom-i18n-hmr',
     apply: 'serve',
     handleHotUpdate({ file, server }) {
-      if (file.endsWith('.json') && file.includes('/i18n/')) {
+      if (file.endsWith('.json') && file.includes('/i18n/locales/')) {
         server.ws.send({
           type: 'custom',
           event: 'i18n-update',

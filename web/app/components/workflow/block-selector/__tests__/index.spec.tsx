@@ -205,7 +205,10 @@ describe('BlockSelector', () => {
     await user.type(searchInput, 'webhook')
     await user.click(screen.getByRole('button', { name: 'selector-open' }))
 
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onOpenChange).toHaveBeenCalledWith(
+      false,
+      expect.objectContaining({ reason: 'trigger-press' }),
+    )
     expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toHaveAttribute(
       'aria-selected',
       'true',

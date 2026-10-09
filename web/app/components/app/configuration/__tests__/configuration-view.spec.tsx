@@ -98,7 +98,7 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
-  isAPIKeySet: true,
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -198,13 +198,6 @@ const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['va
     sensitive_word_avoidance: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 1,
-      file_size_limit: 1,
-      image_file_size_limit: 1,
-      video_file_size_limit: 1,
-      workflow_file_upload_limit: 1,
-    },
     dataSets: [],
     agentConfig: {
       enabled: false,
@@ -250,6 +243,7 @@ const createViewModel = (
   overrides: Partial<ConfigurationViewModel> = {},
 ): ConfigurationViewModel => ({
   appPublisherProps: {
+    appId: 'app-1',
     publishDisabled: false,
     publishedAt: 0,
     debugWithMultipleModel: false,
@@ -324,8 +318,16 @@ describe('ConfigurationView', () => {
   it('should render a loading state before configuration data is ready', () => {
     render(<ConfigurationView {...createViewModel({ showLoading: true })} />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('app-publisher')).not.toBeInTheDocument()
+  })
+
+  it('provides the page heading inside the parent-owned main landmark', () => {
+    render(<ConfigurationView {...createViewModel()} />)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'appDebug.orchestrate' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should open the mobile debug panel from the header button', () => {

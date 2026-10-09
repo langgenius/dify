@@ -89,6 +89,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider does not support text to speech."
+    code = 400
+
+
 class SpeechToTextDisabledError(BaseHTTPException):
     error_code = "speech_to_text_disabled"
     description = "Speech to text is disabled."
@@ -107,22 +113,46 @@ class DraftWorkflowNotSync(BaseHTTPException):
     code = 409
 
 
-class TracingConfigNotExist(BaseHTTPException):
-    error_code = "trace_config_not_exist"
-    description = "Trace config not exist."
+class TracingConfigNotFoundError(BaseHTTPException):
+    error_code = "trace_config_not_found"
+    description = "Tracing configuration not found."
+    code = 404
+
+
+class TracingConfigAlreadyExistsError(BaseHTTPException):
+    error_code = "trace_config_already_exists"
+    description = "A tracing configuration already exists for this provider."
+    code = 409
+
+
+class UnsupportedTracingProviderError(BaseHTTPException):
+    error_code = "unsupported_tracing_provider"
+    description = "The tracing provider is not supported."
     code = 400
 
 
-class TracingConfigIsExist(BaseHTTPException):
-    error_code = "trace_config_is_exist"
-    description = "Trace config is exist."
+class TracingProviderUnavailableError(BaseHTTPException):
+    error_code = "tracing_provider_unavailable"
+    description = "The tracing provider is not available in this deployment."
     code = 400
 
 
-class TracingConfigCheckError(BaseHTTPException):
-    error_code = "trace_config_check_error"
-    description = "Invalid Credentials."
+class InvalidTracingConfigError(BaseHTTPException):
+    error_code = "invalid_tracing_config"
+    description = "The tracing configuration is invalid."
     code = 400
+
+
+class TracingConfigVerificationFailedError(BaseHTTPException):
+    error_code = "tracing_config_verification_failed"
+    description = "The tracing configuration could not be verified."
+    code = 400
+
+
+class TracingConfigProcessingError(BaseHTTPException):
+    error_code = "tracing_config_processing_failed"
+    description = "The tracing configuration could not be processed."
+    code = 500
 
 
 class InvokeRateLimitError(BaseHTTPException):

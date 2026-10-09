@@ -89,7 +89,7 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
 ## Dify'ı Kullanma
 
 - **Cloud </br>**
-  Herkesin sıfır kurulumla denemesi için bir [Dify Cloud](https://dify.ai) hizmeti sunuyoruz. Bu hizmet, kendi kendine dağıtılan versiyonun tüm yeteneklerini sağlar ve sandbox planında 200 ücretsiz GPT-4 çağrısı içerir.
+  Sunucu yönetmeden [Dify Cloud](https://cloud.dify.ai) ile Dify’ı deneyebilirsiniz. Güncel planlar ve kullanım kotaları için [fiyatlandırma sayfasına](https://dify.ai/pricing) bakın.
 
 - **Dify Topluluk Sürümünü Kendi Sunucunuzda Barındırma</br>**
   Bu [başlangıç kılavuzu](#hızlı-başlangıç) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
@@ -134,7 +134,7 @@ Dify her türlü katkıyı memnuniyetle karşılar:
 
 - **Kod**: [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun, ardından [yeni katkıda bulunanlara uygun sorunlara](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) göz atın.
 - **Fikirler ve geri bildirim**: Bir [GitHub tartışması](https://github.com/langgenius/dify/discussions) başlatın veya mevcut bir tartışmaya katılın.
-- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) izleyin.
+- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) izleyin.
 - **Topluluk**: Oluşturduğunuz uygulamaları paylaşın, diğer kullanıcılara yardımcı olun ve Dify'ı duyurun.
 
 ### Katkıda bulunanlar
@@ -157,7 +157,7 @@ Sorunuza en uygun kanalı seçin:
 
 ## Güvenlik açıklaması
 
-Gizliliğinizi korumak için, lütfen güvenlik sorunlarını GitHub'da paylaşmaktan kaçının. Bunun yerine, sorularınızı security@dify.ai adresine gönderin ve size daha detaylı bir cevap vereceğiz.
+Güvenlik açıklarını [güvenlik politikamıza](../../SECURITY.md) göre GitHub Security Advisories üzerinden özel olarak bildirin. Herkese açık issue, tartışma veya pull request içinde paylaşmayın.
 
 ## Lisans
 

@@ -1,7 +1,7 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { SnippetSidebarContent } from '../snippet-sidebar'
 
@@ -24,7 +24,7 @@ vi.mock('@/app/components/app-sidebar/snippet-info/dropdown', () => ({
   default: () => <div data-testid="snippet-info-dropdown" />,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },

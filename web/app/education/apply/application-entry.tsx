@@ -3,7 +3,7 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { redirect } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import EducationApplyPage from './application-form'
 
 const selectEducationPlan = ({ billing, education }: GetFeaturesResponse) => ({

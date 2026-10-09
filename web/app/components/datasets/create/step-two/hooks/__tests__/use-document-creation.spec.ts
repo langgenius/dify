@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   invalidDatasetList: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
   toast: {
     success: (message: string) => mocks.toastNotify({ type: 'success', message }),

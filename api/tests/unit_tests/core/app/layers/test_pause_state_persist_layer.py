@@ -29,6 +29,7 @@ from graphon.graph_events import (
     GraphRunSucceededEvent,
 )
 from graphon.runtime import ReadOnlyVariablePool
+from graphon.variables import build_segment
 from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
@@ -92,10 +93,7 @@ class MockReadOnlyVariablePool:
         value = self._variables.get((selector[0], selector[1]))
         if value is None:
             return None
-        mock_segment = Mock(spec=Segment)
-        mock_segment.value = value
-        mock_segment.text = value if isinstance(value, str) else None
-        return mock_segment
+        return build_segment(value)
 
     def get_all_by_node(self, node_id: str) -> dict[str, object]:
         return {key: value for (nid, key), value in self._variables.items() if nid == node_id}

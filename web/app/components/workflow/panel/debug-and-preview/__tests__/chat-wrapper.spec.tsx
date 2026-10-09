@@ -1,5 +1,6 @@
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -29,6 +30,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onHumanInputFormSubmit,
     onFeatureBarClick,
     speechToTextTarget,
+    onOpenLog,
   }: {
     chatNode: React.ReactNode
     inputDisabled?: boolean
@@ -46,6 +48,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     ) => Promise<void>
     onFeatureBarClick?: (state: boolean) => void
     speechToTextTarget?: SpeechToTextTarget
+    onOpenLog?: (item: IChatItem) => void
   }) => (
     <div
       data-testid="chat-shell"
@@ -84,6 +87,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
       </button>
       <button type="button" onClick={() => onFeatureBarClick?.(true)}>
         open-feature-panel
+      </button>
+      <button
+        onClick={() =>
+          onOpenLog?.({ id: 'log-1', isAnswer: true, content: 'answer', workflow_run_id: 'run-1' })
+        }
+      >
+        open-log
       </button>
       {chatNode}
     </div>
@@ -208,11 +218,15 @@ describe('ChatWrapper', () => {
       })
     })
 
+    await userEvent.click(screen.getByRole('button', { name: 'open-log' }))
+    expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
+
     act(() => {
       chatRef.current?.handleRestart()
     })
 
     expect(chatState.handleRestart).toHaveBeenCalledTimes(1)
+    expect(store.getState().messageLogItem).toBeUndefined()
     expect(store.getState().inputs).toEqual({
       name: 'Ada',
     })

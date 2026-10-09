@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
@@ -17,30 +18,26 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import type { DataSet } from '@/models/datasets'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { toast } from '@/app/notifications'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import {
   createAgentToolProviderCatalog,
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
-import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -80,6 +77,8 @@ import useNodesAvailableVarList, {
 } from './use-nodes-available-var-list'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useGetToolIcon } from './use-tool-icon'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryResponse[] = []
 
 export type ChecklistItem = {
   id: string
@@ -164,7 +163,7 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -178,14 +177,20 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const dataSourceList = useStore((s) => s.dataSourceList)
   const environmentVariables =
     useStore((s) => s.environmentVariables) ?? EMPTY_ENVIRONMENT_VARIABLES
-  const { data: strategyProviders } = useStrategyProviders()
+  const { data: strategyProviders } = useQuery(
+    consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
+  )
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const configsMap = useHooksStore((s) => s.configsMap)
 
@@ -277,8 +282,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     inlineAgentIssueTools,
     inlineAgentToolProviderCatalog,
   )
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const knowledgeBaseEmbeddingProviders = useMemo(() => {
     const providers = new Set<string>()
 
@@ -395,7 +410,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
           isReadyForCheckValid,
         }
       } else {
-        usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
+        usedVars = getNodeUsedVars(node!, { forExecution: true }).filter((v) => v.length > 0)
       }
 
       if (node!.data.type === BlockEnum.LLM) {
@@ -542,22 +557,22 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter(
-      (key: any) => (nodesExtraData as any)[key].metaData.isRequired,
-    )
+    const isRequiredNodesType = Object.entries(nodesExtraData!)
+      .filter(([, node]) => node.metaData.isRequired)
+      .map(([type]) => type as BlockEnum)
 
-    isRequiredNodesType.forEach((type: string) => {
+    isRequiredNodesType.forEach((type) => {
       if (!filteredNodes.some((node) => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+          title: t(($) => $[`blocks.${type}`], {
             ns: 'workflow',
           }),
           errorMessages: [
             t(($) => $['common.needAdd'], {
               ns: 'workflow',
-              node: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+              node: t(($) => $[`blocks.${type}`], {
                 ns: 'workflow',
               }),
             }),
@@ -603,19 +618,35 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 }
 
 export const useChecklistBeforePublish = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
   const language = useGetLanguage()
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
-  const { data: strategyProviders } = useStrategyProviders()
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: strategyProviders } = useQuery(
+    consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
+  )
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const updateDatasetsDetail = useDatasetsDetailStore((s) => s.updateDatasetsDetail)
   const updateTimeRef = useRef(0)
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -771,7 +802,7 @@ export const useChecklistBeforePublish = () => {
           isReadyForCheckValid,
         }
       } else {
-        usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
+        usedVars = getNodeUsedVars(node!, { forExecution: true }).filter((v) => v.length > 0)
       }
 
       if (node!.data.type === BlockEnum.LLM) {
@@ -867,18 +898,16 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter(
-      (key: any) => (nodesExtraData as any)[key].metaData.isRequired,
-    )
+    const isRequiredNodesType = Object.entries(nodesExtraData!)
+      .filter(([, node]) => node.metaData.isRequired)
+      .map(([type]) => type as BlockEnum)
 
-    for (let i = 0; i < isRequiredNodesType.length; i++) {
-      const type = isRequiredNodesType[i]
-
+    for (const type of isRequiredNodesType) {
       if (!filteredNodes.some((node) => node.data.type === type)) {
         toast.error(
           t(($) => $['common.needAdd'], {
             ns: 'workflow',
-            node: t(($) => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], {
+            node: t(($) => $[`blocks.${type}`], {
               ns: 'workflow',
             }),
           }),
@@ -913,7 +942,7 @@ export const useChecklistBeforePublish = () => {
 }
 
 export const useWorkflowRunValidation = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)

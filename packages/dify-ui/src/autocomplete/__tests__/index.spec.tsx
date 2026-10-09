@@ -5,8 +5,6 @@ import {
   Autocomplete,
   AutocompleteClear,
   AutocompleteEmpty,
-  AutocompleteGroup,
-  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
@@ -16,10 +14,21 @@ import {
   AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
-  AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
+  useAutocompleteFilteredItems,
 } from '../index'
+
+function AutocompleteTypeExamples() {
+  const filteredItems = useAutocompleteFilteredItems<string>()
+
+  // @ts-expect-error internally filtered items are read-only
+  filteredItems.push('workflow')
+
+  return null
+}
+
+void AutocompleteTypeExamples
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -82,13 +91,13 @@ describe('Autocomplete wrappers', () => {
         .not.toBe(restingBoxShadow)
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderAutocomplete({
         children: (
           <AutocompleteInputGroup>
             <AutocompleteInput
               aria-label="Search suggestions"
-              className="custom-input"
+
               placeholder="Find a resource"
               required
             />
@@ -105,9 +114,6 @@ describe('Autocomplete wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
         .toBeRequired()
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
-        .toHaveClass('custom-input')
     })
 
     it('should not inject input-only attributes into a custom textarea', async () => {
@@ -231,45 +237,6 @@ describe('Autocomplete wrappers', () => {
         .element(screen.getByRole('group', { name: 'autocomplete positioner' }))
         .toHaveAttribute('data-side', 'top')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should forward custom classes to label separator item text and indicator', async () => {
-      const screen = await renderWithSafeViewport(
-        <Autocomplete open defaultValue="workflow" items={['workflow']}>
-          <AutocompleteInputGroup>
-            <AutocompleteInput aria-label="Search suggestions" />
-          </AutocompleteInputGroup>
-          <AutocompletePortal>
-            <AutocompletePositioner>
-              <AutocompletePopup role="dialog" aria-label="autocomplete popup">
-                <AutocompleteList role="listbox" aria-label="autocomplete list">
-                  <AutocompleteGroup items={['workflow']}>
-                    <AutocompleteGroupLabel className="custom-label">
-                      Resources
-                    </AutocompleteGroupLabel>
-                    <AutocompleteSeparator className="custom-separator" data-testid="separator" />
-                    <AutocompleteItem value="workflow" className="custom-item">
-                      <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
-                      <AutocompleteItemIndicator
-                        className="custom-indicator"
-                        data-testid="indicator"
-                      />
-                    </AutocompleteItem>
-                  </AutocompleteGroup>
-                </AutocompleteList>
-              </AutocompletePopup>
-            </AutocompletePositioner>
-          </AutocompletePortal>
-        </Autocomplete>,
-      )
-
-      await expect.element(screen.getByText('Resources')).toHaveClass('custom-label')
-      await expect.element(screen.getByTestId('separator')).toHaveClass('custom-separator')
-      await expect
-        .element(screen.getByRole('option', { name: 'Workflow' }))
-        .toHaveClass('custom-item')
-      await expect.element(screen.getByText('Workflow')).toHaveClass('custom-text')
-      await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
     })
 
     it('should navigate function-rendered items with arrow keys', async () => {

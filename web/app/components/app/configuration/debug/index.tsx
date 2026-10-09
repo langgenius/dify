@@ -1,14 +1,23 @@
 'use client'
+import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import {
+  zAppChatPromptPayload,
+  zAppDatasetConfigPayload,
+  zAppFileUploadPayload,
+  zAppUserInputFormPayload,
+} from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
@@ -17,11 +26,9 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -34,7 +41,7 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { sendCompletionMessage } from '@/service/debug'
 import { AppSourceType } from '@/service/share'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
@@ -48,7 +55,7 @@ import DebugWithSingleModel from './debug-with-single-model'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from './types'
 
 type IDebug = {
-  isAPIKeySet: boolean
+  isPreview?: boolean
   onSetting: () => void
   inputs: Inputs
   modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
@@ -58,7 +65,7 @@ type IDebug = {
 }
 
 const Debug: FC<IDebug> = ({
-  isAPIKeySet = true,
+  isPreview = false,
   onSetting,
   inputs,
   modelParameterParams,
@@ -66,7 +73,7 @@ const Debug: FC<IDebug> = ({
   multipleModelConfigs,
   onMultipleModelConfigsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'modelProvider'])
   const {
     canTestAndRun = false,
     appId,
@@ -229,41 +236,53 @@ const Debug: FC<IDebug> = ({
     }))
     const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
 
-    const postModelConfig: BackendModelConfig = {
-      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
-      prompt_type: promptMode,
-      chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
-      completion_prompt_config: isAdvancedMode
-        ? completionPromptConfig
-        : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
-      user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
-      dataset_query_variable: contextVar || '',
-      dataset_configs: {
-        ...datasetConfigs,
-        datasets: {
-          datasets: [...postDatasets],
-        } as any,
-      },
-      agent_mode: {
-        enabled: false,
-        tools: [],
-      },
-      model: {
-        provider: modelConfig.provider,
-        name: modelConfig.model_id,
-        mode: modelConfig.mode,
-        completion_params: completionParams as any,
-      },
-      more_like_this: features.moreLikeThis as any,
-      sensitive_word_avoidance: features.moderation as any,
-      text_to_speech: features.text2speech as any,
-      file_upload: features.file as any,
-      opening_statement: introduction,
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      retriever_resource: citationConfig,
-      system_parameters: modelConfig.system_parameters,
-      external_data_tools: externalDataToolsConfig,
+    let postModelConfig: AppModelConfigPayload
+    try {
+      const chatPrompt = zAppChatPromptPayload.parse(
+        isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+      )
+      const fileUpload = { ...features.file }
+      delete fileUpload.fileUploadConfig
+      postModelConfig = {
+        pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+        prompt_type: promptMode,
+        chat_prompt_config: chatPrompt,
+        completion_prompt_config: isAdvancedMode
+          ? completionPromptConfig
+          : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
+        user_input_form: zAppUserInputFormPayload
+          .array()
+          .parse(promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables)),
+        dataset_query_variable: contextVar || '',
+        dataset_configs: zAppDatasetConfigPayload.parse({
+          ...datasetConfigs,
+          datasets: {
+            datasets: postDatasets,
+          },
+        }),
+        agent_mode: {
+          enabled: false,
+          tools: [],
+        },
+        model: {
+          provider: modelConfig.provider,
+          name: modelConfig.model_id,
+          mode: modelConfig.mode,
+          completion_params: completionParams,
+        },
+        more_like_this: features.moreLikeThis,
+        sensitive_word_avoidance: features.moderation,
+        text_to_speech: features.text2speech,
+        file_upload: zAppFileUploadPayload.parse(fileUpload),
+        opening_statement: introduction,
+        suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+        speech_to_text: speechToTextConfig,
+        retriever_resource: citationConfig,
+        external_data_tools: externalDataToolsConfig,
+      }
+    } catch {
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      return false
     }
 
     const data: Record<string, any> = {
@@ -271,7 +290,7 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if ((features.file as any).enabled && completionFiles && completionFiles?.length > 0) {
+    if (features.file?.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
@@ -332,9 +351,16 @@ const Debug: FC<IDebug> = ({
     }
   })
 
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const hasActiveProvider =
+    isPreview || !!textGenerationModelList?.some((provider) => provider.status === 'active')
   const handleChangeToSingleModel = (item: ModelAndParameter) => {
-    const currentProvider = textGenerationModelList.find(
+    const currentProvider = textGenerationModelList?.find(
       (modelItem) => modelItem.provider === item.provider,
     )
     const currentModel = currentProvider?.models.find((model) => model.model === item.model)
@@ -342,8 +368,11 @@ const Debug: FC<IDebug> = ({
     modelParameterParams.setModel({
       modelId: item.model,
       provider: item.provider,
-      mode: currentModel?.model_properties.mode as string,
-      features: currentModel?.features,
+      mode:
+        typeof currentModel?.model_properties.mode === 'string'
+          ? currentModel.model_properties.mode
+          : undefined,
+      features: currentModel?.features ?? undefined,
     })
     modelParameterParams.onCompletionParamsChange(item.parameters)
     onMultipleModelConfigsChange(false, [])
@@ -352,7 +381,7 @@ const Debug: FC<IDebug> = ({
   const handleVisionConfigInMultipleModel = useCallback(() => {
     if (debugWithMultipleModel && mode) {
       const supportedVision = multipleModelConfigs.some((modelConfig) => {
-        const currentProvider = textGenerationModelList.find(
+        const currentProvider = textGenerationModelList?.find(
           (modelItem) => modelItem.provider === modelConfig.provider,
         )
         const currentModel = currentProvider?.models.find(
@@ -377,33 +406,40 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode, handleVisionConfigInMultipleModel])
 
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showPromptLogModal,
-    setShowPromptLogModal,
-    showAgentLogModal,
-    setShowAgentLogModal,
-  } = useAppStore(
-    useShallow((state) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showPromptLogModal: state.showPromptLogModal,
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      showAgentLogModal: state.showAgentLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-    })),
-  )
-  const [width, setWidth] = useState(0)
+  const [selectedLogItem, setSelectedLogItem] = useState<IChatItem>()
+  const [logModalWidth, setLogModalWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
+  const singleChatContainerRef = useRef<HTMLDivElement>(null)
 
-  const adjustModalWidth = () => {
-    if (ref.current) setWidth(document.body.clientWidth - (ref.current?.clientWidth + 16) - 8)
+  const handleOpenLog = (item: IChatItem) => {
+    const container =
+      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
+        ? ref.current
+        : singleChatContainerRef.current
+    if (container) setLogModalWidth(document.body.clientWidth - (container.clientWidth + 16) - 8)
+    setSelectedLogItem(item)
   }
 
   useEffect(() => {
-    adjustModalWidth()
-  }, [])
+    if (!selectedLogItem) return
+    const container =
+      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
+        ? ref.current
+        : singleChatContainerRef.current
+    if (!container) return
+
+    const adjustModalWidth = () => {
+      setLogModalWidth(document.body.clientWidth - (container.clientWidth + 16) - 8)
+    }
+    const observer = new ResizeObserver(adjustModalWidth)
+    observer.observe(container)
+    window.addEventListener('resize', adjustModalWidth)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', adjustModalWidth)
+    }
+  }, [debugWithMultipleModel, mode, selectedLogItem])
 
   const [expanded, setExpanded] = useState(true)
 
@@ -411,9 +447,9 @@ const Debug: FC<IDebug> = ({
     <>
       <Collapsible open={expanded} onOpenChange={setExpanded} render={<div className="shrink-0" />}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="system-xl-semibold text-text-primary">
+          <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['inputs.title'], { ns: 'appDebug' })}
-          </div>
+          </h2>
           <div className="flex items-center">
             {debugWithMultipleModel ? (
               <>
@@ -428,7 +464,7 @@ const Debug: FC<IDebug> = ({
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
                   <span aria-hidden="true" className="i-ri-add-line size-3.5" />
-                  {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
+                  {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}(
                   {multipleModelConfigs.length}
                   /4)
                 </Button>
@@ -464,7 +500,7 @@ const Debug: FC<IDebug> = ({
                       <TooltipTrigger
                         render={
                           <CollapsibleTrigger
-                            className="size-6 min-h-0 justify-center gap-0 p-0.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+                            className="rounded-lg text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
                             render={
                               <IconButton
                                 aria-label={t(($) => $['panel.userInputField'], { ns: 'workflow' })}
@@ -515,35 +551,18 @@ const Debug: FC<IDebug> = ({
             onMultipleModelConfigsChange={onMultipleModelConfigsChange}
             onDebugWithMultipleModelChange={handleChangeToSingleModel}
             checkCanSend={checkCanSend}
+            onOpenLog={handleOpenLog}
           />
-          {showPromptLogModal && (
-            <PromptLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowPromptLogModal(false)
-              }}
-            />
-          )}
-          {showAgentLogModal && (
-            <AgentLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowAgentLogModal(false)
-              }}
-            />
-          )}
         </div>
       )}
       {!debugWithMultipleModel && (
         <div className="flex grow flex-col" ref={ref}>
           {/* No model provider configured */}
-          {(!modelConfig.provider || !isAPIKeySet) && <HasNotSetAPIKEY onSetting={onSetting} />}
+          {(!modelConfig.provider || !hasActiveProvider) && (
+            <HasNotSetAPIKEY onSetting={onSetting} />
+          )}
           {/* No model selected */}
-          {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
+          {modelConfig.provider && hasActiveProvider && !modelConfig.model_id && (
             <div className="flex grow flex-col items-center justify-center pb-30">
               <div className="flex w-full max-w-100 flex-col gap-2 px-4 py-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
@@ -565,7 +584,12 @@ const Debug: FC<IDebug> = ({
           {/* Chat */}
           {mode !== AppModeEnum.COMPLETION && (
             <div className="h-0 grow overflow-hidden">
-              <DebugWithSingleModel ref={debugWithSingleModelRef} checkCanSend={checkCanSend} />
+              <DebugWithSingleModel
+                ref={debugWithSingleModelRef}
+                checkCanSend={checkCanSend}
+                onOpenLog={handleOpenLog}
+                chatContainerRef={singleChatContainerRef}
+              />
             </div>
           )}
           {/* Text  Generation */}
@@ -588,6 +612,7 @@ const Debug: FC<IDebug> = ({
                       isError={false}
                       onRetry={noop}
                       siteInfo={null}
+                      onOpenLog={handleOpenLog}
                     />
                   </div>
                 </>
@@ -605,21 +630,26 @@ const Debug: FC<IDebug> = ({
               )}
             </>
           )}
-          {mode === AppModeEnum.COMPLETION && showPromptLogModal && (
-            <PromptLogModal
-              width={width}
-              currentLogItem={currentLogItem}
-              onCancel={() => {
-                setCurrentLogItem()
-                setShowPromptLogModal(false)
-              }}
-            />
-          )}
           {isShowCannotQueryDataset && (
             <CannotQueryDataset onConfirm={() => setShowCannotQueryDataset(false)} />
           )}
         </div>
       )}
+      {selectedLogItem &&
+        (selectedLogItem.agent_thoughts?.length ? (
+          <AgentLogModal
+            appId={appId}
+            width={logModalWidth}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
+          />
+        ) : (
+          <PromptLogModal
+            width={logModalWidth}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
+          />
+        ))}
       {isShowFormattingChangeConfirm && (
         <FormattingChanged onConfirm={handleConfirm} onCancel={handleCancel} />
       )}

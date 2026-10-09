@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { waitForUrl } from '../support/process'
+import { waitForUrl } from '../support/process.ts'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -26,8 +26,8 @@ import {
   runForegroundProcess,
   waitForCondition,
   webDir,
-} from './common'
-import './env-register'
+} from './common.ts'
+import './env-register.ts'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
@@ -569,7 +569,7 @@ export const startMiddleware = async () => {
 
 const printUsage = () => {
   console.log(
-    'Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web|web-build>',
+    'Usage: node ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web|web-build>',
   )
 }
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from inspect import unwrap
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -54,6 +56,17 @@ from controllers.console.workspace.tool_providers import (
 )
 from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolProviderApiEntity
 from models.account import Account, TenantAccountRole
+from services.credentials.query import CredentialQuery
+
+
+@pytest.fixture
+def credential_query() -> Iterator[MagicMock]:
+    query = create_autospec(CredentialQuery, instance=True, spec_set=True)
+    with patch(
+        "controllers.console.workspace.tool_providers.application_services",
+        return_value=SimpleNamespace(credential_queries=query),
+    ):
+        yield query
 
 
 def empty_mapping() -> dict[str, object]:
@@ -337,7 +350,7 @@ class TestBuiltinProviderApis:
             req = BuiltinToolUpdatePayload(**payload)
             assert method(api, req, "t", make_account(), "provider")["result"] == "success"
 
-    def test_get_credentials(self, app: Flask) -> None:
+    def test_get_credentials(self, app: Flask, credential_query: MagicMock) -> None:
         api = ToolBuiltinProviderGetCredentialsApi()
         method = unwrap(api.get)
 
@@ -346,9 +359,10 @@ class TestBuiltinProviderApis:
             patch(
                 "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credentials",
                 return_value=[credential_payload()],
-            ),
+            ) as get_credentials,
         ):
             assert method(api, "t", make_account(id="user-1"), "provider")[0]["id"] == "credential-1"
+        assert get_credentials.call_args.kwargs["credential_query"] is credential_query
 
     def test_icon(self, app: Flask) -> None:
         api = ToolBuiltinProviderIconApi()
@@ -391,7 +405,7 @@ class TestBuiltinProviderApis:
             req = BuiltinProviderDefaultCredentialPayload(id="c1")
             assert method(api, req, "t", "provider")["result"] == "success"
 
-    def test_get_credential_info(self, app: Flask) -> None:
+    def test_get_credential_info(self, app: Flask, credential_query: MagicMock) -> None:
         api = ToolBuiltinProviderGetCredentialInfoApi()
         method = unwrap(api.get)
 
@@ -400,9 +414,10 @@ class TestBuiltinProviderApis:
             patch(
                 "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credential_info",
                 return_value=credential_info_payload(),
-            ),
+            ) as get_info,
         ):
             assert method(api, "t", make_account(), "provider")["credentials"][0]["id"] == "credential-1"
+        assert get_info.call_args.kwargs["credential_query"] is credential_query
 
     def test_get_oauth_client_schema(self, app: Flask) -> None:
         api = ToolBuiltinProviderGetOauthClientSchemaApi()

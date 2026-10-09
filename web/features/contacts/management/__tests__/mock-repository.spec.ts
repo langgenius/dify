@@ -1,13 +1,18 @@
 import type { ContactsManagementRepository } from '../repository'
 import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { createContactsApiRepository } from '../repository'
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
+    workspace: {
+      current: {
+        humanInput: { v2: { channels: { get: vi.fn() } } },
+      },
+    },
     workspaces: {
       current: {
         humanInput: {
@@ -471,7 +476,10 @@ describe('contacts API repository', () => {
 
   it('fetches details independently and distinguishes not-found from an unavailable API', async () => {
     const repository = createContactsApiRepository()
-    vi.mocked(contacts.byContactId.get).mockResolvedValueOnce({ contact: externalContact })
+    vi.mocked(contacts.byContactId.get).mockResolvedValueOnce({
+      contact: externalContact,
+      im_binding_details: [],
+    })
 
     await expect(repository.getContact(externalContact.id)).resolves.toEqual({
       ...externalContact,
@@ -495,7 +503,9 @@ describe('contacts API repository', () => {
 
   it('sends backend field names for creation and editing and returns the server contact ID', async () => {
     const repository = createContactsApiRepository()
-    vi.mocked(contacts.external.post).mockResolvedValueOnce({ contact: externalContact })
+    vi.mocked(contacts.external.post).mockResolvedValueOnce({
+      contact: externalContact,
+    })
     vi.mocked(contacts.external.byContactId.patch).mockResolvedValueOnce({
       contact: externalContact,
     })
@@ -529,7 +539,9 @@ describe('contacts API repository', () => {
     ['empty reset value', ''],
   ])('forwards the avatar %s when creating or updating a contact', async (_label, avatar) => {
     const repository = createContactsApiRepository()
-    vi.mocked(contacts.external.post).mockResolvedValueOnce({ contact: externalContact })
+    vi.mocked(contacts.external.post).mockResolvedValueOnce({
+      contact: externalContact,
+    })
     vi.mocked(contacts.external.byContactId.patch).mockResolvedValueOnce({
       contact: externalContact,
     })
@@ -618,6 +630,32 @@ describe('contacts IM API repository', () => {
     im_bindings: [{ id: 'binding-1', provider: 'feishu' as const, scope: 'organization' as const }],
   }
   beforeEach(() => vi.resetAllMocks())
+
+  it('reads configured IM channels without exposing email channels or application identifiers as identities', async () => {
+    const channelClient = consoleClient.workspace.current.humanInput.v2.channels
+    const base = {
+      config_version: 'version-1',
+      created_at: 1,
+      display_identifier: 'app-identifier',
+      status: 'configured' as const,
+      status_description: '',
+      updated_at: 1,
+      webhook_url: null,
+    }
+    vi.mocked(channelClient.get).mockResolvedValue({
+      channels: [
+        { ...base, id: 'email-channel', kind: 'email', provider: 'resend' },
+        { ...base, id: 'slack-channel', kind: 'im', provider: 'slack' },
+      ],
+    })
+
+    const repository = createContactsApiRepository()
+
+    await expect(repository.listIMChannels?.()).resolves.toEqual([
+      { id: 'slack-channel', provider: 'slack' },
+    ])
+    expect(channelClient.get).toHaveBeenCalledWith(undefined, { context: { silent: true } })
+  })
 
   it('searches synced identities with server pagination and preserves binding status', async () => {
     const identity = {

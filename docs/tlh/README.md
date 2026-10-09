@@ -60,7 +60,6 @@
   <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </p>
 
-# 
 
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -94,7 +93,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 ## Using Dify
 
 - **Cloud </br>**
-  We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan.
+  We host [Dify Cloud](https://cloud.dify.ai) so you can try Dify without managing a server. See the [pricing page](https://dify.ai/pricing) for current plans and usage allowances.
 
 - **Self-hosting Dify Community Edition</br>**
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
@@ -140,7 +139,7 @@ Dify welcomes contributions of all kinds:
 
 - **Code**: Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
-- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) to add or update a locale.
+- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
 ### Contributors
@@ -163,7 +162,7 @@ Choose the channel that best fits your question:
 
 ## Security Disclosure
 
-To protect your privacy, please avoid posting security issues on GitHub. Instead, send your questions to security@dify.ai and we will provide you with a more detailed answer.
+Report vulnerabilities privately through GitHub Security Advisories, following our [security policy](../../SECURITY.md). Do not disclose them in public issues, discussions, or pull requests.
 
 ## License
 

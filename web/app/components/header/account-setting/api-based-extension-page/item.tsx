@@ -1,17 +1,17 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type ItemProps = {
   apiBasedExtension: ApiBasedExtensionResponse
@@ -19,7 +19,10 @@ type ItemProps = {
   canManage?: boolean
 }
 export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
+  const nameId = useId()
+  const editLabelId = useId()
+  const deleteLabelId = useId()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteApiBasedExtensionMutation = useMutation(
     consoleQuery.apiBasedExtension.byId.delete.mutationOptions(),
@@ -50,19 +53,27 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
   return (
     <div className="group mb-2 flex items-center rounded-xl border-[0.5px] border-transparent bg-components-input-bg-normal px-4 py-2 focus-within:border-components-input-border-active focus-within:shadow-xs hover:border-components-input-border-active hover:shadow-xs">
       <div className="min-w-0 grow">
-        <div className="mb-0.5 text-[13px] font-medium text-text-secondary">
+        <div id={nameId} className="mb-0.5 text-[13px] font-medium text-text-secondary">
           {apiBasedExtension.name}
         </div>
         <div className="truncate text-xs text-text-tertiary">{apiBasedExtension.api_endpoint}</div>
       </div>
       <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-        <Button disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
+        <Button
+          aria-labelledby={`${editLabelId} ${nameId}`}
+          disabled={!canManage}
+          onClick={handleOpenApiBasedExtensionModal}
+        >
           <span className="i-ri-edit-line size-4" aria-hidden="true" />
-          {t(($) => $['operation.edit'], { ns: 'common' })}
+          <span id={editLabelId}>{t(($) => $['operation.edit'], { ns: 'common' })}</span>
         </Button>
-        <Button disabled={!canManage} onClick={() => canManage && setShowDeleteConfirm(true)}>
+        <Button
+          aria-labelledby={`${deleteLabelId} ${nameId}`}
+          disabled={!canManage}
+          onClick={() => canManage && setShowDeleteConfirm(true)}
+        >
           <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
-          {t(($) => $['operation.delete'], { ns: 'common' })}
+          <span id={deleteLabelId}>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
       </div>
       <AlertDialog
@@ -75,7 +86,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
               {`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -85,7 +96,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
             >
               {t(($) => $['operation.delete'], { ns: 'common' }) || ''}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

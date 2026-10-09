@@ -17,7 +17,7 @@ export function ContactImDirectorySyncSection({
   integration: ContactImIntegrationView
   onViewDetails: (runId: string) => void
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const activeSyncQuery = useContactImActiveSync()
   const startSync = useStartContactImSync()

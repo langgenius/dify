@@ -1,32 +1,24 @@
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import MagicMock, Mock, call, patch
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class DocumentIndexingTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for DocumentIndexingTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan | str | None = CloudPlan.SANDBOX) -> Mock:
+    def create_mock_features(plan: CloudPlan | str | None = CloudPlan.SANDBOX) -> Mock:
         """Create mock features with billing configuration."""
         features = Mock()
         features.billing = Mock()
-        features.billing.enabled = billing_enabled
         features.billing.subscription = Mock()
         features.billing.subscription.plan = plan
         return features
-
-    @staticmethod
-    def create_mock_tenant_queue(has_task_key: bool = False) -> Mock:
-        """Create mock TenantIsolatedTaskQueue."""
-        queue = Mock(spec=TenantIsolatedTaskQueue)
-        queue.get_task_key.return_value = "task_key" if has_task_key else None
-        queue.push_tasks = Mock()
-        queue.set_task_waiting_time = Mock()
-        return queue
 
     @staticmethod
     def create_document_task_proxy(
@@ -93,21 +85,21 @@ class TestDocumentIndexingTaskProxy:
         )
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
-    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task):
+    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        proxy._tenant_isolated_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=True
-        )
+        tenant_queue_commands.return_value = "task_key"
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once()
-        pushed_tasks = proxy._tenant_isolated_task_queue.push_tasks.call_args[0][0]
+        assert [entry.args[0] for entry in tenant_queue_commands.call_args_list] == ["GET", "LPUSH"]
+        push = tenant_queue_commands.call_args_list[1]
+        assert push.args[1] == "tenant_self_document_indexing_task_queue:tenant-123"
+        pushed_tasks = [json.loads(push.args[2])["data"]]
         assert len(pushed_tasks) == 1
         assert isinstance(DocumentTask(**pushed_tasks[0]), DocumentTask)
         assert pushed_tasks[0]["tenant_id"] == "tenant-123"
@@ -116,24 +108,29 @@ class TestDocumentIndexingTaskProxy:
         mock_task.delay.assert_not_called()
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
-    def test_send_to_tenant_queue_without_task_key(self, mock_task):
+    def test_send_to_tenant_queue_without_task_key(self, mock_task, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        proxy._tenant_isolated_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=False
-        )
+        tenant_queue_commands.return_value = None
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        tenant_queue_commands.assert_has_calls(
+            [
+                call(
+                    "GET", "tenant_document_indexing_task:tenant-123", keys=["tenant_document_indexing_task:tenant-123"]
+                ),
+                call("SETEX", "tenant_document_indexing_task:tenant-123", 3600, 1),
+            ]
+        )
         mock_task.delay.assert_called_once_with(
             tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1", "doc-2", "doc-3"]
         )
-        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
+        assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
     def test_send_to_default_tenant_queue(self):
         """Test _send_to_default_tenant_queue method."""
@@ -171,13 +168,12 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_direct_queue.assert_called_once_with(proxy.PRIORITY_TASK_FUNC)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_with_billing_enabled_sandbox_plan(self, mock_feature_service):
-        """Test _dispatch method when billing is enabled with sandbox plan."""
+    def test_dispatch_with_cloud_sandbox_plan(self, mock_feature_service):
+        """Test _dispatch method in Cloud with Sandbox plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan=CloudPlan.SANDBOX
-        )
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_default_tenant_queue = Mock()
@@ -188,13 +184,12 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_default_tenant_queue.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_with_billing_enabled_non_sandbox_plan(self, mock_feature_service):
-        """Test _dispatch method when billing is enabled with non-sandbox plan."""
+    def test_dispatch_with_cloud_paid_plan(self, mock_feature_service):
+        """Test _dispatch method in Cloud with a paid plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan=CloudPlan.TEAM
-        )
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_priority_tenant_queue = Mock()
@@ -205,11 +200,12 @@ class TestDocumentIndexingTaskProxy:
         # If billing enabled with non sandbox plan, should send to priority tenant queue
         proxy._send_to_priority_tenant_queue.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_with_billing_disabled(self, mock_feature_service):
-        """Test _dispatch method when billing is disabled."""
+    def test_dispatch_outside_cloud(self, mock_feature_service):
+        """Test _dispatch method outside Cloud."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=False)
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features()
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_priority_direct_queue = Mock()
@@ -220,13 +216,12 @@ class TestDocumentIndexingTaskProxy:
         # If billing disabled, for example: self-hosted or enterprise, should send to priority direct queue
         proxy._send_to_priority_direct_queue.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
     def test_delay_method(self, mock_feature_service):
         """Test delay method integration."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan=CloudPlan.SANDBOX
-        )
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_default_tenant_queue = Mock()
@@ -253,11 +248,12 @@ class TestDocumentIndexingTaskProxy:
         assert task.dataset_id == dataset_id
         assert task.document_ids == document_ids
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
     def test_dispatch_edge_case_empty_plan(self, mock_feature_service):
         """Test _dispatch method with empty plan string."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="")
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan="")
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_priority_tenant_queue = Mock()
@@ -268,11 +264,12 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_priority_tenant_queue.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
     def test_dispatch_edge_case_none_plan(self, mock_feature_service):
         """Test _dispatch method with None plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan=None)
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=None)
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_priority_tenant_queue = Mock()

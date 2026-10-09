@@ -2,17 +2,17 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 
 type DeleteAgentDialogProps = {
   agentId: string
@@ -29,8 +29,8 @@ export function DeleteAgentDialog({
   onOpenChange,
   onDeleted,
 }: DeleteAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
   const deleteAgentMutation = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
 
   const handleDelete = () => {
@@ -44,12 +44,12 @@ export function DeleteAgentDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.deleteSuccess']))
+          toast.success(t(($) => $['roster.deleteSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
           onDeleted?.()
         },
         onError: () => {
-          toast.error(t(($) => $['roster.deleteFailed']))
+          toast.error(t(($) => $['roster.deleteFailed'], { ns: 'agentRoster' }))
         },
       },
     )
@@ -59,12 +59,12 @@ export function DeleteAgentDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="p-6">
         <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.deleteDialog.title'], { name: agentName })}
+          {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name: agentName })}
         </AlertDialogTitle>
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {t(($) => $['roster.deleteDialog.description'], { name: agentName })}
+          {t(($) => $['roster.deleteDialog.description'], { ns: 'agentRoster', name: agentName })}
         </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
+        <AlertDialogFooter className="p-0 pt-6">
           <AlertDialogCancelButton disabled={deleteAgentMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -75,7 +75,7 @@ export function DeleteAgentDialog({
           >
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

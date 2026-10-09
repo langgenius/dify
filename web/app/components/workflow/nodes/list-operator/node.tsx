@@ -11,7 +11,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'nodes.listFilter'
 
 const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const nodes: Node[] = useNodes()
   const { variable } = data

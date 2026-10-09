@@ -15,7 +15,7 @@ describe('useDatasourceUIState', () => {
     selectedFileIdsLength: 0,
     onlineDriveFileList: [] as OnlineDriveFile[],
     isVectorSpaceFull: false,
-    enableBilling: false,
+
     currentWorkspacePagesLength: 0,
     fileUploadConfig: { file_size_limit: 50, batch_count_limit: 20 },
   }
@@ -39,19 +39,12 @@ describe('useDatasourceUIState', () => {
   })
 
   describe('isShowVectorSpaceFull', () => {
-    it('should be false when billing disabled', () => {
-      const { result } = renderHook(() =>
-        useDatasourceUIState({ ...defaultParams, isVectorSpaceFull: true }),
-      )
-      expect(result.current.isShowVectorSpaceFull).toBe(false)
-    })
-
     it('should be true when billing enabled and space is full for local file', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
           isVectorSpaceFull: true,
-          enableBilling: true,
+
           allFileLoaded: true,
         }),
       )
@@ -64,7 +57,6 @@ describe('useDatasourceUIState', () => {
           ...defaultParams,
           datasource: undefined,
           isVectorSpaceFull: true,
-          enableBilling: true,
         }),
       )
       expect(result.current.isShowVectorSpaceFull).toBe(false)

@@ -1,17 +1,17 @@
 import type { StartNodeType } from './types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { hasDuplicateStr } from '@/utils/var'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 
 const useConfig = (id: string, payload: StartNodeType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
   const isChatMode = useIsChatMode()

@@ -6,7 +6,6 @@ import {
   Drawer,
   DrawerBackdrop,
   DrawerClose,
-  DrawerCloseButton,
   DrawerContent,
   DrawerDescription,
   DrawerIndent,
@@ -21,6 +20,7 @@ import {
 } from '.'
 import { Button } from '../button'
 import { cn } from '../cn'
+import { IconButton } from '../icon-button'
 import { Input } from '../input'
 import {
   ScrollArea,
@@ -47,7 +47,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound drawer built on Base UI Drawer. Use it for side panels, bottom sheets, nested editor panels, snap-point sheets, and mobile navigation surfaces that need swipe gestures. If the panel only needs modal focus management without gestures, use Dialog instead.',
+          'Compound drawer built on Base UI Drawer. Use it for side panels, bottom sheets, nested editor panels, snap-point sheets, and mobile navigation surfaces that need swipe gestures. If the panel only needs modal focus management without gestures, use Dialog instead. DrawerClose is unstyled anatomy: compose it with IconButton for an icon-only control or Button for a visible action.',
       },
     },
   },
@@ -83,7 +83,13 @@ export const Default: Story = {
                     Review the key runtime defaults for this workspace.
                   </DrawerDescription>
                 </div>
-                <DrawerCloseButton className="shrink-0" />
+                <DrawerClose
+                  render={
+                    <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="grid gap-3">
@@ -135,7 +141,13 @@ function ControlledDemo() {
                       events.
                     </DrawerDescription>
                   </div>
-                  <DrawerCloseButton className="shrink-0" />
+                  <DrawerClose
+                    render={
+                      <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                   <label
@@ -189,7 +201,13 @@ export const Positions: Story = {
                       popup styles.
                     </DrawerDescription>
                   </div>
-                  <DrawerCloseButton className="shrink-0" />
+                  <DrawerClose
+                    render={
+                      <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
@@ -224,7 +242,13 @@ export const Positions: Story = {
                       popup styles.
                     </DrawerDescription>
                   </div>
-                  <DrawerCloseButton className="shrink-0" />
+                  <DrawerClose
+                    render={
+                      <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
@@ -658,7 +682,13 @@ function NonModalDemo() {
                     Focus is not trapped and outside pointer dismissal is disabled.
                   </DrawerDescription>
                 </div>
-                <DrawerCloseButton className="shrink-0" />
+                <DrawerClose
+                  render={
+                    <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
@@ -838,7 +868,13 @@ function SwipeToOpenDemo() {
                       Swipe from the edge whenever you want to jump back into a panel.
                     </DrawerDescription>
                   </div>
-                  <DrawerCloseButton className="shrink-0" />
+                  <DrawerClose
+                    render={
+                      <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
                 <div className="min-h-0 flex-1" />
                 <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -996,7 +1032,13 @@ function DetachedTriggersDemo() {
                           'This drawer is opened by a trigger outside Drawer.Root.'}
                       </DrawerDescription>
                     </div>
-                    <DrawerCloseButton className="shrink-0" />
+                    <DrawerClose
+                      render={
+                        <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
+                    />
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                     <div className="mb-3 rounded-xl bg-state-accent-hover px-3 py-2 text-xs font-medium text-text-accent">
@@ -1054,7 +1096,13 @@ export const StackingAndAnimations: Story = {
                     nested data attributes.
                   </DrawerDescription>
                 </div>
-                <DrawerCloseButton className="shrink-0" />
+                <DrawerClose
+                  render={
+                    <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="grid gap-3">
@@ -1082,7 +1130,17 @@ export const StackingAndAnimations: Story = {
                                   swipe transition classes.
                                 </DrawerDescription>
                               </div>
-                              <DrawerCloseButton className="shrink-0" />
+                              <DrawerClose
+                                render={
+                                  <IconButton
+                                    className="shrink-0"
+                                    aria-label="Close drawer"
+                                    size="lg"
+                                  >
+                                    <span aria-hidden="true" className="i-ri-close-line size-4" />
+                                  </IconButton>
+                                }
+                              />
                             </div>
                             <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                               <div className="rounded-xl bg-background-section-burn p-3 text-sm/5 text-text-secondary">
@@ -1147,7 +1205,13 @@ export const InstantRightPanel: Story = {
                     clicks.
                   </DrawerDescription>
                 </div>
-                <DrawerCloseButton className="shrink-0" />
+                <DrawerClose
+                  render={
+                    <IconButton className="shrink-0" aria-label="Close drawer" size="lg">
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">

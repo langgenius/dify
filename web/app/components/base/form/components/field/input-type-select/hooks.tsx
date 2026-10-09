@@ -46,7 +46,7 @@ const DATA_TYPE = {
 }
 
 export const useInputTypeOptions = (supportFile: boolean) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const options = supportFile
     ? InputTypeEnum.options
     : InputTypeEnum.exclude(['file', 'file-list']).options

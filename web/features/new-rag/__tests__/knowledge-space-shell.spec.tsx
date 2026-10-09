@@ -34,8 +34,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
   return {
     ...original,
     consoleQuery: {
@@ -98,7 +98,7 @@ describe('KnowledgeSpaceShell', () => {
     )
 
     expect(queryOptionsMock).toHaveBeenCalledWith({ input: { params: { id: 'space-1' } } })
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('renders a refresh-safe header and route navigation when loaded', () => {

@@ -3,14 +3,13 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
-import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
 type ICSVDownloadProps = {
   vars: { name: string }[]
 }
 
 const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { CSVDownloader, Type } = useCSVDownloader()
   const addQueryContentVars = [...vars]
   const template = (() => {
@@ -31,9 +30,12 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
           <thead className="text-text-tertiary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className="h-9 border-b border-divider-regular pr-2 pl-3">
+                <th
+                  key={i}
+                  className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]"
+                >
                   {item.name}
-                </td>
+                </th>
               ))}
             </tr>
           </thead>
@@ -59,7 +61,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
         data={[template]}
       >
         <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="size-3" />
+          <span aria-hidden className="i-custom-vender-solid-general-download-02 size-3" />
           <span>{t(($) => $['generation.downloadTemplate'], { ns: 'share' })}</span>
         </div>
       </CSVDownloader>

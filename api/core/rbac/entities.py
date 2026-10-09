@@ -5,11 +5,12 @@ class RBACResourceScope(StrEnum):
     """Resource scopes accepted by the ``rbac_permission_required`` decorator.
 
     ``WORKSPACE`` denotes a workspace-level check that carries no concrete
-    resource id; ``APP`` and ``DATASET`` are resource-scoped checks.
+    resource id; ``APP``, ``DATASET`` and ``AGENT`` are resource-scoped checks.
     """
 
     APP = "app"
     DATASET = "dataset"
+    AGENT = "agent"
     WORKSPACE = "workspace"
 
 
@@ -41,6 +42,19 @@ class RBACPermission(StrEnum):
     APP_DELETE = "app_delete"
     APP_ACCESS_CONFIG = "app_access_config"
 
+    AGENT_CREATE = "agent_create"
+    AGENT_PREVIEW = "agent_preview"
+    AGENT_EDIT = "agent_edit"
+    AGENT_TEST_AND_RUN = "agent_test_and_run"
+    AGENT_RELEASE_AND_VERSION = "agent_release_and_version"
+    AGENT_ACCESS_POINT_VIEW = "agent_access_point_view"
+    AGENT_ACCESS_POINT_MANAGE = "agent_access_point_manage"
+    AGENT_LOG_MANAGE = "agent_log_manage"
+    AGENT_MONITOR = "agent_monitor"
+    AGENT_ACCESS_CONFIG = "agent_access_config"
+    AGENT_IMPORT_EXPORT_DSL = "agent_import_export_dsl"
+    AGENT_DELETE = "agent_delete"
+
     DATASET_PREVIEW = "dataset_preview"
     DATASET_READONLY = "dataset_readonly"
     DATASET_EDIT = "dataset_edit"
@@ -61,7 +75,6 @@ class RBACPermission(StrEnum):
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
     API_EXTENSION_MANAGE = "api_extension_manage"
     CUSTOMIZATION_MANAGE = "customization_manage"
-    AGENT_MANAGE = "agent_manage"
     SKILL_VIEW = "skill_view"
     SKILL_EDIT = "skill_edit"
     SKILL_PUBLISH = "skill_publish"
@@ -83,3 +96,25 @@ class RBACPermission(StrEnum):
 
     TOOL_MANAGE = "tool_manage"
     MCP_MANAGE = "mcp_manage"
+
+    @property
+    def scope(self) -> RBACResourceScope:
+        if self in _FUNCTION_SCOPED_RESOURCE_SCENES:
+            return RBACResourceScope.WORKSPACE
+        prefix = self.name.split("_", 1)[0]
+        return _SCENE_PREFIX_SCOPE.get(prefix, RBACResourceScope.WORKSPACE)
+
+
+_SCENE_PREFIX_SCOPE: dict[str, RBACResourceScope] = {
+    "APP": RBACResourceScope.APP,
+    "DATASET": RBACResourceScope.DATASET,
+    "AGENT": RBACResourceScope.AGENT,
+}
+
+_FUNCTION_SCOPED_RESOURCE_SCENES: frozenset[RBACPermission] = frozenset(
+    {
+        RBACPermission.APP_CREATE_AND_MANAGEMENT,
+        RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+        RBACPermission.AGENT_CREATE,
+    }
+)

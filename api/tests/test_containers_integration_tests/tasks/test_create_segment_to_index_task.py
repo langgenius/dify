@@ -19,6 +19,7 @@ from extensions.ext_redis import redis_client
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 
 
@@ -99,7 +100,7 @@ class TestCreateSegmentToIndexTask:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account, tenant
 
@@ -226,7 +227,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.error is None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify Redis cache cleanup
@@ -552,7 +555,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_different_doc_forms(
@@ -983,7 +988,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_tenant_isolation(
@@ -1057,7 +1064,9 @@ class TestCreateSegmentToIndexTask:
         assert segment.completed_at is not None
 
         # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(dataset.doc_form)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_comprehensive_integration(

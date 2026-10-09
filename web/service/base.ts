@@ -28,9 +28,9 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { toast } from '@/app/notifications'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,

@@ -160,7 +160,7 @@ export const WithoutCloseButton: Story = {
   ),
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -274,7 +274,7 @@ type ApiExtensionFormValues = {
   apiKey: string
 }
 
-const FormDialogDemo = () => {
+function FormDialogDemo() {
   const [open, setOpen] = React.useState(false)
   const nameInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -363,11 +363,13 @@ export const FormDialog: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Configure API extension' }))
 
-    await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    await waitFor(async () => {
+      await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    })
   },
 }
 
-const OutsideScrollingContentDemo = () => {
+function OutsideScrollingContentDemo() {
   const [open, setOpen] = React.useState(false)
   const popupRef = React.useRef<HTMLDivElement>(null)
 
@@ -463,7 +465,7 @@ export const OutsidePopupElements: Story = {
   ),
 }
 
-const InsideScrollingContentDemo = () => {
+function InsideScrollingContentDemo() {
   const [open, setOpen] = React.useState(false)
 
   return (

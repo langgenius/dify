@@ -77,7 +77,7 @@ describe('RagPipeline', () => {
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('passes initialized graph data to the pipeline', () => {

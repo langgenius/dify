@@ -1,5 +1,5 @@
-import type { AppCategory } from '@/models/explore'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Category from '../category'
 
 describe('Category', () => {
@@ -7,7 +7,7 @@ describe('Category', () => {
 
   const renderComponent = (overrides: Partial<React.ComponentProps<typeof Category>> = {}) => {
     const props: React.ComponentProps<typeof Category> = {
-      list: ['Writing', 'Recommended'] as AppCategory[],
+      list: ['Writing', 'Recommended'],
       value: allCategoriesEn,
       onChange: vi.fn(),
       allCategoriesEn,
@@ -36,18 +36,20 @@ describe('Category', () => {
   })
 
   describe('Props', () => {
-    it('should call onChange with category value when category item is clicked', () => {
+    it('should call onChange with category value when category item is clicked', async () => {
+      const user = userEvent.setup()
       const { props } = renderComponent()
 
-      fireEvent.click(screen.getByText('explore.category.Writing'))
+      await user.click(screen.getByText('explore.category.Writing'))
 
       expect(props.onChange).toHaveBeenCalledWith('Writing')
     })
 
-    it('should call onChange with allCategoriesEn when all categories is clicked', () => {
+    it('should call onChange with allCategoriesEn when all categories is clicked', async () => {
+      const user = userEvent.setup()
       const { props } = renderComponent({ value: 'Writing' })
 
-      fireEvent.click(screen.getByText('explore.apps.allCategories'))
+      await user.click(screen.getByText('explore.apps.allCategories'))
 
       expect(props.onChange).toHaveBeenCalledWith(allCategoriesEn)
     })
@@ -62,7 +64,7 @@ describe('Category', () => {
     })
 
     it('should render raw category name when i18n key does not exist', () => {
-      renderComponent({ list: ['CustomCategory', 'Recommended'] as AppCategory[] })
+      renderComponent({ list: ['CustomCategory', 'Recommended'] })
 
       expect(screen.getByText('CustomCategory')).toBeInTheDocument()
     })
@@ -72,9 +74,9 @@ describe('Category', () => {
     it('should render categories as a radio group', () => {
       renderComponent({ value: 'Writing' })
 
-      expect(screen.getByRole('radiogroup', { name: 'explore.tryApp.category' })).toHaveClass(
-        'bg-transparent',
-      )
+      expect(
+        screen.getByRole('radiogroup', { name: 'explore.tryApp.category' }),
+      ).toBeInTheDocument()
       expect(screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })).toHaveAttribute(
         'aria-checked',
         'false',

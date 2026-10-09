@@ -2,7 +2,7 @@ from typing import override
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from services.website_service import WebsiteService
+from services.data_source.website_service import WebsiteService
 
 
 class FirecrawlWebExtractor(BaseExtractor):
@@ -24,8 +24,11 @@ class FirecrawlWebExtractor(BaseExtractor):
         tenant_id: str,
         mode: str = "crawl",
         only_main_content: bool = True,
+        *,
+        website_service: WebsiteService,
     ):
         """Initialize with url, api_key, base_url and mode."""
+        self._website_service = website_service
         self._url = url
         self.job_id = job_id
         self.tenant_id = tenant_id
@@ -37,7 +40,7 @@ class FirecrawlWebExtractor(BaseExtractor):
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
-            crawl_data = WebsiteService.get_crawl_url_data(self.job_id, "firecrawl", self._url, self.tenant_id)
+            crawl_data = self._website_service.get_crawl_url_data(self.job_id, "firecrawl", self._url, self.tenant_id)
             if crawl_data is None:
                 return []
             document = Document(
@@ -50,7 +53,7 @@ class FirecrawlWebExtractor(BaseExtractor):
             )
             documents.append(document)
         elif self.mode == "scrape":
-            scrape_data = WebsiteService.get_scrape_url_data(
+            scrape_data = self._website_service.get_scrape_url_data(
                 "firecrawl", self._url, self.tenant_id, self.only_main_content
             )
 

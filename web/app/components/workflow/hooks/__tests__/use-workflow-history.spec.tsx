@@ -9,10 +9,6 @@ const reactFlowState = vi.hoisted(() => ({
   nodes: [] as Node[],
 }))
 
-vi.mock('es-toolkit/compat', () => ({
-  debounce: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
-}))
-
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
   return {
@@ -57,8 +53,13 @@ describe('useWorkflowHistory', () => {
     reactFlowState.edges = edges
   })
 
-  it('stores the latest workflow graph snapshot for supported events', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowHistory(), {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('coalesces saves across rerenders and stores the latest graph snapshot', () => {
+    vi.useFakeTimers()
+    const { result, rerender } = renderWorkflowHook(() => useWorkflowHistory(), {
       historyStore: {
         nodes,
         edges,
@@ -66,8 +67,20 @@ describe('useWorkflowHistory', () => {
     })
 
     act(() => {
-      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: 'node-1' })
+      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeDelete, { nodeId: 'node-2' })
+      vi.advanceTimersByTime(200)
     })
+    rerender()
+    reactFlowState.nodes = nodes.map((node) => ({
+      ...node,
+      data: { ...node.data, title: 'Updated' },
+    }))
+    act(() => {
+      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: 'node-1' })
+      vi.advanceTimersByTime(499)
+    })
+    expect(result.current.store.getState().workflowHistoryEvent).toBeUndefined()
+    act(() => vi.advanceTimersByTime(1))
 
     expect(result.current.store.getState().workflowHistoryEvent).toBe(WorkflowHistoryEvent.NodeAdd)
     expect(result.current.store.getState().workflowHistoryEventMeta).toEqual({ nodeId: 'node-1' })
@@ -76,7 +89,7 @@ describe('useWorkflowHistory', () => {
         id: 'node-1',
         data: expect.objectContaining({
           selected: false,
-          title: 'Start',
+          title: 'Updated',
         }),
       }),
     ])

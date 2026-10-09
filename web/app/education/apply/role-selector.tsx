@@ -10,7 +10,7 @@ type RoleSelectorProps = {
 }
 
 const RoleSelector = ({ onChange, value }: RoleSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const options: { key: EducationRole; value: string }[] = [
     {
       key: 'Student',

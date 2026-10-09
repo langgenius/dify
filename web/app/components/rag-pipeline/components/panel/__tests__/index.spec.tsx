@@ -21,7 +21,7 @@ const { dynamicComponent } = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => dynamicComponent(),
 }))
 

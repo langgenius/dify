@@ -3,11 +3,11 @@
 import type { Member } from '@/models/common'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar } from '@langgenius/dify-ui/avatar'
@@ -28,7 +28,7 @@ export function MemberRemovalContactImpactDialog({
   onRemoved: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('contacts')
+  const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
   const removal = useRemoveContactMember()
   const [keepAsPlatformContact, setKeepAsPlatformContact] = useState(true)
@@ -128,7 +128,7 @@ export function MemberRemovalContactImpactDialog({
             </p>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={removal.isPending}>
             {t(($) => $['action.cancel'])}
           </AlertDialogCancelButton>
@@ -137,7 +137,7 @@ export function MemberRemovalContactImpactDialog({
               ? t(($) => $['memberRemoval.removing'])
               : t(($) => $['memberRemoval.remove'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

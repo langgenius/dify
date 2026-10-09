@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { confirmPageLeave } from '@/utils/page-leave-guard'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
@@ -54,7 +55,7 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       createKnowledgeSpace: serviceMock.create,
@@ -856,6 +857,11 @@ describe('CreateKnowledgePage', () => {
     act(() => window.dispatchEvent(event))
 
     expect(event.defaultPrevented).toBe(true)
+    const confirm = vi.fn().mockReturnValue(false)
+    vi.stubGlobal('confirm', confirm)
+    expect(confirmPageLeave()).toBe(false)
+    expect(confirm).toHaveBeenCalledWith('dataset.newKnowledge.discardDraftDescription')
+    vi.unstubAllGlobals()
   })
 
   it('asks before leaving an unsaved draft with browser Back', async () => {

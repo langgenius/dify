@@ -3,8 +3,6 @@ import type { ImageFile, VisionSettings } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'
 import { useImageFiles } from './hooks'
 import ImageLinkInput from './image-link-input'
@@ -16,7 +14,7 @@ type PasteImageLinkButtonProps = {
   disabled?: boolean
 }
 const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disabled }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   const handleUpload = (imageFile: ImageFile) => {
@@ -37,7 +35,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disable
           <div
             className={`relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} `}
           >
-            <Link03 className="mr-2 size-4" />
+            <span aria-hidden className="mr-2 i-custom-vender-line-general-link-03 size-4" />
             {t(($) => $['imageUploader.pasteImageLink'], { ns: 'common' })}
           </div>
         }
@@ -65,7 +63,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   onFilesChange,
   disabled,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { files, onUpload, onRemove, onImageLinkLoadError, onImageLinkLoadSuccess, onReUpload } =
     useImageFiles()
@@ -84,7 +82,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
         <div
           className={`flex h-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary ${hovering && 'hover:bg-components-button-tertiary-bg-hover'} `}
         >
-          <ImagePlus className="mr-2 size-4" />
+          <span aria-hidden className="mr-2 i-custom-vender-line-images-image-plus size-4" />
           {t(($) => $['imageUploader.uploadFromComputer'], { ns: 'common' })}
         </div>
       )}

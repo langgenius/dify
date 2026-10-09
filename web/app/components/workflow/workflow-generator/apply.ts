@@ -1,12 +1,12 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
-import { createApp, deleteApp } from '@/service/apps'
+import type { AppModeEnum } from '@/types/app'
+import { consoleClient } from '@/service/console'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 
-const MODE_TO_APP_MODE: Record<WorkflowGeneratorMode, AppModeEnum> = {
-  workflow: AppModeEnum.WORKFLOW,
-  'advanced-chat': AppModeEnum.ADVANCED_CHAT,
-}
+const MODE_TO_APP_MODE = {
+  workflow: 'workflow',
+  'advanced-chat': 'advanced-chat',
+} as const satisfies Record<WorkflowGeneratorMode, AppModeEnum>
 
 /**
  * Thrown by ``applyToCurrentApp`` when the backend rejects the sync because
@@ -98,13 +98,15 @@ export const applyToNewApp = async ({
   const appMode = MODE_TO_APP_MODE[mode]
   const name = (appName ?? '').trim() || deriveAppName(instruction)
   const appIcon = (icon ?? '').trim() || '🤖'
-  const app = await createApp({
-    name,
-    mode: appMode,
-    icon_type: 'emoji',
-    icon: appIcon,
-    icon_background: '#FFEAD5',
-    description: instruction.trim().slice(0, 200),
+  const app = await consoleClient.apps.post({
+    body: {
+      name,
+      mode: appMode,
+      icon_type: 'emoji',
+      icon: appIcon,
+      icon_background: '#FFEAD5',
+      description: instruction.trim().slice(0, 200),
+    },
   })
 
   // Sync the generated graph into the brand-new app's draft. ``createApp``
@@ -126,7 +128,7 @@ export const applyToNewApp = async ({
     })
   } catch (syncErr) {
     try {
-      await deleteApp(app.id)
+      await consoleClient.apps.byAppId.delete({ params: { app_id: app.id } })
     } catch (deleteErr) {
       throw new WorkflowApplyOrphanError(app.id, deleteErr)
     }

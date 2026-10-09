@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ToolType } from '../../../workflow/block-selector/types'
@@ -24,6 +24,16 @@ describe('Empty', () => {
       'href',
       'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow',
     )
+  })
+
+  it('exposes the workflow setup steps as an ordered list', () => {
+    render(<Empty type={ToolType.Workflow} />)
+
+    const steps = within(screen.getByRole('list')).getAllByRole('listitem')
+    expect(steps).toHaveLength(3)
+    steps.forEach((step, index) => {
+      expect(within(step).getByText(`tools.workflowToolEmpty.step${index + 1}`)).toBeInTheDocument()
+    })
   })
 
   it('does not offer installation navigation in an agent empty state', () => {

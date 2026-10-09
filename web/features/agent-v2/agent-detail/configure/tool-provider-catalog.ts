@@ -13,6 +13,8 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
   AgentProviderTool,
@@ -54,6 +56,9 @@ export function createAgentToolProviderCatalog({
 
   allProviders.forEach((provider) => {
     providers.set(provider.id, provider)
+    // Redundant for every type except MCP, which the saved config references by
+    // server identifier.
+    providers.set(getProviderReference(provider), provider)
     providers.set(provider.name, provider)
     if (provider.plugin_id) {
       providers.set(provider.plugin_id, provider)
@@ -95,6 +100,14 @@ export function getAgentProviderPluginId(tool: AgentToolPresentationProvider) {
   if (providerIdSegments.length !== 3) return ''
 
   return providerIdSegments.slice(0, 2).join('/')
+}
+
+export function getAgentProviderToolIcon(tool: AgentProviderTool, provider?: ToolWithProvider) {
+  if (tool.icon) return tool.icon
+  if (provider?.icon) return provider.icon
+
+  const pluginId = getAgentProviderPluginId(tool)
+  return pluginId ? getIconFromMarketPlace(pluginId) : undefined
 }
 
 function getMarketplacePluginInfo(pluginId: string) {

@@ -12,7 +12,7 @@ vi.mock('./base', () => ({
   upload: vi.fn(),
 }))
 
-vi.mock('./client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

@@ -6,7 +6,7 @@ import { useExportSnippetMutation } from '../use-snippets'
 
 const mockExportSnippet = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

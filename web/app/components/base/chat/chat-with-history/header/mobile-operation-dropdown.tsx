@@ -18,7 +18,7 @@ const MobileOperationDropdown = ({
   handleViewChatSettings,
   hideViewChatSettings = false,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const handleMenuAction = (callback: () => void) => {
     queueMicrotask(callback)
   }

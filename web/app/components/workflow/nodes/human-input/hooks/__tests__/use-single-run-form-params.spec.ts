@@ -16,7 +16,7 @@ const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: { error: mockToastError } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: mockToastError } }))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
@@ -27,7 +27,7 @@ vi.mock('@/app/components/app/store', () => ({
     mockUseAppStore(selector),
 }))
 
-vi.mock('@/service/client', () => {
+vi.mock('@/service/console', () => {
   const form = {
     preview: {
       post: ({

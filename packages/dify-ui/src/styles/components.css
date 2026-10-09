@@ -86,3 +86,41 @@
     transition: none;
   }
 }
+
+[data-dify-spinner] > rect {
+  animation: dify-spinner-opacity 2s linear infinite;
+}
+
+[data-dify-spinner] > rect:nth-child(2) {
+  animation-delay: 0.5s;
+}
+[data-dify-spinner] > rect:nth-child(3) {
+  animation-delay: 1s;
+}
+[data-dify-spinner] > rect:nth-child(4) {
+  animation-delay: 1.5s;
+}
+
+@keyframes dify-spinner-opacity {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  75% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dify-spinner] > rect {
+    animation: none;
+  }
+}

@@ -11,7 +11,7 @@ import { upload } from '@/service/base'
 export const getImageUploadErrorMessage = (
   error: any,
   defaultMessage: string,
-  t: TFunction,
+  t: TFunction<['common']>,
 ): string => {
   const errorCode = error?.response?.code
 

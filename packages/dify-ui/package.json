@@ -21,6 +21,10 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
@@ -56,6 +60,14 @@
     "./dialog": {
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
+    },
+    "./date-picker": {
+      "types": "./src/date-time/date-picker/index.tsx",
+      "import": "./src/date-time/date-picker/index.tsx"
+    },
+    "./date-time-picker": {
+      "types": "./src/date-time/date-time-picker/index.tsx",
+      "import": "./src/date-time/date-time-picker/index.tsx"
     },
     "./drawer": {
       "types": "./src/drawer/index.tsx",
@@ -153,6 +165,10 @@
       "types": "./src/textarea/index.tsx",
       "import": "./src/textarea/index.tsx"
     },
+    "./time-picker": {
+      "types": "./src/date-time/time-picker/index.tsx",
+      "import": "./src/date-time/time-picker/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
@@ -160,6 +176,22 @@
     "./tooltip": {
       "types": "./src/tooltip/index.tsx",
       "import": "./src/tooltip/index.tsx"
+    },
+    "./spinner": {
+      "types": "./src/spinner/index.tsx",
+      "import": "./src/spinner/index.tsx"
+    },
+    "./separator": {
+      "types": "./src/separator/index.tsx",
+      "import": "./src/separator/index.tsx"
+    },
+    "./infotip": {
+      "types": "./src/infotip/index.tsx",
+      "import": "./src/infotip/index.tsx"
+    },
+    "./direction-provider": {
+      "types": "./src/direction-provider/index.tsx",
+      "import": "./src/direction-provider/index.tsx"
     }
   },
   "scripts": {
@@ -171,7 +203,11 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "cn": "catalog:"
+    "@base-ui/utils": "catalog:",
+    "@date-fns/tz": "catalog:",
+    "@daypicker/react": "catalog:",
+    "cn": "catalog:",
+    "date-fns": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",

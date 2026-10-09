@@ -1,21 +1,19 @@
-import json
-
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy import select
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.schema import register_schema_models
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import enterprise_inner_api_only
-from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
-from models import Account
-from models.account import TenantAccountRole
-from services.account_service import (
-    EnterpriseWorkspaceMemberAccountNotFoundError,
-    EnterpriseWorkspaceMemberWorkspaceNotFoundError,
-    TenantService,
+from controllers.inner_api.wraps import inner_api_only
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
+from services.account_errors import AccountNotFoundError
+from services.errors.workspace import (
+    InvalidWorkspaceMemberRoleError,
+    WorkspaceNotFoundError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
 )
 
 
@@ -43,7 +41,7 @@ register_schema_models(inner_api_ns, WorkspaceCreatePayload, WorkspaceOwnerlessP
 @inner_api_ns.route("/enterprise/workspace")
 class EnterpriseWorkspace(Resource):
     @setup_required
-    @enterprise_inner_api_only
+    @inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace")
     @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__])
@@ -55,38 +53,30 @@ class EnterpriseWorkspace(Resource):
         }
     )
     def post(self):
-        args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
-
-        account = db.session.scalar(select(Account).where(Account.email == args.owner_email).limit(1))
-        if account is None:
+        args = validate_request(WorkspaceCreatePayload)
+        try:
+            tenant = application_services().workspaces.provisioning.create(name=args.name, owner_email=args.owner_email)
+        except WorkspaceOwnerNotFoundError:
             return {"message": "owner account not found."}, 404
-
-        tenant = TenantService.create_owner_tenant(
-            account,
-            name=args.name,
-            is_from_dashboard=True,
-            session=db.session(),
-        )
-
-        resp = {
-            "id": tenant.id,
-            "name": tenant.name,
-            "plan": tenant.plan,
-            "status": tenant.status,
-            "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
-            "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
-        }
-
+        except WorkspacesLimitExceededError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
         return {
             "message": "enterprise workspace created.",
-            "tenant": resp,
+            "tenant": {
+                "id": tenant.id,
+                "name": tenant.name,
+                "plan": tenant.plan,
+                "status": tenant.status,
+                "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
+                "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
+            },
         }
 
 
 @inner_api_ns.route("/enterprise/workspace/ownerless")
 class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @setup_required
-    @enterprise_inner_api_only
+    @inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace_ownerless")
     @inner_api_ns.doc(description="Create a new enterprise workspace without initial owner assignment")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceOwnerlessPayload.__name__])
@@ -98,33 +88,27 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
         }
     )
     def post(self):
-        args = WorkspaceOwnerlessPayload.model_validate(inner_api_ns.payload or {})
-
-        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True, session=db.session())
-
-        tenant_was_created.send(tenant)
-
-        resp = {
-            "id": tenant.id,
-            "name": tenant.name,
-            "encrypt_public_key": tenant.encrypt_public_key,
-            "plan": tenant.plan,
-            "status": tenant.status,
-            "custom_config": json.loads(tenant.custom_config) if tenant.custom_config else {},
-            "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
-            "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
-        }
-
+        args = validate_request(WorkspaceOwnerlessPayload)
+        tenant = application_services().workspaces.provisioning.create(name=args.name)
         return {
             "message": "enterprise workspace created.",
-            "tenant": resp,
+            "tenant": {
+                "id": tenant.id,
+                "name": tenant.name,
+                "encrypt_public_key": tenant.encrypt_public_key,
+                "plan": tenant.plan,
+                "status": tenant.status,
+                "custom_config": tenant.custom_config,
+                "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
+                "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
+            },
         }
 
 
 @inner_api_ns.route("/enterprise/workspace/member")
 class EnterpriseWorkspaceMember(Resource):
     @setup_required
-    @enterprise_inner_api_only
+    @inner_api_only
     @inner_api_ns.doc("join_enterprise_workspace_member")
     @inner_api_ns.doc(description="Add an existing account to an enterprise workspace")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceMemberPayload.__name__])
@@ -137,33 +121,26 @@ class EnterpriseWorkspaceMember(Resource):
         }
     )
     def post(self):
-        args = WorkspaceMemberPayload.model_validate(inner_api_ns.payload or {})
-
+        args = validate_request(WorkspaceMemberPayload)
         try:
-            role = TenantAccountRole(args.role)
-        except ValueError:
-            return {"message": "invalid workspace member role."}, 400
-        if role == TenantAccountRole.OWNER:
-            return {"message": "cannot join workspace as owner."}, 400
-
-        try:
-            membership = TenantService.join_enterprise_workspace_member(
+            member = application_services().workspaces.provisioning.join_member(
                 workspace_id=args.workspace_id,
                 account_id=args.account_id,
                 email=args.email,
-                role=role,
+                role=args.role,
                 operator_account_id=args.operator_account_id,
             )
-        except EnterpriseWorkspaceMemberWorkspaceNotFoundError:
+        except InvalidWorkspaceMemberRoleError as exc:
+            return {"message": str(exc)}, 400
+        except WorkspaceNotFoundError:
             return {"message": "workspace not found."}, 404
-        except EnterpriseWorkspaceMemberAccountNotFoundError:
+        except AccountNotFoundError:
             return {"message": "account not found."}, 404
-
         return {
             "message": "enterprise workspace member joined.",
             "member": {
-                "workspace_id": membership.tenant_id,
-                "account_id": membership.account_id,
-                "role": membership.role.value,
+                "workspace_id": member.workspace_id,
+                "account_id": member.account_id,
+                "role": member.role,
             },
         }

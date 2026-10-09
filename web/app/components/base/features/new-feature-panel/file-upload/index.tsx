@@ -9,7 +9,6 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
 
 type Props = Readonly<{
   disabled: boolean
@@ -17,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const FileUpload = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'fileUpload'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const [modalOpen, setModalOpen] = useState(false)
@@ -48,10 +47,13 @@ const FileUpload = ({ disabled, onChange }: Props) => {
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-600 p-1 shadow-xs">
-          <FolderUpload className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-folder-upload size-4 text-text-primary-on-surface"
+          />
         </div>
       }
-      title={t(($) => $['feature.fileUpload.title'], { ns: 'appDebug' })}
+      title={t(($) => $['feature.fileUpload.title'], { ns: 'fileUpload' })}
       value={file?.enabled}
       onChange={(state) => handleChange(FeatureEnum.file, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -61,7 +63,7 @@ const FileUpload = ({ disabled, onChange }: Props) => {
       <>
         {!file?.enabled && (
           <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-            {t(($) => $['feature.fileUpload.description'], { ns: 'appDebug' })}
+            {t(($) => $['feature.fileUpload.description'], { ns: 'fileUpload' })}
           </div>
         )}
         {file?.enabled && (
@@ -70,14 +72,14 @@ const FileUpload = ({ disabled, onChange }: Props) => {
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.fileUpload.supportedTypes'], { ns: 'appDebug' })}
+                    {t(($) => $['feature.fileUpload.supportedTypes'], { ns: 'fileUpload' })}
                   </div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.fileUpload.numberLimit'], { ns: 'appDebug' })}
+                    {t(($) => $['feature.fileUpload.numberLimit'], { ns: 'fileUpload' })}
                   </div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>

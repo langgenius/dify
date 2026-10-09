@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import EmbeddingModel from '../embedding-model'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelListQuery = vi.hoisted(() => vi.fn())
 const mockModelSelector = vi.hoisted(() =>
   vi.fn(() => <div data-testid="model-selector">selector</div>),
 )
@@ -22,10 +22,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: mockUseModelList,
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: mockModelSelector,
 }))
@@ -33,7 +29,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 describe('EmbeddingModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockReturnValue({
+    mockModelListQuery.mockReturnValue({
       data: [{ provider: 'openai', model: 'text-embedding-3-large' }],
     })
   })
@@ -50,7 +46,9 @@ describe('EmbeddingModel', () => {
       />,
     )
 
-    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding)
+    expect(mockModelListQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { params: { model_type: ModelTypeEnum.textEmbedding } } }),
+    )
     expect(mockModelSelector).toHaveBeenCalledWith(
       expect.objectContaining({
         value: {
@@ -75,4 +73,9 @@ describe('EmbeddingModel', () => {
       undefined,
     )
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return { ...actual, useQuery: mockModelListQuery }
 })

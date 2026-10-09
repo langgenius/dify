@@ -1,11 +1,11 @@
 """OpenAPI JSON rendering tests for Flask-RESTX API blueprints."""
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
 
 
 @pytest.fixture(autouse=True)
@@ -13,10 +13,55 @@ def _swagger_config(config_overrides) -> None:
     config_overrides(SWAGGER_UI_ENABLED=True)
 
 
+OpenAPIJSONLoader = Callable[[Blueprint, str, bool], str]
+
+
+@pytest.fixture(scope="module")
+def openapi_json() -> OpenAPIJSONLoader:
+    """Render each blueprint/config pair once; tests parse their own JSON objects.
+
+    Loading stays lazy so rendering runs after the per-test config and isolation
+    fixtures. Tests that change routes or config must render their own documents.
+    """
+    documents: dict[tuple[Blueprint, str, bool], str] = {}
+
+    def load(blueprint: Blueprint, route: str, include_all_models: bool) -> str:
+        key = (blueprint, route, include_all_models)
+        if key not in documents:
+            app = Flask(__name__)
+            app.config["TESTING"] = True
+            if include_all_models:
+                app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+            app.register_blueprint(blueprint)
+            response = app.test_client().get(route)
+            assert response.status_code == 200
+            documents[key] = response.get_data(as_text=True)
+        return documents[key]
+
+    return load
+
+
+@pytest.fixture(scope="module")
+def _exported_spec_directory(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("swagger-specs")
+
+
+@pytest.fixture
+def exported_console_json(_exported_spec_directory: Path, _swagger_config: None) -> str:
+    """Exercise the exporter once; tests parse independent copies of its output."""
+    from dev.generate_swagger_specs import generate_specs
+
+    console_openapi_path = _exported_spec_directory / "console-openapi.json"
+    if not console_openapi_path.exists():
+        written_paths = generate_specs(_exported_spec_directory)
+        assert console_openapi_path in written_paths
+    return console_openapi_path.read_text(encoding="utf-8")
+
+
 USER_PROPERTY_SCHEMA = {
     "description": (
-        "User identifier, unique within the application. This identifier scopes data access; resources created with "
-        "one `user` value are only visible when queried with the same `user` value."
+        "End-user identifier, defined by your app and unique within it. Identifies the end user for this request. "
+        "See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules."
     ),
     "type": "string",
 }
@@ -195,19 +240,11 @@ def test_openapi_json_endpoints_render():
 
 
 def test_console_node_data_migration_documents_canonical_delivery_method_union(
-    monkeypatch: pytest.MonkeyPatch,
+    openapi_json: OpenAPIJSONLoader,
 ) -> None:
-    from configs import dify_config
     from controllers.console import bp as console_bp
 
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
-
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     schemas = payload["components"]["schemas"]
     operation = payload["paths"]["/workspaces/current/human-input/node-data-migration"]["post"]
     request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
@@ -243,15 +280,65 @@ def test_console_node_data_migration_documents_canonical_delivery_method_union(
         }
 
 
-def test_service_document_file_routes_document_multipart_form_data():
+def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader):
+    from controllers.console import bp as console_bp
+    from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
+
+    voices = payload["paths"]["/agent/{agent_id}/text-to-audio/voices"]["get"]
+    language = _parameters_by_name(voices)["language"]
+    assert language["in"] == "query"
+    assert language["required"] is True
+    assert "requestBody" not in voices
+
+    preview = payload["paths"]["/agent/{agent_id}/text-to-audio"]["post"]
+    required_fields = _json_body_schema(payload, preview)["required"]
+    assert isinstance(required_fields, list)
+    assert "text" in required_fields
+    assert _response_content_types(preview) == set(SUPPORTED_TTS_AUDIO_MIME_TYPES)
+    for media in preview["responses"]["200"]["content"].values():
+        assert media["schema"] == {"type": "string", "format": "binary"}
+    for status in ("400", "403", "404"):
+        assert _response_content_types(preview, status) == {"application/json"}
+
+
+def test_console_segment_mutation_contracts_survive_admission(openapi_json: OpenAPIJSONLoader) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
+    paths = payload["paths"]
+    document_path = "/datasets/{dataset_id}/documents/{document_id}"
+    mutations = (
+        (f"{document_path}/segment", "post", "SegmentCreatePayload", "SegmentDetailResponse"),
+        (f"{document_path}/segments/{{segment_id}}", "patch", "SegmentUpdatePayload", "SegmentDetailResponse"),
+        (
+            f"{document_path}/segments/{{segment_id}}/child_chunks",
+            "patch",
+            "ChildChunkBatchUpdatePayload",
+            "ChildChunkBatchUpdateResponse",
+        ),
+    )
+    for path, method, request_schema, response_schema in mutations:
+        operation = paths[path][method]
+        assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{request_schema}"
+        }
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{response_schema}"
+        }
+
+    delete_operation = paths[f"{document_path}/segments"]["delete"]
+    assert set(delete_operation["responses"]) == {"204"}
+    parameters = _parameters_by_name(delete_operation)
+    assert parameters["segment_id"]["in"] == "query"
+    assert parameters["segment_id"]["schema"]["type"] == "array"
+
+
+def test_service_document_file_routes_document_multipart_form_data(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     create_operation = paths["/datasets/{dataset_id}/document/create-by-file"]["post"]
@@ -285,15 +372,10 @@ def test_service_document_file_routes_document_multipart_form_data():
         assert update_operation["requestBody"]["required"] is False
 
 
-def test_service_openapi_merges_public_api_reference_descriptions():
+def test_service_openapi_merges_public_api_reference_descriptions(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
 
     chat_operation = payload["paths"]["/chat-messages"]["post"]
     assert chat_operation["summary"] == "Send Chat Message"
@@ -307,15 +389,10 @@ def test_service_openapi_merges_public_api_reference_descriptions():
     assert _parameters_by_name(rename_operation)["conversation_id"]["description"] == "Conversation ID."
 
 
-def test_service_document_list_documents_query_params_render():
+def test_service_document_list_documents_query_params_render(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     operation = payload["paths"]["/datasets/{dataset_id}/documents"]["get"]
     params = _parameters_by_name(operation)
 
@@ -323,15 +400,10 @@ def test_service_document_list_documents_query_params_render():
         assert params[name]["in"] == "query"
 
 
-def test_service_openapi_documents_decorator_user_contracts():
+def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     required_json_user_operations = (
@@ -346,6 +418,12 @@ def test_service_openapi_documents_decorator_user_contracts():
         schema = _json_body_schema(payload, paths[path][method])
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
+
+    for path in ("/chat-messages", "/workflows/run", "/workflows/{workflow_id}/run"):
+        rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
+        assert "upstream model provider rate limit" not in rate_limit_description
+        assert "too_many_requests" in rate_limit_description
+        assert "Dify Cloud workflow execution quota" in rate_limit_description
 
     task_stop_user_descriptions = {
         "/completion-messages/{task_id}/stop": "Send the same",
@@ -378,15 +456,10 @@ def test_service_openapi_documents_decorator_user_contracts():
     assert events_params["user"]["required"] is True
 
 
-def test_service_openapi_documents_app_multipart_contracts():
+def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     for path in ("/files/upload", "/audio-to-text"):
@@ -410,15 +483,10 @@ def test_service_openapi_documents_app_multipart_contracts():
     assert pipeline_schema["required"] == ["file"]
 
 
-def test_service_openapi_documents_non_json_response_media_types():
+def test_service_openapi_documents_non_json_response_media_types(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     assert _response_content_types(paths["/chat-messages"]["post"]) == {
@@ -441,15 +509,10 @@ def test_service_openapi_documents_non_json_response_media_types():
     }
 
 
-def test_service_openapi_documents_uuid_params_and_deprecated_routes():
+def test_service_openapi_documents_uuid_params_and_deprecated_routes(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     dataset_params = _parameters_by_name(paths["/datasets/{dataset_id}"]["get"])
@@ -480,15 +543,10 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes():
         assert operation["deprecated"] is True
 
 
-def test_service_openapi_documents_path_action_enums():
+def test_service_openapi_documents_path_action_enums(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     annotation_params = _parameters_by_name(paths["/apps/annotation-reply/{action}"]["post"])
@@ -501,15 +559,10 @@ def test_service_openapi_documents_path_action_enums():
     assert metadata_params["action"]["schema"]["enum"] == ["disable", "enable"]
 
 
-def test_service_openapi_documents_conditional_payload_schemas():
+def test_service_openapi_documents_conditional_payload_schemas(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     rename_schema = _json_body_schema(payload, paths["/conversations/{conversation_id}/name"]["post"])
@@ -526,19 +579,73 @@ def test_service_openapi_documents_conditional_payload_schemas():
     with_text_branch, without_text_branch = document_update_schema["anyOf"]
     assert with_text_branch["properties"]["text"]["type"] == "string"
     assert with_text_branch["properties"]["name"]["type"] == "string"
+    assert "default" not in with_text_branch["properties"]["text"]
+    assert "default" not in with_text_branch["properties"]["name"]
     assert with_text_branch["required"] == ["name", "text"]
     assert without_text_branch["properties"]["text"]["type"] == "null"
 
 
-def test_service_openapi_does_not_encode_docs_coverage_boundaries():
+def test_service_dataset_response_schemas_omit_console_permission_metadata():
+    from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
 
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
     app.register_blueprint(service_api_bp)
 
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    service_payload = app.test_client().get("/v1/openapi.json").get_json()
+    service_schemas = service_payload["components"]["schemas"]
+    for name in ("DatasetDetailResponse", "DatasetDetailWithPartialMembersResponse"):
+        assert "permission_keys" not in service_schemas[name]["properties"]
+    assert service_schemas["DatasetListResponse"]["properties"]["data"]["items"] == {
+        "$ref": "#/components/schemas/DatasetDetailResponse"
+    }
+
+    console_payload = app.test_client().get("/console/api/openapi.json").get_json()
+    console_schema = console_payload["components"]["schemas"]["DatasetDetailResponse"]
+    assert "permission_keys" in console_schema["properties"]
+
+
+def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: OpenAPIJSONLoader):
+    from controllers.service_api import bp as service_api_bp
+
+    paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
+
+    delete_dataset = paths["/datasets/{dataset_id}"]["delete"]
+    assert "409" not in delete_dataset["responses"]
+    assert "must not be in use" not in delete_dataset["description"]
+
+    delete_document = paths["/datasets/{dataset_id}/documents/{document_id}"]["delete"]
+    assert "document_indexing" not in json.dumps(delete_document["responses"])
+    assert "archived_document_immutable" in delete_document["responses"]["403"]["description"]
+
+
+def test_service_schemas_only_document_reachable_not_found_responses(openapi_json: OpenAPIJSONLoader):
+    from controllers.service_api import bp as service_api_bp
+
+    paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
+
+    for path, method in (
+        ("/apps/annotation-reply/{action}/status/{job_id}", "get"),
+        ("/info", "get"),
+        ("/meta", "get"),
+        ("/parameters", "get"),
+        ("/workflows/run", "post"),
+        ("/completion-messages", "post"),
+    ):
+        assert "404" not in paths[path][method]["responses"]
+        assert "400" in paths[path][method]["responses"]
+
+    assert "404" in paths["/workflows/{workflow_id}/run"]["post"]["responses"]
+    assert "404" in paths["/chat-messages"]["post"]["responses"]
+
+
+def test_service_openapi_does_not_encode_docs_coverage_boundaries(openapi_json: OpenAPIJSONLoader):
+    from controllers.service_api import bp as service_api_bp
+
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     for path_item in paths.values():
@@ -553,15 +660,10 @@ def test_service_openapi_does_not_encode_docs_coverage_boundaries():
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update-by-file"]["post"]["deprecated"] is True
 
 
-def test_service_openapi_documents_auth_and_compatibility_payloads():
+def test_service_openapi_documents_auth_and_compatibility_payloads(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(service_api_bp)
-
-    payload = app.test_client().get("/v1/openapi.json").get_json()
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
 
     assert payload["components"]["securitySchemes"]["Bearer"] == {
         "bearerFormat": "API_KEY",
@@ -584,15 +686,10 @@ def test_service_openapi_documents_auth_and_compatibility_payloads():
     assert tag_ids_schema["required"] == ["tag_ids", "target_id"]
 
 
-def test_console_account_avatar_query_param_renders_as_query():
+def test_console_account_avatar_query_param_renders_as_query(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     operation = payload["paths"]["/account/avatar"]["get"]
     params = _parameters_by_name(operation)
 
@@ -601,15 +698,10 @@ def test_console_account_avatar_query_param_renders_as_query():
     assert params["avatar"]["required"] is True
 
 
-def test_console_account_profile_patch_and_deprecated_aliases():
+def test_console_account_profile_patch_and_deprecated_aliases(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     paths = payload["paths"]
 
     profile_patch = paths["/account/profile"]["patch"]
@@ -632,29 +724,20 @@ def test_console_account_profile_patch_and_deprecated_aliases():
     assert paths["/account/avatar"]["get"].get("deprecated") is not True
 
 
-def test_console_agent_debug_conversation_refresh_has_no_body():
+def test_console_agent_debug_conversation_refresh_has_no_body(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
     operation = payload["paths"]["/agent/{agent_id}/debug-conversation/refresh"]["post"]
 
     assert "requestBody" not in operation
     assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
 
 
-def test_console_member_invite_documents_bad_request_response():
+def test_console_member_invite_documents_bad_request_response(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
     response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
 
@@ -675,15 +758,10 @@ def test_console_member_invite_documents_bad_request_response():
     }
 
 
-def test_console_billing_routes_document_error_responses():
+def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     expected_responses = {
         ("/billing/subscription", "get"): {
             "422": "BillingUnprocessableEntityErrorResponse",
@@ -730,26 +808,17 @@ def test_console_billing_routes_document_error_responses():
     assert compliance_response["required"] == ["url"]
 
 
-def test_console_model_provider_checkout_route_is_deprecated():
+def test_console_model_provider_checkout_route_is_deprecated(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
-    app.register_blueprint(console_bp)
-
-    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     operation = payload["paths"]["/workspaces/current/model-providers/{provider}/checkout-url"]["get"]
 
     assert operation["deprecated"] is True
 
 
-def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path: Path):
-    from dev.generate_swagger_specs import generate_specs
-
-    written_paths = generate_specs(tmp_path)
-    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
-    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+def test_console_plugin_category_list_exported_schema_uses_typed_items(exported_console_json: str):
+    payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
     parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
     assert parameters["query"]["in"] == "query"
@@ -785,12 +854,8 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path:
         assert field in builtin_tool_schema["properties"]
 
 
-def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: Path):
-    from dev.generate_swagger_specs import generate_specs
-
-    written_paths = generate_specs(tmp_path)
-    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
-    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(exported_console_json: str):
+    payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/plugin/installed-ids"]["get"]
     parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
     assert parameters["category"]["in"] == "query"
@@ -818,12 +883,51 @@ def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: P
     }
 
 
-def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path: Path):
-    from dev.generate_swagger_specs import generate_specs
+def test_console_datasource_catalog_exports_domain_response_schema(exported_console_json: str) -> None:
+    payload = json.loads(exported_console_json)
+    operation = payload["paths"]["/rag/pipelines/datasource-plugins"]["get"]
 
-    written_paths = generate_specs(tmp_path)
-    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
-    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    assert operation.get("parameters", []) == []
+    assert "requestBody" not in operation
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceListResponse"
+    }
+    schemas = payload["components"]["schemas"]
+    assert schemas["RagPipelineDatasourceListResponse"]["type"] == "array"
+    assert schemas["RagPipelineDatasourceListResponse"]["items"] == {
+        "$ref": "#/components/schemas/RagPipelineDatasourceProviderResponse"
+    }
+    provider = schemas["RagPipelineDatasourceProviderResponse"]
+    assert set(provider["properties"]) == {
+        "provider",
+        "plugin_unique_identifier",
+        "plugin_id",
+        "is_authorized",
+        "declaration",
+    }
+    assert provider["properties"]["declaration"] == {"$ref": "#/components/schemas/DatasourceProviderEntityWithPlugin"}
+    assert set(schemas["DatasourceParameterType"]["enum"]) == {
+        "string",
+        "number",
+        "boolean",
+        "select",
+        "secret-input",
+        "file",
+        "files",
+        "system-files",
+    }
+    assert schemas["DatasourceEntity"]["properties"]["output_schema"]["anyOf"] == [
+        {"additionalProperties": True, "type": "object"},
+        {"type": "null"},
+    ]
+    recommended = payload["paths"]["/rag/pipelines/recommended-plugins"]["get"]
+    assert recommended["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelineOpaqueResponse"
+    }
+
+
+def test_console_model_provider_summary_exported_schema_is_lightweight(exported_console_json: str):
+    payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/model-providers/summary"]["get"]
     assert operation.get("parameters", []) == []
 

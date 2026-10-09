@@ -6,7 +6,7 @@ export const knowledgeFsSourceOpenapiSha256 =
 export const knowledgeFsConsoleDeclarationsSha256 =
   '8bd1924747fdd0d478ca085817cbe000eb7e8630b2c6a03f4f13a6a0fac07946'
 export const knowledgeFsGeneratedArtifactSha256 = {
-  'orpc.gen.ts': 'e0d9954f817e97a4e95dd38c4522fb403c8659d741ce485fa671b1b4ce90a540',
+  'orpc.gen.ts': '11420f82003ec19a90da1b0a4c7f47a395d8700e91d0fb32b6ae533617285950',
   'types.gen.ts': 'a558ab80f32a8555bb5b44b7a596ef4a4a7a8cb7904390993aabcc587915f530',
   'zod.gen.ts': 'ca698a6fa64a0717e29da5d4678976b55355a2c0fe5ddfa7037325aa79ab4762',
 } as const

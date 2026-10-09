@@ -3,11 +3,11 @@
 import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -44,8 +44,8 @@ type BindingTarget = {
 }
 
 export function ContactsImPlatformManagementSurface() {
-  const { t } = useTranslation('contacts')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const organization = useContactsImPlatformOrganization()
   const integrationsQuery = useContactImIntegrations()
   const providersQuery = useContactImProviderDefinitions()
@@ -378,7 +378,7 @@ export function ContactsImPlatformManagementSurface() {
               {t(($) => $['imPlatform.replacement.description'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -397,7 +397,7 @@ export function ContactsImPlatformManagementSurface() {
             >
               {t(($) => $['imPlatform.replacement.confirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -421,7 +421,7 @@ export function ContactsImPlatformManagementSurface() {
               </div>
             )}
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton disabled={disconnectProvider.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -431,7 +431,7 @@ export function ContactsImPlatformManagementSurface() {
             >
               {t(($) => $['imPlatform.delete.confirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

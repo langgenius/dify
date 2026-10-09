@@ -1,88 +1,48 @@
+import type { PropsWithChildren } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
-import {
-  useInvalidDataSourceAuth,
-  useInvalidDataSourceListAuth,
-  useInvalidDefaultDataSourceListAuth,
-} from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { useDataSourceAuthUpdate } from '../use-data-source-auth-update'
 
-/**
- * useDataSourceAuthUpdate Hook Tests
- * This hook manages the invalidation of various data source related queries.
- */
-
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), list: vi.fn(), defaults: vi.fn() }))
 vi.mock('@/service/use-datasource', () => ({
-  useInvalidDataSourceAuth: vi.fn(),
-  useInvalidDataSourceListAuth: vi.fn(),
-  useInvalidDefaultDataSourceListAuth: vi.fn(),
+  useInvalidDataSourceAuth: () => mocks.auth,
+  useInvalidDataSourceListAuth: () => mocks.list,
+  useInvalidDefaultDataSourceListAuth: () => mocks.defaults,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(),
-}))
-
-describe('useDataSourceAuthUpdate', () => {
-  const mockInvalidateDataSourceAuth = vi.fn()
-  const mockInvalidateDataSourceListAuth = vi.fn()
-  const mockInvalidDefaultDataSourceListAuth = vi.fn()
-  const mockInvalidateDataSourceList = vi.fn()
-
+describe('datasource authentication reconciliation', () => {
+  let client: QueryClient
+  const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+  const unrelatedKey = consoleQuery.account.profile.get.key()
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children)
   beforeEach(() => {
     vi.clearAllMocks()
-
-    vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
-    vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
-    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
-      mockInvalidDefaultDataSourceListAuth,
-    )
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
+    client = new QueryClient()
+    client.setQueryData(catalogKey, [])
+    client.setQueryData(unrelatedKey, { cached: true })
   })
+  afterEach(() => client.clear())
 
-  describe('handleAuthUpdate', () => {
-    it('should call all invalidate functions when handleAuthUpdate is invoked', () => {
-      // Arrange
-      const pluginId = 'test-plugin-id'
-      const provider = 'test-provider'
-      const { result } = renderHook(() =>
+  it('invalidates catalog availability and retains authorization reconciliation', () => {
+    const { result } = renderHook(
+      () =>
         useDataSourceAuthUpdate({
-          pluginId,
-          provider,
+          pluginId: 'langgenius/notion',
+          provider: 'notion',
         }),
-      )
+      { wrapper },
+    )
 
-      // Assert Initialization
-      expect(useInvalidDataSourceAuth).toHaveBeenCalledWith({ pluginId, provider })
+    act(() => result.current.handleAuthUpdate())
 
-      // Act
-      act(() => {
-        result.current.handleAuthUpdate()
-      })
-
-      // Assert Invalidation
-      expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
-      expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalledTimes(1)
-      expect(mockInvalidateDataSourceList).toHaveBeenCalledTimes(1)
-      expect(mockInvalidateDataSourceAuth).toHaveBeenCalledTimes(1)
-    })
-
-    it('should maintain stable handleAuthUpdate reference if dependencies do not change', () => {
-      // Arrange
-      const props = {
-        pluginId: 'stable-plugin',
-        provider: 'stable-provider',
-      }
-      const { result, rerender } = renderHook(
-        ({ pluginId, provider }) => useDataSourceAuthUpdate({ pluginId, provider }),
-        { initialProps: props },
-      )
-      const firstHandleAuthUpdate = result.current.handleAuthUpdate
-
-      // Act
-      rerender(props)
-
-      // Assert
-      expect(result.current.handleAuthUpdate).toBe(firstHandleAuthUpdate)
-    })
+    expect(client.getQueryState(catalogKey)?.isInvalidated).toBe(true)
+    expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+    expect(mocks.auth).toHaveBeenCalledOnce()
+    expect(mocks.list).toHaveBeenCalledOnce()
+    expect(mocks.defaults).toHaveBeenCalledOnce()
   })
 })
