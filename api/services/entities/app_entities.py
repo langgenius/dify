@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import StrEnum
 from typing import Any, Literal, NotRequired, TypedDict
 from uuid import UUID
 
@@ -148,28 +147,6 @@ class AppPage:
     total: int
     has_more: bool
     data: list[AppRecord]
-
-
-class AccessSubjectType(StrEnum):
-    ACCOUNT = "account"
-    GROUP = "group"
-
-
-@dataclass(frozen=True, slots=True)
-class AccessSubject:
-    """A member or group on a web app's access list, or a candidate for it."""
-
-    id: str
-    type: str
-    name: str | None = None
-    email: str | None = None
-    member_count: int | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class AccessSubjectPage:
-    subjects: list[AccessSubject]
-    has_more: bool
 
 
 class UpdateAppParams(BaseModel):

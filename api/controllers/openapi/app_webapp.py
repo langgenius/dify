@@ -1,4 +1,4 @@
-"""Web-app and web-app access cards, one route per app mode, plus the access-subject search."""
+"""Web-app and web-app access cards, one route per app mode."""
 
 from __future__ import annotations
 
@@ -14,8 +14,6 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._app_settings import WebAppPath
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
-    AccessSubjectListResponse,
-    AccessSubjectQuery,
     AdvancedChatWebApp,
     AdvancedChatWebAppPatch,
     AgentWebApp,
@@ -33,14 +31,9 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     ADMIN_ROLES,
     EDITOR_ROLES,
-    CheckScope,
-    CheckSubject,
     CheckWebAppAuthEnterprise,
-    CheckWorkspaceMember,
-    CheckWorkspaceRole,
     account_settings_guards,
 )
-from controllers.openapi.auth.subjects import AccountSubject
 from models import AppMode
 
 _SITE_READ: Final = RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())
@@ -57,8 +50,7 @@ _WEBAPP_ON_EXAMPLE: Final = Example(
 _RESET_EXAMPLE: Final = Example(title="Rotate the web app URL", input={"app_id": "<app_id>"})
 _ACCESS_EXAMPLE: Final = Example(title="Read who may open the web app", input={"app_id": "<app_id>"})
 _ACCESS_SET_EXAMPLE: Final = Example(
-    title="Open the web app to one group",
-    input={"app_id": "<app_id>", "access_mode": "private", "subjects": [{"id": "<group_id>", "type": "group"}]},
+    title="Let every member open the web app", input={"app_id": "<app_id>", "access_mode": "private_all"}
 )
 
 
@@ -125,7 +117,7 @@ class WorkflowWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.workflow",
         kind=Kind.OBJECT,
-        summary="Replace who may open a workflow app's web app (Enterprise)",
+        summary="Set who may open a workflow app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.WORKFLOW, roles=EDITOR_ROLES),
@@ -201,7 +193,7 @@ class AdvancedChatWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.advanced_chat",
         kind=Kind.OBJECT,
-        summary="Replace who may open an advanced-chat app's web app (Enterprise)",
+        summary="Set who may open an advanced-chat app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(
@@ -279,7 +271,7 @@ class ChatWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.chat",
         kind=Kind.OBJECT,
-        summary="Replace who may open a chat app's web app (Enterprise)",
+        summary="Set who may open a chat app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.CHAT, roles=EDITOR_ROLES),
@@ -355,7 +347,7 @@ class AgentChatWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.agent_chat",
         kind=Kind.OBJECT,
-        summary="Replace who may open an agent-chat app's web app (Enterprise)",
+        summary="Set who may open an agent-chat app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT_CHAT, roles=EDITOR_ROLES),
@@ -431,7 +423,7 @@ class CompletionWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.completion",
         kind=Kind.OBJECT,
-        summary="Replace who may open a completion app's web app (Enterprise)",
+        summary="Set who may open a completion app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.COMPLETION, roles=EDITOR_ROLES),
@@ -507,7 +499,7 @@ class AgentWebAppAccessApi(Resource):
     @endpoint(
         op="set.webapp_access.agent",
         kind=Kind.OBJECT,
-        summary="Replace who may open an agent app's web app (Enterprise)",
+        summary="Set who may open an agent app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(
@@ -520,27 +512,3 @@ class AgentWebAppAccessApi(Resource):
     )
     def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
         return settings.update_webapp_access(ctx, body)
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/access-subjects")
-class AccessSubjectListApi(Resource):
-    @endpoint(
-        op="get.access_subject",
-        kind=Kind.LIST,
-        summary="Search members and groups to give web-app access to (Enterprise)",
-        examples=(
-            Example(title="Find a group by name", input={"keyword": "finance"}),
-            Example(title="List the members of a group", input={"group_id": "<group_id>"}),
-        ),
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckScope(Scope.WORKSPACE_READ),
-            CheckWorkspaceMember(),
-            CheckWorkspaceRole(EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        query=AccessSubjectQuery,
-        returns=(HTTPStatus.OK, AccessSubjectListResponse, "Members and groups"),
-    )
-    def get(self, ctx: Context, workspace_id: str, *, query: AccessSubjectQuery):
-        return settings.access_subjects(ctx, query)

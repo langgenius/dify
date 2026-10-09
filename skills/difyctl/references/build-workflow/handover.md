@@ -26,15 +26,13 @@ Start when every slice in `plan.md` is ticked. In the commands below, `<mode>` i
      difyctl set service_api <mode> --app-id <app_id> --enabled --json
      ```
 
-   - Who may open the web app (Enterprise). `--access-mode` is one of `public`, `private`, `private_all` or `sso_verified`. For `private`, find the members or groups, then set the list:
+   - Who may open the web app (Enterprise). `--access-mode` is one of `public`, `private_all` or `sso_verified`:
 
      ```bash
-     difyctl get access_subject --keyword <name> --json
-     difyctl set webapp_access <mode> --app-id <app_id> --access-mode private \
-       --subjects '[{"id":"<id>","type":"group"}]' --json
+     difyctl set webapp_access <mode> --app-id <app_id> --access-mode <access_mode> --json
      ```
 
-     `--subjects` replaces the whole list. `type` is `account` or `group`. Private access also applies to `difyctl run`, so the logged-in account must be in the list for the smoke test below.
+     To let only chosen members or groups in (`private`), the human must pick them in the Dify console. The mode also applies to `difyctl run`, so the logged-in account must be allowed by it for the smoke test below.
 
 5. Smoke test the live app with one acceptance case. Pass `--inputs` when the start node declares variables.
 

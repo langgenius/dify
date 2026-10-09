@@ -4,28 +4,6 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/openapi/v1` | (string & {})
 }
 
-export type AccessSubjectListResponse = {
-  data: Array<AccessSubjectRow>
-  has_more: boolean
-  limit: number
-  page: number
-}
-
-export type AccessSubjectQuery = {
-  group_id?: string | null
-  keyword?: string
-  limit?: number
-  page?: number
-}
-
-export type AccessSubjectRow = {
-  email?: string | null
-  id: string
-  member_count?: number | null
-  name?: string | null
-  type: string
-}
-
 export type AccountPayload = {
   email: string
   id: string
@@ -800,7 +778,6 @@ export type NodeTypeRow = {
 }
 
 export type OpenApiErrorCode =
-  | 'access_subjects_invalid'
   | 'agent_not_published'
   | 'app_unavailable'
   | 'bad_gateway'
@@ -852,6 +829,7 @@ export type OpenApiErrorCode =
   | 'unsupported_media_type'
   | 'version_not_found'
   | 'version_not_restorable'
+  | 'webapp_access_mode_console_only'
   | 'webapp_access_requires_ee'
   | 'webapp_access_unavailable'
 
@@ -1156,16 +1134,12 @@ export type WebApp = {
 
 export type WebAppAccess = {
   access_mode: string
-  subjects: Array<AccessSubjectRow>
 }
 
 export type WebAppAccessMode = 'private' | 'private_all' | 'public' | 'sso_verified'
 
 export type WebAppAccessPayload = {
   access_mode: WebAppAccessMode
-  subjects?: Array<{
-    [key: string]: string
-  }>
 }
 
 export type WebAppPatch = {
@@ -3605,35 +3579,6 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 
 export type GetWorkspacesByWorkspaceIdResponse =
   GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
-
-export type GetWorkspacesByWorkspaceIdAccessSubjectsData = {
-  body?: never
-  path: {
-    workspace_id: string
-  }
-  query?: {
-    group_id?: string
-    keyword?: string
-    limit?: number
-    page?: number
-  }
-  url: '/workspaces/{workspace_id}/access-subjects'
-}
-
-export type GetWorkspacesByWorkspaceIdAccessSubjectsErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type GetWorkspacesByWorkspaceIdAccessSubjectsError =
-  GetWorkspacesByWorkspaceIdAccessSubjectsErrors[keyof GetWorkspacesByWorkspaceIdAccessSubjectsErrors]
-
-export type GetWorkspacesByWorkspaceIdAccessSubjectsResponses = {
-  200: AccessSubjectListResponse
-}
-
-export type GetWorkspacesByWorkspaceIdAccessSubjectsResponse =
-  GetWorkspacesByWorkspaceIdAccessSubjectsResponses[keyof GetWorkspacesByWorkspaceIdAccessSubjectsResponses]
 
 export type PostWorkspacesByWorkspaceIdAppsAdvancedChatData = {
   body: CreateAppPayload

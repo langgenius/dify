@@ -1212,32 +1212,6 @@
       "path": "/openapi/v1/apps/{app_id}/versions",
       "summary": "List published versions, newest first"
     },
-    "get.access_subject": {
-      "bind": {
-        "group_id": "query",
-        "keyword": "query",
-        "limit": "query",
-        "page": "query",
-        "workspace_id": "path"
-      },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "group_id": {},
-          "keyword": {},
-          "limit": {},
-          "page": {},
-          "workspace_id": {}
-        },
-        "required": ["workspace_id"]
-      },
-      "internal": false,
-      "kind": "list",
-      "method": "GET",
-      "path": "/openapi/v1/workspaces/{workspace_id}/access-subjects",
-      "summary": "Search members and groups to give web-app access to (Enterprise)"
-    },
     "set.webapp.workflow": {
       "bind": {
         "app_id": "path",
@@ -1587,88 +1561,88 @@
       "summary": "Turn an agent app's Service API on or off"
     },
     "set.webapp_access.workflow": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/workflow",
-      "summary": "Replace who may open a workflow app's web app (Enterprise)"
+      "summary": "Set who may open a workflow app's web app (Enterprise)"
     },
     "set.webapp_access.advanced_chat": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/advanced-chat",
-      "summary": "Replace who may open an advanced-chat app's web app (Enterprise)"
+      "summary": "Set who may open an advanced-chat app's web app (Enterprise)"
     },
     "set.webapp_access.chat": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/chat",
-      "summary": "Replace who may open a chat app's web app (Enterprise)"
+      "summary": "Set who may open a chat app's web app (Enterprise)"
     },
     "set.webapp_access.agent_chat": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/agent-chat",
-      "summary": "Replace who may open an agent-chat app's web app (Enterprise)"
+      "summary": "Set who may open an agent-chat app's web app (Enterprise)"
     },
     "set.webapp_access.completion": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/completion",
-      "summary": "Replace who may open a completion app's web app (Enterprise)"
+      "summary": "Set who may open a completion app's web app (Enterprise)"
     },
     "set.webapp_access.agent": {
-      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
+      "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "properties": { "access_mode": {}, "app_id": {} },
         "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
       "method": "PUT",
       "path": "/openapi/v1/apps/{app_id}/webapp-access/agent",
-      "summary": "Replace who may open an agent app's web app (Enterprise)"
+      "summary": "Set who may open an agent app's web app (Enterprise)"
     },
     "get.marketplace.plugin": {
       "bind": {

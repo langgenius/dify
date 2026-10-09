@@ -3,37 +3,6 @@
 import * as z from 'zod'
 
 /**
- * AccessSubjectQuery
- */
-export const zAccessSubjectQuery = z.object({
-  group_id: z.string().nullish(),
-  keyword: z.string().optional().default(''),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  page: z.int().gte(1).optional().default(1),
-})
-
-/**
- * AccessSubjectRow
- */
-export const zAccessSubjectRow = z.object({
-  email: z.string().nullish(),
-  id: z.string(),
-  member_count: z.int().nullish(),
-  name: z.string().nullish(),
-  type: z.string(),
-})
-
-/**
- * AccessSubjectListResponse
- */
-export const zAccessSubjectListResponse = z.object({
-  data: z.array(zAccessSubjectRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-})
-
-/**
  * AccountPayload
  */
 export const zAccountPayload = z.object({
@@ -1065,7 +1034,6 @@ export const zNodeTypeListResponse = z.object({
  * OpenApiErrorCode
  */
 export const zOpenApiErrorCode = z.enum([
-  'access_subjects_invalid',
   'agent_not_published',
   'app_unavailable',
   'bad_gateway',
@@ -1117,6 +1085,7 @@ export const zOpenApiErrorCode = z.enum([
   'unsupported_media_type',
   'version_not_found',
   'version_not_restorable',
+  'webapp_access_mode_console_only',
   'webapp_access_requires_ee',
   'webapp_access_unavailable',
 ])
@@ -1631,7 +1600,6 @@ export const zWebApp = z.object({
  */
 export const zWebAppAccess = z.object({
   access_mode: z.string(),
-  subjects: z.array(zAccessSubjectRow),
 })
 
 /**
@@ -1644,7 +1612,6 @@ export const zWebAppAccessMode = z.enum(['private', 'private_all', 'public', 'ss
  */
 export const zWebAppAccessPayload = z.object({
   access_mode: zWebAppAccessMode,
-  subjects: z.array(z.record(z.string(), z.string())).optional(),
 })
 
 /**
@@ -2888,22 +2855,6 @@ export const zGetWorkspacesByWorkspaceIdPath = z.object({
  * Workspace detail
  */
 export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
-
-export const zGetWorkspacesByWorkspaceIdAccessSubjectsPath = z.object({
-  workspace_id: z.string(),
-})
-
-export const zGetWorkspacesByWorkspaceIdAccessSubjectsQuery = z.object({
-  group_id: z.string().optional(),
-  keyword: z.string().optional().default(''),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  page: z.int().gte(1).optional().default(1),
-})
-
-/**
- * Members and groups
- */
-export const zGetWorkspacesByWorkspaceIdAccessSubjectsResponse = zAccessSubjectListResponse
 
 export const zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody = zCreateAppPayload
 

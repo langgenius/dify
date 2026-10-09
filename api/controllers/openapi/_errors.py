@@ -77,7 +77,7 @@ class OpenApiErrorCode(StrEnum):
     WEBAPP_ACCESS_UNAVAILABLE = "webapp_access_unavailable"
     NODE_TYPE_NOT_FOUND = "node_type_not_found"
     NODE_NOT_FOUND = "node_not_found"
-    ACCESS_SUBJECTS_INVALID = "access_subjects_invalid"
+    WEBAPP_ACCESS_MODE_CONSOLE_ONLY = "webapp_access_mode_console_only"
     SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
     MARKETPLACE_DISABLED = "marketplace_disabled"
     MARKETPLACE_UNAVAILABLE = "marketplace_unavailable"
@@ -314,7 +314,7 @@ class WebAppAccessUnavailable(OpenApiError):  # noqa: N818
     code = 503
     error_code = OpenApiErrorCode.WEBAPP_ACCESS_UNAVAILABLE
     description = "Web-app access could not be read or changed."
-    hint = "Enterprise does not serve web-app access subjects yet, or is unreachable."
+    hint = "Enterprise is unreachable or did not answer."
 
 
 class NodeTypeNotFound(OpenApiError):  # noqa: N818
@@ -330,14 +330,11 @@ class NodeNotFound(OpenApiError):  # noqa: N818
     description = "The draft has no node with this id."
 
 
-class AccessSubjectsInvalid(OpenApiError):  # noqa: N818
+class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818
     code = 400
-    error_code = OpenApiErrorCode.ACCESS_SUBJECTS_INVALID
-    description = (
-        "Subjects are required for access_mode private and not allowed otherwise; "
-        "each needs an id and a type of account or group."
-    )
-    hint = "Find ids with get.access_subject."
+    error_code = OpenApiErrorCode.WEBAPP_ACCESS_MODE_CONSOLE_ONLY
+    description = "Member lists for access_mode private must be chosen in the Dify console."
+    hint = "Use public, private_all or sso_verified here."
 
 
 class VersionNotRestorable(OpenApiError):  # noqa: N818

@@ -858,12 +858,6 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
-        "access_subject.list",
-        "GET",
-        "/workspaces/{workspace_id}/access-subjects",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
-    Route(
         "app_run.stop",
         "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
@@ -1158,14 +1152,6 @@ _WEBAPP_ACCESS_EDITOR: dict[Case, Expect] = {
     Case.RBAC_ON_LOW_ROLE: DENY_NEEDS_WEBAPP_EE,
 }
 
-_ACCESS_SUBJECT_EDITOR: dict[Case, Expect] = {
-    **_ACCOUNT_MEMBER_NO_ROLE,
-    Case.MEMBER: DENY_NEEDS_WEBAPP_EE,
-    Case.LOW_ROLE: DENY_ROLE,
-    Case.RBAC_ON_LOW_ROLE: DENY_NEEDS_WEBAPP_EE,
-    Case.RBAC_ON_DENIED: DENY_NEEDS_WEBAPP_EE,
-}
-
 
 _ANY_BEARER: dict[Case, Expect] = {
     **{case: ADMIT for case in Case if CASE_REQUIRES[case] <= {Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE}},
@@ -1197,7 +1183,6 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "webapp.set.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
     "webapp.reset.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
     "webapp_access.describe.workflow": dict(_WEBAPP_ACCESS_EDITOR),
-    "access_subject.list": dict(_ACCESS_SUBJECT_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
@@ -1676,11 +1661,6 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         *_settings_req(
             AppMode.AGENT, RBACPermission.AGENT_ACCESS_CONFIG, AgentBehindApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
         ),
-        CheckWebAppAuthEnterprise(),
-    ),
-    "access_subject.list": (
-        *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
-        CheckWorkspaceRole(_EDITOR_UP),
         CheckWebAppAuthEnterprise(),
     ),
     "app_run.stop": _REQ_RUN,
@@ -2365,7 +2345,6 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/webapp/agent:reset"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/webapp-access/agent"): frozenset({"200", "default"}),
     ("put", "/apps/{app_id}/webapp-access/agent"): frozenset({"200", "422", "default"}),
-    ("get", "/workspaces/{workspace_id}/access-subjects"): frozenset({"200", "422", "default"}),
 }
 
 _HTTP_METHODS = frozenset({"get", "post", "put", "patch", "delete", "head", "options", "trace"})

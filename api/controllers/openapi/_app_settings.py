@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from enum import StrEnum
+from typing import Final
 
 from flask import request
 from pydantic import BaseModel
@@ -11,23 +12,20 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.rbac.locators import agent_binding
-from controllers.openapi._errors import AccessSubjectsInvalid, WebAppAccessUnavailable
-from controllers.openapi._models import (
-    AccessSubjectListResponse,
-    AccessSubjectQuery,
-    AccessSubjectRow,
-    WebAppAccess,
-    WebAppAccessPayload,
-    WebAppToken,
-)
+from controllers.openapi._errors import WebAppAccessModeConsoleOnly, WebAppAccessUnavailable
+from controllers.openapi._models import WebAppAccess, WebAppAccessPayload, WebAppToken
 from controllers.openapi.auth.context import Context
 from enums import WebAppAccessMode
 from extensions.ext_application_services import application_services
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
-from services.entities.app_entities import AccessSubject, AccessSubjectType, AppRecord, UpdateAppParams
+from services.entities.app_entities import AppRecord, UpdateAppParams
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+
+_SETTABLE_ACCESS_MODES: Final = frozenset(
+    {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE_ALL, WebAppAccessMode.SSO_VERIFIED}
+)
 
 
 class WebAppPath(StrEnum):
@@ -152,47 +150,18 @@ def reset_webapp(ctx: Context, path: WebAppPath) -> WebAppToken:
     return WebAppToken(access_token=site.code, app_base_url=base_url, url=path.url(base_url, site.code))
 
 
-def _subject_rows(subjects: list[AccessSubject]) -> list[AccessSubjectRow]:
-    return [AccessSubjectRow.model_validate(subject, from_attributes=True) for subject in subjects]
-
-
 def webapp_access(ctx: Context) -> WebAppAccess:
-    console = application_services().apps.console
-    access_mode = console.get(request_context(ctx), ctx.app.id).access_mode
+    access_mode = application_services().apps.console.get(request_context(ctx), ctx.app.id).access_mode
     if access_mode is None:
         raise WebAppAccessUnavailable()
-    try:
-        subjects = console.access_subjects(ctx.app.id)
-    except WebAppAccessUnavailableError as error:
-        raise WebAppAccessUnavailable() from error
-    return WebAppAccess(access_mode=access_mode, subjects=_subject_rows(subjects))
+    return WebAppAccess(access_mode=access_mode)
 
 
 def update_webapp_access(ctx: Context, body: WebAppAccessPayload) -> WebAppAccess:
-    private = body.access_mode == WebAppAccessMode.PRIVATE
-    well_formed = all(subject.get("id") and subject.get("type") in AccessSubjectType for subject in body.subjects)
-    if private != bool(body.subjects) or not well_formed:
-        raise AccessSubjectsInvalid()
-    console = application_services().apps.console
+    if body.access_mode not in _SETTABLE_ACCESS_MODES:
+        raise WebAppAccessModeConsoleOnly()
     try:
-        console.access_subjects(ctx.app.id)
-        console.update_access(
-            ctx.app.id,
-            body.access_mode,
-            [{"subjectId": subject["id"], "subjectType": subject["type"]} for subject in body.subjects],
-        )
+        application_services().apps.console.update_access(ctx.app.id, body.access_mode)
     except WebAppAccessUnavailableError as error:
         raise WebAppAccessUnavailable() from error
     return webapp_access(ctx)
-
-
-def access_subjects(ctx: Context, query: AccessSubjectQuery) -> AccessSubjectListResponse:
-    try:
-        result = application_services().apps.console.search_access_subjects(
-            request_context(ctx), keyword=query.keyword, page=query.page, limit=query.limit, group_id=query.group_id
-        )
-    except WebAppAccessUnavailableError as error:
-        raise WebAppAccessUnavailable() from error
-    return AccessSubjectListResponse(
-        page=query.page, limit=query.limit, has_more=result.has_more, data=_subject_rows(result.subjects)
-    )

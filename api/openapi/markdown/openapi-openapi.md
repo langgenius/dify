@@ -1645,25 +1645,6 @@ Upload a file to use as an input variable when running the app
 | 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /workspaces/{workspace_id}/access-subjects
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| group_id | query | Search only inside this group | No | string |
-| keyword | query | Name or email to search for | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Members and groups | **application/json**: [AccessSubjectListResponse](#accesssubjectlistresponse)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [POST] /workspaces/{workspace_id}/apps/advanced-chat
 #### Parameters
 
@@ -2295,34 +2276,6 @@ Upload a file to use as an input variable when running the app
 
 ---
 ### Schemas
-
-#### AccessSubjectListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-| page | integer |  | Yes |
-
-#### AccessSubjectQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| group_id | string | Search only inside this group | No |
-| keyword | string | Name or email to search for | No |
-| limit | integer, <br>**Default:** 20 |  | No |
-| page | integer, <br>**Default:** 1 |  | No |
-
-#### AccessSubjectRow
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | Yes |
-| member_count | integer |  | No |
-| name | string |  | No |
-| type | string |  | Yes |
 
 #### AccountPayload
 
@@ -3710,7 +3663,6 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | Yes |
-| subjects | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
 
 #### WebAppAccessMode
 
@@ -3722,8 +3674,7 @@ Page of published versions, newest first; there is no total, `hints` carries the
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| access_mode | [WebAppAccessMode](#webappaccessmode) | public, private, private_all or sso_verified | Yes |
-| subjects | [ object ] | For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject | No |
+| access_mode | [WebAppAccessMode](#webappaccessmode) | public, private_all or sso_verified. Choose specific members (private) in the Dify console | Yes |
 
 #### WebAppPatch
 

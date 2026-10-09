@@ -951,42 +951,16 @@ class WebAppToken(BaseModel):
     url: str | None = None
 
 
-class AccessSubjectRow(BaseModel):
-    id: str
-    type: str
-    name: str | None = None
-    email: str | None = None
-    member_count: int | None = None
-
-
 class WebAppAccess(BaseModel):
     access_mode: str
-    subjects: list[AccessSubjectRow]
 
 
 class WebAppAccessPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    access_mode: WebAppAccessMode = Field(description="public, private, private_all or sso_verified")
-    subjects: list[dict[str, str]] = Field(
-        default_factory=list,
-        description="For private only: who may open the web app, as {id, type} with type account or group. "
-        "Replaces the whole list. Find ids with get.access_subject",
+    access_mode: WebAppAccessMode = Field(
+        description="public, private_all or sso_verified. Choose specific members (private) in the Dify console"
     )
-
-
-class AccessSubjectQuery(BaseModel):
-    keyword: str = Field(default="", description="Name or email to search for")
-    group_id: str | None = Field(default=None, description="Search only inside this group")
-    page: int = Field(default=1, ge=1)
-    limit: int = Field(default=20, ge=1, le=100)
-
-
-class AccessSubjectListResponse(BaseModel):
-    page: int
-    limit: int
-    has_more: bool
-    data: list[AccessSubjectRow]
 
 
 class CredentialFormField(BaseModel):

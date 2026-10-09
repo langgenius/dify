@@ -37,8 +37,6 @@ openapi_ns = Namespace("openapi", description="User-scoped operations", path="/"
 from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._models import (
-    AccessSubjectListResponse,
-    AccessSubjectQuery,
     AccountPayload,
     AccountResponse,
     AdvancedChatNodeRunPayload,
@@ -187,7 +185,6 @@ register_schema_models(
     AppInfoPatch,
     ChatAppInfoPatch,
     ServiceApiPatch,
-    AccessSubjectQuery,
     AdvancedChatWebAppPatch,
     ChatWebAppPatch,
     WebAppAccessPayload,
@@ -292,7 +289,6 @@ register_response_schema_models(
     AgentAppInfo,
     ServiceApi,
     AgentServiceApi,
-    AccessSubjectListResponse,
     AdvancedChatWebApp,
     AgentWebApp,
     ChatWebApp,

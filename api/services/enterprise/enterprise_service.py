@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime
-from typing import Any
 
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -310,40 +309,17 @@ class EnterpriseService:
             return ret
 
         @classmethod
-        def update_app_access_mode(cls, app_id: str, access_mode: str, subjects: list[dict[str, str]] | None = None):
+        def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
             if access_mode not in set(WebAppAccessMode):
                 raise ValueError(f"access_mode must be one of: {', '.join(WebAppAccessMode)}")
 
-            data: dict[str, Any] = {"appId": app_id, "accessMode": access_mode}
-            if subjects is not None:
-                data["subjects"] = subjects
+            data = {"appId": app_id, "accessMode": access_mode}
 
             response = EnterpriseRequest.send_request("POST", "/webapp/access-mode", json=data)
 
             return response.get("result", False)
-
-        @classmethod
-        def get_app_subjects(cls, app_id: str) -> dict[str, Any]:
-            if not app_id:
-                raise ValueError("app_id must be provided.")
-            return EnterpriseRequest.send_request("GET", "/webapp/app/subjects", params={"appId": app_id})
-
-        @classmethod
-        def search_access_subjects(
-            cls, *, tenant_id: str, account_id: str, keyword: str, page: int, limit: int, group_id: str | None
-        ) -> dict[str, Any]:
-            params: dict[str, str | int] = {
-                "tenantId": tenant_id,
-                "accountId": account_id,
-                "keyword": keyword,
-                "pageNumber": page,
-                "resultsPerPage": limit,
-            }
-            if group_id is not None:
-                params["groupId"] = group_id
-            return EnterpriseRequest.send_request("GET", "/webapp/app/subject/search", params=params)
 
         @classmethod
         def cleanup_webapp(cls, app_id: str):

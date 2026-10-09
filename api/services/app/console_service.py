@@ -13,8 +13,6 @@ from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.entities.app_entities import (
-    AccessSubject,
-    AccessSubjectPage,
     AppChange,
     AppCreationSettings,
     AppDeletion,
@@ -89,13 +87,7 @@ class ConsoleAppAccess(Protocol):
 
     def access_mode(self, app_id: str) -> str | None: ...
 
-    def access_subjects(self, app_id: str) -> list[AccessSubject]: ...
-
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode, subjects: list[dict[str, str]]) -> None: ...
-
-    def search_access_subjects(
-        self, context: RequestContext, *, keyword: str, page: int, limit: int, group_id: str | None
-    ) -> AccessSubjectPage: ...
+    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None: ...
 
     def can_export_version(self, workspace_id: str) -> bool: ...
 
@@ -219,16 +211,8 @@ class ConsoleAppService:
         self._tracing = tracing
         self._lifecycle = lifecycle
 
-    def access_subjects(self, app_id: str) -> list[AccessSubject]:
-        return self._access.access_subjects(app_id)
-
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode, subjects: list[dict[str, str]]) -> None:
-        self._access.update_access(app_id, access_mode, subjects)
-
-    def search_access_subjects(
-        self, context: RequestContext, *, keyword: str, page: int, limit: int, group_id: str | None
-    ) -> AccessSubjectPage:
-        return self._access.search_access_subjects(context, keyword=keyword, page=page, limit=limit, group_id=group_id)
+    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None:
+        self._access.update_access(app_id, access_mode)
 
     def access_ready(self, context: RequestContext, app_id: str) -> bool:
         """Whether an agent app has a published version its web app and Service API can serve."""

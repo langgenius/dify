@@ -10,7 +10,7 @@ from typing import BinaryIO, Final, Literal, override
 from uuid import UUID
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -48,9 +48,6 @@ from services.app_service import AppService
 from services.enterprise import rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import (
-    AccessSubject,
-    AccessSubjectPage,
-    AccessSubjectType,
     AppCreationSettings,
     AppDeletion,
     AppEvent,
@@ -83,54 +80,6 @@ _ENTERPRISE_UNAVAILABLE: Final = (
     UnicodeDecodeError,
     ValidationError,
 )
-
-
-class _EnterpriseGroup(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    id: str
-    name: str | None = None
-    group_size: int | None = Field(default=None, alias="groupSize")
-
-    def subject(self) -> AccessSubject:
-        return AccessSubject(id=self.id, type=AccessSubjectType.GROUP, name=self.name, member_count=self.group_size)
-
-
-class _EnterpriseMember(BaseModel):
-    id: str
-    name: str | None = None
-    email: str | None = None
-
-    def subject(self) -> AccessSubject:
-        return AccessSubject(id=self.id, type=AccessSubjectType.ACCOUNT, name=self.name, email=self.email)
-
-
-class _EnterpriseAppSubjects(BaseModel):
-    """Enterprise omits an empty list, as proto3 JSON does."""
-
-    groups: list[_EnterpriseGroup] = Field(default_factory=list)
-    members: list[_EnterpriseMember] = Field(default_factory=list)
-
-
-class _EnterpriseCandidate(BaseModel):
-    subject_id: str = Field(alias="subjectId")
-    subject_type: str = Field(alias="subjectType")
-    group: _EnterpriseGroup | None = Field(default=None, alias="groupData")
-    account: _EnterpriseMember | None = Field(default=None, alias="accountData")
-
-    def subject(self) -> AccessSubject:
-        return AccessSubject(
-            id=self.subject_id,
-            type=self.subject_type,
-            name=self.group.name if self.group else self.account.name if self.account else None,
-            email=self.account.email if self.account else None,
-            member_count=self.group.group_size if self.group else None,
-        )
-
-
-class _EnterpriseCandidatePage(BaseModel):
-    subjects: list[_EnterpriseCandidate] = Field(default_factory=list)
-    has_more: bool = Field(default=False, alias="hasMore")
 
 
 @dataclass(frozen=True)
@@ -257,42 +206,11 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
         return EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
 
     @override
-    def access_subjects(self, app_id: str) -> list[AccessSubject]:
+    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None:
         try:
-            payload = _EnterpriseAppSubjects.model_validate(EnterpriseService.WebAppAuth.get_app_subjects(app_id))
+            EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode)
         except _ENTERPRISE_UNAVAILABLE as error:
             raise WebAppAccessUnavailableError from error
-        return [group.subject() for group in payload.groups] + [member.subject() for member in payload.members]
-
-    @override
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode, subjects: list[dict[str, str]]) -> None:
-        try:
-            updated = EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode, subjects)
-        except _ENTERPRISE_UNAVAILABLE as error:
-            raise WebAppAccessUnavailableError from error
-        if not updated:
-            raise WebAppAccessUnavailableError("Enterprise did not save the web-app access")
-
-    @override
-    def search_access_subjects(
-        self, context: RequestContext, *, keyword: str, page: int, limit: int, group_id: str | None
-    ) -> AccessSubjectPage:
-        try:
-            payload = _EnterpriseCandidatePage.model_validate(
-                EnterpriseService.WebAppAuth.search_access_subjects(
-                    tenant_id=context.active_workspace_id,
-                    account_id=context.account_id,
-                    keyword=keyword,
-                    page=page,
-                    limit=limit,
-                    group_id=group_id,
-                )
-            )
-        except _ENTERPRISE_UNAVAILABLE as error:
-            raise WebAppAccessUnavailableError from error
-        return AccessSubjectPage(
-            subjects=[candidate.subject() for candidate in payload.subjects], has_more=payload.has_more
-        )
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
