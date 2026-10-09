@@ -41,21 +41,21 @@ _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
 
 def paginated(op: str) -> Callable:
-    """Fill the ``Next page`` hint on a bare ``PaginationEnvelope`` result (one with no hints
-    of its own). Sits inside ``accepts`` so it sees the validated ``query`` and the path
-    kwargs the hint echoes; only this layer knows both those and the op id.
+    """Add the ``Next page`` hint to a ``PaginationEnvelope`` result, unless the view already
+    built one for this op. Sits inside ``accepts`` so it sees the validated ``query`` and the
+    path kwargs the hint echoes; only this layer knows both those and the op id.
     """
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
-            if not isinstance(result, PaginationEnvelope) or result.hints:
+            if not isinstance(result, PaginationEnvelope) or any(h.op == op for h in result.hints):
                 return result
             path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
             hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
             if hint is not None:
-                result.hints = [hint]
+                result.hints = [*result.hints, hint]
             return result
 
         return wrapper

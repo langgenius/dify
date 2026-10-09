@@ -168,6 +168,21 @@ def _model_write_response(
     return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=hints)
 
 
+def _activate_if_none(workspace_id: str, provider: str, ref: ModelRef, credential_id: str) -> None:
+    """Make a new model credential active when the model has none, as a provider's first credential is."""
+    custom = _custom_model(_provider(workspace_id, provider), ref.model, ref.model_type.value)
+    if custom is None or custom.current_credential_id:
+        return
+    with _credential_errors():
+        ModelProviderService().switch_active_custom_model_credential(
+            tenant_id=workspace_id,
+            provider=provider,
+            model_type=ref.model_type.value,
+            model=ref.model,
+            credential_id=credential_id,
+        )
+
+
 def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, language: str | None) -> list[ModelRow]:
     rows = []
     for m in models:
@@ -400,6 +415,7 @@ class ModelCredentialsApi(Resource):
                 credentials=body.credentials,
                 credential_name=body.name,
             )
+        _activate_if_none(ctx.workspace.id, provider, body, credential_id)
         return _model_write_response(ctx.workspace.id, provider, body, credential_id), HTTPStatus.CREATED
 
 

@@ -4,9 +4,9 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from controllers.openapi._models import ModelListQuery
+from controllers.openapi._models import ModelListQuery, ModelRef
 from controllers.openapi._search import matches
-from controllers.openapi.model_providers import _provider_write_response, model_rows
+from controllers.openapi.model_providers import _activate_if_none, _provider_write_response, model_rows
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
@@ -83,3 +83,19 @@ def test_inactive_credential_hints_replace_active() -> None:
     assert not response.active
     assert hint.op == "set.model_provider.credential"
     assert hint.input["credential_id"] == "active-id"
+
+
+def _custom(current: str | None) -> SimpleNamespace:
+    return SimpleNamespace(model="llama3", model_type="llm", current_credential_id=current)
+
+
+@pytest.mark.parametrize(("current", "switched"), [(None, True), ("other-id", False)])
+def test_new_model_credential_becomes_active_only_when_none_is(current: str | None, switched: bool) -> None:
+    response = SimpleNamespace(custom_configuration=SimpleNamespace(custom_models=[_custom(current)]))
+    ref = ModelRef(model="llama3", model_type=ModelType.LLM)
+    with (
+        patch("controllers.openapi.model_providers._provider", return_value=response),
+        patch("controllers.openapi.model_providers.ModelProviderService") as service,
+    ):
+        _activate_if_none("ws", "langgenius/ollama/ollama", ref, "new-id")
+    assert service.return_value.switch_active_custom_model_credential.called is switched
