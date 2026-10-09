@@ -6,10 +6,13 @@ actually asserts on. Keyword arguments map one-to-one onto model columns.
 """
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from extensions.storage.storage_type import StorageType
 from graphon.variables import VariableBase
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -487,3 +490,13 @@ __all__ = [
     "make_upload_file",
     "make_workflow",
 ]
+
+
+def upload_reader(
+    sessions: sessionmaker[Session], tenant_id: str = "00000000-0000-0000-0000-000000000001"
+) -> Callable[[str], UploadFileExtractionInput | None]:
+    from functools import partial
+
+    from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+
+    return partial(SQLAlchemyKnowledgeUploadRepository(session_factory=sessions).get_by_id, workspace_id=tenant_id)

@@ -18,7 +18,6 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -28,9 +27,8 @@ from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DatasetCollectionBinding
+from models.dataset import Dataset
 
 if TYPE_CHECKING:
     from qdrant_client.conversions import common_types
@@ -502,15 +500,9 @@ class QdrantVectorFactory(AbstractVectorFactory):
         self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
     ) -> QdrantVector:
         if dataset.collection_binding_id:
-            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-            # Annotation bindings may only be flushed in the caller's transaction.
-            # Keep the legacy lookup for workflows initialized with session=None.
-            binding_session = session if session is not None else db.session
-            dataset_collection_binding = binding_session.scalars(stmt).one_or_none()
-            if dataset_collection_binding:
-                collection_name = dataset_collection_binding.collection_name
-            else:
-                raise ValueError("Dataset Collection Bindings does not exist!")
+            if self._collection_name is None:
+                raise ValueError("The bound collection name must be resolved before initializing Qdrant")
+            collection_name = self._collection_name
         else:
             if dataset.index_struct_dict:
                 class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

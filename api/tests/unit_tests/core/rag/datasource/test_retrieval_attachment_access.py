@@ -20,14 +20,14 @@ from core.app.file_access import (
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document as RagDocument
-from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.storage.storage_type import StorageType
 from models import UploadFile
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 
 
 def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
@@ -201,16 +201,19 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     sqlite_session.commit()
 
     record = RetrievalSegments(segment=segment, score=0.8)
-    retrieval = DatasetRetrieval()
+    monkeypatch.setattr(
+        KnowledgeRetrievalRepository,
+        "available_datasets",
+        lambda self, tenant_id, dataset_ids: [dataset],
+    )
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", lambda tenant_id: None)
-    monkeypatch.setattr(retrieval, "_get_available_datasets", lambda tenant_id, dataset_ids: [dataset])
     monkeypatch.setattr(
         retrieval,
         "multiple_retrieve",
         lambda **kwargs: [RagDocument(page_content="segment content", provider="dify")],
     )
     monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda _session, documents: [record])
-    monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", sqlite_session_factory)
     scope = FileAccessScope(
         tenant_id=tenant_id,
         user_id=str(uuid4()),
@@ -220,7 +223,6 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
 
     with bind_file_access_scope(scope):
         results = retrieval.knowledge_retrieval(
-            sqlite_session,
             KnowledgeRetrievalRequest(
                 tenant_id=tenant_id,
                 user_id=str(uuid4()),
