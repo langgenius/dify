@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import Engine, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_storage import storage
@@ -31,6 +32,7 @@ from services.workflow.draft_variable_service import (
     DraftVariableSaver,
     DraftVarLoader,
 )
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 
 
@@ -247,6 +249,9 @@ class TestDraftVariableLoader(unittest.TestCase):
 
     def test_variable_loader_with_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
             load_file=storage.load,
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
@@ -260,6 +265,9 @@ class TestDraftVariableLoader(unittest.TestCase):
 
     def test_variable_loader_with_non_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
             load_file=storage.load,
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
@@ -297,6 +305,9 @@ class TestDraftVariableLoader(unittest.TestCase):
             with Session(bind=self._engine, expire_on_commit=False) as session:
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
                     cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
                     repository=WorkflowDraftVariableRepository(
                         sessions=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
@@ -316,6 +327,9 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Now test loading using DraftVarLoader
                 var_loader = DraftVarLoader(
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
                     load_file=storage.load,
                     repository=WorkflowDraftVariableRepository(
                         sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
@@ -420,6 +434,9 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Create DraftVarLoader and test loading
                 var_loader = DraftVarLoader(
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
                     load_file=storage.load,
                     repository=WorkflowDraftVariableRepository(
                         sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
@@ -514,6 +531,9 @@ class TestDraftVariableLoader(unittest.TestCase):
                 # Test load_variables with both regular and offloaded variables
                 # This method should handle the relationship preloading internally
                 var_loader = DraftVarLoader(
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
                     load_file=storage.load,
                     repository=WorkflowDraftVariableRepository(
                         sessions=sessionmaker(bind=self._engine, expire_on_commit=False)

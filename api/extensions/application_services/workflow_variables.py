@@ -18,6 +18,7 @@ def build_workflow_variable_service(*, database_client: sessionmaker[Session]) -
     return WorkflowVariableService(
         repository=WorkflowDraftVariableRepository(sessions=database_client),
         files=FileService(database_client),
+        file_inputs=WorkflowVariableFileGateway(database_client, DatabaseFileAccessController()),
         executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(database_client),
         storage=storage,
         defer_file_cleanup=cleanup_draft_variable_files_task.delay,

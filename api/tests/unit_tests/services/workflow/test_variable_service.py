@@ -8,6 +8,7 @@ from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_storage import storage
 from graphon.nodes import BuiltinNodeTypes
@@ -20,6 +21,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.app.generation.input_adapter import AppInputAdapter
 from services.file_service import FileService
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task, recover_draft_variable_file_cleanup_task
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
@@ -306,6 +308,7 @@ def test_offloaded_variables_use_injected_storage_outside_transactions(
     monkeypatch.setattr(storage, "save", lambda key, data: contents.__setitem__(key, data))
     monkeypatch.setattr(storage, "load", unexpected_global_read)
     variables = WorkflowVariableService(
+        file_inputs=WorkflowVariableFileGateway(factory, DatabaseFileAccessController()),
         repository=WorkflowDraftVariableRepository(sessions=factory),
         files=FileService(factory),
         executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(factory),
