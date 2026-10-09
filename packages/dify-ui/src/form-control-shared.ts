@@ -30,7 +30,7 @@ export const textControlGroupClassName = [
   'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
   'has-[input:focus]:border-transparent has-[input:focus]:bg-components-input-bg-active has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:transition-none',
   'data-invalid:not-data-disabled:border-components-input-border-destructive data-invalid:not-data-disabled:bg-components-input-bg-destructive',
-  'data-readonly:not-data-disabled:not-data-invalid:hover:border-transparent data-readonly:not-data-disabled:not-data-invalid:hover:bg-components-input-bg-normal data-readonly:not-data-invalid:not-data-disabled:has-[input:focus]:bg-components-input-bg-normal',
+  'data-readonly:not-data-disabled:not-data-invalid:hover:border-transparent data-readonly:not-data-disabled:not-data-invalid:hover:bg-components-input-bg-normal data-readonly:not-data-disabled:not-data-invalid:has-[input:focus]:bg-components-input-bg-normal',
   'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
   'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
   'motion-reduce:transition-none',

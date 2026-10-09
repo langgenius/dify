@@ -281,9 +281,9 @@ function PickerTrigger({
       disabled={field.disabled || disabled}
       className={(state) =>
         cn(
-          'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg border border-transparent bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
-          'not-aria-invalid:not-aria-disabled:not-data-disabled:hover:bg-state-base-hover-alt not-aria-invalid:not-aria-disabled:not-data-disabled:data-popup-open:bg-state-base-hover-alt',
-          'aria-invalid:not-data-disabled:border-components-input-border-destructive aria-invalid:not-data-disabled:bg-components-input-bg-destructive',
+          'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
+          'not-aria-invalid:not-data-disabled:hover:bg-state-base-hover-alt not-aria-invalid:not-data-disabled:data-popup-open:bg-state-base-hover-alt',
+          'aria-invalid:not-data-disabled:bg-components-input-bg-destructive aria-invalid:not-data-disabled:inset-ring-1 aria-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
           'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
           resolveClassName(className, state),
