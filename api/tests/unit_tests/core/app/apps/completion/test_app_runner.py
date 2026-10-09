@@ -1,6 +1,6 @@
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -16,6 +16,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
 from services.app.generation.adapters.completion_runner import CompletionAppRunner
+from services.app.generation.retrieval import ApplicationDatasetRetriever
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -167,7 +168,7 @@ class TestCompletionAppRunner:
         runner.recalc_llm_max_tokens = MagicMock()
         runner._handle_invoke_result = MagicMock()
 
-        dataset_retrieval = MagicMock()
+        dataset_retrieval = create_autospec(ApplicationDatasetRetriever, instance=True, spec_set=True)
         dataset_retrieval.retrieve.return_value = ("ctx", ["file1"])
         runner._retrieval = lambda _: dataset_retrieval
 
