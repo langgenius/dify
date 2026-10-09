@@ -105,6 +105,7 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /messages/{message_id}/feedbacks
 **Submit Message Feedback**
@@ -132,6 +133,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -160,6 +162,7 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -181,6 +184,7 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | 400 | `invalid_param` : The specified job does not exist. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -202,6 +206,7 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /apps/annotations
 **Create Annotation**
@@ -221,6 +226,7 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete Annotation**
@@ -241,6 +247,7 @@ Deletes an annotation and its associated hit history.
 | 401 | Unauthorized - invalid API token |
 | 403 | `forbidden` : Insufficient permissions to edit annotations. |
 | 404 | `not_found` : Annotation does not exist. |
+| 503 | Service unavailable - app token validation could not reach the database |
 
 ### [PUT] /apps/annotations/{annotation_id}
 **Update Annotation**
@@ -267,6 +274,7 @@ Updates the question and answer of an existing annotation.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Insufficient permissions to edit annotations. |  |
 | 404 | `not_found` : Annotation does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -293,6 +301,7 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | 413 | `audio_too_large` : Audio file size exceeded the limit. |  |
 | 415 | `unsupported_audio_type` : Audio type is not allowed. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /text-to-audio
 **Convert Text to Audio**
@@ -314,6 +323,7 @@ Convert text to speech.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -340,6 +350,7 @@ Send a request to the chat application.
 | 404 | `not_found` : Conversation does not exist. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -366,6 +377,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -389,6 +401,7 @@ Get next questions suggestions for the current message.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
@@ -413,6 +426,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Workflow run not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -440,6 +454,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -461,6 +476,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Workflow run not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -487,6 +503,7 @@ Send a request to the chat application.
 | 404 | `not_found` : Conversation does not exist. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -513,6 +530,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -536,6 +554,7 @@ Get next questions suggestions for the current message.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -561,6 +580,7 @@ Send a request to the text generation application.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 429 | `too_many_requests` : Too many concurrent requests for this app. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop Completion Message Generation**
@@ -587,6 +607,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -614,6 +635,7 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
@@ -641,6 +663,7 @@ Delete a conversation.
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |
 | 404 | `not_found` : Conversation does not exist. |
+| 503 | Service unavailable - app token validation could not reach the database |
 
 ### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
@@ -668,6 +691,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
@@ -693,6 +717,7 @@ Retrieve variables from a specific conversation.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
@@ -721,6 +746,7 @@ Update the value of a specific conversation variable. The value must match the e
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /messages
 **List Conversation Messages**
@@ -745,6 +771,7 @@ Returns historical chat records in a scrolling load format, with the first page 
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -1976,6 +2003,7 @@ Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., 
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `end_user_not_found` : End user not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -2001,6 +2029,7 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | `file_too_large` : File size exceeded. |  |
 | 415 | `unsupported_file_type` : File type not allowed. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /files/{file_id}/preview
 **Download File**
@@ -2023,6 +2052,7 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `file_access_denied` : Access to the requested file is denied. |  |
 | 404 | `file_not_found` : The requested file was not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -2047,6 +2077,7 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Form not found. |  |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /form/human_input/{form_token}
 **Submit Human Input Form**
@@ -2075,6 +2106,7 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Form not found. |  |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -2092,6 +2124,7 @@ Retrieve basic information about this application, including name, description, 
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /meta
 **Get App Meta**
@@ -2106,6 +2139,7 @@ Retrieve metadata about this application, including tool icons and other configu
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /parameters
 **Get App Parameters**
@@ -2120,6 +2154,7 @@ Retrieve the application's input form configuration, including feature switches,
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /site
 **Get App WebApp Settings**
@@ -2133,6 +2168,7 @@ Retrieve the WebApp settings of this application, including site configuration, 
 | 200 | WebApp settings of the application. | **application/json**: [Site](#site)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Site not found for this application or the workspace has been archived. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default
@@ -2160,6 +2196,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Workflow run not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -2187,6 +2224,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /workflows/run
 **Run Workflow**
@@ -2209,6 +2247,7 @@ Execute a workflow. Cannot be executed without a published workflow.
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -2230,6 +2269,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Workflow run not found. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop Workflow Task**
@@ -2256,6 +2296,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -2285,6 +2326,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | 404 | `not_found` : Workflow not found. |  |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
+| 503 | Service unavailable - app token validation could not reach the database |  |
 
 ---
 ## default

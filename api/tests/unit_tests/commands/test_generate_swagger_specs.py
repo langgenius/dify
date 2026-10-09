@@ -471,11 +471,17 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     )
     assert "404" not in payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"]["responses"]
 
+    vector_space_unavailable_description = (
+        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
+        "plan only; retry the request later."
+    )
+    app_token_unavailable_description = "Service unavailable - app token validation could not reach the database"
     vector_space_operations = {
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
-        if isinstance(operation, dict) and "503" in operation.get("responses", {})
+        if isinstance(operation, dict)
+        and operation.get("responses", {}).get("503", {}).get("description") == vector_space_unavailable_description
     }
     assert vector_space_operations == {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
@@ -495,14 +501,13 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_file"),
         ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_text"),
     }
-    vector_space_unavailable_description = (
-        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
-        "plan only; retry the request later."
-    )
     for method, path in vector_space_operations:
         assert payload["paths"][path][method]["responses"]["503"]["description"] == (
             vector_space_unavailable_description
         )
+    assert payload["paths"]["/chat-messages"]["post"]["responses"]["503"]["description"] == (
+        app_token_unavailable_description
+    )
 
     for path in (
         "/datasets/{dataset_id}/document/create-by-file",
