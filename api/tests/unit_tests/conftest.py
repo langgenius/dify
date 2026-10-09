@@ -5,7 +5,6 @@ import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import ModuleType
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, create_autospec, patch
 
@@ -27,7 +26,6 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
-_REDIS_CLIENT_MODULE_KEYS = frozenset(("redis_client", "_pubsub_redis_client", "__getattr__"))
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -66,11 +64,6 @@ def _patch_redis_clients_on_loaded_modules() -> None:
 
     for module in list(sys.modules.values()):
         if module is None:
-            continue
-        # Skip ordinary modules with no possible Redis exports in one dictionary
-        # query. Rediscover bindings every test; dynamic exports and custom
-        # module attribute access still use the original lookup/assignment path.
-        if type(module) is ModuleType and vars(module).keys().isdisjoint(_REDIS_CLIENT_MODULE_KEYS):
             continue
         for client_attribute in ("redis_client", "_pubsub_redis_client"):
             if hasattr(module, client_attribute):
