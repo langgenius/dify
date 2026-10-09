@@ -52,9 +52,6 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    core.tools.tool_manager -> services.tools.legacy_builtin_tools_manage_service
-    core.tools.tool_manager -> services.tools.legacy_mcp_tools_manage_service
-    core.tools.tool_manager -> services.tools.legacy_tools_transform_service
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
