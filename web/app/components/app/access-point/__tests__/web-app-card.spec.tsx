@@ -8,6 +8,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -28,32 +29,37 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        siteEnable: {
-          post: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.siteEnable,
-              ...options,
-            }),
-          },
-        },
-        site: {
-          accessTokenReset: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      account: actual.consoleQuery.account,
+      apps: {
+        byAppId: {
+          siteEnable: {
             post: {
               mutationOptions: (options = {}) => ({
-                mutationFn: mocks.resetSiteAccessToken,
+                mutationFn: mocks.siteEnable,
                 ...options,
               }),
+            },
+          },
+          site: {
+            accessTokenReset: {
+              post: {
+                mutationOptions: (options = {}) => ({
+                  mutationFn: mocks.resetSiteAccessToken,
+                  ...options,
+                }),
+              },
             },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/service/access-control/use-app-access-control', async (importOriginal) => {
   const actual =
@@ -96,21 +102,6 @@ vi.mock('@/app/components/app/overview/settings', () => ({
   default: () => null,
 }))
 
-vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({
-    hiddenInputs = [],
-    isShow,
-  }: {
-    hiddenInputs?: Array<{ variable: string }>
-    isShow: boolean
-  }) =>
-    isShow ? (
-      <div role="dialog" aria-label="embed into site">
-        {hiddenInputs.map((input) => input.variable).join(',')}
-      </div>
-    ) : null,
-}))
-
 function createAppInfo(mode: AppModeEnum): AppDetailWithSite {
   return createAppDetailFixture({
     access_mode: AccessMode.PUBLIC,
@@ -151,6 +142,7 @@ function renderCard(
     appDetail: { ...createAppInfo(mode), ...appOverrides, access_mode: accessMode },
   })
   const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient)
   queryClient.setQueryData(['system-features'], {
     webapp_auth: { enabled: showAccessControl },
   })
@@ -403,7 +395,9 @@ describe('WebAppAccessPointCard', () => {
 
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
-    expect(screen.getByRole('dialog', { name: 'embed into site' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' }),
+    ).toBeInTheDocument()
   })
 
   it('updates site status through the generated contract', async () => {
@@ -464,7 +458,8 @@ describe('WebAppAccessPointCard', () => {
 
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
-    expect(screen.getByRole('dialog', { name: 'embed into site' })).toHaveTextContent('secret')
+    await user.click(screen.getByRole('button', { name: /hiddenInputs.title/ }))
+    expect(screen.getByLabelText('Secret')).toBeInTheDocument()
   })
 
   it('configures hidden workflow inputs before opening the Web App', async () => {
