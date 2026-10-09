@@ -582,7 +582,7 @@ class TestExtractionBudget:
         existing = threading.BoundedSemaphore(1)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Generator[None, None, None]:
+        def _lock_won_by_another_thread() -> Generator[None]:
             # The task ahead of us already published the budget; a second one
             # here would double the process's concurrency.
             entity_extractor_module._extraction_slots = existing

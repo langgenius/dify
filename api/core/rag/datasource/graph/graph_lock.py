@@ -15,7 +15,7 @@ class GraphIndexLockError(RuntimeError):
 
 
 @contextmanager
-def graph_index_lock(dataset_id: str) -> Generator[Callable[[], None], None, None]:
+def graph_index_lock(dataset_id: str) -> Generator[Callable[[], None]]:
     """Hold the merge lease for one dataset, yielding a callable that renews it.
 
     Documents of the same dataset are indexed by several workers in parallel, so

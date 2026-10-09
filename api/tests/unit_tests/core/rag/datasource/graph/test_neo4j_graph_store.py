@@ -164,7 +164,7 @@ def fake_lock(renewals: list[str], monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the Redis merge lease, recording every renewal it is asked for."""
 
     @contextmanager
-    def _lock(dataset_id: str) -> Generator[Callable[[], None], None, None]:
+    def _lock(dataset_id: str) -> Generator[Callable[[], None]]:
         yield lambda: renewals.append(dataset_id)
 
     monkeypatch.setattr(neo4j_module, "graph_index_lock", _lock)
@@ -222,7 +222,7 @@ class TestDriver:
         monkeypatch.setattr(neo4j_module, "_driver", None)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Generator[None, None, None]:
+        def _lock_won_by_another_thread() -> Generator[None]:
             # Whoever held the lock finished connecting while we queued behind
             # them; without the second check we would connect all over again.
             neo4j_module._driver = "driver built elsewhere"
@@ -265,7 +265,7 @@ class TestSchema:
         monkeypatch.setattr(neo4j_module, "_schema_ready", False)
 
         @contextmanager
-        def _lock_won_by_another_thread() -> Generator[None, None, None]:
+        def _lock_won_by_another_thread() -> Generator[None]:
             # The thread ahead of us in the queue already ran the DDL.
             neo4j_module._schema_ready = True
             yield
