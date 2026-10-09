@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager
 from http import HTTPStatus
 from typing import Any, Final
@@ -27,18 +27,18 @@ from controllers.openapi._models import (
     Hint,
     ModelCredentialCreatePayload,
     ModelCredentialUpdatePayload,
+    ModelListQuery,
     ModelListResponse,
     ModelProviderDetailResponse,
-    ModelProviderListQuery,
-    ModelProviderListResponse,
-    ModelProviderRow,
     ModelRef,
     ModelRow,
     ProviderCredentialCreatePayload,
     ProviderCredentialUpdatePayload,
 )
+from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import admin_write, workspace_read
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.entities.provider_entities import CustomModelConfiguration
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -51,7 +51,6 @@ from services.model_provider.service import ModelProviderService
 _READ: Final = workspace_read()
 _CREATE: Final = admin_write(RBACPermission.CREDENTIAL_CREATE)
 _MANAGE: Final = admin_write(RBACPermission.CREDENTIAL_MANAGE)
-_USE: Final = admin_write(RBACPermission.CREDENTIAL_USE)
 _PREFERENCES: Final = admin_write(RBACPermission.PLUGIN_PREFERENCES)
 
 _PROVIDER_EXAMPLE: Final = "langgenius/openai/openai"
@@ -118,9 +117,9 @@ def _custom_model(response: ProviderResponse, model: str, model_type: str) -> Cu
 
 
 def _provider_write_response(workspace_id: str, provider: str, credential_id: str) -> CredentialWriteResponse:
-    response = _provider(workspace_id, provider)
-    names = {c.credential_id: c.credential_name for c in response.custom_configuration.available_credentials or []}
-    active = response.custom_configuration.current_credential_id == credential_id
+    configuration = _provider(workspace_id, provider).custom_configuration
+    names = {c.credential_id: c.credential_name for c in configuration.available_credentials or []}
+    active = configuration.current_credential_id == credential_id
     hint = (
         Hint(
             summary="Pick a model for your nodes",
@@ -129,9 +128,14 @@ def _provider_write_response(workspace_id: str, provider: str, credential_id: st
         )
         if active
         else Hint(
-            summary="Make this credential the active one",
-            op=op_of(ModelProviderCredentialSwitchApi.post),
-            input={"workspace_id": workspace_id, "provider": provider, "credential_id": credential_id},
+            summary="Another credential is active; replace its values to use these",
+            op=op_of(ModelProviderCredentialApi.patch),
+            input={
+                "workspace_id": workspace_id,
+                "provider": provider,
+                "credential_id": configuration.current_credential_id,
+                "credentials": None,
+            },
         )
     )
     return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=[hint])
@@ -144,41 +148,43 @@ def _model_write_response(
     names = {c.credential_id: c.credential_name for c in (custom.available_model_credentials if custom else [])}
     active = custom is not None and custom.current_credential_id == credential_id
     hints = (
-        []
-        if active
-        else [
+        [
             Hint(
-                summary="Make this credential the active one for the model",
-                op=op_of(ModelCredentialSwitchApi.post),
+                summary="Another credential is active for the model; replace its values to use these",
+                op=op_of(ModelCredentialApi.patch),
                 input={
                     "workspace_id": workspace_id,
                     "provider": provider,
-                    "credential_id": credential_id,
+                    "credential_id": custom.current_credential_id,
                     "model": ref.model,
                     "model_type": ref.model_type.value,
+                    "credentials": None,
                 },
             )
         ]
+        if custom is not None and custom.current_credential_id and not active
+        else []
     )
     return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=hints)
 
 
-@openapi_ns.route("/workspaces/<string:workspace_id>/model-providers")
-class ModelProvidersApi(Resource):
-    @endpoint(
-        op="get.model_provider",
-        kind=Kind.OBJECT,
-        summary="Model providers in the workspace: set up or not, and the active credential",
-        examples=(Example(title="Providers that serve LLMs", input={"model_type": "llm"}),),
-        requirements=_READ,
-        query=ModelProviderListQuery,
-        returns=(HTTPStatus.OK, ModelProviderListResponse, "Model providers"),
-    )
-    def get(self, ctx: Context, workspace_id: str, *, query: ModelProviderListQuery):
-        model_type = query.model_type.value if query.model_type else None
-        responses = ModelProviderService().get_provider_list(ctx.workspace.id, model_type=model_type)
-        language = ctx.account.interface_language
-        return ModelProviderListResponse(data=[ModelProviderRow(**_row(r, language)) for r in responses])
+def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, language: str | None) -> list[ModelRow]:
+    rows = []
+    for m in models:
+        if m.deprecated:
+            continue
+        row = ModelRow(
+            provider=m.provider.provider,
+            provider_label=localized(m.provider.label.model_dump(), language),
+            model=m.model,
+            model_type=str(m.model_type),
+            label=localized(m.label.model_dump(), language),
+            status=str(m.status),
+            features=[str(f) for f in m.features or []],
+        )
+        if matches(words, row.model, row.label, row.provider, row.provider_label):
+            rows.append(row)
+    return rows
 
 
 @openapi_ns.route(_PROVIDER_PATH)
@@ -216,6 +222,13 @@ class ModelProviderApi(Resource):
                     form=[field.model_dump() for field in form],
                 )
             ]
+        )
+        hints.append(
+            Hint(
+                summary="List its models",
+                op=op_of(ModelsApi.get),
+                input={"workspace_id": ctx.workspace.id, "provider": provider},
+            )
         )
         return ModelProviderDetailResponse(
             **_row(response, language),
@@ -322,51 +335,37 @@ class ModelProviderCredentialApi(Resource):
         return CredentialRef(id=credential_id, name=names[credential_id])
 
 
-@openapi_ns.route(f"{_PROVIDER_PATH}/credentials/<string:credential_id>:switch")
-class ModelProviderCredentialSwitchApi(Resource):
-    @endpoint(
-        op="switch.model_provider.credential",
-        kind=Kind.OBJECT,
-        summary="Make a saved credential the active one for its provider",
-        examples=(Example(title="Switch", input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"}),),
-        requirements=_USE,
-        returns=(HTTPStatus.OK, CredentialWriteResponse, "Credential active"),
-    )
-    def post(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        with _credential_errors():
-            ModelProviderService().switch_active_provider_credential(
-                tenant_id=ctx.workspace.id, provider=provider, credential_id=credential_id
-            )
-        return _provider_write_response(ctx.workspace.id, provider, credential_id)
-
-
-@openapi_ns.route(f"{_PROVIDER_PATH}/models")
+@openapi_ns.route("/workspaces/<string:workspace_id>/models")
 class ModelsApi(Resource):
     @endpoint(
         op="get.model",
-        kind=Kind.OBJECT,
-        summary="Models a provider offers, with whether each can be used now",
-        examples=(Example(title="OpenAI models", input={"provider": _PROVIDER_EXAMPLE}),),
+        kind=Kind.LIST,
+        summary="Models in the workspace across providers, with whether each can be used now",
+        examples=(
+            Example(title="LLMs", input={"model_type": "llm"}),
+            Example(title="OpenAI models", input={"provider": _PROVIDER_EXAMPLE}),
+        ),
         requirements=_READ,
+        query=ModelListQuery,
         returns=(HTTPStatus.OK, ModelListResponse, "Models"),
     )
-    def get(self, ctx: Context, workspace_id: str, provider: str):
-        _provider(ctx.workspace.id, provider)
+    def get(self, ctx: Context, workspace_id: str, *, query: ModelListQuery):
         with _credential_errors():
-            models = ModelProviderService().get_models_by_provider(tenant_id=ctx.workspace.id, provider=provider)
-        language = ctx.account.interface_language
-        return ModelListResponse(
-            data=[
-                ModelRow(
-                    model=m.model,
-                    model_type=str(m.model_type),
-                    label=localized(m.label.model_dump(), language),
-                    status=str(m.status),
-                    features=[str(f) for f in m.features or []],
-                )
-                for m in models
-            ]
-        )
+            models = ModelProviderService().list_models(
+                ctx.workspace.id, provider=query.provider, model_type=query.model_type
+            )
+        rows = model_rows(models, words=query.query, language=ctx.account.interface_language)
+        page = ModelListResponse.page_of(rows, query=query)
+        unready = sorted({row.provider for row in page.data if row.status != ModelStatus.ACTIVE})
+        page.hints = [
+            Hint(
+                summary="Set up this provider to use its models",
+                op=op_of(ModelProviderApi.get),
+                input={"workspace_id": ctx.workspace.id, "provider": provider},
+            )
+            for provider in unready
+        ]
+        return page
 
 
 @openapi_ns.route(f"{_PROVIDER_PATH}/models/credentials")
@@ -474,39 +473,6 @@ class ModelCredentialApi(Resource):
                 credential_id=credential_id,
             )
         return CredentialRef(id=credential_id, name=names[credential_id])
-
-
-@openapi_ns.route(f"{_PROVIDER_PATH}/models/credentials/<string:credential_id>:switch")
-class ModelCredentialSwitchApi(Resource):
-    @endpoint(
-        op="switch.model.credential",
-        kind=Kind.OBJECT,
-        summary="Make a saved credential the active one for one model",
-        examples=(
-            Example(
-                title="Switch",
-                input={
-                    "provider": _OLLAMA_EXAMPLE,
-                    "credential_id": "<credential_id>",
-                    "model": "llama3",
-                    "model_type": "llm",
-                },
-            ),
-        ),
-        requirements=_USE,
-        body=ModelRef,
-        returns=(HTTPStatus.OK, CredentialWriteResponse, "Credential active"),
-    )
-    def post(self, ctx: Context, workspace_id: str, provider: str, credential_id: str, *, body: ModelRef):
-        with _credential_errors():
-            ModelProviderService().switch_active_custom_model_credential(
-                tenant_id=ctx.workspace.id,
-                provider=provider,
-                model_type=body.model_type.value,
-                model=body.model,
-                credential_id=credential_id,
-            )
-        return _model_write_response(ctx.workspace.id, provider, body, credential_id)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/default-models")

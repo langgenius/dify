@@ -310,12 +310,6 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
-        "model_providers.list",
-        "GET",
-        "/workspaces/{workspace_id}/model-providers",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
-    Route(
         "model_providers.describe",
         "GET",
         "/workspaces/{workspace_id}/model-providers/{provider}",
@@ -337,18 +331,6 @@ ROUTES: tuple[Route, ...] = (
         "model_providers.credential.delete",
         "DELETE",
         "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
-    Route(
-        "model_providers.credential.switch",
-        "POST",
-        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
-    Route(
-        "tool_providers.list",
-        "GET",
-        "/workspaces/{workspace_id}/tool-providers",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -376,15 +358,9 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
-        "tool_providers.credential.switch",
-        "POST",
-        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
-    Route(
         "models.list",
         "GET",
-        "/workspaces/{workspace_id}/model-providers/{provider}/models",
+        "/workspaces/{workspace_id}/models",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -405,12 +381,6 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
         query="model=llama3&model_type=llm",
-    ),
-    Route(
-        "models.credential.switch",
-        "POST",
-        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "default_models.list",
@@ -1431,23 +1401,18 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "plugins.task": _REQ_PLUGIN_TASK,
     "plugins.upgrade": _req_plugin_write(RBACPermission.PLUGIN_MODEL_CONFIG),
     "plugins.delete": _req_plugin_write(RBACPermission.PLUGIN_DELETE),
-    "model_providers.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "model_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
-    "model_providers.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
-    "tool_providers.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "tool_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
-    "tool_providers.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "models.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
-    "models.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
     "default_models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "default_models.set": _req_admin_write(RBACPermission.PLUGIN_PREFERENCES),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
@@ -2196,7 +2161,6 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/plugin-tasks/{task_id}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/plugins:upgrade"): frozenset({"200", "422", "default"}),
     ("delete", "/workspaces/{workspace_id}/plugins/{plugin_id}"): frozenset({"200", "default"}),
-    ("get", "/workspaces/{workspace_id}/tool-providers"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/tool-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
@@ -2205,10 +2169,6 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "default"}
     ),
-    ("post", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch"): frozenset(
-        {"200", "default"}
-    ),
-    ("get", "/workspaces/{workspace_id}/model-providers"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/model-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
@@ -2217,10 +2177,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "default"}
     ),
-    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch"): frozenset(
-        {"200", "default"}
-    ),
-    ("get", "/workspaces/{workspace_id}/model-providers/{provider}/models"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/models"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
         {"201", "422", "default"}
     ),
@@ -2230,10 +2187,6 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
-    (
-        "post",
-        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch",
-    ): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/default-models"): frozenset({"200", "default"}),
     ("put", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "422", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),

@@ -535,6 +535,14 @@ class TestModelProviderServiceConfiguration:
         assert "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC" in statements[1]
         assert "provider_model_credentials" in statements[2]
 
+    def test_list_models_should_pass_filters_through(self) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        get_models = MagicMock(return_value=[])
+        manager.get_configurations.return_value = SimpleNamespace(get_models=get_models)
+
+        assert service.list_models("tenant-1", provider=None, model_type=ModelType.LLM) == []
+        get_models.assert_called_once_with(provider=None, model_type=ModelType.LLM)
+
     def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(self) -> None:
         service, manager = _create_service_with_mocked_manager()
 
@@ -573,7 +581,7 @@ class TestModelProviderServiceConfiguration:
         assert len(result) == 2
         assert result[0].model == "gpt-4o"
         assert result[1].provider.provider == "openai"
-        provider_configurations.get_models.assert_called_once_with(provider="openai")
+        provider_configurations.get_models.assert_called_once_with(provider="openai", model_type=None)
 
 
 class TestModelProviderServiceDelegation:

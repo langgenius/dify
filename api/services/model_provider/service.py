@@ -442,23 +442,22 @@ class ModelProviderService:
         }
         return provider_summaries, plugin_summaries
 
+    def list_models(
+        self, tenant_id: str, *, provider: str | None = None, model_type: ModelType | None = None
+    ) -> list[ModelWithProviderEntity]:
+        """Models of every provider in the workspace, optionally narrowed to one provider or model type."""
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        return provider_configurations.get_models(provider=provider, model_type=model_type)
+
     def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
         """
         get provider models.
         For the model provider page,
         only supports passing in a single provider to query the list of supported models.
-
-        :param tenant_id: workspace id
-        :param provider: provider name
-        :return:
         """
-        # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
-
-        # Get provider available models
         return [
             ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
-            for model in provider_configurations.get_models(provider=provider)
+            for model in self.list_models(tenant_id, provider=provider)
         ]
 
     def get_provider_available_credentials(

@@ -1,4 +1,4 @@
-"""Built-in tool providers in one workspace and their API-key credentials. OAuth credentials need the console."""
+"""Tool provider credentials (API key) and the tools a workspace can use. OAuth credentials need the console."""
 
 from __future__ import annotations
 
@@ -23,8 +23,6 @@ from controllers.openapi._models import (
     ToolCredentialCreatePayload,
     ToolCredentialUpdatePayload,
     ToolProviderDetailResponse,
-    ToolProviderListResponse,
-    ToolProviderRow,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import admin_write, workspace_read
@@ -104,32 +102,6 @@ def _visible_credential(ctx: Context, provider: str, credential_id: str):
 def _write_response(ctx: Context, provider: str, credential_id: str) -> CredentialWriteResponse:
     credential = _visible_credential(ctx, provider, credential_id)
     return CredentialWriteResponse(id=credential.id, name=credential.name, active=credential.is_default)
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/tool-providers")
-class ToolProvidersApi(Resource):
-    @endpoint(
-        op="get.tool_provider",
-        kind=Kind.OBJECT,
-        summary="Built-in tool providers in the workspace and whether each has a credential",
-        examples=(Example(title="All tool providers", input={}),),
-        requirements=_READ,
-        returns=(HTTPStatus.OK, ToolProviderListResponse, "Tool providers"),
-    )
-    def get(self, ctx: Context, workspace_id: str):
-        language = ctx.account.interface_language
-        rows = []
-        for entity in BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id):
-            controller = _controller(ctx.workspace.id, entity.id)
-            rows.append(
-                ToolProviderRow(
-                    provider=entity.id,
-                    label=localized(entity.label.model_dump(), language),
-                    configured=entity.is_team_authorization,
-                    credential_types=[str(t) for t in controller.get_supported_credential_types()],
-                )
-            )
-        return ToolProviderListResponse(data=rows)
 
 
 @openapi_ns.route(_PROVIDER_PATH)
@@ -261,24 +233,3 @@ class ToolProviderCredentialApi(Resource):
         except ValueError as error:
             raise BadRequest(str(error)) from error
         return CredentialRef(id=credential_id, name=credential.name)
-
-
-@openapi_ns.route(f"{_PROVIDER_PATH}/credentials/<string:credential_id>:switch")
-class ToolProviderCredentialSwitchApi(Resource):
-    @endpoint(
-        op="switch.tool_provider.credential",
-        kind=Kind.OBJECT,
-        summary="Make a saved credential the default for its tool provider",
-        examples=(Example(title="Switch", input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"}),),
-        requirements=admin_write(RBACPermission.CREDENTIAL_USE),
-        returns=(HTTPStatus.OK, CredentialWriteResponse, "Credential is the default"),
-    )
-    def post(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        _visible_credential(ctx, provider, credential_id)
-        try:
-            BuiltinToolManageService.set_default_provider(
-                tenant_id=ctx.workspace.id, provider=provider, id=credential_id
-            )
-        except ValueError as error:
-            raise BadRequest(str(error)) from error
-        return _write_response(ctx, provider, credential_id)

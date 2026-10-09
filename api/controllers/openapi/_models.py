@@ -978,22 +978,12 @@ class CredentialRef(BaseModel):
     name: str | None
 
 
-class ModelProviderListQuery(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    model_type: ModelType | None = Field(None, description="Only providers that serve this model type")
-
-
 class ModelProviderRow(BaseModel):
     provider: str = Field(description="Provider id such as langgenius/openai/openai")
     label: str | None
     model_types: list[str]
     configured: bool
     active_credential: CredentialRef | None
-
-
-class ModelProviderListResponse(Hinted):
-    data: list[ModelProviderRow]
 
 
 class CustomModelRow(BaseModel):
@@ -1045,10 +1035,6 @@ class ToolProviderRow(BaseModel):
     credential_types: list[str] = Field(description="api-key can be set here; oauth2 needs the console")
 
 
-class ToolProviderListResponse(Hinted):
-    data: list[ToolProviderRow]
-
-
 class ToolProviderDetailResponse(ToolProviderRow, Hinted):
     credential_form: list[CredentialFormField] = Field(description="Fields of an api-key credential")
     credentials: list[CredentialRef]
@@ -1069,16 +1055,26 @@ class ToolCredentialUpdatePayload(BaseModel):
     name: str | None = Field(None, max_length=30)
 
 
+class ModelListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str | None = Field(None, description="Only this provider's models, such as langgenius/openai/openai")
+    model_type: ModelType | None = Field(None, description="Only models of this type")
+    query: str = Field("", description="Words to match in the model name, label or provider")
+
+
 class ModelRow(BaseModel):
+    provider: str
+    provider_label: str | None
     model: str
     model_type: str
     label: str | None
-    status: str
+    status: str = Field(description="active means usable now; anything else needs the provider set up")
     features: list[str]
 
 
-class ModelListResponse(Hinted):
-    data: list[ModelRow]
+class ModelListResponse(PaginationEnvelope[ModelRow]):
+    pass
 
 
 class ModelRef(BaseModel):
