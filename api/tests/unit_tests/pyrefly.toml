@@ -601,7 +601,6 @@ project-excludes = [
   "enterprise/telemetry/test_event_handlers.py",
   "enterprise/telemetry/test_exporter.py",
   "enterprise/telemetry/test_gateway.py",
-  "enterprise/telemetry/test_metric_handler.py",
   "enums/test_quota_type.py",
   "events/event_handlers/test_clean_when_document_deleted.py",
   "events/event_handlers/test_delete_tool_parameters_cache_when_sync_draft_workflow.py",
