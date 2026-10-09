@@ -20,6 +20,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models import Account, Dataset, Document, DocumentSegment, UploadFile
@@ -181,7 +182,8 @@ class SQLAlchemyDocumentOperations:
             )
             statement = DocumentService.apply_display_status_filter(statement, query.status)
             if query.search:
-                statement = statement.where(Document.name.like(f"%{query.search}%"))
+                escaped_search = escape_like_pattern(query.search)
+                statement = statement.where(Document.name.ilike(f"%{escaped_search}%", escape="\\"))
             direction = desc if query.sort.startswith("-") else asc
             sort = query.sort.removeprefix("-")
             if sort == "hit_count":
