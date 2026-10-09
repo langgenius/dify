@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Any
+from typing import Any, get_args
 
 from flask_restx import Resource
+from pydantic import BaseModel, ValidationError
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -14,21 +15,35 @@ from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
 from controllers.openapi.auth.context import Context
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
-from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.http_request import HttpRequestNodeBody
+from graphon.nodes.base.node import Node
 from services.workflow_service import WorkflowService
 
 
-def _editor_default_config(node_type: str, default_config: Mapping[str, Any]) -> dict[str, Any]:
-    """Fill fields the server treats as optional but the web editor reads on load.
+def _model_of(annotation: object) -> type[BaseModel] | None:
+    for candidate in (annotation, *get_args(annotation)):
+        if isinstance(candidate, type) and issubclass(candidate, BaseModel):
+            return candidate
+    return None
 
-    graphon's http-request default omits `body.data`, and the editor crashes on a body without it.
-    """
-    if node_type != BuiltinNodeTypes.HTTP_REQUEST:
+
+def _complete_default_config(node_class: type[Node], default_config: Mapping[str, Any]) -> dict[str, Any]:
+    """Add the keys each sub-object's model defaults; keys the default already has win."""
+    config = default_config.get("config")
+    if not isinstance(config, Mapping):
         return dict(default_config)
-    config = dict(default_config["config"])
-    config["body"] = HttpRequestNodeBody.model_validate(config["body"]).model_dump(mode="json")
-    return {**default_config, "config": config}
+    fields = node_class._get_node_data_type().model_fields
+    completed = dict(config)
+    for key, value in config.items():
+        field = fields.get(key)
+        model = _model_of(field.annotation) if field else None
+        if model is None or not isinstance(value, Mapping):
+            continue
+        try:
+            filled = model.model_validate(value).model_dump(mode="json")
+        except ValidationError:
+            continue
+        completed[key] = {**filled, **value}
+    return {**default_config, "config": completed}
 
 
 @openapi_ns.route("/node-types")
@@ -67,5 +82,5 @@ class NodeTypeDetailApi(Resource):
             type=node_type,
             version=node_class.version(),
             schema=node_class._get_node_data_type().model_json_schema(),
-            default_config=_editor_default_config(node_type, WorkflowService().get_default_block_config(node_type)),
+            default_config=_complete_default_config(node_class, WorkflowService().get_default_block_config(node_type)),
         )

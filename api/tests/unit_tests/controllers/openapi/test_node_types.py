@@ -11,8 +11,8 @@ from controllers.openapi._models import NodeTypeDetailResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
 from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.code import CodeNode
 from graphon.nodes.http_request import HttpRequestNode
-from graphon.nodes.llm import LLMNode
 
 
 class _EndpointView(Protocol):
@@ -30,7 +30,6 @@ def _describe(app: Flask, monkeypatch: pytest.MonkeyPatch, node_type: str, defau
 
 
 def test_http_request_default_body_carries_an_empty_data_list(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """graphon's default omits `body.data`; a DSL copied from it crashed the web editor on load."""
     graphon_default = HttpRequestNode.get_default_config()
     graphon_config = cast(Mapping[str, object], graphon_default["config"])
     assert "data" not in cast(Mapping[str, object], graphon_config["body"])
@@ -42,9 +41,19 @@ def test_http_request_default_body_carries_an_empty_data_list(app: Flask, monkey
     assert response.default_config["retry_config"] == graphon_default["retry_config"]
 
 
-def test_other_node_type_defaults_pass_through(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    graphon_default = LLMNode.get_default_config()
+def test_keys_the_default_already_has_are_kept(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    graphon_default = HttpRequestNode.get_default_config()
+    graphon_timeout = cast(Mapping[str, object], cast(Mapping[str, object], graphon_default["config"])["timeout"])
 
-    response = _describe(app, monkeypatch, BuiltinNodeTypes.LLM, graphon_default)
+    response = _describe(app, monkeypatch, BuiltinNodeTypes.HTTP_REQUEST, graphon_default)
+
+    timeout = response.default_config["config"]["timeout"]
+    assert {key: timeout[key] for key in graphon_timeout} == graphon_timeout
+
+
+def test_sub_objects_that_fail_their_model_pass_through(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    graphon_default = CodeNode.get_default_config()
+
+    response = _describe(app, monkeypatch, BuiltinNodeTypes.CODE, graphon_default)
 
     assert response.default_config == dict(graphon_default)
