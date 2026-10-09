@@ -92,6 +92,33 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "examples": [
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "query": "Summarise the latest release"
+          },
+          "title": "Start a new conversation"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "conversation_id": "<conversation_id>",
+            "query": "Make it shorter"
+          },
+          "title": "Reply in an existing conversation"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "files": {
+              "document": "./report.pdf"
+            },
+            "query": "Summarise the document"
+          },
+          "title": "Fill a file variable with a local file"
+        }
+      ],
       "input": {
         "properties": {
           "app_id": {
@@ -111,7 +138,7 @@
               }
             ],
             "default": null,
-            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "description": "Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
             "title": "Attachments"
           },
           "auto_generate_name": {
@@ -158,12 +185,12 @@
               }
             ],
             "default": null,
-            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "description": "Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable",
             "title": "Files"
           },
           "inputs": {
             "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both.",
             "title": "Inputs",
             "type": "object"
           },
@@ -199,7 +226,7 @@
             "title": "Workspace Id"
           }
         },
-        "required": ["app_id", "inputs", "query"],
+        "required": ["app_id", "query"],
         "type": "object"
       },
       "internal": false,
@@ -510,6 +537,7 @@
       "bind": {
         "app_id": "body",
         "description": "body",
+        "draft_hash": "body",
         "icon": "body",
         "icon_background": "body",
         "icon_type": "body",
@@ -520,6 +548,30 @@
         "yaml_url": "body"
       },
       "deprecated": false,
+      "examples": [
+        {
+          "input": {
+            "mode": "yaml-content",
+            "yaml_content": "<yaml text of the app DSL>"
+          },
+          "title": "Import an app from inline YAML"
+        },
+        {
+          "input": {
+            "mode": "yaml-url",
+            "yaml_url": "https://example.com/apps/release-summary.yml"
+          },
+          "title": "Import an app from a URL"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "mode": "yaml-content",
+            "yaml_content": "<yaml text of the app DSL>"
+          },
+          "title": "Overwrite an existing workflow app from YAML"
+        }
+      ],
       "input": {
         "properties": {
           "app_id": {
@@ -547,6 +599,19 @@
             "default": null,
             "description": "Override the app description from the DSL",
             "title": "Description"
+          },
+          "draft_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "draft_hash from the export or restore this import is based on. The import fails if the draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
+            "title": "Draft Hash"
           },
           "icon": {
             "anyOf": [
