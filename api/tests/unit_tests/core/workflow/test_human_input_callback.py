@@ -8,10 +8,21 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import (
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
@@ -73,6 +84,42 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form(
     params: FormCreateParams = create.call_args.args[0]
     assert params.workflow_execution_id == "run-1"
     assert params.node_id == "node-1"
+
+
+def test_dify_hitl_callback_persists_variable_select_options(
+    repository: HumanInputFormRepositoryImpl, mocker: MockerFixture, sqlite_session: Session
+) -> None:
+    create = mocker.spy(repository, "create_form")
+    variable_pool = VariablePool()
+    variable_pool.add(("source", "options"), ["approve", "reject"])
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(
+            title="Approval",
+            inputs=[
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(
+                        type=ValueSourceType.VARIABLE,
+                        selector=("source", "options"),
+                    ),
+                )
+            ],
+        ),
+    )
+
+    callback(_Context(workflow_execution_id="run-1", node_id="node-1", variable_pool=variable_pool))
+
+    params: FormCreateParams = create.call_args.args[0]
+    select_input = params.form_config.inputs[0]
+    assert isinstance(select_input, SelectInputConfig)
+    assert select_input.option_source.type == ValueSourceType.CONSTANT
+    assert select_input.option_source.selector == ()
+    assert select_input.option_source.value == ["approve", "reject"]
+    form = sqlite_session.get(HumanInputForm, create.spy_return.id)
+    assert form is not None
+    option_source = json.loads(form.form_definition)["inputs"][0]["option_source"]
+    assert option_source == {"type": "constant", "selector": [], "value": ["approve", "reject"]}
 
 
 def test_dify_hitl_callback_scopes_form_to_node_execution(
@@ -177,39 +224,89 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
     }
 
 
-def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline(
-    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
-) -> None:
-    form = HumanInputForm(
-        id="form-1",
-        rendered_content="<p>Please approve</p>",
-        selected_action_id=None,
-        submitted_data=None,
-        status=HumanInputFormStatus.WAITING,
-        created_at=naive_utc_now(),
-        expiration_time=naive_utc_now() - timedelta(minutes=1),
-        submitted_at=None,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_run_id="run-1",
-        node_id="node-1",
-        form_definition="{}",
-    )
-    sqlite_session.add(form)
-    sqlite_session.commit()
+def _past_deadline_callback(
+    session: Session,
+    repository: HumanInputFormRepositoryImpl,
+) -> tuple[DifyHITLCallback, HumanInputFormRepositoryImpl]:
     callback = DifyHITLCallback(
         form_repository=repository,
-        node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
+        node_data=HumanInputNodeData(
+            title="Approval",
+            form_content="<p>Please approve</p>",
+            inputs=[ParagraphInputConfig(output_variable_name="answer")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+        ),
+        execution_id_getter=lambda: "form-1",
     )
+    callback(_ctx("run-1", "node-1"))
+    form = session.get(HumanInputForm, "form-1")
+    assert form is not None
+    form.expiration_time = naive_utc_now() - timedelta(minutes=1)
+    session.commit()
+    return callback, repository
+
+
+def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    callback, _ = _past_deadline_callback(sqlite_session, repository)
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    sqlite_session.expire_all()
+    form = sqlite_session.get(HumanInputForm, "form-1")
+    assert form is not None
+    assert form.status == HumanInputFormStatus.TIMEOUT
     assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
         "__action_value": build_segment(""),
         "__rendered_content": build_segment("<p>Please approve</p>"),
     }
+
+
+@pytest.mark.parametrize("terminal_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.EXPIRED])
+def test_dify_hitl_callback_timeout_uses_concurrent_terminal_state(
+    monkeypatch: pytest.MonkeyPatch,
+    repository: HumanInputFormRepositoryImpl,
+    sqlite_session: Session,
+    terminal_status: HumanInputFormStatus,
+) -> None:
+    callback, repository = _past_deadline_callback(sqlite_session, repository)
+    get_form = repository.get_form
+
+    def finish_after_read(node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
+        waiting_form = get_form(node_id, form_id=form_id)
+        monkeypatch.setattr(repository, "get_form", get_form)
+        if terminal_status == HumanInputFormStatus.SUBMITTED:
+            HumanInputFormSubmissionRepository().mark_submitted(
+                form_id="form-1",
+                recipient_id=None,
+                selected_action_id="approve",
+                form_data={"answer": "accepted before timeout"},
+                submission_user_id="user-1",
+                submission_end_user_id=None,
+            )
+        else:
+            form = sqlite_session.get(HumanInputForm, "form-1")
+            assert form is not None
+            form.status = HumanInputFormStatus.EXPIRED
+            sqlite_session.commit()
+        return waiting_form
+
+    monkeypatch.setattr(repository, "get_form", finish_after_read)
+    if terminal_status == HumanInputFormStatus.SUBMITTED:
+        decision = callback(_ctx("run-1", "node-1"))
+        assert decision.selected_handle == "approve"
+        assert decision.inputs == {"answer": build_segment("accepted before timeout")}
+    else:
+        with pytest.raises(AssertionError, match="globally expired human input form"):
+            callback(_ctx("run-1", "node-1"))
+
+    sqlite_session.expire_all()
+    form = sqlite_session.get(HumanInputForm, "form-1")
+    assert form is not None
+    assert form.status == terminal_status
 
 
 def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state(

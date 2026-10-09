@@ -113,10 +113,18 @@ def _persist_form(
 
 
 class _FakeFormRepository:
+    """Serve pre-seeded forms and retain their terminal state on timeout."""
+
     def __init__(self, form):
         self._form = form
 
     def get_form(self, *_args, **_kwargs):
+        return self._form
+
+    def mark_timeout(self, _node_id: str, *, form_id: str):
+        assert form_id == self._form.id
+        if self._form.status == HumanInputFormStatus.WAITING and not self._form.submitted:
+            self._form.status = HumanInputFormStatus.TIMEOUT
         return self._form
 
 
