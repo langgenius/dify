@@ -8,9 +8,11 @@ from typing import override
 
 import pytest
 from sqlalchemy import Engine, delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
@@ -18,19 +20,20 @@ from factories.variable_factory import build_segment
 from graphon.nodes import BuiltinNodeTypes
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
-from graphon.variables.variables import StringVariable
 from libs import datetime_utils
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel
-from services.workflow_draft_variable_service import (
+from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
+from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
+from services.file_service import FileService
+from services.workflow.draft_variable_service import (
     DraftVariableSaver,
     DraftVarLoader,
-    VariableResetError,
-    WorkflowDraftVariableService,
 )
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
+from services.workflow.variable_service import WorkflowVariableService
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +60,7 @@ def _persist_account(*, engine: Engine, tenant_id: str) -> Account:
     return account
 
 
-class TestWorkflowDraftVariableService(unittest.TestCase):
+class TestWorkflowVariableService(unittest.TestCase):
     _test_app_id: str
     _session: Session
     _test_user_id: str
@@ -125,15 +128,17 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         )
 
         self._session.add_all(_variables)
-        self._session.flush()
+        self._session.commit()
         self._variable_ids = [v.id for v in _variables]
         self._node1_str_var_id = node1_var.id
         self._sys_var_id = sys_var.id
         self._conv_var_id = conv_var.id
         self._node2_var_ids = [v.id for v in node2_vars]
 
-    def _get_test_srv(self) -> WorkflowDraftVariableService:
-        return WorkflowDraftVariableService(session=self._session)
+    def _get_test_srv(self) -> WorkflowVariableService:
+        return build_workflow_variable_service(
+            database_client=sessionmaker(bind=self._session.get_bind(), expire_on_commit=False)
+        )
 
     @override
     def tearDown(self) -> None:
@@ -154,30 +159,6 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert page2_var_ids.isdisjoint(page1_var_ids)
         assert page2_var_ids.issubset(self._variable_ids)
 
-    def test_get_node_variable(self) -> None:
-        srv = self._get_test_srv()
-        node_var = srv.get_node_variable(self._test_app_id, self._node1_id, "str_var", user_id=self._test_user_id)
-        assert node_var is not None
-        assert node_var.id == self._node1_str_var_id
-        assert node_var.name == "str_var"
-        assert node_var.get_value() == build_segment("str_value")
-
-    def test_get_system_variable(self) -> None:
-        srv = self._get_test_srv()
-        sys_var = srv.get_system_variable(self._test_app_id, "sys_var", user_id=self._test_user_id)
-        assert sys_var is not None
-        assert sys_var.id == self._sys_var_id
-        assert sys_var.name == "sys_var"
-        assert sys_var.get_value() == build_segment("sys_value")
-
-    def test_get_conversation_variable(self) -> None:
-        srv = self._get_test_srv()
-        conv_var = srv.get_conversation_variable(self._test_app_id, "conv_var", user_id=self._test_user_id)
-        assert conv_var is not None
-        assert conv_var.id == self._conv_var_id
-        assert conv_var.name == "conv_var"
-        assert conv_var.get_value() == build_segment("conv_value")
-
     def test_delete_node_variables(self) -> None:
         srv = self._get_test_srv()
         srv.delete_node_variables(self._test_app_id, self._node2_id, user_id=self._test_user_id)
@@ -192,25 +173,6 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         )
         assert node2_var_count == 0
 
-    def test_delete_variable(self) -> None:
-        srv = self._get_test_srv()
-        node_1_var = self._session.scalars(
-            select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == self._node1_str_var_id)
-        ).one()
-        srv.delete_variable(node_1_var)
-        exists = bool(
-            self._session.scalars(
-                select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == self._node1_str_var_id)
-            ).first()
-        )
-        assert exists is False
-
-    def test__list_node_variables(self) -> None:
-        srv = self._get_test_srv()
-        node_vars = srv._list_node_variables(self._test_app_id, self._node2_id, user_id=self._test_user_id)
-        assert len(node_vars.variables) == 2
-        assert {v.id for v in node_vars.variables} == set(self._node2_var_ids)
-
     def test_get_draft_variables_by_selectors(self) -> None:
         srv = self._get_test_srv()
         selectors = [
@@ -218,7 +180,9 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             [self._node2_id, "str_var"],
             [self._node2_id, "int_var"],
         ]
-        variables = srv.get_draft_variables_by_selectors(self._test_app_id, selectors, user_id=self._test_user_id)
+        variables = WorkflowDraftVariableRepository(
+            sessions=sessionmaker(bind=self._session.get_bind(), expire_on_commit=False)
+        ).get_draft_variables_by_selectors(self._test_app_id, selectors, user_id=self._test_user_id)
         assert len(variables) == 3
         assert {v.id for v in variables} == {self._node1_str_var_id} | set(self._node2_var_ids)
 
@@ -285,7 +249,13 @@ class TestDraftVariableLoader(unittest.TestCase):
 
     def test_variable_loader_with_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
-            engine=self._engine,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            load_file=storage.load,
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
+            ),
             app_id=self._test_app_id,
             tenant_id=self._test_tenant_id,
             user_id=self._test_user_id,
@@ -295,7 +265,13 @@ class TestDraftVariableLoader(unittest.TestCase):
 
     def test_variable_loader_with_non_empty_selector(self) -> None:
         var_loader = DraftVarLoader(
-            engine=self._engine,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            load_file=storage.load,
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
+            ),
             app_id=self._test_app_id,
             tenant_id=self._test_tenant_id,
             user_id=self._test_user_id,
@@ -329,7 +305,14 @@ class TestDraftVariableLoader(unittest.TestCase):
             with Session(bind=self._engine, expire_on_commit=False) as session:
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
-                    session=session,
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
+                    cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+                    repository=WorkflowDraftVariableRepository(
+                        sessions=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+                    ),
+                    files=FileService(self._engine),
                     tenant_id=self._test_tenant_id,
                     app_id=self._test_app_id,
                     node_id="test_offload_node",
@@ -344,7 +327,13 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Now test loading using DraftVarLoader
                 var_loader = DraftVarLoader(
-                    engine=self._engine,
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
+                    load_file=storage.load,
+                    repository=WorkflowDraftVariableRepository(
+                        sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
+                    ),
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=account.id,
@@ -361,11 +350,9 @@ class TestDraftVariableLoader(unittest.TestCase):
                 assert loaded_variable.value == test_content
 
         finally:
-            # Clean up - delete all draft variables for this app
-            with Session(bind=self._engine) as session:
-                service = WorkflowDraftVariableService(session)
-                service.delete_app_workflow_variables(self._test_app_id)
-                session.commit()
+            build_workflow_variable_service(
+                database_client=sessionmaker(bind=self._engine, expire_on_commit=False)
+            ).delete_user_workflow_variables(self._test_app_id, user_id=account.id)
 
     def test_load_offloaded_variable_object_type_integration(self) -> None:
         """Test _load_offloaded_variable with object type using real storage and service."""
@@ -430,8 +417,12 @@ class TestDraftVariableLoader(unittest.TestCase):
                 session.commit()
 
                 # Use the service method that properly preloads relationships
-                service = WorkflowDraftVariableService(session)
-                draft_vars = service.get_draft_variables_by_selectors(
+                service = build_workflow_variable_service(
+                    database_client=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+                )
+                draft_vars = WorkflowDraftVariableRepository(
+                    sessions=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+                ).get_draft_variables_by_selectors(
                     self._test_app_id,
                     [["test_offload_node", "offloaded_object_var"]],
                     user_id=self._test_user_id,
@@ -443,7 +434,13 @@ class TestDraftVariableLoader(unittest.TestCase):
 
                 # Create DraftVarLoader and test loading
                 var_loader = DraftVarLoader(
-                    engine=self._engine,
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
+                    load_file=storage.load,
+                    repository=WorkflowDraftVariableRepository(
+                        sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
+                    ),
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=self._test_user_id,
@@ -534,7 +531,13 @@ class TestDraftVariableLoader(unittest.TestCase):
                 # Test load_variables with both regular and offloaded variables
                 # This method should handle the relationship preloading internally
                 var_loader = DraftVarLoader(
-                    engine=self._engine,
+                    file_inputs=WorkflowVariableFileGateway(
+                        sessionmaker(bind=self._engine, expire_on_commit=False), DatabaseFileAccessController()
+                    ),
+                    load_file=storage.load,
+                    repository=WorkflowDraftVariableRepository(
+                        sessions=sessionmaker(bind=self._engine, expire_on_commit=False)
+                    ),
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
                     user_id=self._test_user_id,
@@ -571,189 +574,3 @@ class TestDraftVariableLoader(unittest.TestCase):
                 session.execute(delete(UploadFile).where(UploadFile.id == upload_file.id))
                 session.commit()
             storage.delete(upload_file.key)
-
-
-class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
-    """Integration tests for reset_variable functionality using real database"""
-
-    _test_app_id: str
-    _test_tenant_id: str
-    _test_workflow_id: str
-    _session: Session
-    _engine: Engine
-    _node_id = "test_reset_node"
-    _node_exec_id: str
-    _workflow_node_exec_id: str
-
-    @pytest.fixture(autouse=True)
-    def _bind_sqlite(self, sqlite_session: Session, sqlite_engine: Engine) -> None:
-        self._session = sqlite_session
-        self._engine = sqlite_engine
-
-    @override
-    def setUp(self) -> None:
-        self._test_app_id = str(uuid.uuid4())
-        self._test_tenant_id = str(uuid.uuid4())
-        self._test_workflow_id = str(uuid.uuid4())
-        self._test_user_id = str(uuid.uuid4())
-        self._node_exec_id = str(uuid.uuid4())
-        self._workflow_node_exec_id = str(uuid.uuid4())
-
-        # Create a workflow node execution record with outputs
-        # Note: The WorkflowNodeExecutionModel.id should match the node_execution_id in WorkflowDraftVariable
-        self._workflow_node_execution = WorkflowNodeExecutionModel(
-            id=self._node_exec_id,  # This should match the node_execution_id in the variable
-            tenant_id=self._test_tenant_id,
-            app_id=self._test_app_id,
-            workflow_id=self._test_workflow_id,
-            triggered_from="workflow-run",
-            workflow_run_id=str(uuid.uuid4()),
-            index=1,
-            node_execution_id=str(uuid.uuid4()),
-            node_id=self._node_id,
-            node_type=BuiltinNodeTypes.LLM,
-            title="Test Node",
-            inputs='{"input": "test input"}',
-            process_data='{"test_var": "process_value", "other_var": "other_process"}',
-            outputs='{"test_var": "output_value", "other_var": "other_output"}',
-            status="succeeded",
-            elapsed_time=1.5,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=str(uuid.uuid4()),
-        )
-
-        # Create conversation variables for the workflow
-        self._conv_variables = [
-            StringVariable(
-                id=str(uuid.uuid4()),
-                name="conv_var_1",
-                description="Test conversation variable 1",
-                value="default_value_1",
-            ),
-            StringVariable(
-                id=str(uuid.uuid4()),
-                name="conv_var_2",
-                description="Test conversation variable 2",
-                value="default_value_2",
-            ),
-        ]
-
-        # Create test variables
-        self._node_var_with_exec = WorkflowDraftVariable.new_node_variable(
-            app_id=self._test_app_id,
-            user_id=self._test_user_id,
-            node_id=self._node_id,
-            name="test_var",
-            value=build_segment("old_value"),
-            node_execution_id=self._node_exec_id,
-        )
-        self._node_var_with_exec.last_edited_at = datetime_utils.naive_utc_now()
-
-        self._node_var_without_exec = WorkflowDraftVariable.new_node_variable(
-            app_id=self._test_app_id,
-            user_id=self._test_user_id,
-            node_id=self._node_id,
-            name="no_exec_var",
-            value=build_segment("some_value"),
-            node_execution_id="temp_exec_id",
-        )
-        # Manually set node_execution_id to None after creation
-        self._node_var_without_exec.node_execution_id = None
-
-        self._node_var_missing_exec = WorkflowDraftVariable.new_node_variable(
-            app_id=self._test_app_id,
-            user_id=self._test_user_id,
-            node_id=self._node_id,
-            name="missing_exec_var",
-            value=build_segment("some_value"),
-            node_execution_id=str(uuid.uuid4()),  # Use a valid UUID that doesn't exist in database
-        )
-
-        self._conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id=self._test_app_id,
-            user_id=self._test_user_id,
-            name="conv_var_1",
-            value=build_segment("old_conv_value"),
-        )
-        self._conv_var.last_edited_at = datetime_utils.naive_utc_now()
-
-        with Session(self._engine, expire_on_commit=False) as persistent_session, persistent_session.begin():
-            persistent_session.add(
-                self._workflow_node_execution,
-            )
-
-        # Add all to database
-        self._session.add_all(
-            [
-                self._node_var_with_exec,
-                self._node_var_without_exec,
-                self._node_var_missing_exec,
-                self._conv_var,
-            ]
-        )
-        self._session.flush()
-
-        # Store IDs for assertions
-        self._node_var_with_exec_id = self._node_var_with_exec.id
-        self._node_var_without_exec_id = self._node_var_without_exec.id
-        self._node_var_missing_exec_id = self._node_var_missing_exec.id
-        self._conv_var_id = self._conv_var.id
-
-    @override
-    def tearDown(self) -> None:
-        self._session.rollback()
-        with Session(self._engine) as session, session.begin():
-            stmt = delete(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.id == self._workflow_node_execution.id
-            )
-            session.execute(stmt)
-
-    def _get_test_srv(self) -> WorkflowDraftVariableService:
-        return WorkflowDraftVariableService(session=self._session)
-
-    def _create_mock_workflow(self) -> Workflow:
-        """Create a real workflow with conversation variables and graph"""
-        conversation_vars = self._conv_variables
-
-        # Create a simple graph with the test node
-        graph: dict[str, object] = {
-            "nodes": [{"id": "test_reset_node", "type": "llm", "title": "Test Node", "data": {"type": "llm"}}],
-            "edges": [],
-        }
-
-        workflow = Workflow.new(
-            tenant_id=str(uuid.uuid4()),
-            app_id=self._test_app_id,
-            type="workflow",
-            version="1.0",
-            graph=json.dumps(graph),
-            features="{}",
-            created_by=str(uuid.uuid4()),
-            environment_variables=[],
-            conversation_variables=conversation_vars,
-            rag_pipeline_variables=[],
-        )
-        return workflow
-
-    def test_reset_system_variable_raises_error(self) -> None:
-        """Test that resetting a system variable raises an error"""
-        srv = self._get_test_srv()
-        mock_workflow = self._create_mock_workflow()
-
-        # Create a system variable
-        sys_var = WorkflowDraftVariable.new_sys_variable(
-            app_id=self._test_app_id,
-            user_id=self._test_user_id,
-            name="sys_var",
-            value=build_segment("sys_value"),
-            node_execution_id=self._node_exec_id,
-        )
-        self._session.add(sys_var)
-        self._session.flush()
-
-        # Attempt to reset the system variable
-        with pytest.raises(VariableResetError) as exc_info:
-            srv.reset_variable(mock_workflow, sys_var)
-
-        assert "cannot reset system variable" in str(exc_info.value)
-        assert sys_var.id in str(exc_info.value)
