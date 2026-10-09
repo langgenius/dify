@@ -53,9 +53,9 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType, load_anno
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
+from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
