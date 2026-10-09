@@ -18,6 +18,8 @@ import {
 import { parsePlacement } from '../placement'
 
 type SelectActions = BaseSelect.Root.Actions
+type SelectChangeEventDetails = BaseSelect.Root.ChangeEventDetails
+type SelectOpenChangeEventDetails = BaseSelect.Root.OpenChangeEventDetails
 
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
@@ -290,6 +292,7 @@ export {
 
 export type {
   SelectActions,
+  SelectChangeEventDetails,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,
@@ -298,6 +301,7 @@ export type {
   SelectItemTextProps,
   SelectLabelProps,
   SelectListProps,
+  SelectOpenChangeEventDetails,
   SelectPopupProps,
   SelectPortalProps,
   SelectPositionerProps,

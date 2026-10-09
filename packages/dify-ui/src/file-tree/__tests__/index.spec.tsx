@@ -118,7 +118,7 @@ describe('FileTree', () => {
     )
     const trigger = screen.getByRole('button', { name: 'locked' })
 
-    await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
+    await expect.element(trigger).toBeDisabled()
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
   })
 })

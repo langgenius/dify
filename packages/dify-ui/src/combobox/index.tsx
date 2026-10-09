@@ -26,6 +26,7 @@ type ComboboxProps<
 > = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+type ComboboxOpenChangeEventDetails = BaseCombobox.Root.OpenChangeEventDetails
 
 function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
   props: ComboboxProps<Value, Multiple, Item>,
@@ -533,6 +534,7 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxOpenChangeEventDetails,
   ComboboxPopupProps,
   ComboboxPortalProps,
   ComboboxPositionerProps,
