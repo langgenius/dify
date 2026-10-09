@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -474,7 +474,8 @@ def _node(
         runtime_request_builder=runtime_request_builder
         or WorkflowAgentRuntimeRequestBuilder(
             dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-                tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+                tool_providers=tool_providers,
+                workflow_queries=create_autospec(WorkflowToolQueries, instance=True),
             )
         ),
         agent_backend_client=client,
@@ -630,7 +631,8 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     store = FakeSessionStore()
     request_builder = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers,
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True),
         )
     )
     node = _node(tool_providers=tool_providers, session_store=store, runtime_request_builder=request_builder)

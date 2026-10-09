@@ -351,7 +351,11 @@ def account_application_services(
 
 
 @pytest.fixture
-def app_services(sqlite_session_factory: sessionmaker[Session], tool_providers, workflow_queries) -> AppServices:
+def app_services(
+    sqlite_session_factory: sessionmaker[Session],
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> AppServices:
     from unittest.mock import Mock
 
     from extensions.application_services.app import build_app_services

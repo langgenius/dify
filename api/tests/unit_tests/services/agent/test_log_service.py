@@ -87,9 +87,7 @@ def _provide_app_context() -> None:
 
 
 @pytest.fixture
-def store(
-    monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables
-) -> Iterator[AgentLogStore]:
+def store(monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables) -> Iterator[AgentLogStore]:
     engine = create_engine("sqlite://", poolclass=QueuePool)
     tables: list[Table] = []
     for model in (

@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -273,7 +273,7 @@ def test_run_draft_node_delegates_to_workflow_service(
     snippet = _snippet()
     account = _account("account-1")
     execution = WorkflowNodeExecutionModel(id="execution-1")
-    workflow_service = Mock(spec=WorkflowService)
+    workflow_service = create_autospec(WorkflowService, instance=True, spec_set=True)
     workflow_service.run_draft_workflow_node.return_value = execution
 
     snippet_reader.workflow = workflow

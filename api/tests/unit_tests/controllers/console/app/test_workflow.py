@@ -3,7 +3,7 @@
 import inspect
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import UUID
 
 import pytest
@@ -33,8 +33,8 @@ class Services:
 
 
 @pytest.fixture(name="workflows")
-def workflow_use_cases(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    use_cases = Mock(spec=ConsoleWorkflowService)
+def workflow_use_cases(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    use_cases = create_autospec(ConsoleWorkflowService, instance=True, spec_set=True)
     monkeypatch.setattr(controller, "application_services", lambda: Services(use_cases))
     return use_cases
 
@@ -159,7 +159,7 @@ def test_restore_domain_error_http_response(workflows: Mock, failure: Exception,
     api.error_handlers = console_api.error_handlers.copy()
 
     class Restore(Resource):
-        def post(self):
+        def post(self) -> object:
             return invoke(controller.DraftWorkflowRestoreApi, workflow_id="version")
 
     api.add_resource(Restore, "/restore")

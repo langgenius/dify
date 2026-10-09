@@ -8,17 +8,22 @@ from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
 from extensions.ext_redis import RedisClientWrapper
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.annotation_reply import AnnotationReplies
 from models.human_input_contracts import HumanInputFormFactory
+from models.model import Message
 from models.tool_runtime_contracts import WorkflowToolQueries
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
-from services.agent.chat.ports import AgentDatasetTools
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.agent_config import AgentAppConfigurations
+from services.app.generation.ports import MessageFileWriter
 from services.human_input.ports import HumanInputFormReader
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.tools.provider_queries import ToolProviders
@@ -69,6 +74,47 @@ class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
             )
 
 
+class _SessionBoundAgentToolInvoker(AgentToolInvoker):
+    """Own one short-lived Session for each eager Agent tool invocation."""
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    @override
+    def __call__(
+        self,
+        tool: Tool,
+        tool_parameters: str | dict[str, Any],
+        user_id: str,
+        tenant_id: str,
+        message: Message,
+        invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        *,
+        records: MessageFileWriter,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        with self._sessions() as session:
+            return ToolEngine.agent_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=tool_parameters,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                message=message,
+                invoke_from=invoke_from,
+                agent_tool_callback=agent_tool_callback,
+                trace_manager=trace_manager,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+                records=records,
+            )
+
+
 @dataclass(frozen=True)
 class WorkflowExecutionDependencies:
     history: ConversationHistory
@@ -79,6 +125,7 @@ class WorkflowExecutionDependencies:
     tools: WorkflowToolQueries
     tool_providers: ToolProviders
     tool_invoker: WorkflowToolInvoker
+    agent_tool_invoker: AgentToolInvoker
     agent_bindings: WorkflowAgentRuntimeBindings
     chat_records: ChatflowRecords
     annotation_replies: AnnotationReplies
@@ -139,6 +186,7 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
         tools=WorkflowToolRepository(database_client),
         tool_providers=ToolProviderRepository(database_client),
         tool_invoker=_SessionBoundWorkflowToolInvoker(database_client),
+        agent_tool_invoker=_SessionBoundAgentToolInvoker(database_client),
         agent_bindings=WorkflowAgentBindingResolver(database_client),
         chat_records=records,
         annotation_replies=build_annotation_replies(database_client),
@@ -189,6 +237,7 @@ def build_console_workflow_service(
     from services.workflow.console_service import ConsoleWorkflowService
     from services.workflow.conversion_service import WorkflowConversionService
     from services.workflow.runtime_gateway import WorkflowRuntimeGateway
+    from services.workflow.workflow_converter import WorkflowConverter
     from services.workflow_service import WorkflowService
 
     workflows = WorkflowService(
@@ -201,7 +250,10 @@ def build_console_workflow_service(
     apps = ConsoleAppRepository(session_factory=database_client)
     return ConsoleWorkflowService(
         conversion=WorkflowConversionService(
-            apps, decrypt_token=decrypt_token, notify_created=AppService.notify_created_app
+            apps,
+            converter=WorkflowConverter(),
+            decrypt_token=decrypt_token,
+            notify_created=AppService.notify_created_app,
         ),
         agent_services=WorkflowAgentPublishService,
         definitions=definitions,

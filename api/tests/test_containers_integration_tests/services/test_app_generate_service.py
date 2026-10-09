@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 import uuid
-from typing import Literal
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Literal
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -19,19 +22,24 @@ from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
+if TYPE_CHECKING:
+    from extensions.application_services.workflow import WorkflowExecutionDependencies
+
 
 @pytest.fixture
-def workflow_runtime(db_session_with_containers):
+def workflow_runtime(db_session_with_containers: Session) -> WorkflowExecutionDependencies:
     from extensions.application_services.workflow import build_workflow_execution_dependencies
 
-    return build_workflow_execution_dependencies(sessionmaker(bind=db_session_with_containers.get_bind()))
+    return build_workflow_execution_dependencies(
+        sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    )
 
 
 class TestAppGenerateService:
     """Integration tests for AppGenerateService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Generator[dict[str, MagicMock], None, None]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.billing_service.BillingService", autospec=True) as mock_billing_service,
@@ -54,9 +62,10 @@ class TestAppGenerateService:
                 "services.app_generate_service.AdvancedChatAppGenerator", autospec=True
             ) as mock_advanced_chat_generator,
             patch("services.app_generate_service.WorkflowAppGenerator", autospec=True) as mock_workflow_generator,
+            patch("services.app_generate_service.convert_to_event_stream", autospec=True) as mock_event_stream,
             patch(
-                "services.app_generate_service.MessageBasedAppGenerator", autospec=True
-            ) as mock_message_based_generator,
+                "services.app_generate_service.WorkflowEventStream.retrieve_events", autospec=True
+            ) as mock_retrieve_events,
             patch(
                 "services.account.login_adapters.SystemFeatureService", autospec=True
             ) as mock_account_feature_service,
@@ -102,23 +111,17 @@ class TestAppGenerateService:
             mock_completion_generator_instance = mock_completion_generator.return_value
             mock_completion_generator_instance.generate.return_value = ["completion_response"]
             mock_completion_generator_instance.generate_more_like_this.return_value = ["more_like_this_response"]
-            mock_completion_generator.convert_to_event_stream.return_value = ["completion_stream"]
 
             mock_chat_generator_instance = mock_chat_generator.return_value
             mock_chat_generator_instance.generate.return_value = ["chat_response"]
-            mock_chat_generator.convert_to_event_stream.return_value = ["chat_stream"]
 
             mock_agent_chat_generator_instance = mock_agent_chat_generator.return_value
             mock_agent_chat_generator_instance.generate.return_value = ["agent_chat_response"]
-            mock_agent_chat_generator.convert_to_event_stream.return_value = ["agent_chat_stream"]
 
             mock_advanced_chat_generator_instance = mock_advanced_chat_generator.return_value
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
-            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
-            mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
-            mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
             mock_workflow_generator_instance = mock_workflow_generator.return_value
             mock_workflow_generator_instance.generate.return_value = ["workflow_response"]
@@ -126,9 +129,8 @@ class TestAppGenerateService:
                 "workflow_single_iteration_response"
             ]
             mock_workflow_generator_instance.single_loop_generate.return_value = ["workflow_single_loop_response"]
-            mock_workflow_generator.convert_to_event_stream.return_value = ["workflow_stream"]
-
-            mock_message_based_generator.retrieve_events.return_value = ["workflow_events"]
+            mock_event_stream.side_effect = lambda events: events
+            mock_retrieve_events.return_value = ["workflow_events"]
 
             # Setup default mock returns for account service
             mock_account_feature_service.is_registration_allowed.return_value = True
@@ -157,7 +159,8 @@ class TestAppGenerateService:
                 "agent_chat_generator": mock_agent_chat_generator,
                 "advanced_chat_generator": mock_advanced_chat_generator,
                 "workflow_generator": mock_workflow_generator,
-                "message_based_generator": mock_message_based_generator,
+                "event_stream": mock_event_stream,
+                "retrieve_events": mock_retrieve_events,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
                 "quota_dify_config": mock_quota_dify_config,
@@ -285,8 +288,9 @@ class TestAppGenerateService:
         mock_external_service_dependencies["rate_limit"].return_value.generate.assert_called_once()
 
         # Verify completion generator was called
-        mock_external_service_dependencies["completion_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["completion_generator"].convert_to_event_stream.assert_called_once()
+        generator = mock_external_service_dependencies["completion_generator"].return_value
+        generator.generate.assert_called_once()
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(generator.generate.return_value)
 
     def test_generate_chat_mode_success(
         self,
@@ -323,8 +327,9 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify chat generator was called
-        mock_external_service_dependencies["chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["chat_generator"].convert_to_event_stream.assert_called_once()
+        generator = mock_external_service_dependencies["chat_generator"].return_value
+        generator.generate.assert_called_once()
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(generator.generate.return_value)
 
     def test_generate_agent_chat_mode_success(
         self,
@@ -361,8 +366,15 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify agent chat generator was called
-        mock_external_service_dependencies["agent_chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
+        generator_factory = mock_external_service_dependencies["agent_chat_generator"]
+        generator_factory.assert_called_once()
+        constructor_args = generator_factory.call_args.kwargs
+        assert constructor_args["tool_invoker"] is workflow_runtime.agent_tool_invoker
+        assert constructor_args["draft_variable_saver"] is workflow_variables.saver_factory
+        assert constructor_args["workflow_runtime"] is workflow_runtime
+        generator = generator_factory.return_value
+        generator.generate.assert_called_once()
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(generator.generate.return_value)
 
     def test_generate_advanced_chat_mode_success(
         self,
@@ -398,11 +410,10 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
-        mock_external_service_dependencies[
-            "advanced_chat_generator"
-        ].return_value.convert_to_event_stream.assert_called_once()
+        # Streaming workflows read the shared event stream instead of constructing a synchronous generator.
+        events = mock_external_service_dependencies["retrieve_events"]
+        events.assert_called_once_with(ANY, ANY, on_subscribe=ANY)
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(events.return_value)
 
     def test_generate_workflow_mode_success(
         self,
@@ -438,9 +449,10 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify workflow generator was called
-        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once()
-        mock_external_service_dependencies["workflow_generator"].convert_to_event_stream.assert_called_once()
+        # Streaming workflows read the shared event stream instead of constructing a synchronous generator.
+        events = mock_external_service_dependencies["retrieve_events"]
+        events.assert_called_once_with(ANY, ANY, on_subscribe=ANY)
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(events.return_value)
 
     def test_generate_with_specific_workflow_id(
         self,
@@ -880,7 +892,7 @@ class TestAppGenerateService:
         )
 
         # Verify the result
-        assert result == ["advanced_chat_stream"]
+        assert result == ["single_iteration_response"]
 
         # Verify advanced chat generator was called
         mock_external_service_dependencies[
@@ -919,7 +931,7 @@ class TestAppGenerateService:
         )
 
         # Verify the result
-        assert result == ["advanced_chat_stream"]
+        assert result == ["workflow_single_iteration_response"]
 
         # Verify workflow generator was called
         mock_external_service_dependencies[
@@ -993,7 +1005,7 @@ class TestAppGenerateService:
         )
 
         # Verify the result
-        assert result == ["advanced_chat_stream"]
+        assert result == ["single_loop_response"]
 
         # Verify advanced chat generator was called
         mock_external_service_dependencies[
@@ -1032,7 +1044,7 @@ class TestAppGenerateService:
         )
 
         # Verify the result
-        assert result == ["advanced_chat_stream"]
+        assert result == ["workflow_single_loop_response"]
 
         # Verify workflow generator was called
         mock_external_service_dependencies["workflow_generator"].return_value.single_loop_generate.assert_called_once()
@@ -1291,8 +1303,9 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify agent chat generator was called instead of regular chat generator
-        mock_external_service_dependencies["agent_chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
+        generator = mock_external_service_dependencies["agent_chat_generator"].return_value
+        generator.generate.assert_called_once()
+        mock_external_service_dependencies["event_stream"].assert_called_once_with(generator.generate.return_value)
 
     def test_generate_with_different_invoke_from_values(
         self,
@@ -1395,7 +1408,7 @@ class TestAppGenerateService:
         assert call_kwargs["args"] == args
 
         # Verify workflow streaming event retrieval was used
-        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once_with(
+        mock_external_service_dependencies["retrieve_events"].assert_called_once_with(
             ANY,
             mock_payload.workflow_run_id,
             on_subscribe=ANY,

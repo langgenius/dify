@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from faker import Faker
@@ -830,7 +830,9 @@ class TestWorkflowProviderToUserProvider:
         identity = ToolProviderIdentity(**defaults)
         entity = ToolProviderEntity(identity=identity)
         return WorkflowToolProviderController(
-            draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+            draft_variable_saver=Mock(
+                return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+            ),
             entity=entity,
             provider_id=provider_id,
             queries=workflow_queries,

@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from dataclasses import replace
 from typing import cast
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -50,6 +50,7 @@ from services.data_migration.entities import ImportTarget
 from services.data_migration.import_service import MigrationImportService
 from services.errors.app import TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow import definition_gateway as gateway_module
 from services.workflow.console_service import (
     ConsoleWorkflowService,
@@ -137,7 +138,7 @@ def test_publication_credential_policy_runs_after_read_transactions_close(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=workflows,
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     event.listen(seeded, "after_begin", opened)
     try:
@@ -291,7 +292,9 @@ def test_publication_copies_secret_ciphertext_without_key_io_under_locks(
         database_client=seeded, variables=build_workflow_variable_service(database_client=seeded)
     )
     with seeded.begin() as session:
-        session.get(App, "app-1").mode = AppMode.ADVANCED_CHAT
+        app = session.get(App, "app-1")
+        assert app is not None
+        app.mode = AppMode.ADVANCED_CHAT
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda **_kwargs: None)
     definitions = WorkflowDefinitionRepository(session_factory=seeded)
@@ -367,7 +370,9 @@ def test_draft_secret_preparation_releases_sessions_and_rechecks_snapshot(
         database_client=seeded, variables=build_workflow_variable_service(database_client=seeded)
     )
     with seeded.begin() as session:
-        session.get(App, "app-1").mode = AppMode.ADVANCED_CHAT
+        app = session.get(App, "app-1")
+        assert app is not None
+        app.mode = AppMode.ADVANCED_CHAT
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(workflows, "validate_features_structure", lambda *_args: None)
@@ -644,20 +649,20 @@ def test_queries_and_updates_keep_complete_owner_chain(
 
 def application(lifecycle: WorkflowDefinitionGateway) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
     return ConsoleWorkflowService(
-        conversion=Mock(spec=WorkflowConversion),
+        conversion=create_autospec(WorkflowConversion, instance=True),
         agent_services=WorkflowAgentPublishService,
         definitions=cast(WorkflowDefinitionRepository, lifecycle._definitions),
         drafts=WorkflowDraftService(
             agent_services=WorkflowAgentPublishService,
             definitions=cast(WorkflowDraftRepository, lifecycle._drafts),
             lifecycle=lifecycle,
-            retirement=Mock(spec=DraftAgentRetirement),
+            retirement=create_autospec(DraftAgentRetirement, instance=True),
         ),
         lifecycle=lifecycle,
-        runtime=Mock(spec=WorkflowRuntime),
-        apps=Mock(spec=WorkflowAppLookup),
-        presence=Mock(spec=WorkflowPresence),
-        access=Mock(spec=WorkflowAccess),
+        runtime=create_autospec(WorkflowRuntime, instance=True),
+        apps=create_autospec(WorkflowAppLookup, instance=True),
+        presence=create_autospec(WorkflowPresence, instance=True),
+        access=create_autospec(WorkflowAccess, instance=True),
     )
 
 
@@ -677,7 +682,7 @@ def test_publication_and_app_pointer_commit_atomically(seeded: sessionmaker[Sess
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     with seeded() as session:
         draft = session.get(Workflow, "draft")
@@ -743,7 +748,7 @@ def test_sync_prepares_patch_without_replacing_server_environment(seeded: sessio
             definitions=WorkflowDefinitionRepository(session_factory=seeded),
             workflows=WorkflowService(session_maker=seeded),
             credentials=CredentialQueryRepository(session_factory=seeded),
-            skills=Mock(spec=AgentSkillReader),
+            skills=create_autospec(AgentSkillReader, instance=True),
         )
     ).sync(CONTEXT, "app-1", command)
     with seeded() as session:
@@ -758,7 +763,7 @@ def test_sync_prepares_patch_without_replacing_server_environment(seeded: sessio
             definitions=WorkflowDefinitionRepository(session_factory=seeded),
             workflows=WorkflowService(session_maker=seeded),
             credentials=CredentialQueryRepository(session_factory=seeded),
-            skills=Mock(spec=AgentSkillReader),
+            skills=create_autospec(AgentSkillReader, instance=True),
         )
     ).sync(CONTEXT, "app-1", replace(command, environment_upserts=None))
     with seeded() as session:
@@ -791,24 +796,24 @@ def test_use_case_notifies_only_after_real_transaction_commits(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
-    runtime = Mock(spec=WorkflowRuntime)
+    runtime = create_autospec(WorkflowRuntime, instance=True)
     service = ConsoleWorkflowService(
-        conversion=Mock(spec=WorkflowConversion),
+        conversion=create_autospec(WorkflowConversion, instance=True),
         agent_services=WorkflowAgentPublishService,
         definitions=repository,
         drafts=WorkflowDraftService(
             agent_services=WorkflowAgentPublishService,
             definitions=WorkflowDraftRepository(seeded),
             lifecycle=lifecycle,
-            retirement=Mock(spec=DraftAgentRetirement),
+            retirement=create_autospec(DraftAgentRetirement, instance=True),
         ),
         lifecycle=lifecycle,
         runtime=runtime,
-        apps=Mock(spec=WorkflowAppLookup),
-        presence=Mock(spec=WorkflowPresence),
-        access=Mock(spec=WorkflowAccess),
+        apps=create_autospec(WorkflowAppLookup, instance=True),
+        presence=create_autospec(WorkflowPresence, instance=True),
+        access=create_autospec(WorkflowAccess, instance=True),
     )
     if operation in {"sync", "restore"}:
         with seeded.begin() as session:
@@ -935,7 +940,7 @@ def test_publish_rejects_revision_modified_after_validation(seeded: sessionmaker
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     with pytest.raises(WorkflowHashNotEqualError):
         publish(lifecycle, validated)
@@ -970,7 +975,7 @@ def test_trigger_limit_rejects_publish_before_version_or_pointer_changes(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     with pytest.raises(ValueError, match="maximum.*limit"):
         application(lifecycle).publish(CONTEXT, "app-1", marked_name="Rejected", marked_comment="")
@@ -991,7 +996,7 @@ def test_publication_versions_increase_without_reusing_deleted_version(seeded: s
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     service = application(lifecycle)
     for expected in [2, 3, 4]:
@@ -1085,7 +1090,7 @@ def test_publication_retains_blocking_domain_validations(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     with pytest.raises(expected_error):
         application(lifecycle).publish(CONTEXT, "app-1", marked_name="Rejected", marked_comment="")
@@ -1117,7 +1122,7 @@ def test_restore_preserves_historical_features_without_normalizing_persisted_sou
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     application(lifecycle).restore(CONTEXT, "app-1", "published")
     with seeded() as session:
@@ -1145,7 +1150,7 @@ def test_publication_serializes_on_app_and_closes_the_transaction(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     event.listen(seeded, "do_orm_execute", capture)
     try:
@@ -1158,7 +1163,7 @@ def test_publication_serializes_on_app_and_closes_the_transaction(
 
 @pytest.mark.parametrize("over_limit", [False, True])
 def test_migration_uses_the_same_atomic_publication_boundary(
-    seeded: sessionmaker[Session], over_limit: bool, *, workflow_tools
+    seeded: sessionmaker[Session], over_limit: bool, *, workflow_tools: WorkflowToolManageService
 ) -> None:
     app_id = str(uuid4())
     with seeded.begin() as session:
@@ -1181,7 +1186,7 @@ def test_migration_uses_the_same_atomic_publication_boundary(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     migration = MigrationImportService(workflows=application(lifecycle), app_dsl=Mock(), workflow_tools=workflow_tools)
     with seeded() as session:
@@ -1284,7 +1289,7 @@ def test_redis_outage_cannot_leave_a_successful_publication_without_runtime_conf
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
 
     def unavailable() -> None:
@@ -1307,7 +1312,7 @@ def test_trigger_storage_failure_rolls_back_version_pointer_and_every_projection
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     service = application(lifecycle)
     service.publish(CONTEXT, "app-1", marked_name="A", marked_comment="")
@@ -1343,7 +1348,7 @@ def test_republication_replaces_all_trigger_configuration(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     for name in ["A", "B"]:
         configure_runtime_draft(seeded, name)
@@ -1372,7 +1377,7 @@ def test_draft_webhook_receiver_uses_injected_database(
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     lifecycle.draft_synced(CONTEXT, WorkflowOwner("app-1"), snapshot)
     with seeded() as session:
@@ -1455,10 +1460,12 @@ def test_variable_update_does_not_commit_an_ambient_session(seeded: sessionmaker
     repository = WorkflowDraftRepository(seeded)
     with seeded() as caller:
         caller.add(make_account(account_id="uncommitted", email="uncommitted@example.com"))
+        snapshot = repository.snapshot(CONTEXT, WorkflowOwner("app-1"))
+        assert snapshot is not None
         repository.update_draft_variables(
             CONTEXT,
             "app-1",
-            expected=repository.snapshot(CONTEXT, WorkflowOwner("app-1")),
+            expected=snapshot,
             environment_variables="{}",
             conversation_variables=None,
         )
@@ -1503,6 +1510,7 @@ def test_variable_update_commit_failure_rolls_back_all_fields(seeded: sessionmak
 def test_variable_update_rejects_another_tenant(seeded: sessionmaker[Session]) -> None:
     repository = WorkflowDraftRepository(seeded)
     snapshot = repository.snapshot(CONTEXT, WorkflowOwner("app-1"))
+    assert snapshot is not None
     with pytest.raises(ConsoleAppNotFoundError):
         repository.update_draft_variables(
             CONTEXT._replace(active_workspace_id="other-tenant"),
@@ -1523,7 +1531,7 @@ def test_republish_without_schedule_removes_the_runtime_plan(seeded: sessionmake
         definitions=WorkflowDefinitionRepository(session_factory=seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
-        skills=Mock(spec=AgentSkillReader),
+        skills=create_autospec(AgentSkillReader, instance=True),
     )
     service = application(lifecycle)
     service.publish(CONTEXT, "app-1", marked_name="Scheduled", marked_comment="")
@@ -1785,7 +1793,9 @@ def test_skill_archive_validation_releases_connections_and_rechecks_agent_state(
         database_client=seeded, variables=build_workflow_variable_service(database_client=seeded)
     )
     with seeded.begin() as session:
-        session.get(App, "app-1").mode = AppMode.ADVANCED_CHAT
+        app = session.get(App, "app-1")
+        assert app is not None
+        app.mode = AppMode.ADVANCED_CHAT
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda **_kwargs: None)
     definitions = WorkflowDefinitionRepository(session_factory=seeded)

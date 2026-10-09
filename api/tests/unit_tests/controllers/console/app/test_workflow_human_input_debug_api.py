@@ -1,6 +1,6 @@
 """Human input transport delegates parsed payloads to application services."""
 
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -19,8 +19,8 @@ from tests.unit_tests.controllers.console.app.test_workflow import (
 
 @pytest.fixture(name="workflows")
 def debug_use_cases(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    service = Mock(spec=HumanInputDebugService)
-    dependencies = Mock(spec=ApplicationServices)
+    service = create_autospec(HumanInputDebugService, instance=True)
+    dependencies = create_autospec(ApplicationServices, instance=True)
     dependencies.human_input_debug = service
     monkeypatch.setattr(controller, "application_services", lambda: dependencies)
     return service

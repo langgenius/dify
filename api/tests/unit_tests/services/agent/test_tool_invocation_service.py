@@ -143,13 +143,13 @@ def test_app_lookup_releases_connection_before_tool_setup_and_stream_consumption
     )
     calls = []
 
-    def resolve_runtime(**_kwargs):
+    def resolve_runtime(**_kwargs: object) -> Tool:
         assert not active
         calls.append("setup")
         return tool
 
     class PluginTransport:
-        def invoke(self, **kwargs):
+        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage, None, None]:
             assert not active
             assert kwargs["tenant_id"] == TENANT_ID
             assert kwargs["app_id"] == APP_ID
