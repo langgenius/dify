@@ -133,6 +133,10 @@ class LoginStatusApi(Resource):
     @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
     @web_ns.doc(
         responses={
+            200: "Login status",
+            401: "Login status",
+            404: "App not found",
+            503: "Web app access service unavailable",
             HTTPStatus.OK: "Login status",
             HTTPStatus.UNAUTHORIZED: "Login status",
         }

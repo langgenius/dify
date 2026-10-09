@@ -103,7 +103,7 @@ describe('AgentDetailLayout', () => {
     expect(router.replace).not.toHaveBeenCalled()
   })
 
-  it('redirects to the roster when the agent no longer exists', async () => {
+  it('keeps a 404 query error on the agent page without redirecting', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
     queryClient
@@ -119,7 +119,8 @@ describe('AgentDetailLayout', () => {
         fetchStatus: 'idle',
       })
     render(content, { wrapper })
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
+    expect(router.replace).not.toHaveBeenCalled()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })
 })

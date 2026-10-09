@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedNetworkAccessGroups } from '@/test/console/network-access'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
@@ -189,11 +190,15 @@ describe('AccountSetting', () => {
       )
     }
 
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { entitled: false, groups: [] })
+
     return renderWithConsoleQuery(
       <NuqsTestingAdapter>
         <StatefulAccountSetting />
       </NuqsTestingAdapter>,
       {
+        queryClient,
         features: {
           billing: { subscription: { plan: 'sandbox' } },
           can_replace_logo: canReplaceLogo,
@@ -569,6 +574,54 @@ describe('AccountSetting', () => {
   })
 
   describe('Tab Navigation', () => {
+    it('should open the IP Policies settings page', () => {
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+      expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPolicyEmptyTitle')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.ipPolicies')).toHaveLength(2)
+      expect(
+        screen.getByRole('heading', { name: 'common.settings.ipPolicies' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPoliciesDescription')).toBeInTheDocument()
+    })
+
+    it('opens IP Policies read-only for editors', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        currentWorkspace: { ...baseConsoleState.currentWorkspace, role: 'editor' },
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+      }
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+      expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPolicyEmptyTitle')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it.each(['normal', 'dataset_operator'])(
+      'hides IP Policies and rejects direct entry for %s',
+      (role) => {
+        mockConsoleState.current = {
+          ...baseConsoleState,
+          currentWorkspace: { ...baseConsoleState.currentWorkspace, role },
+          isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: false,
+        }
+
+        renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+        expect(
+          screen.queryByRole('button', { name: 'common.settings.ipPolicies' }),
+        ).not.toBeInTheDocument()
+        expect(screen.queryByText('common.settings.ipPolicyEmptyTitle')).not.toBeInTheDocument()
+      },
+    )
+
     it('should change active tab when clicking on menu item', () => {
       // Arrange
       renderAccountSetting({ onTabChange: mockOnTabChange })

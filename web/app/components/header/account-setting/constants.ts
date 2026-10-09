@@ -1,5 +1,6 @@
 export const ACCOUNT_SETTING_TAB = {
   MEMBERS: 'members',
+  IP_POLICIES: 'ip-policies',
   ROLES_AND_PERMISSIONS: 'roles-and-permissions',
   PERMISSION_SET: 'permission-set',
   BILLING: 'billing',
@@ -12,6 +13,7 @@ export type AccountSettingTab = (typeof ACCOUNT_SETTING_TAB)[keyof typeof ACCOUN
 
 export const ACCOUNT_SETTING_TAB_VALUES = [
   ACCOUNT_SETTING_TAB.MEMBERS,
+  ACCOUNT_SETTING_TAB.IP_POLICIES,
   ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
   ACCOUNT_SETTING_TAB.PERMISSION_SET,
   ACCOUNT_SETTING_TAB.BILLING,

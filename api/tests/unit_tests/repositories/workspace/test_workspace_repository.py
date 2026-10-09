@@ -78,6 +78,14 @@ def test_snapshot_role_is_scoped_to_both_account_and_workspace(seeded: Workspace
     assert seeded.get_for_account("missing", "a1") is None
 
 
+def test_membership_role_is_scoped_to_both_account_and_workspace(seeded: WorkspaceRepository) -> None:
+    assert seeded.get_account_role(tenant_id="w1", account_id="a1") == "normal"
+    assert seeded.get_account_role(tenant_id="w2", account_id="a1") == "editor"
+    assert seeded.get_account_role(tenant_id="w2", account_id="other") == "owner"
+    assert seeded.get_account_role(tenant_id="w1", account_id="other") is None
+    assert seeded.get_account_role(tenant_id="w2", account_id="missing") is None
+
+
 def test_switch_updates_only_the_requesting_account(
     seeded: WorkspaceRepository, sqlite_session_factory: sessionmaker[Session]
 ) -> None:

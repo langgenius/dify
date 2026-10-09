@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
+from controllers.web.error import WebAppNotFoundError
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
@@ -97,17 +97,17 @@ class TestAppSiteApi:
         assert result["enable_site"] is True
         assert result["mode"] == AppMode.CHAT
 
-    def test_missing_site_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_missing_site_raises_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers)
         app_model = _create_app(db_session_with_containers, tenant.id)
         end_user = _end_user(tenant.id, app_model.id)
 
         with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
+            with pytest.raises(WebAppNotFoundError):
                 AppSiteApi().get(app_model, end_user)
 
-    def test_archived_tenant_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_archived_tenant_raises_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers, status=TenantStatus.ARCHIVE)
         app_model = _create_app(db_session_with_containers, tenant.id)
@@ -115,7 +115,7 @@ class TestAppSiteApi:
         end_user = _end_user(tenant.id, app_model.id)
 
         with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
+            with pytest.raises(WebAppNotFoundError):
                 AppSiteApi().get(app_model, end_user)
 
 

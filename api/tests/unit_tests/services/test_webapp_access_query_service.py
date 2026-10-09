@@ -7,26 +7,35 @@ from sqlalchemy.orm import sessionmaker
 
 from enums import WebAppAccessMode
 from models.enums import CustomizeTokenStrategy
-from models.model import Site
+from models.model import App, AppModelConfig, Site
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessQueryService,
     WebAppAccessReferenceRequiredError,
+    WebAppAccessUnavailableError,
 )
 
 
 @dataclass
 class AccessQueryStub:
     app_id: str | None = None
+    available: bool = True
     error: Exception | None = None
     calls: list[str] = field(default_factory=list)
+    availability_calls: list[str] = field(default_factory=list)
 
     def find_app_id_by_code(self, app_code: str) -> str | None:
         self.calls.append(app_code)
         if self.error is not None:
             raise self.error
         return self.app_id
+
+    def is_app_available(self, app_id: str) -> bool:
+        self.availability_calls.append(app_id)
+        if self.error is not None:
+            raise self.error
+        return self.available
 
 
 @dataclass
@@ -93,11 +102,69 @@ def test_disabled_auth_returns_public_before_resolving_app() -> None:
     assert fixture.policy.access_mode_calls == []
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("reference", ["code", "id"])
+def test_public_identity_resolution_does_not_load_authentication_settings(enabled: bool, reference: str) -> None:
+    fixture = _service(access=AccessQueryStub(app_id="resolved-id"), enabled=enabled)
+    result = fixture.service.resolve_app_id(
+        **({"app_code": "site-code"} if reference == "code" else {"app_id": "resolved-id"})
+    )
+    assert result == "resolved-id"
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.policy.permission_calls == []
+    assert fixture.access.calls == (["site-code"] if reference == "code" else [])
+    assert fixture.access.availability_calls == (["resolved-id"] if reference == "id" else [])
+
+
+def test_public_identity_requires_a_reference_even_when_auth_disabled() -> None:
+    fixture = _service(enabled=False)
+    with pytest.raises(WebAppAccessReferenceRequiredError):
+        fixture.service.resolve_app_id()
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.access.availability_calls == []
+
+
+@pytest.mark.parametrize("reference", ["code", "id"])
+def test_public_identity_dependency_failure_preserves_its_type(reference: str) -> None:
+    failure = WebAppAccessUnavailableError("dependency")
+    fixture = _service(access=AccessQueryStub(error=failure), enabled=False)
+    with pytest.raises(WebAppAccessUnavailableError) as raised:
+        fixture.service.resolve_app_id(**({"app_code": "site-code"} if reference == "code" else {"app_id": "app-1"}))
+    assert raised.value is failure
+    assert fixture.policy.access_mode_calls == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("app_id", [None, "resolved-id"])
+def test_nullable_code_lookup_preserves_repository_admission_without_policy_reads(
+    enabled: bool, app_id: str | None
+) -> None:
+    fixture = _service(access=AccessQueryStub(app_id=app_id), enabled=enabled)
+
+    assert fixture.service.find_app_id_by_code("site-code") == app_id
+    assert fixture.access.calls == ["site-code"]
+    assert fixture.access.availability_calls == []
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.policy.permission_calls == []
+
+
+def test_nullable_code_lookup_does_not_turn_dependency_failure_into_missing_app() -> None:
+    failure = WebAppAccessUnavailableError("dependency")
+    fixture = _service(access=AccessQueryStub(error=failure))
+
+    with pytest.raises(WebAppAccessUnavailableError) as raised:
+        fixture.service.find_app_id_by_code("site-code")
+
+    assert raised.value is failure
+    assert fixture.policy.access_mode_calls == []
+
+
 def test_enabled_auth_reads_access_mode_by_app_id() -> None:
     fixture = _service()
 
     assert fixture.service.get_access_mode(app_id="app-1", app_code=None) is WebAppAccessMode.PRIVATE
     assert fixture.access.calls == []
+    assert fixture.access.availability_calls == ["app-1"]
     assert fixture.policy.access_mode_calls == ["app-1"]
 
 
@@ -110,6 +177,7 @@ def test_app_code_takes_precedence_over_app_id() -> None:
     assert fixture.service.get_access_mode(app_id="ignored-id", app_code="code-1") is WebAppAccessMode.SSO_VERIFIED
     assert fixture.access.calls == ["code-1"]
     assert fixture.policy.access_mode_calls == ["resolved-id"]
+    assert fixture.access.availability_calls == []
 
 
 def test_missing_app_code_raises_not_found() -> None:
@@ -119,6 +187,30 @@ def test_missing_app_code_raises_not_found() -> None:
         fixture.service.get_access_mode(app_id="must-not-fallback", app_code="missing-code")
 
     assert fixture.policy.access_mode_calls == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_supplied_missing_app_id_is_not_public_when_auth_disabled(enabled: bool) -> None:
+    fixture = _service(access=AccessQueryStub(available=False), enabled=enabled)
+    with pytest.raises(WebAppAccessAppNotFoundError):
+        fixture.service.get_access_mode(app_id="missing-app", app_code=None)
+    assert fixture.access.availability_calls == ["missing-app"]
+    assert fixture.policy.access_mode_calls == []
+
+
+def test_disabled_auth_resolves_supplied_missing_code_before_public_shortcut() -> None:
+    fixture = _service(enabled=False)
+    with pytest.raises(WebAppAccessAppNotFoundError):
+        fixture.service.get_access_mode(app_id=None, app_code="missing-code")
+    assert fixture.access.calls == ["missing-code"]
+    assert fixture.policy.access_mode_calls == []
+
+
+def test_disabled_auth_returns_public_for_existing_code_without_enterprise_lookup() -> None:
+    fixture = _service(access=AccessQueryStub(app_id="resolved-id"), enabled=False)
+    assert fixture.service.get_access_mode(app_id=None, app_code="existing-code") is WebAppAccessMode.PUBLIC
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.access.availability_calls == []
 
 
 def test_enabled_auth_requires_app_id_or_code() -> None:
@@ -193,6 +285,20 @@ def test_app_code_lookup_releases_database_before_access_policy(sqlite_engine: E
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id = "11111111-1111-1111-1111-111111111111"
     with factory.begin() as session:
+        config = AppModelConfig(app_id=app_id)
+        config.id = "22222222-2222-2222-2222-222222222222"
+        session.add(config)
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=app_id,
+                name="Test App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+                app_model_config_id=config.id,
+            )
+        )
         session.add(
             Site(
                 app_id=app_id,
@@ -267,6 +373,9 @@ class _BatchQueries:
 
     def find_app_id_by_code(self, app_code: str) -> str | None:
         raise AssertionError(f"Batch queries must not resolve app codes: {app_code}")
+
+    def is_app_available(self, app_id: str) -> bool:
+        raise AssertionError(f"Batch queries must not check app availability: {app_id}")
 
     def get_access_mode(self, app_id: str) -> WebAppAccessMode:
         raise AssertionError(f"Batch queries must not use single-app lookups: {app_id}")

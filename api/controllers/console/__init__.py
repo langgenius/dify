@@ -6,11 +6,13 @@ from typing import cast
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.common.errors import register_permission_error_handler
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
+register_app_access_error_metadata(bp, surface="console")
 
 api = ExternalApi(
     bp,
@@ -164,6 +166,7 @@ from .workspace import (
     members,
     model_providers,
     models,
+    network_access_group,
     plugin,
     rbac,
     skills,
@@ -229,6 +232,7 @@ __all__ = [
     "model_config",
     "model_providers",
     "models",
+    "network_access_group",
     "notification",
     "oauth",
     "oauth_server",

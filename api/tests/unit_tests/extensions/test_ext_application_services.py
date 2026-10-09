@@ -28,7 +28,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import CustomizeTokenStrategy
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -52,6 +52,7 @@ from repositories.app_statistic_query_repository import AppStatisticQueryReposit
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
@@ -131,6 +132,11 @@ from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
@@ -653,6 +659,47 @@ def test_build_application_services_wires_billing_service(
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
 
 
+def test_build_application_services_wires_network_access_group_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    network_access_groups = services.network_access_groups
+    assert isinstance(network_access_groups, NetworkAccessGroupService)
+    assert isinstance(network_access_groups._control_plane, NetworkAccessGroupGateway)
+    assert isinstance(network_access_groups._apps, SQLAlchemyNetworkAccessGroupAppRepository)
+    assert network_access_groups._apps._session_factory is sqlite_session_factory
+    assert isinstance(network_access_groups._entitlement, BillingNetworkAccessGroupEntitlementGateway)
+
+    # Exercise the composed membership port, not only the class of its owner.
+    # A workspace-repository migration must not leave a stale method signature.
+    context = RequestContext("request-1", None, "account-1", "workspace-1", "203.0.113.42")
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42")
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="QA owner", email="qa-owner@example.com")
+        account.id = context.account_id
+        workspace = Tenant(name="QA workspace")
+        workspace.id = context.active_workspace_id
+        session.add_all(
+            [
+                account,
+                workspace,
+                TenantAccountJoin(
+                    tenant_id=workspace.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+    assert network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42") == "203.0.113.42"
+
+
 def test_build_application_services_wires_compliance_downloads(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -972,6 +1019,35 @@ def test_build_application_services_wires_trial_app_usage(
 
 
 @pytest.fixture
+def published_webapp_id(sqlite_session: Session) -> str:
+    """Keep public admission real so wiring tests reach the Enterprise adapter."""
+    app_id = str(uuid4())
+    config = AppModelConfig(app_id=app_id)
+    config.id = str(uuid4())
+    app = App(
+        id=app_id,
+        tenant_id=str(uuid4()),
+        name="Published adapter fixture",
+        mode=AppMode.CHAT,
+        status=AppStatus.NORMAL,
+        enable_site=True,
+        enable_api=True,
+        app_model_config_id=config.id,
+    )
+    site = Site(
+        app_id=app_id,
+        code="published-adapter-fixture",
+        title="Published adapter fixture",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.UUID,
+        status=AppStatus.NORMAL,
+    )
+    sqlite_session.add_all([app, config, site])
+    sqlite_session.commit()
+    return app_id
+
+
+@pytest.fixture
 def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppRef:
     with sqlite_session_factory.begin() as session:
         app = App(
@@ -1260,6 +1336,7 @@ def test_app_preview_details_use_the_configured_database_without_request_globals
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
 ) -> None:
     with (
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
@@ -1274,17 +1351,17 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
             initialization_password="",
             redis=_redis(),
         )
-        result = services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+        result = services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert result is WebAppAccessMode.PRIVATE_ALL
-    get_access_mode.assert_called_once_with("app-1")
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 def _query_webapp_access(
-    service: WebAppAccessQueryService, query_kind: str
+    service: WebAppAccessQueryService, query_kind: str, published_webapp_id: str
 ) -> WebAppAccessMode | bool | Mapping[str, WebAppAccessMode] | Mapping[str, bool]:
     if query_kind == "single-mode":
-        return service.get_access_mode(app_id="app-1", app_code=None)
+        return service.get_access_mode(app_id=published_webapp_id, app_code=None)
     if query_kind == "single-permission":
         return service.is_user_allowed(user_id="viewer", app_id="app-1")
     if query_kind == "batch-modes":
@@ -1306,6 +1383,7 @@ def _query_webapp_access(
 )
 def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
     query_kind: str,
     enterprise_error: Exception,
 ) -> None:
@@ -1319,7 +1397,7 @@ def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
             redis=_redis(),
         )
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            _query_webapp_access(services.webapp_access, query_kind)
+            _query_webapp_access(services.webapp_access, query_kind, published_webapp_id)
 
     assert type(raised.value) is WebAppAccessUnavailableError
     assert raised.value.__cause__ is enterprise_error
@@ -1328,7 +1406,7 @@ def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
 
 @pytest.mark.parametrize("access_mode", ["invalid", 123])
 def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
-    sqlite_session_factory: sessionmaker[Session], access_mode: str | int
+    sqlite_session_factory: sessionmaker[Session], published_webapp_id: str, access_mode: str | int
 ) -> None:
     with patch(
         "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
@@ -1341,7 +1419,7 @@ def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
             redis=_redis(),
         )
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert type(raised.value) is WebAppAccessUnavailableError
     assert isinstance(raised.value.__cause__, ValueError)
@@ -1350,7 +1428,7 @@ def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
 @pytest.mark.parametrize("query_kind", ["single-mode", "single-permission", "batch-modes", "batch-permissions"])
 @pytest.mark.parametrize("failure", [TypeError("adapter bug"), ValueError("unexpected programming error")])
 def test_webapp_access_queries_do_not_hide_unknown_programming_errors(
-    sqlite_session_factory: sessionmaker[Session], query_kind: str, failure: Exception
+    sqlite_session_factory: sessionmaker[Session], published_webapp_id: str, query_kind: str, failure: Exception
 ) -> None:
     with patch("services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=failure):
         services = ext_application_services.build_application_services(
@@ -1360,7 +1438,7 @@ def test_webapp_access_queries_do_not_hide_unknown_programming_errors(
             redis=_redis(),
         )
         with pytest.raises(type(failure)) as raised:
-            _query_webapp_access(services.webapp_access, query_kind)
+            _query_webapp_access(services.webapp_access, query_kind, published_webapp_id)
 
     assert raised.value is failure
 

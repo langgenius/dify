@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
+import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -146,16 +147,21 @@ describe('AppDetailLayout', () => {
     mockAppResponse.mockImplementation(async () =>
       Response.json({ message: 'App not found' }, { status: 404 }),
     )
+    markAppDeletionStarted('app-1')
 
-    render(
-      <AppDetailLayout appId="app-1">
-        <div>App page content</div>
-      </AppDetailLayout>,
-    )
+    try {
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/apps'))
-    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/apps'))
+      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+      expect(useStore.getState().appDetail).toBeUndefined()
+    } finally {
+      markAppDeletionFailed('app-1')
+    }
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {

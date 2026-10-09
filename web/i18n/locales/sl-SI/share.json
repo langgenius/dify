@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Če potrebujete pomoč, se obrnite na skrbnika aplikacije.",
+  "appNotAccessible.documentTitle": "Aplikacija ni dostopna · Dify",
+  "appNotAccessible.ipAddress": "Vaš naslov IP je <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Ta aplikacija ne obstaja ali ni dostopna iz vašega omrežja.",
   "chat.chatFormTip": "Nastavitve klepeta ni mogoče spremeniti po začetku klepeta.",
   "chat.chatSettingsTitle": "Nova nastavitev klepeta",
   "chat.collapse": "Skrči",

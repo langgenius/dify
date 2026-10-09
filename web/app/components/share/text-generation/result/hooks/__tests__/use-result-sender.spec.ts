@@ -5,6 +5,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { AppSourceType } from '@/service/share'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -244,6 +245,8 @@ const renderSender = ({
 describe('useResultSender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
     mockWebAppState.appInfo.mode = 'completion'
     validateResultRequestMock.mockReturnValue({ canSend: true })
     buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
@@ -554,6 +557,77 @@ describe('useResultSender', () => {
 
     expect(onCompleted).toHaveBeenCalledWith('Done', 12, true)
     expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { transition: 'denied', timedOut: true, callback: 'onError' as const },
+    { transition: 'navigated', timedOut: true, callback: 'onError' as const },
+    { transition: 'denied', timedOut: false, callback: 'onError' as const },
+    { transition: 'navigated', timedOut: false, callback: 'onError' as const },
+    { transition: 'denied', timedOut: true, callback: 'onCompleted' as const },
+    { transition: 'navigated', timedOut: true, callback: 'onCompleted' as const },
+    { transition: 'denied', timedOut: false, callback: 'onCompleted' as const },
+  ])(
+    'settles $callback silently after $transition with timeout $timedOut',
+    async ({ transition, timedOut, callback }) => {
+      window.history.replaceState({}, '', '/completion/restricted-app')
+      const harness = createRunStateHarness()
+      let completionHandlers: CompletionHandlers | undefined
+      if (timedOut) sleepMock.mockResolvedValue(undefined)
+      sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
+        completionHandlers = handlers as CompletionHandlers
+      })
+      const { result, notify, onCompleted } = renderSender({
+        runState: harness.runState,
+        taskId: 14,
+      })
+
+      await act(async () => {
+        await result.current.handleSend()
+      })
+
+      await act(async () => {
+        if (transition === 'denied')
+          handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
+        else {
+          window.history.replaceState({}, '', '/completion/another-app')
+          captureAppAccessScope()
+        }
+        completionHandlers![callback]()
+      })
+
+      expect(notify).not.toHaveBeenCalled()
+      expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
+      expect(harness.runState.resetRunState).toHaveBeenCalled()
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 14, false)
+      expect(harness.runState.setMessageId).not.toHaveBeenCalled()
+    },
+  )
+
+  it('silently settles a rejected workflow request after its page was denied', async () => {
+    window.history.replaceState({}, '', '/workflow/restricted-app')
+    let rejectRequest!: (error: Error) => void
+    const pending = new Promise<void>((_resolve, reject) => {
+      rejectRequest = reject
+    })
+    sendWorkflowMessageMock.mockReturnValue(pending)
+    const harness = createRunStateHarness()
+    const { result, notify, onCompleted } = renderSender({
+      runState: harness.runState,
+      isWorkflow: true,
+      taskId: 15,
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+      handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
+      rejectRequest(new Error('Late workflow failure'))
+    })
+
+    expect(notify).not.toHaveBeenCalled()
+    expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
+    expect(harness.runState.resetRunState).toHaveBeenCalled()
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 15, false)
   })
 
   it('should handle non-timeout stream errors as failed completions', async () => {

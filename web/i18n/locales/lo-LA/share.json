@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "ຖ້າທ່ານຕ້ອງການຄວາມຊ່ວຍເຫຼືອ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລແອັບ.",
+  "appNotAccessible.documentTitle": "ບໍ່ສາມາດເຂົ້າເຖິງແອັບໄດ້ · Dify",
+  "appNotAccessible.ipAddress": "ທີ່ຢູ່ IP ຂອງທ່ານແມ່ນ <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "ແອັບນີ້ບໍ່ມີຢູ່ ຫຼື ບໍ່ສາມາດເຂົ້າເຖິງຈາກເຄືອຂ່າຍຂອງທ່ານໄດ້.",
   "chat.chatFormTip": "ການຕັ້ງຄ່າການສົນທະນາບໍ່ສາມາດແກ້ໄຂໄດ້ຫຼັງຈາກເລີ່ມຕົ້ນການສົນທະນາ.",
   "chat.chatSettingsTitle": "ຕັ້ງຄ່າການສົນທະນາໃໝ່",
   "chat.collapse": "ຫຍໍ້",

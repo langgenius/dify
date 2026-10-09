@@ -1510,6 +1510,8 @@ export type GetLoginStatusData = {
 
 export type GetLoginStatusErrors = {
   401: unknown
+  404: unknown
+  503: unknown
 }
 
 export type GetLoginStatusResponses = {

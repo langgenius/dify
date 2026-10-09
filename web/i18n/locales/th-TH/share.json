@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "หากต้องการความช่วยเหลือ โปรดติดต่อผู้ดูแลแอป",
+  "appNotAccessible.documentTitle": "ไม่สามารถเข้าถึงแอปได้ · Dify",
+  "appNotAccessible.ipAddress": "ที่อยู่ IP ของคุณคือ <ip>{{ip}}</ip>",
+  "appNotAccessible.title": "แอปนี้ไม่มีอยู่หรือไม่สามารถเข้าถึงได้จากเครือข่ายของคุณ",
   "chat.chatFormTip": "การตั้งค่าแชทไม่สามารถเปลี่ยนแปลงได้หลังจากที่แชทเริ่มต้นขึ้นแล้ว.",
   "chat.chatSettingsTitle": "การตั้งค่าการสนทนาใหม่",
   "chat.collapse": "ย่อ",
