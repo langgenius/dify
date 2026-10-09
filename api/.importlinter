@@ -1286,3 +1286,60 @@ forbidden_modules =
     extensions.ext_application_services
     factories.file_factory
 allow_indirect_imports = True
+
+[importlinter:contract:message-persistence-contract-boundary]
+name = Message persistence ports do not depend on execution services or runtime wiring
+type = forbidden
+source_modules =
+    services.app.generation.ports
+forbidden_modules =
+    services.workflow
+    services.agent
+    services.app.generation.runtime
+    extensions
+    flask
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-chat-runner-persistence-boundary]
+name = Agent Chat runners receive persistence and dataset tools through injected ports
+type = forbidden
+source_modules =
+    services.agent.chat.base_runner
+    services.agent.chat.function_call_runner
+    services.agent.chat.cot_runner
+    services.app.generation.adapters.agent_chat_runner
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:tool-engine-persistence-boundary]
+name = Tool Engine receives Sessions but cannot source persistence dependencies
+type = forbidden
+source_modules =
+    services.tools.tool_engine
+forbidden_modules =
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:agent-chat-worker-database-boundary]
+name = Agent Chat workers cannot create a global database session
+type = forbidden
+source_modules =
+    services.app.generation.adapters.agent_chat
+forbidden_modules =
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
