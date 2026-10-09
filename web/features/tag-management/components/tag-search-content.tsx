@@ -55,32 +55,26 @@ export const TagSearchContentView = ({
 
   return (
     <>
-      <div className="p-2 pb-1">
-        <ComboboxInputGroup className="border-divider-subtle bg-components-input-bg-normal">
-          <span
-            aria-hidden="true"
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-          />
-          <ComboboxInput
-            ref={inputRef}
-            aria-label={placeholder}
-            name={`tag-search-${type}`}
-            placeholder={placeholder}
-            className="pl-2"
-          />
-          {inputValue && (
-            <IconButton
-              size="sm"
-              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
-              onClick={handleClearInput}
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <span className="i-ri-close-line size-4" aria-hidden="true" />
-            </IconButton>
-          )}
-        </ComboboxInputGroup>
-      </div>
+      <ComboboxInputGroup>
+        <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
+        <ComboboxInput
+          ref={inputRef}
+          aria-label={placeholder}
+          name={`tag-search-${type}`}
+          placeholder={placeholder}
+        />
+        {inputValue && (
+          <IconButton
+            size="sm"
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+            className="shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
+            onClick={handleClearInput}
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            <span className="i-ri-close-line size-4" aria-hidden="true" />
+          </IconButton>
+        )}
+      </ComboboxInputGroup>
       <ComboboxList<TagComboboxItem> className="max-h-58">
         {(tag) => {
           if (isCreateTagOption(tag) && canManageTags) {
