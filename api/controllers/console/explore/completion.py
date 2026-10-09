@@ -36,10 +36,10 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
@@ -162,9 +162,7 @@ class CompletionStopApi(Resource):
         if app_mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppTaskService.stop_task(
-            tenant_id=installed_app.app_owner_tenant_id,
-            app_id=installed_app.app_id,
+        application_services().app_tasks.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
@@ -256,13 +254,20 @@ class ChatStopApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppTaskService.stop_task(
-            tenant_id=installed_app.app_owner_tenant_id,
-            app_id=installed_app.app_id,
-            task_id=task_id,
-            invoke_from=InvokeFrom.EXPLORE,
-            user_id=request_context.account_id,
-            app_mode=app_mode,
-        )
+        if app_mode == AppMode.ADVANCED_CHAT:
+            application_services().app_tasks.stop_workflow_task(
+                tenant_id=installed_app.app_owner_tenant_id,
+                app_id=installed_app.app_id,
+                task_id=task_id,
+                app_mode=app_mode,
+                owner=(CreatorUserRole.ACCOUNT, request_context.account_id),
+            )
+        else:
+            application_services().app_tasks.stop_task(
+                task_id=task_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                user_id=request_context.account_id,
+                app_mode=app_mode,
+            )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
