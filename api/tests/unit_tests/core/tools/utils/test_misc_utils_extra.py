@@ -26,6 +26,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.utils.yaml_utils import _load_yaml_file, load_yaml_file_cached
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from tests.unit_tests.model_factories import upload_reader
 
 
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
@@ -560,7 +561,9 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     sqlite_session.commit()
     model_manager = ModelManager(provider_manager=_UnusedProviderManager())
     model_instance = _UnusedModelInstance()
-    rerank_runner = RerankModelRunner(model_instance, session=sqlite_session)
+    rerank_runner = RerankModelRunner(
+        model_instance, load_upload=upload_reader(sessionmaker(bind=sqlite_session.get_bind()))
+    )
     fake_current_app = _FakeCurrentApp()
 
     with (
@@ -580,7 +583,9 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
         result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
-    rerank_runner_class.assert_called_once_with(model_instance, session=sqlite_session)
+    rerank_runner_class.assert_called_once()
+    assert rerank_runner_class.call_args.args == (model_instance,)
+    assert rerank_runner_class.call_args.kwargs["load_upload"].keywords == {"workspace_id": dataset_one.tenant_id}
     assert retriever_mock.call_count == 2
     assert callback.documents == [second_doc, first_doc]
     assert callback.resources is not None

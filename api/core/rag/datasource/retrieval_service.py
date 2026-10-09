@@ -2,11 +2,12 @@ import concurrent.futures
 import logging
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
 from sqlalchemy import select, tuple_
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from configs import dify_config
 from core.app.file_access import grant_upload_file_access
@@ -35,6 +36,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.knowledge.external.service import ExternalDatasetService
 
 
@@ -368,7 +370,12 @@ class RetrievalService:
                                 reranking_model,
                                 None,
                                 False,
-                                session=rerank_session,
+                                load_upload=partial(
+                                    SQLAlchemyKnowledgeUploadRepository(
+                                        session_factory=sessionmaker(bind=rerank_session.get_bind())
+                                    ).get_by_id,
+                                    workspace_id=dataset.tenant_id,
+                                ),
                             )
                             if dataset.is_multimodal:
                                 model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
@@ -448,7 +455,12 @@ class RetrievalService:
                                 reranking_model,
                                 None,
                                 False,
-                                session=rerank_session,
+                                load_upload=partial(
+                                    SQLAlchemyKnowledgeUploadRepository(
+                                        session_factory=sessionmaker(bind=rerank_session.get_bind())
+                                    ).get_by_id,
+                                    workspace_id=dataset.tenant_id,
+                                ),
                             )
                             all_documents.extend(
                                 data_post_processor.invoke(
@@ -912,7 +924,12 @@ class RetrievalService:
                         reranking_model,
                         weights,
                         False,
-                        session=rerank_session,
+                        load_upload=partial(
+                            SQLAlchemyKnowledgeUploadRepository(
+                                session_factory=sessionmaker(bind=rerank_session.get_bind())
+                            ).get_by_id,
+                            workspace_id=dataset.tenant_id,
+                        ),
                     )
                     all_documents_item = data_post_processor.invoke(
                         query=rerank_query,

@@ -1,5 +1,6 @@
 [importlinter]
 root_packages =
+    services.entities.external_knowledge_entities
     enums
     core
     core.rag.extractor.entity
@@ -233,6 +234,10 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 ignore_imports =
+    repositories.knowledge.external_retrieval_repository -> services.entities.external_knowledge_entities.external_knowledge_entities
+    repositories.knowledge.external_retrieval_repository -> services.errors.knowledge_retrieval
+    repositories.knowledge.retrieval_repository -> services.entities.external_knowledge_entities.external_knowledge_entities
+    repositories.knowledge.retrieval_repository -> services.errors.knowledge_retrieval
     repositories.knowledge.dataset_api_key_repository -> services.auth.api_key_contracts
     repositories.knowledge.dataset_api_key_repository -> services.knowledge.api_key_service
     repositories.knowledge.dataset_repository -> services.knowledge.segments.application
@@ -1129,3 +1134,20 @@ forbidden_modules =
     flask
     sqlalchemy
     werkzeug
+
+[importlinter:contract:retrieval-persistence-boundary]
+name = Retrieval use cases consume explicit persistence ports
+type = forbidden
+source_modules =
+    services.knowledge.retrieval.dataset_retrieval
+    core.rag.rerank.rerank_model
+    services.knowledge.retrieval.reranking
+forbidden_modules =
+    sqlalchemy
+    repositories
+    extensions.ext_database
+    core.db
+    flask
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True

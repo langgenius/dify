@@ -12,7 +12,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -32,12 +31,19 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.enums import IndexingStatus, SegmentStatus, SegmentType, SummaryStatus
-from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table, get_segment_child_chunks
+from models.vector import VectorConfiguration
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_keyword_table,
+    get_segment_attachment_files,
+    get_segment_child_chunks,
+    is_retrieved_segment_owned,
+)
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.document_repository import _get_document, require_indexing_document
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
 from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
-from services.knowledge.entities.segments import ChildChunkRecord, SegmentRecord
+from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
+from services.knowledge.entities.segments import ChildChunkRecord, SegmentAttachmentRecord, SegmentRecord
 from services.knowledge.indexing.execution import IndexingDocument
 from services.knowledge.resource_scope import DatasetRef, DocumentRef, SegmentRef
 from services.knowledge.segments.application import (
@@ -57,6 +63,26 @@ class SQLAlchemySegmentRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def attachments(self, *, tenant_id: str, segment_id: str) -> Sequence[SegmentAttachmentRecord]:
+        with self._session_factory() as session:
+            segment = session.scalar(
+                select(DocumentSegment).where(
+                    DocumentSegment.id == segment_id,
+                    DocumentSegment.tenant_id == tenant_id,
+                )
+            )
+            if segment is None or not is_retrieved_segment_owned(
+                segment,
+                tenant_id=tenant_id,
+                dataset_ids=[segment.dataset_id],
+                session=session,
+            ):
+                return []
+            return [
+                SegmentAttachmentRecord.model_validate(file)
+                for file in get_segment_attachment_files(segment, session=session)
+            ]
 
     def clear_for_indexing(self, document: IndexingDocument) -> None:
         ref = document.ref
@@ -457,8 +483,8 @@ class SQLAlchemySegmentRepository:
                 if document.dataset_process_rule_id
                 else None
             )
-            vector_type = (
-                Vector.resolve_vector_type(dataset, session=session)
+            vector_configuration = (
+                resolve_vector_configuration(dataset, session=session)
                 if dataset.indexing_technique == "high_quality"
                 else None
             )
@@ -488,7 +514,7 @@ class SQLAlchemySegmentRepository:
                     document,
                     segments[segment_id],
                     rule,
-                    vector_type,
+                    vector_configuration,
                     summaries.get(segment_id),
                     tuple(attachments[segment_id]),
                 )
@@ -584,7 +610,7 @@ class SegmentIndexingSnapshot:
     document: Document
     segment: DocumentSegment
     process_rule: DatasetProcessRule | None
-    vector_type: str | None
+    vector_configuration: VectorConfiguration | None
     summary: DocumentSegmentSummary | None
     attachment_ids: tuple[str, ...]
 
