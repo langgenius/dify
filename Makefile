@@ -109,10 +109,10 @@ test:
 		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
-			api/tests/unit_tests \
+			api/tests/unit_tests --ignore=api/tests/unit_tests/controllers; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/providers/vdb/*/tests/unit_tests \
-			api/providers/trace/*/tests/unit_tests \
-			--ignore=api/tests/unit_tests/controllers; \
+			api/providers/trace/*/tests/unit_tests; \
 		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/tests/unit_tests/controllers; \
 	fi
@@ -127,10 +127,10 @@ test-all:
 		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
-			api/tests/unit_tests \
+			api/tests/unit_tests --ignore=api/tests/unit_tests/controllers; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/providers/vdb/*/tests/unit_tests \
-			api/providers/trace/*/tests/unit_tests \
-			--ignore=api/tests/unit_tests/controllers; \
+			api/providers/trace/*/tests/unit_tests; \
 		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/tests/unit_tests/controllers; \
 		echo "Running backend integration tests"; \

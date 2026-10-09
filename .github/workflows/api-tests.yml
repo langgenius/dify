@@ -46,9 +46,7 @@ jobs:
             --write-plan unit-test-plan.json \
             --split-threshold 60 \
             --ignore api/tests/unit_tests/controllers \
-            api/tests/unit_tests \
-            api/providers/vdb/*/tests/unit_tests \
-            api/providers/trace/*/tests/unit_tests
+            api/tests/unit_tests
       - name: Upload shared plan
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -111,9 +109,7 @@ jobs:
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
             --ignore api/tests/unit_tests/controllers \
-            api/tests/unit_tests \
-            api/providers/vdb/*/tests/unit_tests \
-            api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
+            api/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
           uv run --project api pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
@@ -148,6 +144,53 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
+          path: ${{ env.COVERAGE_FILE }}
+          if-no-files-found: error
+          retention-days: 1
+
+  api-providers:
+    name: API Provider Tests (3.12)
+    runs-on: depot-ubuntu-24.04
+    env:
+      COVERAGE_FILE: coverage-providers-3.12
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+      - name: Install dependencies
+        run: uv sync --project api --dev
+      - name: Run provider unit tests
+        # Import SDKs once in this process, outside the ordinary API workers.
+        run: |
+          uv run --project api pytest \
+            -p no:benchmark \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
+            --cov-report= \
+            --junitxml=test-results/providers.xml \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests
+      - name: Upload provider test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: api-test-results-providers-3.12
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload provider coverage data
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: api-coverage-providers-3.12
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -267,6 +310,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
+      - api-providers
       - api-controllers
       - api-integration
     env:
@@ -300,10 +344,15 @@ jobs:
           coverage_version=$(python3 -c 'import tomllib; print(next(p["version"] for p in tomllib.load(open("api/uv.lock", "rb"))["package"] if p["name"] == "coverage"))')
 
           mapfile -t unit_coverage < <(find coverage-data -type f -name 'coverage-unit-*' -print | sort)
+          mapfile -t provider_coverage < <(find coverage-data -type f -name 'coverage-providers-*' -print | sort)
           mapfile -t controller_coverage < <(find coverage-data -type f -name 'coverage-controllers-*' -print | sort)
           mapfile -t integration_coverage < <(find coverage-data -type f -name 'coverage-integration-*' -print | sort)
           if [[ "${#unit_coverage[@]}" -ne 2 ]]; then
             echo "expected 2 unit coverage artifacts, found ${#unit_coverage[@]}" >&2
+            exit 1
+          fi
+          if [[ "${#provider_coverage[@]}" -ne 1 ]]; then
+            echo "expected 1 provider coverage artifact, found ${#provider_coverage[@]}" >&2
             exit 1
           fi
           if [[ "${#controller_coverage[@]}" -ne 1 ]]; then
@@ -315,7 +364,7 @@ jobs:
             exit 1
           fi
 
-          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${controller_coverage[@]}" "${integration_coverage[@]}"
+          uvx --from "coverage==$coverage_version" coverage combine "${unit_coverage[@]}" "${provider_coverage[@]}" "${controller_coverage[@]}" "${integration_coverage[@]}"
           uvx --from "coverage==$coverage_version" coverage xml -o coverage.xml
 
           # Reuse the XML totals instead of analyzing every source file again for a text report.
