@@ -1248,7 +1248,7 @@ export function FileTree({
                       <button
                         type="button"
                         aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                       >
                         <span
                           aria-hidden

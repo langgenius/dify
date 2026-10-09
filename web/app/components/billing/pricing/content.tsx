@@ -48,6 +48,7 @@ export function PricingContent() {
   const billing = currentCloudPlan
     ? {
         currentPlan: currentCloudPlan,
+        currentBillingInterval: features.billing.subscription.interval,
         isEducationDiscountEligible,
         isEducationDiscountActivated: features.education.activated,
       }

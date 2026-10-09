@@ -71,6 +71,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_DEPLOY_ENV: z.enum(['DEVELOPMENT', 'PRODUCTION', 'TESTING']).optional(),
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Surface the Agent v2 node inside Chatflow (advanced-chat) apps.
@@ -236,6 +237,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
+    NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN
+      : getRuntimeEnvFromBody('enableAccessToken'),
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),

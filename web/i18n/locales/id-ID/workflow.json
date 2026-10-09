@@ -117,6 +117,8 @@
   "common.branch": "CABANG",
   "common.chooseDSL": "Pilih file DSL",
   "common.chooseStartNodeToRun": "Pilih node awal untuk dijalankan",
+  "common.clearCanvasConfirmDescription": "Menyimpan akan mengosongkan alur kerja ini. Lanjutkan?",
+  "common.clearCanvasConfirmTitle": "Kosongkan kanvas?",
   "common.clipboardVersionCompatibilityWarning": "Konten ini disalin dari versi aplikasi Dify yang berbeda. Beberapa bagian mungkin tidak kompatibel.",
   "common.commentMode": "Mode komentar",
   "common.configure": "Konfigurasikan",
