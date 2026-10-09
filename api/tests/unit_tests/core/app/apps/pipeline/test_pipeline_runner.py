@@ -391,7 +391,7 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
         graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=state, start_node_id="start")
         return graph, variable_pool, state
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent, None, None]:
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
         assert entry.graph_engine.graph_runtime_state is state
         yield failure
 
@@ -426,7 +426,7 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
     entries: list[WorkflowEntry] = []
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent, None, None]:
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
         events.append("workflow_run")
         entries.append(entry)
         yield from ()
