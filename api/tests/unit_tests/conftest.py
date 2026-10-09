@@ -27,6 +27,8 @@ PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
 
+pytest_plugins = ("tests.unit_tests.audio_runtime_fixtures",)
+
 # set global mock for Redis client
 redis_mock = MagicMock()
 redis_mock.get = MagicMock(return_value=None)

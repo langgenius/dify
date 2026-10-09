@@ -1,39 +1,35 @@
 import base64
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from collections.abc import Iterator
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.app.entities.queue_entities import QueueNodeSucceededEvent, QueueTextChunkEvent, WorkflowQueueMessage
+from core.app.entities.queue_entities import (
+    MessageQueueMessage,
+    QueueNodeSucceededEvent,
+    QueueTextChunkEvent,
+    WorkflowQueueMessage,
+)
 from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_manager import ModelInstance, ModelManager
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode
-
-
-@pytest.fixture
-def mock_model_instance(mocker: MockerFixture):
-    model = mocker.MagicMock()
-    model.invoke_tts.return_value = [b"audio1", b"audio2"]
-    model.get_tts_voices.return_value = [{"value": "voice1"}, {"value": "voice2"}]
-    model.get_model_schema.return_value = SimpleNamespace(model_properties={ModelPropertyKey.AUDIO_TYPE: "mp3"})
-    return model
-
-
-@pytest.fixture
-def mock_model_manager(mocker: MockerFixture, mock_model_instance: MagicMock):
-    manager = mocker.MagicMock()
-    manager.get_default_model_instance.return_value = mock_model_instance
-    mocker.patch("core.base.tts.app_generator_tts_publisher.ModelManager.for_tenant", return_value=manager)
-    return manager
+from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations
 
 
 @pytest.fixture(autouse=True)
-def patch_threads(mocker: MockerFixture):
+def audio_responses(audio_runtime: AudioRuntimeObservations) -> None:
+    audio_runtime.tts_result = [b"audio1", b"audio2"]
+    audio_runtime.voices = [{"name": "One", "value": "voice1"}, {"name": "Two", "value": "voice2"}]
+
+
+@pytest.fixture(autouse=True)
+def patch_threads(mocker: MockerFixture) -> None:
     """Run the worker explicitly in tests."""
     mocker.patch("threading.Thread.start", return_value=None)
 
@@ -56,7 +52,7 @@ def _node_event(outputs: dict[str, object] | None) -> WorkflowQueueMessage:
     return WorkflowQueueMessage(task_id="task", app_mode=AppMode.WORKFLOW, event=event)
 
 
-def _run(publisher: AppGeneratorTTSPublisher, *messages: WorkflowQueueMessage | MagicMock) -> None:
+def _run(publisher: AppGeneratorTTSPublisher, *messages: WorkflowQueueMessage) -> None:
     for message in messages:
         publisher._msg_queue.put(message)
     publisher._msg_queue.put(None)
@@ -64,7 +60,7 @@ def _run(publisher: AppGeneratorTTSPublisher, *messages: WorkflowQueueMessage | 
 
 
 class TestAudioTrunk:
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         error = RuntimeError("failed")
         trunk = AudioTrunk("error", b"", error=error)
 
@@ -74,42 +70,45 @@ class TestAudioTrunk:
 
 
 class TestAppGeneratorTTSPublisher:
-    def test_initialization_valid_voice(self, mock_model_manager):
+    def test_initialization_valid_voice(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
+        assert type(publisher.model_manager) is ModelManager
+        assert type(publisher.model_instance) is ModelInstance
+        assert publisher.model_instance.credentials == {"api_key": "audio-token"}
         assert publisher.voice == "voice1"
         assert publisher.max_sentence == 2
         assert publisher.msg_text == ""
 
-    def test_initialization_invalid_voice_fallback(self, mock_model_manager):
+    def test_initialization_invalid_voice_fallback(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "invalid_voice")
 
         assert publisher.voice == "voice1"
 
-    def test_publish_puts_message_in_queue(self, mock_model_manager):
+    def test_publish_puts_message_in_queue(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
-        message = MagicMock()
+        message = _text_event("queued text")
 
         publisher.publish(message)
 
         assert publisher._msg_queue.get() == message
 
-    def test_cancel_discards_queued_text(self, mock_model_manager, mock_model_instance: MagicMock):
+    def test_cancel_discards_queued_text(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.publish(_text_event("First. Second."))
 
         publisher.cancel()
         publisher._runtime()
 
-        mock_model_instance.invoke_tts.assert_not_called()
+        assert audio_runtime.tts_calls == []
         assert publisher._audio_queue.empty()
 
-    def test_check_and_get_audio_returns_none_without_audio(self, mock_model_manager):
+    def test_check_and_get_audio_returns_none_without_audio(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
         assert publisher.check_and_get_audio() is None
 
-    def test_check_and_get_audio_returns_the_resolved_mime_type(self, mock_model_manager):
+    def test_check_and_get_audio_returns_the_resolved_mime_type(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         trunk = AudioTrunk("responding", b"abc", audio_type="audio/wav")
         publisher._audio_queue.put(trunk)
@@ -120,7 +119,9 @@ class TestAppGeneratorTTSPublisher:
         assert result.audio_type == "audio/wav"
 
     @pytest.mark.parametrize("status", ["finish", "error"])
-    def test_check_and_get_audio_caches_terminal_events(self, mock_model_manager, status: str):
+    def test_check_and_get_audio_caches_terminal_events(
+        self, audio_runtime: AudioRuntimeObservations, status: str
+    ) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         terminal = AudioTrunk(status, b"", error=RuntimeError("failed") if status == "error" else None)
         publisher._audio_queue.put(terminal)
@@ -137,7 +138,9 @@ class TestAppGeneratorTTSPublisher:
             ("", [], ""),
         ],
     )
-    def test_extract_sentence(self, mock_model_manager, text, expected_sentences, expected_remaining):
+    def test_extract_sentence(
+        self, audio_runtime: AudioRuntimeObservations, text: str, expected_sentences: list[str], expected_remaining: str
+    ) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
         sentences, remaining = publisher._extract_sentence(text)
@@ -145,79 +148,82 @@ class TestAppGeneratorTTSPublisher:
         assert sentences == expected_sentences
         assert remaining == expected_remaining
 
-    def test_runtime_generates_the_final_buffer(self, mock_model_manager, mock_model_instance: MagicMock):
+    def test_runtime_generates_the_final_buffer(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.msg_text = " Hello. "
 
         _run(publisher)
 
-        mock_model_instance.invoke_tts.assert_called_once_with(content_text="Hello.", voice="voice1")
+        assert audio_runtime.tts_calls == [{"content_text": "Hello.", "voice": "voice1"}]
+        assert len(audio_runtime.runtime_calls) == 1
+        assert audio_runtime.runtime_calls[0]["request_metadata"] == {
+            "app_type": CreditUsageAppType.UNKNOWN,
+            "created_by": CreditUsageCreatedBy.AUDIO,
+        }
+        assert audio_runtime.manager_requests[0]["user_id"] == "responding_tts"
         assert publisher._audio_queue.get().audio == base64.b64encode(b"audio1")
         assert publisher._audio_queue.get().audio == base64.b64encode(b"audio2")
         assert publisher._audio_queue.get().status == "finish"
 
-    def test_runtime_skips_an_empty_final_buffer(self, mock_model_manager, mock_model_instance: MagicMock):
+    def test_runtime_skips_an_empty_final_buffer(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.msg_text = "   "
 
         _run(publisher)
 
-        mock_model_instance.invoke_tts.assert_not_called()
+        assert audio_runtime.tts_calls == []
         assert publisher._audio_queue.get().status == "finish"
 
     def test_runtime_generates_incremental_mp3_after_the_sentence_threshold(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
+        self, audio_runtime: AudioRuntimeObservations
+    ) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
         _run(publisher, _text_event("Hello world. Second sentence."))
 
-        mock_model_instance.invoke_tts.assert_called_once_with(
-            content_text="Hello world. Second sentence.", voice="voice1"
-        )
+        assert audio_runtime.tts_calls == [{"content_text": "Hello world. Second sentence.", "voice": "voice1"}]
 
     def test_runtime_waits_for_terminal_when_the_schema_has_no_audio_type(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
-        mock_model_instance.get_model_schema.return_value = SimpleNamespace(model_properties={})
+        self, audio_runtime: AudioRuntimeObservations, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        audio_runtime.model_properties = {}
         wav = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
-        mock_model_instance.invoke_tts.return_value = [TTSAudioChunk(wav, "audio/wav")]
+        audio_runtime.tts_result = [TTSAudioChunk(wav, "audio/wav")]
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         event = _text_event("Hello. World.")
-        messages = iter([event, None])
+        publisher._msg_queue.put(event)
+        publisher._msg_queue.put(None)
+        original_get = publisher._msg_queue.get
 
-        def get_message():
-            message = next(messages)
+        def get_message() -> WorkflowQueueMessage | MessageQueueMessage | None:
+            message = original_get()
             if message is None:
-                mock_model_instance.invoke_tts.assert_not_called()
+                assert audio_runtime.tts_calls == []
             return message
 
-        publisher._msg_queue = MagicMock()
-        publisher._msg_queue.get.side_effect = get_message
+        monkeypatch.setattr(publisher._msg_queue, "get", get_message)
 
         publisher._runtime()
 
-        mock_model_instance.invoke_tts.assert_called_once_with(content_text="Hello. World.", voice="voice1")
+        assert audio_runtime.tts_calls == [{"content_text": "Hello. World.", "voice": "voice1"}]
         assert publisher._audio_queue.get().audio_type == "audio/wav"
         assert publisher._audio_queue.get().status == "finish"
 
     def test_runtime_waits_for_terminal_when_the_model_declares_wav(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
-        mock_model_instance.get_model_schema.return_value = SimpleNamespace(
-            model_properties={ModelPropertyKey.AUDIO_TYPE: "wav"}
-        )
+        self, audio_runtime: AudioRuntimeObservations
+    ) -> None:
+        audio_runtime.model_properties = {ModelPropertyKey.AUDIO_TYPE: "wav"}
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
         _run(publisher, _text_event("Hello. World."))
 
-        mock_model_instance.invoke_tts.assert_called_once_with(content_text="Hello. World.", voice="voice1")
+        assert audio_runtime.tts_calls == [{"content_text": "Hello. World.", "voice": "voice1"}]
 
     def test_runtime_rejects_a_non_mp3_incremental_response_before_emitting_audio(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
+        self, audio_runtime: AudioRuntimeObservations
+    ) -> None:
         wav = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
-        mock_model_instance.invoke_tts.return_value = [TTSAudioChunk(wav, "audio/wav")]
+        audio_runtime.tts_result = [TTSAudioChunk(wav, "audio/wav")]
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
 
         _run(publisher, _text_event("First. Second. tail"))
@@ -228,11 +234,11 @@ class TestAppGeneratorTTSPublisher:
         assert publisher._audio_queue.empty()
 
     def test_runtime_rejects_mime_changes_between_audio_responses(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
+        self, audio_runtime: AudioRuntimeObservations
+    ) -> None:
         mp3 = b"\xff\xfb" + b"\x00" * 30
         wav = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
-        mock_model_instance.invoke_tts.side_effect = [
+        audio_runtime.tts_responses = [
             [TTSAudioChunk(mp3, "audio/mpeg")],
             [TTSAudioChunk(wav, "audio/wav")],
         ]
@@ -249,13 +255,13 @@ class TestAppGeneratorTTSPublisher:
         assert publisher._audio_queue.empty()
 
     def test_runtime_turns_a_lazy_provider_failure_into_an_error_terminal(
-        self, mock_model_manager, mock_model_instance: MagicMock
-    ):
-        def failing_stream():
+        self, audio_runtime: AudioRuntimeObservations
+    ) -> None:
+        def failing_stream() -> Iterator[bytes]:
             raise RuntimeError("provider failed")
             yield b""  # pragma: no cover
 
-        mock_model_instance.invoke_tts.return_value = failing_stream()
+        audio_runtime.tts_result = failing_stream()
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.msg_text = "Hello"
 
@@ -266,26 +272,31 @@ class TestAppGeneratorTTSPublisher:
         assert isinstance(terminal.error, RuntimeError)
         assert publisher._audio_queue.empty()
 
-    def test_runtime_handles_node_succeeded_output(self, mock_model_manager, mock_model_instance: MagicMock):
+    def test_runtime_handles_node_succeeded_output(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         event = _node_event({"output": "Hello world."})
 
         _run(publisher, event)
 
-        mock_model_instance.invoke_tts.assert_called_once()
+        assert len(audio_runtime.tts_calls) == 1
 
-    def test_runtime_ignores_node_succeeded_without_output(self, mock_model_manager, mock_model_instance: MagicMock):
+    def test_runtime_ignores_node_succeeded_without_output(self, audio_runtime: AudioRuntimeObservations) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         event = _node_event(None)
 
         _run(publisher, event)
 
-        mock_model_instance.invoke_tts.assert_not_called()
+        assert audio_runtime.tts_calls == []
 
-    def test_runtime_turns_message_processing_failure_into_an_error_terminal(self, mock_model_manager):
+    def test_runtime_turns_message_processing_failure_into_an_error_terminal(
+        self, audio_runtime: AudioRuntimeObservations, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
-        publisher._msg_queue = MagicMock()
-        publisher._msg_queue.get.side_effect = RuntimeError("failed")
+
+        def unavailable() -> None:
+            raise RuntimeError("failed")
+
+        monkeypatch.setattr(publisher._msg_queue, "get", unavailable)
 
         publisher._runtime()
 
