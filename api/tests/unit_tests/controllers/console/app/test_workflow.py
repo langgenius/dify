@@ -350,6 +350,134 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
 
 
+@pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+@pytest.mark.parametrize("confirmation", [{}, {"force": False}], ids=["missing-force", "force-false"])
+def test_sync_draft_workflow_rejects_empty_graph_without_confirmation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: str,
+    confirmation: dict[str, bool],
+) -> None:
+    workflow_service = Mock()
+    monkeypatch.setattr(workflow_module, "WorkflowService", workflow_service)
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "h", **confirmation}),
+        content_type=content_type,
+    ):
+        with pytest.raises(InvalidArgumentError) as exc:
+            handler(api, _account(), app_model=_app())
+
+    assert exc.value.code == 400
+    assert exc.value.description == "Saving an empty workflow requires force=true."
+    workflow_service.assert_not_called()
+
+
+@pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+@pytest.mark.parametrize(
+    ("graph", "confirmation"),
+    [
+        ({"nodes": [], "edges": []}, {"force": True}),
+        ({"nodes": [{"id": "start"}], "edges": []}, {}),
+        ({"nodes": [], "edges": [{"id": "edge-1", "source": "start", "target": "end"}]}, {}),
+    ],
+    ids=["confirmed-empty-graph", "nodes-without-edges", "edges-without-nodes"],
+)
+def test_sync_draft_workflow_saves_confirmed_empty_or_nonempty_graph(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: str,
+    graph: dict[str, list[dict[str, str]]],
+    confirmation: dict[str, bool],
+) -> None:
+    workflow = SimpleNamespace(unique_hash="next-hash", updated_at=None, created_at=datetime(2024, 1, 1))
+    sync_draft_workflow = Mock(return_value=workflow)
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(sync_draft_workflow=sync_draft_workflow),
+    )
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        data=json.dumps({"graph": graph, "features": {}, "hash": "current-hash", **confirmation}),
+        content_type=content_type,
+    ):
+        response = handler(api, _account(), app_model=_app())
+
+    assert response["result"] == "success"
+    assert response["hash"] == "next-hash"
+    sync_draft_workflow.assert_called_once()
+    assert sync_draft_workflow.call_args.kwargs["graph"] == graph
+    assert sync_draft_workflow.call_args.kwargs["unique_hash"] == "current-hash"
+
+
+@pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+def test_sync_draft_workflow_force_does_not_bypass_hash_conflict(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: str,
+) -> None:
+    sync_draft_workflow = Mock(side_effect=workflow_module.WorkflowHashNotEqualError())
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(sync_draft_workflow=sync_draft_workflow),
+    )
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "stale-hash", "force": True}),
+        content_type=content_type,
+    ):
+        with pytest.raises(DraftWorkflowNotSync) as exc:
+            handler(api, _account(), app_model=_app())
+
+    assert exc.value.code == 409
+    sync_draft_workflow.assert_called_once()
+    assert sync_draft_workflow.call_args.kwargs["unique_hash"] == "stale-hash"
+
+
+@pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+@pytest.mark.parametrize("force", ["true", 1, None], ids=["string", "integer", "null"])
+def test_sync_draft_workflow_rejects_non_boolean_force(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: str,
+    force: str | int | None,
+) -> None:
+    workflow_service = Mock()
+    monkeypatch.setattr(workflow_module, "WorkflowService", workflow_service)
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "force": force}),
+        content_type=content_type,
+    ):
+        if content_type == "application/json":
+            with pytest.raises(ValidationError, match="Input should be a valid boolean"):
+                handler(api, _account(), app_model=_app())
+        else:
+            response, status = handler(api, _account(), app_model=_app())
+            assert status == 400
+            assert response["message"] == "Invalid JSON data"
+
+    workflow_service.assert_not_called()
+
+
 def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
     patched_variable = StringVariable(
@@ -428,7 +556,6 @@ def test_sync_draft_workflow_rejects_legacy_environment_variables() -> None:
 
 
 def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-
     def _raise(*_args, **_kwargs):
         raise workflow_module.WorkflowHashNotEqualError()
 
