@@ -316,7 +316,7 @@ class TestWorkflowEntrySingleStepRun:
         assert node.id == "node-id"
         assert list(generator) == ["event"]
         variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
-        
+    
     @pytest.mark.parametrize(
         ("workflow_type", "expects_query_mapping"),
         [(WorkflowType.WORKFLOW, False), (WorkflowType.CHAT, True)],
@@ -381,7 +381,7 @@ class TestWorkflowEntrySingleStepRun:
 
         variable_mapping = mapping_inputs.call_args.kwargs["variable_mapping"]
         assert ("node-id.#sys.query#" in variable_mapping) is expects_query_mapping
-        
+    
     def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self):
         class FakeNode:
             id = "node-id"
