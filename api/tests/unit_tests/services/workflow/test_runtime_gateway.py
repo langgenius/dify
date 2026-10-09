@@ -56,6 +56,7 @@ from services.workflow.console_service import (
 from services.workflow.draft_service import WorkflowDraftService
 from services.workflow.runtime_gateway import WorkflowRuntimeGateway
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.config_override import apply_config_overrides
@@ -1079,6 +1080,7 @@ def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
 
     monkeypatch.setattr(storage, "load", unexpected_global_read)
     gateway._variables = WorkflowVariableService(
+        file_inputs=WorkflowVariableFileGateway(sqlite_session_factory, DatabaseFileAccessController()),
         repository=WorkflowDraftVariableRepository(sessions=sqlite_session_factory),
         files=FileService(sqlite_session_factory),
         executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory),
