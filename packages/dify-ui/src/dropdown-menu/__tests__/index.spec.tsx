@@ -1,10 +1,17 @@
 import type * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { InputGroup, InputGroupAddon } from '../../input-group'
 import {
   DropdownMenu,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
+  DropdownMenuInput,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuPopup,
   DropdownMenuPortal,
   DropdownMenuPositioner,
@@ -18,7 +25,67 @@ import {
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
+function FilterableMenu() {
+  return (
+    <DropdownMenuFilterProvider>
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Workspace actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <InputGroup className="mx-1 mb-1 w-auto">
+            <DropdownMenuInput aria-label="Filter actions" />
+            <InputGroupAddon data-testid="search-icon">
+              <span aria-hidden="true">🔍</span>
+            </InputGroupAddon>
+            <InputGroupAddon align="inline-end">
+              <DropdownMenuClear data-testid="clear" />
+            </InputGroupAddon>
+          </InputGroup>
+          <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
+          <DropdownMenuList>
+            <DropdownMenuItem>Rename workspace</DropdownMenuItem>
+            <DropdownMenuItem>Manage billing</DropdownMenuItem>
+          </DropdownMenuList>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </DropdownMenuFilterProvider>
+  )
+}
+
 describe('dropdown-menu wrapper', () => {
+  describe('filtering', () => {
+    it('should focus the filter input when the input group surface is pressed', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await expect.element(input).toHaveFocus()
+      ;(input.element() as HTMLInputElement).blur()
+      await expect.element(input).not.toHaveFocus()
+
+      await userEvent.click(screen.getByTestId('search-icon'))
+
+      await expect.element(input).toHaveFocus()
+    })
+
+    it('should reset the query from the clear control and keep focus in the input', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await userEvent.fill(input, 'bill')
+      await expect.element(screen.getByRole('menuitem', { name: 'Manage billing' })).toBeVisible()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByTestId('clear'))
+
+      await expect.element(input).toHaveValue('')
+      await expect.element(input).toHaveFocus()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .toBeInTheDocument()
+    })
+  })
+
   describe('DropdownMenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', async () => {
       const screen = await renderWithSafeViewport(

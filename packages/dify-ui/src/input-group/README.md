@@ -8,7 +8,8 @@ pointer surface without changing the input's native semantics.
 
 ## Anatomy
 
-Compose exactly one direct `InputGroupInput` and one or more direct `InputGroupAddon` children:
+Compose exactly one direct input and one or more direct `InputGroupAddon` children. The input is
+`InputGroupInput`, or a popup search input that matches it, such as `DropdownMenuInput`:
 
 ```tsx
 <InputGroup>

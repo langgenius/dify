@@ -6,11 +6,16 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
+  DropdownMenuInput,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
@@ -20,6 +25,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '.'
+import { InputGroup, InputGroupAddon } from '../input-group'
 
 function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
   return (
@@ -44,7 +50,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, and disabled states.',
+          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, disabled states, and filtering. Filtering is a Base UI preview feature: wrap `DropdownMenu` in `DropdownMenuFilterProvider`, place `DropdownMenuInput` inside the content (as the direct input of an `InputGroup` when it needs an icon or `DropdownMenuClear`), and put the items in `DropdownMenuList`. The popup then becomes a dialog that holds the searchbox and the menu.',
       },
     },
   },
@@ -400,5 +406,120 @@ export const DetachedTrigger: Story = {
     await waitFor(async () => {
       await expect(trigger).toHaveFocus()
     })
+  },
+}
+
+const filterableActionGroups = [
+  {
+    label: 'Workspace',
+    actions: ['Rename workspace', 'Invite members', 'Manage billing'],
+  },
+  {
+    label: 'Danger zone',
+    actions: ['Archive workspace', 'Delete workspace'],
+  },
+]
+
+function FilterableDemo() {
+  const [lastAction, setLastAction] = React.useState<string | null>(null)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <DropdownMenuFilterProvider>
+        <DropdownMenu>
+          <TriggerButton label="Workspace actions" />
+          <DropdownMenuContent className="w-64">
+            <InputGroup className="mx-1 mb-1 w-auto">
+              <DropdownMenuInput aria-label="Filter actions" placeholder="Filter actions…" />
+              <InputGroupAddon className="ps-2">
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end" className="pe-1.5">
+                <DropdownMenuClear />
+              </InputGroupAddon>
+            </InputGroup>
+            <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
+            <DropdownMenuList>
+              {filterableActionGroups.map((group, index) => (
+                <DropdownMenuGroup key={group.label}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuGroupLabel>{group.label}</DropdownMenuGroupLabel>
+                  {group.actions.map((action) => (
+                    <DropdownMenuItem
+                      key={action}
+                      variant={group.label === 'Danger zone' ? 'destructive' : 'default'}
+                      onClick={() => setLastAction(action)}
+                    >
+                      {action}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ))}
+            </DropdownMenuList>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </DropdownMenuFilterProvider>
+      <p role="status" aria-label="Last action" className="system-xs-regular text-text-tertiary">
+        {lastAction ?? 'No action yet'}
+      </p>
+    </div>
+  )
+}
+
+export const Filterable: Story = {
+  parameters: {
+    docs: {
+      story: { autoplay: false },
+      description: {
+        story:
+          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches.',
+      },
+    },
+  },
+  render: () => <FilterableDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'Workspace actions' })
+
+    await userEvent.click(trigger)
+    const input = await body.findByRole('searchbox', { name: 'Filter actions' })
+    await waitFor(async () => {
+      await expect(input).toHaveFocus()
+    })
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toBeInTheDocument()
+
+    await userEvent.type(input, 'billing')
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toBeInTheDocument()
+    await expect(body.queryByRole('menuitem', { name: 'Rename workspace' })).not.toBeInTheDocument()
+    await expect(body.queryByText('Danger zone')).not.toBeVisible()
+
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toHaveAttribute(
+      'data-highlighted',
+    )
+    await expect(input).toHaveFocus()
+
+    await userEvent.type(input, 'zzz')
+    await expect(await body.findByText('No actions match')).toHaveAttribute('role', 'status')
+
+    await userEvent.clear(input)
+    await userEvent.type(input, 'rename')
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await expect(canvas.getByRole('status', { name: 'Last action' })).toHaveTextContent(
+      'Rename workspace',
+    )
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(trigger)
+    await body.findByRole('searchbox', { name: 'Filter actions' })
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   },
 }

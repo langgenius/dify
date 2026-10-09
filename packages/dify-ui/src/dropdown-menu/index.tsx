@@ -25,6 +25,12 @@ const DropdownMenuSub = Menu.SubmenuRoot
 const DropdownMenuGroup = Menu.Group
 const createDropdownMenuHandle = Menu.createHandle
 
+// Filtering (Base UI preview). Wrap `DropdownMenu` in the provider, host the input in an `InputGroup`
+// inside the content, and put the items in `DropdownMenuList` so the list owns the `menu` role and
+// the scrolling.
+const DropdownMenuFilterProvider = Menu.FilterProvider
+const useDropdownMenuFilter = Menu.useFilter
+
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
 type DropdownMenuActions = Menu.Root.Actions
@@ -46,6 +52,80 @@ function DropdownMenuTrigger<Payload = unknown>({
 type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
 type DropdownMenuGroupProps = Menu.Group.Props
+type DropdownMenuFilterProviderProps = Menu.FilterProvider.Props
+
+// Matches `InputGroupInput` so the filter input can be the direct input of an `InputGroup`, which
+// owns the shared surface, focus ring and addons.
+const dropdownMenuInputClassName = [
+  'w-0 min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent px-3 py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden',
+  'placeholder:text-components-input-text-placeholder',
+  'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
+]
+const dropdownMenuClearClassName = [
+  'flex size-5 shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+  'hover:bg-components-input-bg-hover hover:text-text-secondary',
+  'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary',
+  'motion-reduce:transition-none',
+]
+const dropdownMenuEmptyClassName = 'px-3 py-2 system-sm-regular text-text-tertiary'
+// The popup keeps its vertical padding and the items keep their inset, so the list adds none.
+const dropdownMenuListClassName =
+  'max-h-[min(20rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden scroll-py-1'
+
+type DropdownMenuInputProps = Menu.Input.Props
+
+function DropdownMenuInput({ className, autoComplete = 'off', ...props }: DropdownMenuInputProps) {
+  return (
+    <Menu.Input
+      autoComplete={autoComplete}
+      className={(state) => cn(dropdownMenuInputClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuClearProps = Menu.Clear.Props
+
+// Base UI renders the clear control only while the input has a value, hidden from assistive
+// technology and the tab order: keyboard users clear the input directly.
+function DropdownMenuClear({
+  className,
+  children,
+  type = 'button',
+  ...props
+}: DropdownMenuClearProps) {
+  return (
+    <Menu.Clear
+      type={type}
+      className={(state) => cn(dropdownMenuClearClassName, resolveClassName(className, state))}
+      {...props}
+    >
+      {children ?? <span className="i-ri-close-line size-4" aria-hidden="true" />}
+    </Menu.Clear>
+  )
+}
+
+type DropdownMenuEmptyProps = Menu.Empty.Props
+
+function DropdownMenuEmpty({ className, ...props }: DropdownMenuEmptyProps) {
+  return (
+    <Menu.Empty
+      className={(state) => cn(dropdownMenuEmptyClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuListProps = Menu.List.Props
+
+function DropdownMenuList({ className, ...props }: DropdownMenuListProps) {
+  return (
+    <Menu.List
+      className={(state) => cn(dropdownMenuListClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
   Menu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
@@ -314,11 +394,16 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
+  DropdownMenuInput,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuPopup,
   DropdownMenuPortal,
   DropdownMenuPositioner,
@@ -330,18 +415,24 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  useDropdownMenuFilter,
 }
 
 export type {
   DropdownMenuActions,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
+  DropdownMenuClearProps,
   DropdownMenuContentProps,
+  DropdownMenuEmptyProps,
+  DropdownMenuFilterProviderProps,
   DropdownMenuGroupLabelProps,
   DropdownMenuGroupProps,
   DropdownMenuHandle,
+  DropdownMenuInputProps,
   DropdownMenuItemProps,
   DropdownMenuLinkItemProps,
+  DropdownMenuListProps,
   DropdownMenuPopupProps,
   DropdownMenuPortalProps,
   DropdownMenuPositionerProps,
