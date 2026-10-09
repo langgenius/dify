@@ -35,6 +35,7 @@ from models import (
 from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
@@ -390,6 +391,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model: The database model to persist
         """
         with self._session_factory() as session:
+            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             # Check if record already exists
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
@@ -479,6 +487,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             session.merge(db_model)
             session.flush()
 

@@ -30,8 +30,10 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotWorkflowError
@@ -109,6 +111,12 @@ class InstalledAppWorkflowTaskStopApi(Resource):
         if installed_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=installed_app.app_owner_tenant_id,
+            app_id=installed_app.app_id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
