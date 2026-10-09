@@ -250,7 +250,6 @@ project-excludes = [
   "core/app/apps/agent_app/test_session_store.py",
   "core/app/apps/agent_chat/test_agent_chat_app_config_manager.py",
   "core/app/apps/agent_chat/test_agent_chat_app_generator.py",
-  "core/app/apps/agent_chat/test_agent_chat_app_runner.py",
   "core/app/apps/agent_chat/test_agent_chat_generate_response_converter.py",
   "core/app/apps/chat/test_app_config_manager.py",
   "core/app/apps/chat/test_app_generator_and_runner.py",
