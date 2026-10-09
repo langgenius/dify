@@ -26,7 +26,6 @@ import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -91,7 +90,6 @@ export function WebAppAccessPointCard({
     'deployments',
     'navigation',
   ])
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
@@ -101,16 +99,6 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_site: updatedApp.enable_site,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -118,10 +106,7 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      onSuccess: async () => {
-        await onRefreshApp()
-        setShowRegenerate(false)
-      },
+      onSuccess: () => setShowRegenerate(false),
       onError: () => {
         toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
         setShowRegenerate(false)

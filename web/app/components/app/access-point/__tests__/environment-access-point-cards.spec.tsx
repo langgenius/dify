@@ -3,8 +3,11 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
+import { AppModeEnum } from '@/types/app'
 import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
 import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
 
@@ -26,30 +29,10 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-let mockAppMode = 'workflow'
+let mockAppMode: AppModeEnum = AppModeEnum.WORKFLOW
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        get mode() {
-          return mockAppMode
-        },
-        icon: '🤖',
-        icon_background: '#FFEAD5',
-        icon_type: 'emoji',
-        icon_url: null,
-        site: {
-          access_token: 'built-in-code',
-          app_base_url: 'https://built-in.example.test',
-        },
-      },
-    }),
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -122,6 +105,16 @@ const api = {
 }
 
 function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      mode: mockAppMode,
+      site: createAppSiteFixture({
+        access_token: 'built-in-code',
+        app_base_url: 'https://built-in.example.test',
+      }),
+    }),
+  )
   queryClient.setQueryData(['system-features'], {
     webapp_auth: {
       enabled: true,
@@ -148,7 +141,7 @@ afterAll(() => vi.unstubAllGlobals())
 describe('environment access point cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppMode = 'workflow'
+    mockAppMode = AppModeEnum.WORKFLOW
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init)
       const path = new URL(request.url).pathname
@@ -246,7 +239,7 @@ describe('environment access point cards', () => {
   )
 
   it('sends a chatflow app to the chat web app shell', async () => {
-    mockAppMode = 'advanced-chat'
+    mockAppMode = AppModeEnum.ADVANCED_CHAT
 
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 

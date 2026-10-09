@@ -1,5 +1,11 @@
+import type { ReactElement } from 'react'
+import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render as renderWithConsole } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { BuiltInAccessPoints } from '../built-in-access-points'
 
 const mocks = vi.hoisted(() => ({
@@ -27,22 +33,19 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock()
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        webapp_auth: { enabled: true },
-      },
-    }),
-  }
-})
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ appDetail: mocks.appInfo }),
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
+
+function render(ui: ReactElement) {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppModeEnum }),
+  )
+  return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
+}
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,

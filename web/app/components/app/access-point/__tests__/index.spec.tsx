@@ -9,11 +9,13 @@ import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
+import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
-let appMode = 'workflow'
+let appMode: AppModeEnum = AppModeEnum.WORKFLOW
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
   builtIn: vi.fn(),
@@ -30,18 +32,6 @@ vi.mock('react-i18next', async () => {
     'workflow.nodes.common.memories.builtIn': 'Built-in',
   })
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: appMode,
-        maintainer: 'user-2',
-        permission_keys: appPermissionKeys,
-      },
-    }),
-}))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -106,6 +96,15 @@ const renderAccessPoint = ({
 } = {}) => {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      id: 'app-1',
+      mode: appMode,
+      maintainer: 'user-2',
+      permission_keys: appPermissionKeys,
+    }),
+  )
   const queryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
       input: {
@@ -134,7 +133,7 @@ const renderAccessPoint = ({
 describe('AccessPoint', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appMode = 'workflow'
+    appMode = AppModeEnum.WORKFLOW
     appPermissionKeys = [AppACLPermission.AccessPointView]
   })
 
@@ -244,7 +243,7 @@ describe('AccessPoint', () => {
   })
 
   it('hides environment tabs for app types without multi-environment support', () => {
-    appMode = 'chat'
+    appMode = AppModeEnum.CHAT
 
     renderAccessPoint()
 
