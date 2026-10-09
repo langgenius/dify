@@ -4,6 +4,7 @@ from core.workflow.system_variables import (
     build_system_variables,
     default_system_variables,
     get_node_creation_preload_selectors,
+    inject_default_system_variable_mappings,
     system_variables_to_mapping,
 )
 from graphon.file import File, FileTransferMethod, FileType
@@ -81,3 +82,27 @@ def test_get_node_creation_preload_selectors_skips_non_memory_nodes():
     )
 
     assert selectors == ()
+
+
+def test_inject_default_system_variable_mappings_adds_query_for_conversation_apps():
+    mapping = inject_default_system_variable_mappings(
+        node_id="llm",
+        node_type=BuiltinNodeTypes.LLM,
+        node_data=SimpleNamespace(memory=object()),
+        variable_mapping={},
+        supports_conversation=True,
+    )
+
+    assert mapping == {"llm.#sys.query#": ("sys", "query")}
+
+
+def test_inject_default_system_variable_mappings_skips_query_without_conversation():
+    mapping = inject_default_system_variable_mappings(
+        node_id="llm",
+        node_type=BuiltinNodeTypes.LLM,
+        node_data=SimpleNamespace(memory=object()),
+        variable_mapping={},
+        supports_conversation=False,
+    )
+
+    assert mapping == {}
