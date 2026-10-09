@@ -68,7 +68,7 @@ it('the map with no server known is the static half and says so on stderr', asyn
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf()).toMatch(/log in to list server operations/)
+  expect(w.io.errBuf()).toMatch(/not logged in: run difyctl login --help/)
   expect(w.mock.requestCount).toBe(0)
 })
 

@@ -95,3 +95,20 @@ it('falls back to the external-SSO subject email when there is no account', asyn
   expect(login?.email).toBe('sso@dify.ai')
   expect(login?.account).toBeNull()
 })
+
+it('resume with no pending login reports the saved login', async () => {
+  const w = await testContext({ login: true, argv: ['login', '--resume'] })
+  worlds.push(w)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({
+    server: w.mock.url,
+    email: 'me@x',
+    workspace_id: 'ws-1',
+  })
+})
+
+it('resume with no pending login and no saved login is not_logged_in', async () => {
+  const w = await testContext({ login: false, argv: ['login', '--resume'] })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
+})

@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
-import { BaseError } from '@/errors/base'
+import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Command } from '@/plugins/commands/command'
 import { env } from '@/plugins/env'
@@ -41,7 +41,7 @@ const INPUT = z.object({
     .boolean()
     .default(false)
     .describe(
-      'Check a login started with --no-wait once. Prints status pending until the user approves',
+      'Check a login started with --no-wait once. Prints status pending until the user approves. With no pending login, prints the saved login, or fails with not_logged_in',
     ),
 })
 
@@ -54,7 +54,6 @@ const PENDING_SCHEMA = z.object({
   device_code: z.string(),
 })
 type Pending = z.infer<typeof PENDING_SCHEMA>
-const NO_PENDING_MESSAGE = 'no pending login; start one with login --no-wait'
 const FINAL_POLL_ERRORS: readonly string[] = [ErrorCode.AuthExpired, ErrorCode.AccessDenied]
 
 const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
@@ -85,7 +84,8 @@ export default class Login extends Command<typeof INPUT> {
       input: { server: 'https://dify.example.com', no_browser: true, no_wait: true },
     },
     {
-      title: 'Then, after the user approves, finish the login (repeat while status is pending)',
+      title:
+        'Finish a --no-wait login after the user approves (repeat while status is pending); with no pending login, reports the saved login or fails with not_logged_in',
       input: { resume: true },
     },
   ]
@@ -142,7 +142,14 @@ export default class Login extends Command<typeof INPUT> {
 async function resume(ctx: CommandContext, pendingStore: YamlStore) {
   const parsed = PENDING_SCHEMA.safeParse(await pendingStore.getTyped<unknown>())
   if (!parsed.success) {
-    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: NO_PENDING_MESSAGE })
+    const current = await (await ctx.get(session)).current()
+    if (current === null) throw notLoggedIn()
+    return {
+      server: current.server,
+      email: current.email,
+      account: current.account,
+      workspace_id: current.workspaceId,
+    }
   }
   const pending = parsed.data
   const api = deviceApi(pending.server, { insecure: pending.insecure })
