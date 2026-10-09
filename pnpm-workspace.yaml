@@ -76,7 +76,6 @@ catalog:
   '@date-fns/tz': 1.5.0
   '@daypicker/react': 10.0.2
   '@egoist/tailwindcss-icons': 1.9.2
-  '@eslint-community/eslint-plugin-eslint-comments': 4.8.1
   '@eslint-react/eslint-plugin': 5.24.10
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
@@ -178,7 +177,6 @@ catalog:
   eslint-markdown: 0.18.1
   eslint-plugin-antfu: 3.2.3
   eslint-plugin-better-tailwindcss: 4.9.0
-  eslint-plugin-command: 4.0.0
   eslint-plugin-jsdoc: 65.2.1
   eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.42.0
@@ -188,8 +186,6 @@ catalog:
   eslint-plugin-pnpm: 1.9.1
   eslint-plugin-regexp: 3.3.1
   eslint-plugin-storybook: 10.6.1
-  eslint-plugin-toml: 1.5.0
-  eslint-plugin-unicorn: 77.0.0
   eslint-plugin-yml: 3.9.0
   eventsource-parser: 4.1.1
   fast-deep-equal: 3.1.3
