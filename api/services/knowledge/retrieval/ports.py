@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from threading import Thread
 from typing import Any, Protocol
 
+from core.app.app_config.entities import ModelConfig
 from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, InvokeFrom
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.entities import DocumentContext, MetadataFilteringCondition, RetrievalSourceMetadata
@@ -77,7 +78,7 @@ class RetrievalReranker(Protocol):
 
 
 class DatasetRetriever(Protocol):
-    """Retrieval operations consumed by the workflow execution layer."""
+    """Retrieval operations consumed by workflow execution and hit testing."""
 
     @property
     def llm_usage(self) -> LLMUsage: ...
@@ -85,6 +86,18 @@ class DatasetRetriever(Protocol):
     def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None: ...
 
     def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]: ...
+
+    def get_metadata_filter_condition(
+        self,
+        dataset_ids: list[str],
+        query: str,
+        tenant_id: str,
+        user_id: str,
+        metadata_filtering_mode: str,
+        metadata_model_config: ModelConfig | None,
+        metadata_filtering_conditions: MetadataFilteringCondition | None,
+        inputs: dict[str, Any],
+    ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]: ...
 
 
 class DatasetRetrievalFactory(Protocol):

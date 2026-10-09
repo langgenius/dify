@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -22,6 +22,7 @@ from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, S
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import authorize_retrieved_segment
 from services.knowledge.retrieval import dataset_retrieval as retrieval_module
+from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 
 
 @pytest.fixture
@@ -95,10 +96,11 @@ def test_published_retrieval_grants_bound_images_before_signing(
     monkeypatch: pytest.MonkeyPatch,
     entry: str,
     vision_enabled: bool,
-    sqlite_session_factory,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     dataset, document, segment, file_ids = graph
     retrieval = build_dataset_retrieval(sqlite_session_factory)()
+    assert isinstance(retrieval, DatasetRetrieval)
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
     monkeypatch.setattr(retrieval._records, "available_datasets", MagicMock(return_value=[dataset]))
     monkeypatch.setattr(retrieval, "get_metadata_filter_condition", MagicMock(return_value=(None, None)))
@@ -224,13 +226,14 @@ def test_workflow_retrieval_releases_owned_connections_and_preserves_caller_tran
     monkeypatch: pytest.MonkeyPatch,
     with_image: bool,
     signing_fails: bool,
-    sqlite_session_factory,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     dataset, document, segment, _ = graph
     if not with_image:
         segment.content = "Plain text"
         sqlite_session.commit()
     retrieval = build_dataset_retrieval(sqlite_session_factory)()
+    assert isinstance(retrieval, DatasetRetrieval)
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
     monkeypatch.setattr(retrieval._records, "available_datasets", MagicMock(return_value=[dataset]))
     monkeypatch.setattr(
