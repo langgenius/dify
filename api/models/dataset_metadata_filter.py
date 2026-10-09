@@ -1,4 +1,8 @@
-"""Fail-closed validation for model-generated metadata filters."""
+"""Dataset metadata filter values and policy, independent of application services.
+
+Retrieval and prompt generation share this domain contract without depending on
+service orchestration, ORM state, or infrastructure.
+"""
 
 import math
 from collections.abc import Mapping, Sequence

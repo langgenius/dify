@@ -95,18 +95,18 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
-from models.enums import CreatorUserRole, DatasetQuerySource
-from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
-from repositories.knowledge.segment_read_adapter import sign_segment_content
-from services.feature_service import FeatureService
-from services.knowledge.external.service import ExternalDatasetService
-from services.knowledge.metadata.filtering import (
+from models.dataset_metadata_filter import (
     MetadataField,
     MetadataFilterGenerationError,
     metadata_prompt_fields,
     shared_metadata_fields,
     validate_automatic_metadata_filters,
 )
+from models.enums import CreatorUserRole, DatasetQuerySource
+from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.segment_read_adapter import sign_segment_content
+from services.feature_service import FeatureService
+from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.retrieval.attachments import authorize_retrieved_segment
 
 default_retrieval_model: DefaultRetrievalModelDict = {

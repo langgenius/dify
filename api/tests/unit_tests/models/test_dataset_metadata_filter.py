@@ -3,7 +3,7 @@ import json
 import pytest
 
 from core.rag.retrieval import template_prompts
-from services.knowledge.metadata.filtering import (
+from models.dataset_metadata_filter import (
     METADATA_OPERATORS,
     MetadataField,
     MetadataFilterGenerationError,

@@ -1,6 +1,6 @@
 import json
 
-from services.knowledge.metadata.filtering import metadata_prompt_fields
+from models.dataset_metadata_filter import metadata_prompt_fields
 
 METADATA_FILTER_SYSTEM_PROMPT = """
 ### Task
