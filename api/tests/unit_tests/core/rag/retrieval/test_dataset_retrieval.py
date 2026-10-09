@@ -4251,11 +4251,10 @@ class TestDatasetRetrievalAdditionalHelpers:
 
     @pytest.mark.parametrize("failure_stage", ["invoke", "stream", "json"])
     def test_automatic_metadata_filter_failure_stops_retrieval(
-        self, retrieval: DatasetRetrieval, failure_stage: str
+        self, retrieval: DatasetRetrieval, sqlite_session: Session, failure_stage: str
     ) -> None:
         model = Mock()
-        session = Mock()
-        session.scalars.return_value.all.return_value = list[object]()
+        tenant_id, dataset_id = str(uuid4()), str(uuid4())
         with (
             patch.object(retrieval, "_fetch_model_config", return_value=(model, Mock())),
             patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
@@ -4268,10 +4267,10 @@ class TestDatasetRetrievalAdditionalHelpers:
             target.side_effect = RuntimeError("generation failed")
             with pytest.raises(ValueError, match="retrieval was stopped"):
                 retrieval.get_metadata_filter_condition(
-                    session,
-                    dataset_ids=["dataset"],
+                    sqlite_session,
+                    dataset_ids=[dataset_id],
                     query="q",
-                    tenant_id="tenant",
+                    tenant_id=tenant_id,
                     user_id="user",
                     metadata_filtering_mode="automatic",
                     metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
@@ -4297,11 +4296,10 @@ class TestDatasetRetrievalAdditionalHelpers:
         ],
     )
     def test_invalid_automatic_metadata_response_is_not_ignored(
-        self, retrieval: DatasetRetrieval, payload: dict[str, object]
+        self, retrieval: DatasetRetrieval, sqlite_session: Session, payload: dict[str, object]
     ) -> None:
         model = Mock()
-        session = Mock()
-        session.scalars.return_value.all.return_value = list[object]()
+        tenant_id, dataset_id = str(uuid4()), str(uuid4())
         with (
             patch.object(retrieval, "_fetch_model_config", return_value=(model, Mock())),
             patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
@@ -4311,10 +4309,10 @@ class TestDatasetRetrievalAdditionalHelpers:
         ):
             with pytest.raises(ValueError):
                 retrieval._automatic_metadata_filter_func(
-                    session,
-                    dataset_ids=["dataset"],
+                    sqlite_session,
+                    dataset_ids=[dataset_id],
                     query="q",
-                    tenant_id="tenant",
+                    tenant_id=tenant_id,
                     user_id="user",
                     metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
                 )
