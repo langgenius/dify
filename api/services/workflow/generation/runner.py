@@ -55,18 +55,6 @@ from core.workflow.generator.prompts.planner_prompts import (
     format_tool_catalogue_section,
 )
 from core.workflow.generator.prompts.tool_router_prompts import TOOL_ROUTER_SYSTEM_PROMPT, TOOL_ROUTER_USER_PROMPT
-from core.workflow.generator.tool_catalogue import (
-    DIRECT_TOOL_INJECTION_LIMIT,
-    LegacyToolFallbackSelection,
-    ToolCapabilityQuery,
-    ToolCatalogueEntry,
-    find_tool_entry,
-    format_tool_builder_context,
-    format_tool_catalogue,
-    select_legacy_fallback_selection,
-    select_tool_candidates,
-    text_mentions_tool_identifier,
-)
 from core.workflow.generator.types import (
     GraphDict,
     GraphViewportDict,
@@ -84,6 +72,18 @@ from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
+)
+from services.workflow.generation.tool_catalogue import (
+    DIRECT_TOOL_INJECTION_LIMIT,
+    LegacyToolFallbackSelection,
+    ToolCapabilityQuery,
+    ToolCatalogueEntry,
+    find_tool_entry,
+    format_tool_builder_context,
+    format_tool_catalogue,
+    select_legacy_fallback_selection,
+    select_tool_candidates,
+    text_mentions_tool_identifier,
 )
 
 logger = logging.getLogger(__name__)
@@ -2463,7 +2463,7 @@ class WorkflowGenerator:
             installed.
 
         Per-node config validation (model spec, prompt template shape, etc.)
-        is deferred to ``WorkflowService.sync_draft_workflow``; we only fail
+        is deferred to ``WorkflowDraftService.sync``; we only fail
         on structural issues the user must know about so they don't get a
         broken-at-runtime draft.
         """

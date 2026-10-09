@@ -152,3 +152,14 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository, session_factory=database_client
         ),
     )
+
+
+def build_workflow_suggestions(database_client: sessionmaker[Session]):
+    from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+    from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
+    from services.workflow.generation.tool_catalogue import build_tool_catalogue, format_tool_catalogue
+
+    return WorkflowInstructionSuggestions(
+        datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
+        tools=lambda tenant_id: format_tool_catalogue(build_tool_catalogue(tenant_id)),
+    )

@@ -37,6 +37,7 @@ from extensions.application_services.knowledge import (
 )
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.workflow import build_workflow_suggestions
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
@@ -189,6 +190,7 @@ from services.web_passport_gateways import (
 from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
+from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -242,6 +244,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    workflow_suggestions: WorkflowInstructionSuggestions
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -496,6 +499,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     return ApplicationServices(
+        workflow_suggestions=build_workflow_suggestions(database_client),
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),

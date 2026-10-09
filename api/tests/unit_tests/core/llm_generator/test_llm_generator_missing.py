@@ -6,25 +6,22 @@ from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.llm_generator.llm_generator as generator_module
-from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
 from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
-from core.workflow.generator import tool_catalogue as tool_catalogue_module
-from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from models.dataset import Dataset
+from services.workflow.generation import tool_catalogue as tool_catalogue_module
+from services.workflow.generation.suggestions import _parse_string_list
+from services.workflow.generation.tool_catalogue import ToolCatalogueEntry
 from services.workflow_service import WorkflowService
 from tests.unit_tests.core.model_fixtures import make_model_instance
 from tests.unit_tests.model_factories import make_dataset
 
 
 @pytest.fixture
-def dataset_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind the real SQLite session to the production database extension."""
-
-    monkeypatch.setattr(generator_module.db, "session", sqlite_session)
+def dataset_session(sqlite_session: Session) -> Session:
+    """Seed the database consumed by the injected suggestion repository."""
     return sqlite_session
 
 
@@ -87,54 +84,59 @@ class TestParseStringList:
 
 
 class TestGenerateWorkflowInstructionSuggestions:
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_no_default_model(self, mock_for_tenant, monkeypatch: pytest.MonkeyPatch):
+    @patch("services.workflow.generation.suggestions.ModelManager.for_tenant")
+    def test_no_default_model(self, mock_for_tenant, monkeypatch: pytest.MonkeyPatch, workflow_suggestions):
         model_manager, _, resolve_default = _model_manager(monkeypatch)
         resolve_default.side_effect = RuntimeError("no default model")
         mock_for_tenant.return_value = model_manager
 
-        assert LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
+        assert workflow_suggestions.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
 
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_success(self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch):
+    @patch("services.workflow.generation.suggestions.ModelManager.for_tenant")
+    @patch("services.workflow.generation.suggestions.WorkflowInstructionSuggestions._build_suggestion_context")
+    def test_llm_success(
+        self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+    ):
         mock_build_context.return_value = "context"
         model_manager, invocation, _ = _model_manager(monkeypatch)
         invocation.return_value = _llm_result('["idea 1", "idea 2"]')
         mock_for_tenant.return_value = model_manager
 
-        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
+        result = workflow_suggestions.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == ["idea 1", "idea 2"]
         invocation.assert_called_once()
 
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_error(self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch):
+    @patch("services.workflow.generation.suggestions.ModelManager.for_tenant")
+    @patch("services.workflow.generation.suggestions.WorkflowInstructionSuggestions._build_suggestion_context")
+    def test_llm_error(
+        self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+    ):
         mock_build_context.return_value = "context"
         model_manager, invocation, _ = _model_manager(monkeypatch)
         invocation.side_effect = RuntimeError("API error")
         mock_for_tenant.return_value = model_manager
 
-        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
+        result = workflow_suggestions.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == []
         invocation.assert_called_once()
 
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_bad_output(self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch):
+    @patch("services.workflow.generation.suggestions.ModelManager.for_tenant")
+    @patch("services.workflow.generation.suggestions.WorkflowInstructionSuggestions._build_suggestion_context")
+    def test_llm_bad_output(
+        self, mock_build_context, mock_for_tenant, monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+    ):
         mock_build_context.return_value = "context"
         model_manager, invocation, _ = _model_manager(monkeypatch)
         invocation.return_value = _llm_result("Not a list")
         mock_for_tenant.return_value = model_manager
 
-        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
+        result = workflow_suggestions.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == []
         invocation.assert_called_once()
 
 
-@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 class TestBuildSuggestionContext:
-    def test_both_success(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_both_success(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch, workflow_suggestions):
         now = datetime.now()
         dataset_session.add_all(
             (
@@ -170,30 +172,33 @@ class TestBuildSuggestionContext:
                 ),
             ]
 
-        # Keep the real module and formatter; only isolate provider/plugin discovery.
-        monkeypatch.setattr(tool_catalogue_module, "build_tool_catalogue", build_tool_catalogue)
+        def tools(tenant_id):
+            assert workflow_suggestions._datasets._session_factory.kw["bind"].pool.checkedout() == 0
+            return tool_catalogue_module.format_tool_catalogue(build_tool_catalogue(tenant_id))
 
-        result = LLMGenerator._build_suggestion_context("tenant")
+        monkeypatch.setattr(workflow_suggestions, "_tools", tools)
+
+        result = workflow_suggestions._build_suggestion_context("tenant")
         assert "Knowledge bases:\n- kb1\n- kb2" in result
         assert (
             'Installed tools:\n- provider/tool1 [provider_id="provider"; tool_name="tool1"] — First tool\n'
             '- provider/tool2 [provider_id="provider"; tool_name="tool2"] — Second tool'
         ) in result
 
-    def test_both_fail(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_both_fail(self, monkeypatch: pytest.MonkeyPatch, workflow_suggestions):
         def fail_query(_orm_execute_state: object) -> None:
             raise SQLAlchemyError("DB error")
 
         def fail_tool_catalogue(_tenant_id: str) -> list[ToolCatalogueEntry]:
             raise RuntimeError("Tool error")
 
-        event.listen(dataset_session, "do_orm_execute", fail_query)
-        monkeypatch.setattr(tool_catalogue_module, "build_tool_catalogue", fail_tool_catalogue)
+        event.listen(workflow_suggestions._datasets._session_factory, "do_orm_execute", fail_query)
+        monkeypatch.setattr(workflow_suggestions, "_tools", fail_tool_catalogue)
 
         try:
-            assert LLMGenerator._build_suggestion_context("tenant") == ""
+            assert workflow_suggestions._build_suggestion_context("tenant") == ""
         finally:
-            event.remove(dataset_session, "do_orm_execute", fail_query)
+            event.remove(workflow_suggestions._datasets._session_factory, "do_orm_execute", fail_query)
 
 
 class TestWorkflowServiceInterface:

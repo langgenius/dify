@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from services.tag_application_service import TagApplicationService
     from services.tools.workflow_tools_manage_service import WorkflowToolManageService
     from services.workflow.console_variable_service import ConsoleWorkflowVariableService
+    from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
     from services.workflow.variable_service import WorkflowVariableService
 
 
@@ -448,3 +449,10 @@ def workflow_runtime(sqlite_session_factory: sessionmaker[Session]) -> WorkflowE
     from extensions.application_services.workflow import build_workflow_execution_dependencies
 
     return build_workflow_execution_dependencies(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_suggestions(sqlite_session_factory: sessionmaker[Session]) -> WorkflowInstructionSuggestions:
+    from extensions.application_services.workflow import build_workflow_suggestions
+
+    return build_workflow_suggestions(sqlite_session_factory)

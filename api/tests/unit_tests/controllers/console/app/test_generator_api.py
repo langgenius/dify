@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from inspect import unwrap
 from unittest.mock import MagicMock
 
@@ -22,6 +23,11 @@ from core.errors.error import ProviderTokenNotInitError
 from models.model import App, AppMode
 from models.workflow import Workflow
 from tests.unit_tests.model_factories import make_workflow
+
+
+@dataclass
+class SuggestionServices:
+    workflow_suggestions: object
 
 
 def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
@@ -561,27 +567,31 @@ def test_workflow_generate_accepts_auto_mode(app: Flask, monkeypatch: pytest.Mon
 # ─ /workflow-generate/suggestions ─────────────────────────────────────────────
 
 
-def test_generate_instruction_suggestions_parses_and_cleans(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_instruction_suggestions_parses_and_cleans(
+    monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+) -> None:
     """Task 1c (i): a mocked default model returning a JSON array is parsed + cleaned."""
-    from core.llm_generator import llm_generator as llm_gen_module
+    from services.workflow.generation import suggestions as llm_gen_module
 
     instance = MagicMock()
     instance.invoke_llm.return_value.message.get_text_content.return_value = '["Summarize a URL", "Translate text"]'
     mock_manager = MagicMock()
     mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
     monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
-    monkeypatch.setattr(llm_gen_module.LLMGenerator, "_build_suggestion_context", staticmethod(lambda _tenant: ""))
-
-    result = llm_gen_module.LLMGenerator.generate_workflow_instruction_suggestions(
-        tenant_id="t1", mode="workflow", count=4
+    monkeypatch.setattr(
+        llm_gen_module.WorkflowInstructionSuggestions, "_build_suggestion_context", staticmethod(lambda _tenant: "")
     )
+
+    result = workflow_suggestions.generate_workflow_instruction_suggestions(tenant_id="t1", mode="workflow", count=4)
 
     assert result == ["Summarize a URL", "Translate text"]
 
 
-def test_generate_instruction_suggestions_dedupes_and_caps(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_instruction_suggestions_dedupes_and_caps(
+    monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+) -> None:
     """Whitespace / surrounding quotes are stripped, case-insensitive dupes dropped, capped to count."""
-    from core.llm_generator import llm_generator as llm_gen_module
+    from services.workflow.generation import suggestions as llm_gen_module
 
     instance = MagicMock()
     instance.invoke_llm.return_value.message.get_text_content.return_value = (
@@ -590,18 +600,22 @@ def test_generate_instruction_suggestions_dedupes_and_caps(monkeypatch: pytest.M
     mock_manager = MagicMock()
     mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
     monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
-    monkeypatch.setattr(llm_gen_module.LLMGenerator, "_build_suggestion_context", staticmethod(lambda _tenant: ""))
+    monkeypatch.setattr(
+        llm_gen_module.WorkflowInstructionSuggestions, "_build_suggestion_context", staticmethod(lambda _tenant: "")
+    )
 
-    result = llm_gen_module.LLMGenerator.generate_workflow_instruction_suggestions(
+    result = workflow_suggestions.generate_workflow_instruction_suggestions(
         tenant_id="t1", mode="advanced-chat", count=3
     )
 
     assert result == ["Summarize a URL", "Translate text", "Draft an email"]
 
 
-def test_generate_instruction_suggestions_no_default_model_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_instruction_suggestions_no_default_model_returns_empty(
+    monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+) -> None:
     """Task 1c (ii): a missing default model degrades to an empty list, never raising."""
-    from core.llm_generator import llm_generator as llm_gen_module
+    from services.workflow.generation import suggestions as llm_gen_module
 
     mock_manager = MagicMock()
     mock_manager.for_tenant.return_value.get_default_model_instance.side_effect = ProviderTokenNotInitError(
@@ -609,13 +623,16 @@ def test_generate_instruction_suggestions_no_default_model_returns_empty(monkeyp
     )
     monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
 
-    result = llm_gen_module.LLMGenerator.generate_workflow_instruction_suggestions(tenant_id="t1", mode="workflow")
+    result = workflow_suggestions.generate_workflow_instruction_suggestions(tenant_id="t1", mode="workflow")
 
     assert result == []
 
 
-def test_workflow_instruction_suggestions_route_returns_list(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_instruction_suggestions_route_returns_list(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+) -> None:
     """Task 1c (iii): the route wraps the generator output in {"suggestions": [...]}."""
+    monkeypatch.setattr(generator_module, "application_services", lambda: SuggestionServices(workflow_suggestions))
     api = generator_module.WorkflowInstructionSuggestionsApi()
     method = unwrap(api.post)
 
@@ -625,7 +642,7 @@ def test_workflow_instruction_suggestions_route_returns_list(app: Flask, monkeyp
         captured.update(kwargs)
         return ["Summarize a URL", "Translate text"]
 
-    monkeypatch.setattr(generator_module.LLMGenerator, "generate_workflow_instruction_suggestions", _suggest)
+    monkeypatch.setattr(workflow_suggestions, "generate_workflow_instruction_suggestions", _suggest)
 
     with app.test_request_context(
         "/console/api/workflow-generate/suggestions",
@@ -640,13 +657,16 @@ def test_workflow_instruction_suggestions_route_returns_list(app: Flask, monkeyp
     assert captured["count"] == 3
 
 
-def test_workflow_instruction_suggestions_route_empty_is_valid_200(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_instruction_suggestions_route_empty_is_valid_200(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, workflow_suggestions
+) -> None:
     """Task 1c (iii): an empty list is a valid soft-fail response."""
+    monkeypatch.setattr(generator_module, "application_services", lambda: SuggestionServices(workflow_suggestions))
     api = generator_module.WorkflowInstructionSuggestionsApi()
     method = unwrap(api.post)
 
     monkeypatch.setattr(
-        generator_module.LLMGenerator,
+        workflow_suggestions,
         "generate_workflow_instruction_suggestions",
         lambda **_kwargs: [],
     )
