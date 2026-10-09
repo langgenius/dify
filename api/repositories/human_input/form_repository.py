@@ -1,0 +1,621 @@
+import dataclasses
+import json
+from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime
+from typing import Any, override
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from core.db.session_factory import session_factory
+from core.workflow.human_input_adapter import is_human_input_webapp_enabled
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+from models.account import Account, TenantAccountJoin
+from models.human_input import (
+    BackstageRecipientPayload,
+    ConsoleDeliveryPayload,
+    ConsoleRecipientPayload,
+    DeliveryMethodType,
+    EmailExternalRecipientPayload,
+    EmailMemberRecipientPayload,
+    HumanInputDelivery,
+    HumanInputForm,
+    HumanInputFormRecipient,
+    StandaloneWebAppRecipientPayload,
+)
+from models.human_input_contracts import (
+    FormCreateParams,
+    FormNotFoundError,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRecord,
+    PauseFormSnapshot,
+)
+from models.human_input_delivery import (
+    BoundRecipient,
+    DeliveryChannelConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    InteractiveSurfaceDeliveryMethod,
+)
+from models.human_input_entities import FormDefinition, HumanInputNodeData
+
+
+@dataclasses.dataclass(frozen=True)
+class _DeliveryAndRecipients:
+    delivery: HumanInputDelivery
+    recipients: Sequence[HumanInputFormRecipient]
+
+
+@dataclasses.dataclass(frozen=True)
+class _WorkspaceMemberInfo:
+    user_id: str
+    email: str
+
+
+class _HumanInputFormRecipientEntityImpl(HumanInputFormRecipientEntity):
+    def __init__(self, recipient_model: HumanInputFormRecipient):
+        self._id = recipient_model.id
+        self._token = recipient_model.access_token
+
+    @property
+    @override
+    def id(self) -> str:
+        return self._id
+
+    @property
+    @override
+    def token(self) -> str:
+        if self._token is None:
+            raise AssertionError(f"access_token should not be None for recipient {self._id}")
+        return self._token
+
+
+class _HumanInputFormEntityImpl(HumanInputFormEntity):
+    def __init__(self, form_model: HumanInputForm, recipient_models: Sequence[HumanInputFormRecipient]):
+        # Capture every returned value while the repository still owns the session.
+        # Committing may expire ORM state; entities must remain usable after close.
+        self._id = form_model.id
+        self._rendered_content = form_model.rendered_content
+        self._selected_action_id = form_model.selected_action_id
+        self._created_at = form_model.created_at
+        self._submitted = form_model.submitted_at is not None
+        self._status = form_model.status
+        self._expiration_time = form_model.expiration_time
+        self._recipients = [_HumanInputFormRecipientEntityImpl(recipient) for recipient in recipient_models]
+        self._submitted_data: Mapping[str, Any] | None = (
+            json.loads(form_model.submitted_data) if form_model.submitted_data is not None else None
+        )
+
+    @property
+    @override
+    def id(self) -> str:
+        return self._id
+
+    @property
+    @override
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
+        return list(self._recipients)
+
+    @property
+    @override
+    def rendered_content(self) -> str:
+        return self._rendered_content
+
+    @property
+    @override
+    def selected_action_id(self) -> str | None:
+        return self._selected_action_id
+
+    @property
+    @override
+    def created_at(self) -> datetime:
+        return self._created_at
+
+    @property
+    @override
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        return self._submitted_data
+
+    @property
+    @override
+    def submitted(self) -> bool:
+        return self._submitted
+
+    @property
+    @override
+    def status(self) -> HumanInputFormStatus:
+        return self._status
+
+    @property
+    @override
+    def expiration_time(self) -> datetime:
+        return self._expiration_time
+
+
+class _InvalidTimeoutStatusError(ValueError):
+    pass
+
+
+class HumanInputFormRepositoryImpl:
+    def __init__(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str | None = None,
+        workflow_execution_id: str | None = None,
+        invoke_source: str | None = None,
+        submission_actor_id: str | None = None,
+        sessions: Callable[[], Session] | None = None,
+    ) -> None:
+        self._sessions = sessions or session_factory.create_session
+        self._tenant_id = tenant_id
+        self._app_id = app_id
+        self._workflow_execution_id = workflow_execution_id
+        self._invoke_source = invoke_source
+        self._submission_actor_id = submission_actor_id
+
+    def email_recipients(self, form_id: str) -> list[tuple[str, str]]:
+        with self._sessions() as session:
+            recipients = session.scalars(
+                select(HumanInputFormRecipient)
+                .join(HumanInputForm, HumanInputForm.id == HumanInputFormRecipient.form_id)
+                .where(
+                    HumanInputForm.id == form_id,
+                    HumanInputForm.tenant_id == self._tenant_id,
+                    HumanInputForm.app_id == self._app_id,
+                )
+            ).all()
+        result: list[tuple[str, str]] = []
+        for recipient in recipients:
+            if recipient.recipient_type not in {RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL}:
+                continue
+            if not recipient.access_token:
+                continue
+            try:
+                payload = json.loads(recipient.recipient_payload)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            email = payload.get("email")
+            if isinstance(email, str) and email:
+                result.append((email, recipient.access_token))
+        return result
+
+    def _delivery_method_to_model(
+        self,
+        session: Session,
+        form_id: str,
+        delivery_method: DeliveryChannelConfig,
+    ) -> _DeliveryAndRecipients:
+        delivery_id = str(uuidv7())
+        delivery_model = HumanInputDelivery(
+            id=delivery_id,
+            form_id=form_id,
+            delivery_method_type=delivery_method.type,
+            delivery_config_id=str(delivery_method.id),
+            channel_payload=delivery_method.model_dump_json(),
+        )
+        recipients: list[HumanInputFormRecipient] = []
+        match delivery_method:
+            case InteractiveSurfaceDeliveryMethod():
+                recipient_model = HumanInputFormRecipient(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    recipient_type=RecipientType.STANDALONE_WEB_APP,
+                    recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
+                )
+                recipients.append(recipient_model)
+            case EmailDeliveryMethod():
+                email_recipients_config = delivery_method.config.recipients
+                recipients.extend(
+                    self._build_email_recipients(
+                        session=session,
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                        recipients_config=email_recipients_config,
+                    )
+                )
+
+        return _DeliveryAndRecipients(delivery=delivery_model, recipients=recipients)
+
+    def _build_email_recipients(
+        self,
+        session: Session,
+        form_id: str,
+        delivery_id: str,
+        recipients_config: EmailRecipients,
+    ) -> list[HumanInputFormRecipient]:
+        bound_reference_ids = [
+            recipient.reference_id for recipient in recipients_config.items if isinstance(recipient, BoundRecipient)
+        ]
+        external_emails = [
+            recipient.email for recipient in recipients_config.items if isinstance(recipient, ExternalRecipient)
+        ]
+        if recipients_config.include_bound_group:
+            members = self._query_all_workspace_members(session=session)
+        else:
+            members = self._query_workspace_members_by_ids(session=session, restrict_to_user_ids=bound_reference_ids)
+
+        return self._create_email_recipients_from_resolved(
+            form_id=form_id,
+            delivery_id=delivery_id,
+            members=members,
+            external_emails=external_emails,
+        )
+
+    @staticmethod
+    def _create_email_recipients_from_resolved(
+        *,
+        form_id: str,
+        delivery_id: str,
+        members: Sequence[_WorkspaceMemberInfo],
+        external_emails: Sequence[str],
+    ) -> list[HumanInputFormRecipient]:
+        recipient_models: list[HumanInputFormRecipient] = []
+        seen_emails: set[str] = set()
+
+        for member in members:
+            if not member.email:
+                continue
+            if member.email in seen_emails:
+                continue
+            seen_emails.add(member.email)
+            payload = EmailMemberRecipientPayload(user_id=member.user_id, email=member.email)
+            recipient_models.append(
+                HumanInputFormRecipient.new(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    payload=payload,
+                )
+            )
+
+        for email in external_emails:
+            if not email:
+                continue
+            if email in seen_emails:
+                continue
+            seen_emails.add(email)
+            recipient_models.append(
+                HumanInputFormRecipient.new(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    payload=EmailExternalRecipientPayload(email=email),
+                )
+            )
+
+        return recipient_models
+
+    def _query_all_workspace_members(
+        self,
+        session: Session,
+    ) -> list[_WorkspaceMemberInfo]:
+        stmt = (
+            select(Account.id, Account.email)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == self._tenant_id)
+        )
+        rows = session.execute(stmt).all()
+        return [_WorkspaceMemberInfo(user_id=account_id, email=email) for account_id, email in rows]
+
+    def _query_workspace_members_by_ids(
+        self,
+        session: Session,
+        restrict_to_user_ids: Sequence[str],
+    ) -> list[_WorkspaceMemberInfo]:
+        unique_ids = {user_id for user_id in restrict_to_user_ids if user_id}
+        if not unique_ids:
+            return []
+
+        stmt = (
+            select(Account.id, Account.email)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == self._tenant_id)
+        )
+        stmt = stmt.where(Account.id.in_(unique_ids))
+
+        rows = session.execute(stmt).all()
+        return [_WorkspaceMemberInfo(user_id=account_id, email=email) for account_id, email in rows]
+
+    def _should_create_console_recipient(
+        self,
+        *,
+        form_config: HumanInputNodeData,
+        form_kind: HumanInputFormKind,
+    ) -> bool:
+        if form_kind != HumanInputFormKind.RUNTIME:
+            return False
+        if self._invoke_source == "debugger":
+            return True
+        if self._invoke_source == "explore":
+            return is_human_input_webapp_enabled(form_config)
+        return False
+
+    def _should_create_backstage_recipient(self, *, form_kind: HumanInputFormKind) -> bool:
+        return form_kind == HumanInputFormKind.RUNTIME and (
+            self._invoke_source is not None or self._submission_actor_id is not None
+        )
+
+    def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
+        form_config: HumanInputNodeData = params.form_config
+        app_id = self._app_id
+        if not app_id:
+            raise ValueError("app_id is required to create a human input form")
+        workflow_execution_id = params.workflow_execution_id or self._workflow_execution_id
+        # A RUNTIME form must be owned by at least one of: a workflow run (workflow /
+        # Human-Input / agent node) or a conversation turn (ENG-635: Agent v2 chat
+        # ask_human; chatflow runs set both — workflow_run_id and conversation_id).
+        if (
+            params.form_kind == HumanInputFormKind.RUNTIME
+            and workflow_execution_id is None
+            and params.conversation_id is None
+        ):
+            raise ValueError("a runtime human input form requires a workflow_execution_id or conversation_id")
+
+        with self._sessions() as session, session.begin():
+            form_id = params.form_id or str(uuidv7())
+            start_time = naive_utc_now()
+            node_expiration = form_config.expiration_time(start_time)
+            form_definition = FormDefinition(
+                form_content=form_config.form_content,
+                inputs=form_config.inputs,
+                user_actions=form_config.user_actions,
+                rendered_content=params.rendered_content,
+                expiration_time=node_expiration,
+                default_values=dict(params.resolved_default_values),
+                display_in_ui=params.display_in_ui,
+                node_title=form_config.title,
+            )
+            form_model = HumanInputForm(
+                id=form_id,
+                tenant_id=self._tenant_id,
+                app_id=app_id,
+                workflow_run_id=workflow_execution_id,
+                conversation_id=params.conversation_id,
+                form_kind=params.form_kind,
+                node_id=params.node_id,
+                form_definition=form_definition.model_dump_json(),
+                rendered_content=params.rendered_content,
+                expiration_time=node_expiration,
+                created_at=start_time,
+            )
+            session.add(form_model)
+            recipient_models: list[HumanInputFormRecipient] = []
+            for delivery in params.delivery_methods:
+                delivery_and_recipients = self._delivery_method_to_model(
+                    session=session,
+                    form_id=form_id,
+                    delivery_method=delivery,
+                )
+                session.add(delivery_and_recipients.delivery)
+                session.add_all(delivery_and_recipients.recipients)
+                recipient_models.extend(delivery_and_recipients.recipients)
+            if self._should_create_console_recipient(form_config=form_config, form_kind=params.form_kind) and not any(
+                recipient.recipient_type == RecipientType.CONSOLE for recipient in recipient_models
+            ):
+                console_delivery_id = str(uuidv7())
+                console_delivery = HumanInputDelivery(
+                    id=console_delivery_id,
+                    form_id=form_id,
+                    delivery_method_type=DeliveryMethodType.WEBAPP,
+                    delivery_config_id=None,
+                    channel_payload=ConsoleDeliveryPayload().model_dump_json(),
+                )
+                console_recipient = HumanInputFormRecipient(
+                    form_id=form_id,
+                    delivery_id=console_delivery_id,
+                    recipient_type=RecipientType.CONSOLE,
+                    recipient_payload=ConsoleRecipientPayload(
+                        account_id=self._submission_actor_id,
+                    ).model_dump_json(),
+                )
+                session.add(console_delivery)
+                session.add(console_recipient)
+                recipient_models.append(console_recipient)
+            if self._should_create_backstage_recipient(form_kind=params.form_kind) and not any(
+                recipient.recipient_type == RecipientType.BACKSTAGE for recipient in recipient_models
+            ):
+                backstage_delivery_id = str(uuidv7())
+                backstage_delivery = HumanInputDelivery(
+                    id=backstage_delivery_id,
+                    form_id=form_id,
+                    delivery_method_type=DeliveryMethodType.WEBAPP,
+                    delivery_config_id=None,
+                    channel_payload=ConsoleDeliveryPayload().model_dump_json(),
+                )
+                backstage_recipient = HumanInputFormRecipient(
+                    form_id=form_id,
+                    delivery_id=backstage_delivery_id,
+                    recipient_type=RecipientType.BACKSTAGE,
+                    recipient_payload=BackstageRecipientPayload(
+                        account_id=self._submission_actor_id,
+                    ).model_dump_json(),
+                )
+                session.add(backstage_delivery)
+                session.add(backstage_recipient)
+                recipient_models.append(backstage_recipient)
+            session.flush()
+            result = _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
+
+        return result
+
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
+        if self._workflow_execution_id is None:
+            raise ValueError("workflow_execution_id is required to load runtime human input forms")
+
+        form_query = select(HumanInputForm).where(
+            HumanInputForm.workflow_run_id == self._workflow_execution_id,
+            HumanInputForm.node_id == node_id,
+            HumanInputForm.tenant_id == self._tenant_id,
+        )
+        if form_id is not None:
+            form_query = form_query.where(HumanInputForm.id == form_id)
+        with self._sessions() as session:
+            form_model: HumanInputForm | None = session.scalars(form_query).first()
+            if form_model is None:
+                return None
+
+            recipient_query = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_model.id)
+            recipient_models = session.scalars(recipient_query).all()
+            return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
+
+
+def _form_record(form_model: HumanInputForm, recipient_model: HumanInputFormRecipient | None) -> "HumanInputFormRecord":
+    definition_payload = json.loads(form_model.form_definition)
+    if "expiration_time" not in definition_payload:
+        definition_payload["expiration_time"] = form_model.expiration_time
+    return HumanInputFormRecord(
+        form_id=form_model.id,
+        workflow_run_id=form_model.workflow_run_id,
+        conversation_id=form_model.conversation_id,
+        node_id=form_model.node_id,
+        tenant_id=form_model.tenant_id,
+        app_id=form_model.app_id,
+        form_kind=form_model.form_kind,
+        definition=FormDefinition.model_validate(definition_payload),
+        rendered_content=form_model.rendered_content,
+        created_at=form_model.created_at,
+        expiration_time=form_model.expiration_time,
+        status=form_model.status,
+        selected_action_id=form_model.selected_action_id,
+        submitted_data=json.loads(form_model.submitted_data) if form_model.submitted_data else None,
+        submitted_at=form_model.submitted_at,
+        submission_user_id=form_model.submission_user_id,
+        submission_end_user_id=form_model.submission_end_user_id,
+        completed_by_recipient_id=form_model.completed_by_recipient_id,
+        recipient_id=recipient_model.id if recipient_model else None,
+        recipient_type=recipient_model.recipient_type if recipient_model else None,
+        access_token=recipient_model.access_token if recipient_model else None,
+    )
+
+
+class HumanInputFormSubmissionRepository:
+    """Repository for fetching and submitting human input forms."""
+
+    def __init__(self, *, sessions: Callable[[], Session] | None = None) -> None:
+        self._sessions = sessions or session_factory.create_session
+
+    def pause_forms(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, form_ids: Sequence[str]
+    ) -> list[PauseFormSnapshot]:
+        if not form_ids:
+            return []
+        with self._sessions() as session:
+            forms = list(
+                session.scalars(
+                    select(HumanInputForm).where(
+                        HumanInputForm.tenant_id == tenant_id,
+                        HumanInputForm.app_id == app_id,
+                        HumanInputForm.workflow_run_id == workflow_run_id,
+                        HumanInputForm.id.in_(form_ids),
+                    )
+                )
+            )
+            recipients: dict[str, list[tuple[RecipientType, str]]] = {}
+            if forms:
+                for recipient in session.scalars(
+                    select(HumanInputFormRecipient).where(
+                        HumanInputFormRecipient.form_id.in_([form.id for form in forms])
+                    )
+                ):
+                    recipients.setdefault(recipient.form_id, []).append(
+                        (recipient.recipient_type, recipient.access_token or "")
+                    )
+            return [
+                PauseFormSnapshot(
+                    form.id,
+                    form.expiration_time,
+                    form.form_definition,
+                    recipients.get(form.id, []),
+                )
+                for form in forms
+            ]
+
+    def get_by_token(self, form_token: str) -> HumanInputFormRecord | None:
+        query = (
+            select(HumanInputFormRecipient)
+            .options(selectinload(HumanInputFormRecipient.form))
+            .where(HumanInputFormRecipient.access_token == form_token)
+        )
+        with self._sessions() as session:
+            recipient_model = session.scalars(query).first()
+            if recipient_model is None or recipient_model.form is None:
+                return None
+            return _form_record(recipient_model.form, recipient_model)
+
+    def get_by_form_id(self, form_id: str) -> HumanInputFormRecord | None:
+        with self._sessions() as session:
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                return None
+            return _form_record(form_model, None)
+
+    def mark_submitted(
+        self,
+        *,
+        form_id: str,
+        recipient_id: str | None,
+        selected_action_id: str,
+        form_data: Mapping[str, Any],
+        submission_user_id: str | None,
+        submission_end_user_id: str | None,
+    ) -> HumanInputFormRecord:
+        with self._sessions() as session, session.begin():
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                raise FormNotFoundError(f"form not found, id={form_id}")
+
+            recipient_model = session.get(HumanInputFormRecipient, recipient_id) if recipient_id else None
+
+            form_model.selected_action_id = selected_action_id
+            form_model.submitted_data = json.dumps(form_data)
+            form_model.submitted_at = naive_utc_now()
+            form_model.status = HumanInputFormStatus.SUBMITTED
+            form_model.submission_user_id = submission_user_id
+            form_model.submission_end_user_id = submission_end_user_id
+            form_model.completed_by_recipient_id = recipient_id
+
+            session.add(form_model)
+            session.flush()
+            session.refresh(form_model)
+            if recipient_model is not None:
+                session.refresh(recipient_model)
+
+            return _form_record(form_model, recipient_model)
+
+    def mark_timeout(
+        self,
+        *,
+        form_id: str,
+        timeout_status: HumanInputFormStatus,
+        reason: str | None = None,
+    ) -> HumanInputFormRecord:
+        with self._sessions() as session, session.begin():
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                raise FormNotFoundError(f"form not found, id={form_id}")
+
+            if timeout_status not in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
+                raise _InvalidTimeoutStatusError(f"invalid timeout status: {timeout_status}")
+
+            # already handled or submitted
+            if form_model.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
+                return _form_record(form_model, None)
+
+            if form_model.submitted_at is not None or form_model.status == HumanInputFormStatus.SUBMITTED:
+                raise FormNotFoundError(f"form already submitted, id={form_id}")
+
+            form_model.status = timeout_status
+            form_model.selected_action_id = None
+            form_model.submitted_data = None
+            form_model.submission_user_id = None
+            form_model.submission_end_user_id = None
+            form_model.completed_by_recipient_id = None
+            # Reason is recorded in status/error downstream; not stored on form.
+            session.add(form_model)
+            session.flush()
+            session.refresh(form_model)
+
+            return _form_record(form_model, None)
