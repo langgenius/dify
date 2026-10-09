@@ -19,7 +19,7 @@ from typing import Any, Literal
 
 from flask import Flask, current_app
 from sqlalchemy import and_, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
@@ -69,8 +69,11 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -515,8 +518,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
     @staticmethod
     def _build_runner() -> AgentAppRunner:
+        database_client = sessionmaker(bind=db.engine, expire_on_commit=False)
         return AgentAppRunner(
-            request_builder=AgentAppRuntimeRequestBuilder(),
+            request_builder=AgentAppRuntimeRequestBuilder(
+                dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+                    tool_providers=ToolProviderRepository(database_client),
+                    workflow_queries=WorkflowToolRepository(database_client),
+                )
+            ),
             agent_backend_client=create_agent_backend_run_client(
                 base_url=dify_config.AGENT_BACKEND_BASE_URL,
                 api_token=dify_config.AGENT_BACKEND_API_TOKEN,

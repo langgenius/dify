@@ -37,15 +37,7 @@ from core.app.entities.queue_entities import (
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.node_factory import (
-    DifyGraphInitContext,
-    DifyNodeFactory,
-    get_default_root_node_id,
-    resolve_workflow_node_class,
-)
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -54,7 +46,6 @@ from core.workflow.system_variables import (
     preload_node_creation_variables,
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
@@ -92,7 +83,15 @@ from graphon.graph_events import (
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
-from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
+from services.workflow.execution.adapters.events import enqueue_human_input_notifications
+from services.workflow.execution.adapters.human_input_events import enrich_graph_pause_reasons
+from services.workflow.execution.adapters.node_factory import (
+    DifyGraphInitContext,
+    DifyNodeFactory,
+    get_default_root_node_id,
+    resolve_workflow_node_class,
+)
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +170,7 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        self._human_form_reader = HumanInputFormSubmissionRepository()
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -497,7 +497,7 @@ class WorkflowBasedAppRunner:
                 )
                 enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
-                    form_repository=HumanInputFormSubmissionRepository(),
+                    form_repository=self._human_form_reader,
                     variable_pool=runtime_state.variable_pool,
                 )
                 self._enqueue_human_input_notifications(enriched_reasons)
@@ -781,18 +781,7 @@ class WorkflowBasedAppRunner:
                 )
 
     def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
-        for reason in reasons:
-            if not isinstance(reason, HumanInputRequired):
-                continue
-            if not reason.form_id:
-                continue
-            try:
-                dispatch_human_input_email_task.apply_async(
-                    kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
-                    queue="mail",
-                )
-            except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+        enqueue_human_input_notifications(reasons)
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

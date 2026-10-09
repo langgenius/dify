@@ -4,7 +4,6 @@ import copy
 from collections.abc import Mapping
 from typing import Any, cast
 
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,6 +30,7 @@ from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
+from services.agent.workflow_validator import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -110,12 +110,14 @@ class WorkflowAgentPublishService:
 
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
-        WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=draft_workflow)
+        validator = WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session))
+        validator.validate_published_workflow(workflow=workflow_binding_scope(draft_workflow))
         cls._validate_composer_configs_for_publish(session=session, draft_workflow=draft_workflow)
 
     @classmethod
     def validate_agent_nodes_for_draft_sync(cls, *, session: Session, draft_workflow: Workflow) -> None:
-        WorkflowAgentNodeValidator.validate_draft_workflow(session=session, workflow=draft_workflow)
+        validator = WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session))
+        validator.validate_draft_workflow(workflow=workflow_binding_scope(draft_workflow))
 
     @classmethod
     def _validate_composer_configs_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
