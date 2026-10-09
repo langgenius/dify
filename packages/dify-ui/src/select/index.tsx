@@ -68,7 +68,7 @@ type SelectGroupProps = BaseSelect.Group.Props
 const selectTriggerVariants = cva(
   [
     'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
-    'not-data-invalid:hover:bg-state-base-hover-alt not-data-invalid:focus-visible:bg-state-base-hover-alt not-data-invalid:data-popup-open:bg-state-base-hover-alt',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
     'data-invalid:not-data-disabled:bg-components-input-bg-destructive data-invalid:not-data-disabled:inset-ring-1 data-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
     'data-placeholder:text-components-input-text-placeholder',
