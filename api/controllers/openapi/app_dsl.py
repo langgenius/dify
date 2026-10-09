@@ -16,6 +16,7 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    CheckDependenciesResponse,
     Hint,
 )
 from controllers.openapi.auth.context import Context
@@ -29,11 +30,13 @@ from controllers.openapi.auth.requirements import (
     account_app_guards,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.plugins import PluginInstallApi
+from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from machinery.context import RequestContext
 from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import AppImportParams, Import, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow_service import WorkflowService
@@ -216,9 +219,24 @@ class AppDslCheckDependenciesApi(Resource):
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),
         requirements=_DSL_READ_GUARDS,
-        returns=(HTTPStatus.OK, CheckDependenciesResult, "Dependencies checked"),
+        returns=(HTTPStatus.OK, CheckDependenciesResponse, "Dependencies checked"),
     )
     def get(self, ctx: RequestContext, app_id: str):
         result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
-
-        return result, HTTPStatus.OK
+        missing = [
+            dependency.value.plugin_unique_identifier
+            for dependency in result.leaked_dependencies
+            if dependency.type == PluginDependencyType.Marketplace
+        ]
+        hints = (
+            [
+                Hint(
+                    summary="Install the missing marketplace plugins",
+                    op=op_of(PluginInstallApi.post),
+                    input={"workspace_id": ctx.active_workspace_id, "identifiers": missing},
+                )
+            ]
+            if missing
+            else []
+        )
+        return CheckDependenciesResponse(**result.model_dump(), hints=hints), HTTPStatus.OK

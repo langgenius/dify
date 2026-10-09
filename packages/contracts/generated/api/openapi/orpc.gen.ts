@@ -10,9 +10,30 @@ import {
   zDeleteAppsByAppIdEnvByEnvIdResponse,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdPath,
+  zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponse,
+  zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath,
+  zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse,
   zGetAccountResponse,
   zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
+  zGetAppsByAppIdAppInfoAdvancedChatPath,
+  zGetAppsByAppIdAppInfoAdvancedChatResponse,
+  zGetAppsByAppIdAppInfoAgentChatPath,
+  zGetAppsByAppIdAppInfoAgentChatResponse,
+  zGetAppsByAppIdAppInfoAgentPath,
+  zGetAppsByAppIdAppInfoAgentResponse,
+  zGetAppsByAppIdAppInfoChatPath,
+  zGetAppsByAppIdAppInfoChatResponse,
+  zGetAppsByAppIdAppInfoCompletionPath,
+  zGetAppsByAppIdAppInfoCompletionResponse,
+  zGetAppsByAppIdAppInfoWorkflowPath,
+  zGetAppsByAppIdAppInfoWorkflowResponse,
   zGetAppsByAppIdDependenciesCheckPath,
   zGetAppsByAppIdDependenciesCheckResponse,
   zGetAppsByAppIdDslPath,
@@ -32,16 +53,55 @@ import {
   zGetAppsByAppIdRunsPath,
   zGetAppsByAppIdRunsQuery,
   zGetAppsByAppIdRunsResponse,
+  zGetAppsByAppIdServiceApiAdvancedChatPath,
+  zGetAppsByAppIdServiceApiAdvancedChatResponse,
+  zGetAppsByAppIdServiceApiAgentChatPath,
+  zGetAppsByAppIdServiceApiAgentChatResponse,
+  zGetAppsByAppIdServiceApiAgentPath,
+  zGetAppsByAppIdServiceApiAgentResponse,
+  zGetAppsByAppIdServiceApiChatPath,
+  zGetAppsByAppIdServiceApiChatResponse,
+  zGetAppsByAppIdServiceApiCompletionPath,
+  zGetAppsByAppIdServiceApiCompletionResponse,
+  zGetAppsByAppIdServiceApiWorkflowPath,
+  zGetAppsByAppIdServiceApiWorkflowResponse,
   zGetAppsByAppIdTasksByTaskIdEventsPath,
   zGetAppsByAppIdTasksByTaskIdEventsQuery,
   zGetAppsByAppIdTasksByTaskIdEventsResponse,
   zGetAppsByAppIdVersionsPath,
   zGetAppsByAppIdVersionsQuery,
   zGetAppsByAppIdVersionsResponse,
+  zGetAppsByAppIdWebappAccessAdvancedChatPath,
+  zGetAppsByAppIdWebappAccessAdvancedChatResponse,
+  zGetAppsByAppIdWebappAccessAgentChatPath,
+  zGetAppsByAppIdWebappAccessAgentChatResponse,
+  zGetAppsByAppIdWebappAccessAgentPath,
+  zGetAppsByAppIdWebappAccessAgentResponse,
+  zGetAppsByAppIdWebappAccessChatPath,
+  zGetAppsByAppIdWebappAccessChatResponse,
+  zGetAppsByAppIdWebappAccessCompletionPath,
+  zGetAppsByAppIdWebappAccessCompletionResponse,
+  zGetAppsByAppIdWebappAccessWorkflowPath,
+  zGetAppsByAppIdWebappAccessWorkflowResponse,
+  zGetAppsByAppIdWebappAdvancedChatPath,
+  zGetAppsByAppIdWebappAdvancedChatResponse,
+  zGetAppsByAppIdWebappAgentChatPath,
+  zGetAppsByAppIdWebappAgentChatResponse,
+  zGetAppsByAppIdWebappAgentPath,
+  zGetAppsByAppIdWebappAgentResponse,
+  zGetAppsByAppIdWebappChatPath,
+  zGetAppsByAppIdWebappChatResponse,
+  zGetAppsByAppIdWebappCompletionPath,
+  zGetAppsByAppIdWebappCompletionResponse,
+  zGetAppsByAppIdWebappWorkflowPath,
+  zGetAppsByAppIdWebappWorkflowResponse,
   zGetAppsQuery,
   zGetAppsResponse,
   zGetCatalogResponse,
   zGetHealthResponse,
+  zGetNodeTypesByNodeTypePath,
+  zGetNodeTypesByNodeTypeResponse,
+  zGetNodeTypesResponse,
   zGetOauthDeviceLookupQuery,
   zGetOauthDeviceLookupResponse,
   zGetPermittedExternalAppsByAppIdPath,
@@ -50,16 +110,103 @@ import {
   zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
+  zGetWorkspacesByWorkspaceIdAccessSubjectsPath,
+  zGetWorkspacesByWorkspaceIdAccessSubjectsQuery,
+  zGetWorkspacesByWorkspaceIdAccessSubjectsResponse,
+  zGetWorkspacesByWorkspaceIdDefaultModelsPath,
+  zGetWorkspacesByWorkspaceIdDefaultModelsResponse,
+  zGetWorkspacesByWorkspaceIdMarketplacePluginsPath,
+  zGetWorkspacesByWorkspaceIdMarketplacePluginsQuery,
+  zGetWorkspacesByWorkspaceIdMarketplacePluginsResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
   zGetWorkspacesByWorkspaceIdMembersQuery,
   zGetWorkspacesByWorkspaceIdMembersResponse,
+  zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath,
+  zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse,
+  zGetWorkspacesByWorkspaceIdModelProvidersByProviderPath,
+  zGetWorkspacesByWorkspaceIdModelProvidersByProviderResponse,
+  zGetWorkspacesByWorkspaceIdModelProvidersPath,
+  zGetWorkspacesByWorkspaceIdModelProvidersQuery,
+  zGetWorkspacesByWorkspaceIdModelProvidersResponse,
   zGetWorkspacesByWorkspaceIdPath,
+  zGetWorkspacesByWorkspaceIdPluginsPath,
+  zGetWorkspacesByWorkspaceIdPluginsQuery,
+  zGetWorkspacesByWorkspaceIdPluginsResponse,
+  zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdPath,
+  zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse,
   zGetWorkspacesByWorkspaceIdResponse,
+  zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath,
+  zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse,
+  zGetWorkspacesByWorkspaceIdToolProvidersPath,
+  zGetWorkspacesByWorkspaceIdToolProvidersResponse,
   zGetWorkspacesQuery,
   zGetWorkspacesResponse,
+  zPatchAppsByAppIdAppInfoAdvancedChatBody,
+  zPatchAppsByAppIdAppInfoAdvancedChatPath,
+  zPatchAppsByAppIdAppInfoAdvancedChatResponse,
+  zPatchAppsByAppIdAppInfoAgentBody,
+  zPatchAppsByAppIdAppInfoAgentChatBody,
+  zPatchAppsByAppIdAppInfoAgentChatPath,
+  zPatchAppsByAppIdAppInfoAgentChatResponse,
+  zPatchAppsByAppIdAppInfoAgentPath,
+  zPatchAppsByAppIdAppInfoAgentResponse,
+  zPatchAppsByAppIdAppInfoChatBody,
+  zPatchAppsByAppIdAppInfoChatPath,
+  zPatchAppsByAppIdAppInfoChatResponse,
+  zPatchAppsByAppIdAppInfoCompletionBody,
+  zPatchAppsByAppIdAppInfoCompletionPath,
+  zPatchAppsByAppIdAppInfoCompletionResponse,
+  zPatchAppsByAppIdAppInfoWorkflowBody,
+  zPatchAppsByAppIdAppInfoWorkflowPath,
+  zPatchAppsByAppIdAppInfoWorkflowResponse,
+  zPatchAppsByAppIdServiceApiAdvancedChatBody,
+  zPatchAppsByAppIdServiceApiAdvancedChatPath,
+  zPatchAppsByAppIdServiceApiAdvancedChatResponse,
+  zPatchAppsByAppIdServiceApiAgentBody,
+  zPatchAppsByAppIdServiceApiAgentChatBody,
+  zPatchAppsByAppIdServiceApiAgentChatPath,
+  zPatchAppsByAppIdServiceApiAgentChatResponse,
+  zPatchAppsByAppIdServiceApiAgentPath,
+  zPatchAppsByAppIdServiceApiAgentResponse,
+  zPatchAppsByAppIdServiceApiChatBody,
+  zPatchAppsByAppIdServiceApiChatPath,
+  zPatchAppsByAppIdServiceApiChatResponse,
+  zPatchAppsByAppIdServiceApiCompletionBody,
+  zPatchAppsByAppIdServiceApiCompletionPath,
+  zPatchAppsByAppIdServiceApiCompletionResponse,
+  zPatchAppsByAppIdServiceApiWorkflowBody,
+  zPatchAppsByAppIdServiceApiWorkflowPath,
+  zPatchAppsByAppIdServiceApiWorkflowResponse,
+  zPatchAppsByAppIdWebappAdvancedChatBody,
+  zPatchAppsByAppIdWebappAdvancedChatPath,
+  zPatchAppsByAppIdWebappAdvancedChatResponse,
+  zPatchAppsByAppIdWebappAgentBody,
+  zPatchAppsByAppIdWebappAgentChatBody,
+  zPatchAppsByAppIdWebappAgentChatPath,
+  zPatchAppsByAppIdWebappAgentChatResponse,
+  zPatchAppsByAppIdWebappAgentPath,
+  zPatchAppsByAppIdWebappAgentResponse,
+  zPatchAppsByAppIdWebappChatBody,
+  zPatchAppsByAppIdWebappChatPath,
+  zPatchAppsByAppIdWebappChatResponse,
+  zPatchAppsByAppIdWebappCompletionBody,
+  zPatchAppsByAppIdWebappCompletionPath,
+  zPatchAppsByAppIdWebappCompletionResponse,
+  zPatchAppsByAppIdWebappWorkflowBody,
+  zPatchAppsByAppIdWebappWorkflowPath,
+  zPatchAppsByAppIdWebappWorkflowResponse,
   zPatchWorkspacesByWorkspaceIdMembersByMemberIdBody,
   zPatchWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zPatchWorkspacesByWorkspaceIdMembersByMemberIdResponse,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdBody,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdBody,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+  zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdBody,
+  zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath,
+  zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse,
   zPostAppsByAppIdAdvancedChatRunBody,
   zPostAppsByAppIdAdvancedChatRunPath,
   zPostAppsByAppIdAdvancedChatRunResponse,
@@ -69,9 +216,15 @@ import {
   zPostAppsByAppIdCompletionRunBody,
   zPostAppsByAppIdCompletionRunPath,
   zPostAppsByAppIdCompletionRunResponse,
+  zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunBody,
+  zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunPath,
+  zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponse,
   zPostAppsByAppIdDraftAdvancedChatRunBody,
   zPostAppsByAppIdDraftAdvancedChatRunPath,
   zPostAppsByAppIdDraftAdvancedChatRunResponse,
+  zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunBody,
+  zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunPath,
+  zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponse,
   zPostAppsByAppIdDraftWorkflowRunBody,
   zPostAppsByAppIdDraftWorkflowRunPath,
   zPostAppsByAppIdDraftWorkflowRunResponse,
@@ -88,6 +241,18 @@ import {
   zPostAppsByAppIdTasksByTaskIdStopResponse,
   zPostAppsByAppIdVersionsByVersionIdRestorePath,
   zPostAppsByAppIdVersionsByVersionIdRestoreResponse,
+  zPostAppsByAppIdWebappAdvancedChatResetPath,
+  zPostAppsByAppIdWebappAdvancedChatResetResponse,
+  zPostAppsByAppIdWebappAgentChatResetPath,
+  zPostAppsByAppIdWebappAgentChatResetResponse,
+  zPostAppsByAppIdWebappAgentResetPath,
+  zPostAppsByAppIdWebappAgentResetResponse,
+  zPostAppsByAppIdWebappChatResetPath,
+  zPostAppsByAppIdWebappChatResetResponse,
+  zPostAppsByAppIdWebappCompletionResetPath,
+  zPostAppsByAppIdWebappCompletionResetResponse,
+  zPostAppsByAppIdWebappWorkflowResetPath,
+  zPostAppsByAppIdWebappWorkflowResetResponse,
   zPostAppsByAppIdWorkflowRunBody,
   zPostAppsByAppIdWorkflowRunPath,
   zPostAppsByAppIdWorkflowRunResponse,
@@ -99,19 +264,68 @@ import {
   zPostOauthDeviceDenyResponse,
   zPostOauthDeviceTokenBody,
   zPostOauthDeviceTokenResponse,
+  zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody,
+  zPostWorkspacesByWorkspaceIdAppsAdvancedChatPath,
+  zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse,
   zPostWorkspacesByWorkspaceIdAppsImportsBody,
   zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath,
   zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse,
   zPostWorkspacesByWorkspaceIdAppsImportsPath,
   zPostWorkspacesByWorkspaceIdAppsImportsResponse,
+  zPostWorkspacesByWorkspaceIdAppsWorkflowBody,
+  zPostWorkspacesByWorkspaceIdAppsWorkflowPath,
+  zPostWorkspacesByWorkspaceIdAppsWorkflowResponse,
   zPostWorkspacesByWorkspaceIdMembersBody,
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsBody,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsPath,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchBody,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsPath,
+  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse,
+  zPostWorkspacesByWorkspaceIdPluginsInstallBody,
+  zPostWorkspacesByWorkspaceIdPluginsInstallPath,
+  zPostWorkspacesByWorkspaceIdPluginsInstallResponse,
+  zPostWorkspacesByWorkspaceIdPluginsUpgradeBody,
+  zPostWorkspacesByWorkspaceIdPluginsUpgradePath,
+  zPostWorkspacesByWorkspaceIdPluginsUpgradeResponse,
   zPostWorkspacesByWorkspaceIdSwitchPath,
   zPostWorkspacesByWorkspaceIdSwitchResponse,
+  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
+  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse,
+  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
+  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
   zPutAppsByAppIdEnvByEnvIdBody,
   zPutAppsByAppIdEnvByEnvIdPath,
   zPutAppsByAppIdEnvByEnvIdResponse,
+  zPutAppsByAppIdWebappAccessAdvancedChatBody,
+  zPutAppsByAppIdWebappAccessAdvancedChatPath,
+  zPutAppsByAppIdWebappAccessAdvancedChatResponse,
+  zPutAppsByAppIdWebappAccessAgentBody,
+  zPutAppsByAppIdWebappAccessAgentChatBody,
+  zPutAppsByAppIdWebappAccessAgentChatPath,
+  zPutAppsByAppIdWebappAccessAgentChatResponse,
+  zPutAppsByAppIdWebappAccessAgentPath,
+  zPutAppsByAppIdWebappAccessAgentResponse,
+  zPutAppsByAppIdWebappAccessChatBody,
+  zPutAppsByAppIdWebappAccessChatPath,
+  zPutAppsByAppIdWebappAccessChatResponse,
+  zPutAppsByAppIdWebappAccessCompletionBody,
+  zPutAppsByAppIdWebappAccessCompletionPath,
+  zPutAppsByAppIdWebappAccessCompletionResponse,
+  zPutAppsByAppIdWebappAccessWorkflowBody,
+  zPutAppsByAppIdWebappAccessWorkflowPath,
+  zPutAppsByAppIdWebappAccessWorkflowResponse,
+  zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeBody,
+  zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypePath,
+  zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse,
 } from './zod.gen.ts'
 
 /**
@@ -245,6 +459,204 @@ export const advancedChat = {
   run,
 }
 
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoAdvancedChat',
+    path: '/apps/{app_id}/app-info/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoAdvancedChatPath }))
+  .output(zGetAppsByAppIdAppInfoAdvancedChatResponse)
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoAdvancedChat',
+    path: '/apps/{app_id}/app-info/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdAppInfoAdvancedChatBody,
+      params: zPatchAppsByAppIdAppInfoAdvancedChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdAppInfoAdvancedChatResponse)
+
+export const advancedChat2 = {
+  get: get6,
+  patch,
+}
+
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoAgent',
+    path: '/apps/{app_id}/app-info/agent',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoAgentPath }))
+  .output(zGetAppsByAppIdAppInfoAgentResponse)
+
+export const patch2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoAgent',
+    path: '/apps/{app_id}/app-info/agent',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdAppInfoAgentBody,
+      params: zPatchAppsByAppIdAppInfoAgentPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdAppInfoAgentResponse)
+
+export const agent = {
+  get: get7,
+  patch: patch2,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoAgentChat',
+    path: '/apps/{app_id}/app-info/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoAgentChatPath }))
+  .output(zGetAppsByAppIdAppInfoAgentChatResponse)
+
+export const patch3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoAgentChat',
+    path: '/apps/{app_id}/app-info/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdAppInfoAgentChatBody,
+      params: zPatchAppsByAppIdAppInfoAgentChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdAppInfoAgentChatResponse)
+
+export const agentChat = {
+  get: get8,
+  patch: patch3,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoChat',
+    path: '/apps/{app_id}/app-info/chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoChatPath }))
+  .output(zGetAppsByAppIdAppInfoChatResponse)
+
+export const patch4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoChat',
+    path: '/apps/{app_id}/app-info/chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({ body: zPatchAppsByAppIdAppInfoChatBody, params: zPatchAppsByAppIdAppInfoChatPath }),
+  )
+  .output(zPatchAppsByAppIdAppInfoChatResponse)
+
+export const chat = {
+  get: get9,
+  patch: patch4,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoCompletion',
+    path: '/apps/{app_id}/app-info/completion',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoCompletionPath }))
+  .output(zGetAppsByAppIdAppInfoCompletionResponse)
+
+export const patch5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoCompletion',
+    path: '/apps/{app_id}/app-info/completion',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdAppInfoCompletionBody,
+      params: zPatchAppsByAppIdAppInfoCompletionPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdAppInfoCompletionResponse)
+
+export const completion = {
+  get: get10,
+  patch: patch5,
+}
+
+export const get11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdAppInfoWorkflow',
+    path: '/apps/{app_id}/app-info/workflow',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdAppInfoWorkflowPath }))
+  .output(zGetAppsByAppIdAppInfoWorkflowResponse)
+
+export const patch6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdAppInfoWorkflow',
+    path: '/apps/{app_id}/app-info/workflow',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdAppInfoWorkflowBody,
+      params: zPatchAppsByAppIdAppInfoWorkflowPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdAppInfoWorkflowResponse)
+
+export const workflow = {
+  get: get11,
+  patch: patch6,
+}
+
+export const appInfo = {
+  advancedChat: advancedChat2,
+  agent,
+  agentChat,
+  chat,
+  completion,
+  workflow,
+}
+
 export const post2 = oc
   .route({
     inputStructure: 'detailed',
@@ -260,7 +672,7 @@ export const run2 = {
   post: post2,
 }
 
-export const chat = {
+export const chat2 = {
   run: run2,
 }
 
@@ -284,11 +696,11 @@ export const run3 = {
   post: post3,
 }
 
-export const completion = {
+export const completion2 = {
   run: run3,
 }
 
-export const get6 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -300,7 +712,7 @@ export const get6 = oc
   .output(zGetAppsByAppIdDependenciesCheckResponse)
 
 export const check = {
-  get: get6,
+  get: get12,
 }
 
 export const dependencies = {
@@ -308,6 +720,34 @@ export const dependencies = {
 }
 
 export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdDraftAdvancedChatNodesByNodeIdRun',
+    path: '/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunBody,
+      params: zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponse)
+
+export const run4 = {
+  post: post4,
+}
+
+export const byNodeId = {
+  run: run4,
+}
+
+export const nodes = {
+  byNodeId,
+}
+
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -323,15 +763,44 @@ export const post4 = oc
   )
   .output(zPostAppsByAppIdDraftAdvancedChatRunResponse)
 
-export const run4 = {
-  post: post4,
+export const run5 = {
+  post: post5,
 }
 
-export const advancedChat2 = {
-  run: run4,
+export const advancedChat3 = {
+  nodes,
+  run: run5,
 }
 
-export const post5 = oc
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdDraftWorkflowNodesByNodeIdRun',
+    path: '/apps/{app_id}/draft/workflow/nodes/{node_id}:run',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunBody,
+      params: zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponse)
+
+export const run6 = {
+  post: post6,
+}
+
+export const byNodeId2 = {
+  run: run6,
+}
+
+export const nodes2 = {
+  byNodeId: byNodeId2,
+}
+
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -347,20 +816,21 @@ export const post5 = oc
   )
   .output(zPostAppsByAppIdDraftWorkflowRunResponse)
 
-export const run5 = {
-  post: post5,
+export const run7 = {
+  post: post7,
 }
 
-export const workflow = {
-  run: run5,
+export const workflow2 = {
+  nodes: nodes2,
+  run: run7,
 }
 
 export const draft = {
-  advancedChat: advancedChat2,
-  workflow,
+  advancedChat: advancedChat3,
+  workflow: workflow2,
 }
 
-export const get7 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -372,7 +842,7 @@ export const get7 = oc
   .output(zGetAppsByAppIdDslResponse)
 
 export const dsl = {
-  get: get7,
+  get: get13,
 }
 
 export const delete3 = oc
@@ -402,7 +872,7 @@ export const byEnvId = {
   put,
 }
 
-export const get8 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -414,14 +884,14 @@ export const get8 = oc
   .output(zGetAppsByAppIdEnvResponse)
 
 export const env = {
-  get: get8,
+  get: get14,
   byEnvId,
 }
 
 /**
  * Upload a file to use as an input variable when running the app
  */
-export const post6 = oc
+export const post8 = oc
   .route({
     description: 'Upload a file to use as an input variable when running the app',
     inputStructure: 'detailed',
@@ -435,10 +905,10 @@ export const post6 = oc
   .output(zPostAppsByAppIdFilesResponse)
 
 export const files = {
-  post: post6,
+  post: post8,
 }
 
-export const post7 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -455,10 +925,10 @@ export const post7 = oc
   .output(zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse)
 
 export const submit = {
-  post: post7,
+  post: post9,
 }
 
-export const get9 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -470,7 +940,7 @@ export const get9 = oc
   .output(zGetAppsByAppIdHumanInputFormsByFormTokenResponse)
 
 export const byFormToken = {
-  get: get9,
+  get: get15,
   submit,
 }
 
@@ -478,7 +948,7 @@ export const humanInputForms = {
   byFormToken,
 }
 
-export const get10 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -489,11 +959,11 @@ export const get10 = oc
   .input(z.object({ params: zGetAppsByAppIdRunsByRunIdNodesPath }))
   .output(zGetAppsByAppIdRunsByRunIdNodesResponse)
 
-export const nodes = {
-  get: get10,
+export const nodes3 = {
+  get: get16,
 }
 
-export const get11 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -505,11 +975,11 @@ export const get11 = oc
   .output(zGetAppsByAppIdRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get11,
-  nodes,
+  get: get17,
+  nodes: nodes3,
 }
 
-export const get12 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -521,11 +991,212 @@ export const get12 = oc
   .output(zGetAppsByAppIdRunsResponse)
 
 export const runs = {
-  get: get12,
+  get: get18,
   byRunId,
 }
 
-export const get13 = oc
+export const get19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiAdvancedChat',
+    path: '/apps/{app_id}/service-api/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiAdvancedChatPath }))
+  .output(zGetAppsByAppIdServiceApiAdvancedChatResponse)
+
+export const patch7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiAdvancedChat',
+    path: '/apps/{app_id}/service-api/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiAdvancedChatBody,
+      params: zPatchAppsByAppIdServiceApiAdvancedChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiAdvancedChatResponse)
+
+export const advancedChat4 = {
+  get: get19,
+  patch: patch7,
+}
+
+export const get20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiAgent',
+    path: '/apps/{app_id}/service-api/agent',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiAgentPath }))
+  .output(zGetAppsByAppIdServiceApiAgentResponse)
+
+export const patch8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiAgent',
+    path: '/apps/{app_id}/service-api/agent',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiAgentBody,
+      params: zPatchAppsByAppIdServiceApiAgentPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiAgentResponse)
+
+export const agent2 = {
+  get: get20,
+  patch: patch8,
+}
+
+export const get21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiAgentChat',
+    path: '/apps/{app_id}/service-api/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiAgentChatPath }))
+  .output(zGetAppsByAppIdServiceApiAgentChatResponse)
+
+export const patch9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiAgentChat',
+    path: '/apps/{app_id}/service-api/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiAgentChatBody,
+      params: zPatchAppsByAppIdServiceApiAgentChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiAgentChatResponse)
+
+export const agentChat2 = {
+  get: get21,
+  patch: patch9,
+}
+
+export const get22 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiChat',
+    path: '/apps/{app_id}/service-api/chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiChatPath }))
+  .output(zGetAppsByAppIdServiceApiChatResponse)
+
+export const patch10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiChat',
+    path: '/apps/{app_id}/service-api/chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiChatBody,
+      params: zPatchAppsByAppIdServiceApiChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiChatResponse)
+
+export const chat3 = {
+  get: get22,
+  patch: patch10,
+}
+
+export const get23 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiCompletion',
+    path: '/apps/{app_id}/service-api/completion',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiCompletionPath }))
+  .output(zGetAppsByAppIdServiceApiCompletionResponse)
+
+export const patch11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiCompletion',
+    path: '/apps/{app_id}/service-api/completion',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiCompletionBody,
+      params: zPatchAppsByAppIdServiceApiCompletionPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiCompletionResponse)
+
+export const completion3 = {
+  get: get23,
+  patch: patch11,
+}
+
+export const get24 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdServiceApiWorkflow',
+    path: '/apps/{app_id}/service-api/workflow',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdServiceApiWorkflowPath }))
+  .output(zGetAppsByAppIdServiceApiWorkflowResponse)
+
+export const patch12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdServiceApiWorkflow',
+    path: '/apps/{app_id}/service-api/workflow',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdServiceApiWorkflowBody,
+      params: zPatchAppsByAppIdServiceApiWorkflowPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdServiceApiWorkflowResponse)
+
+export const workflow3 = {
+  get: get24,
+  patch: patch12,
+}
+
+export const serviceApi = {
+  advancedChat: advancedChat4,
+  agent: agent2,
+  agentChat: agentChat2,
+  chat: chat3,
+  completion: completion3,
+  workflow: workflow3,
+}
+
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -542,10 +1213,10 @@ export const get13 = oc
   .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
 
 export const events = {
-  get: get13,
+  get: get25,
 }
 
-export const post8 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -557,7 +1228,7 @@ export const post8 = oc
   .output(zPostAppsByAppIdTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post8,
+  post: post10,
 }
 
 export const byTaskId = {
@@ -569,7 +1240,7 @@ export const tasks = {
   byTaskId,
 }
 
-export const post9 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -581,14 +1252,14 @@ export const post9 = oc
   .output(zPostAppsByAppIdVersionsByVersionIdRestoreResponse)
 
 export const restore = {
-  post: post9,
+  post: post11,
 }
 
 export const byVersionId = {
   restore,
 }
 
-export const get14 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -605,11 +1276,503 @@ export const get14 = oc
   .output(zGetAppsByAppIdVersionsResponse)
 
 export const versions = {
-  get: get14,
+  get: get26,
   byVersionId,
 }
 
-export const post10 = oc
+export const get27 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessAdvancedChat',
+    path: '/apps/{app_id}/webapp-access/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessAdvancedChatPath }))
+  .output(zGetAppsByAppIdWebappAccessAdvancedChatResponse)
+
+export const put2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessAdvancedChat',
+    path: '/apps/{app_id}/webapp-access/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessAdvancedChatBody,
+      params: zPutAppsByAppIdWebappAccessAdvancedChatPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessAdvancedChatResponse)
+
+export const advancedChat5 = {
+  get: get27,
+  put: put2,
+}
+
+export const get28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessAgent',
+    path: '/apps/{app_id}/webapp-access/agent',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessAgentPath }))
+  .output(zGetAppsByAppIdWebappAccessAgentResponse)
+
+export const put3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessAgent',
+    path: '/apps/{app_id}/webapp-access/agent',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessAgentBody,
+      params: zPutAppsByAppIdWebappAccessAgentPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessAgentResponse)
+
+export const agent3 = {
+  get: get28,
+  put: put3,
+}
+
+export const get29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessAgentChat',
+    path: '/apps/{app_id}/webapp-access/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessAgentChatPath }))
+  .output(zGetAppsByAppIdWebappAccessAgentChatResponse)
+
+export const put4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessAgentChat',
+    path: '/apps/{app_id}/webapp-access/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessAgentChatBody,
+      params: zPutAppsByAppIdWebappAccessAgentChatPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessAgentChatResponse)
+
+export const agentChat3 = {
+  get: get29,
+  put: put4,
+}
+
+export const get30 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessChat',
+    path: '/apps/{app_id}/webapp-access/chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessChatPath }))
+  .output(zGetAppsByAppIdWebappAccessChatResponse)
+
+export const put5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessChat',
+    path: '/apps/{app_id}/webapp-access/chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessChatBody,
+      params: zPutAppsByAppIdWebappAccessChatPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessChatResponse)
+
+export const chat4 = {
+  get: get30,
+  put: put5,
+}
+
+export const get31 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessCompletion',
+    path: '/apps/{app_id}/webapp-access/completion',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessCompletionPath }))
+  .output(zGetAppsByAppIdWebappAccessCompletionResponse)
+
+export const put6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessCompletion',
+    path: '/apps/{app_id}/webapp-access/completion',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessCompletionBody,
+      params: zPutAppsByAppIdWebappAccessCompletionPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessCompletionResponse)
+
+export const completion4 = {
+  get: get31,
+  put: put6,
+}
+
+export const get32 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAccessWorkflow',
+    path: '/apps/{app_id}/webapp-access/workflow',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAccessWorkflowPath }))
+  .output(zGetAppsByAppIdWebappAccessWorkflowResponse)
+
+export const put7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWebappAccessWorkflow',
+    path: '/apps/{app_id}/webapp-access/workflow',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWebappAccessWorkflowBody,
+      params: zPutAppsByAppIdWebappAccessWorkflowPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWebappAccessWorkflowResponse)
+
+export const workflow4 = {
+  get: get32,
+  put: put7,
+}
+
+export const webappAccess = {
+  advancedChat: advancedChat5,
+  agent: agent3,
+  agentChat: agentChat3,
+  chat: chat4,
+  completion: completion4,
+  workflow: workflow4,
+}
+
+export const post12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappAdvancedChatReset',
+    path: '/apps/{app_id}/webapp/advanced-chat:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappAdvancedChatResetPath }))
+  .output(zPostAppsByAppIdWebappAdvancedChatResetResponse)
+
+export const reset = {
+  post: post12,
+}
+
+export const get33 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAdvancedChat',
+    path: '/apps/{app_id}/webapp/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAdvancedChatPath }))
+  .output(zGetAppsByAppIdWebappAdvancedChatResponse)
+
+export const patch13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappAdvancedChat',
+    path: '/apps/{app_id}/webapp/advanced-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdWebappAdvancedChatBody,
+      params: zPatchAppsByAppIdWebappAdvancedChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdWebappAdvancedChatResponse)
+
+export const advancedChat6 = {
+  get: get33,
+  patch: patch13,
+  reset,
+}
+
+export const post13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappAgentReset',
+    path: '/apps/{app_id}/webapp/agent:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappAgentResetPath }))
+  .output(zPostAppsByAppIdWebappAgentResetResponse)
+
+export const reset2 = {
+  post: post13,
+}
+
+export const get34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAgent',
+    path: '/apps/{app_id}/webapp/agent',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAgentPath }))
+  .output(zGetAppsByAppIdWebappAgentResponse)
+
+export const patch14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappAgent',
+    path: '/apps/{app_id}/webapp/agent',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({ body: zPatchAppsByAppIdWebappAgentBody, params: zPatchAppsByAppIdWebappAgentPath }),
+  )
+  .output(zPatchAppsByAppIdWebappAgentResponse)
+
+export const agent4 = {
+  get: get34,
+  patch: patch14,
+  reset: reset2,
+}
+
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappAgentChatReset',
+    path: '/apps/{app_id}/webapp/agent-chat:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappAgentChatResetPath }))
+  .output(zPostAppsByAppIdWebappAgentChatResetResponse)
+
+export const reset3 = {
+  post: post14,
+}
+
+export const get35 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappAgentChat',
+    path: '/apps/{app_id}/webapp/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappAgentChatPath }))
+  .output(zGetAppsByAppIdWebappAgentChatResponse)
+
+export const patch15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappAgentChat',
+    path: '/apps/{app_id}/webapp/agent-chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdWebappAgentChatBody,
+      params: zPatchAppsByAppIdWebappAgentChatPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdWebappAgentChatResponse)
+
+export const agentChat4 = {
+  get: get35,
+  patch: patch15,
+  reset: reset3,
+}
+
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappChatReset',
+    path: '/apps/{app_id}/webapp/chat:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappChatResetPath }))
+  .output(zPostAppsByAppIdWebappChatResetResponse)
+
+export const reset4 = {
+  post: post15,
+}
+
+export const get36 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappChat',
+    path: '/apps/{app_id}/webapp/chat',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappChatPath }))
+  .output(zGetAppsByAppIdWebappChatResponse)
+
+export const patch16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappChat',
+    path: '/apps/{app_id}/webapp/chat',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({ body: zPatchAppsByAppIdWebappChatBody, params: zPatchAppsByAppIdWebappChatPath }),
+  )
+  .output(zPatchAppsByAppIdWebappChatResponse)
+
+export const chat5 = {
+  get: get36,
+  patch: patch16,
+  reset: reset4,
+}
+
+export const post16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappCompletionReset',
+    path: '/apps/{app_id}/webapp/completion:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappCompletionResetPath }))
+  .output(zPostAppsByAppIdWebappCompletionResetResponse)
+
+export const reset5 = {
+  post: post16,
+}
+
+export const get37 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappCompletion',
+    path: '/apps/{app_id}/webapp/completion',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappCompletionPath }))
+  .output(zGetAppsByAppIdWebappCompletionResponse)
+
+export const patch17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappCompletion',
+    path: '/apps/{app_id}/webapp/completion',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdWebappCompletionBody,
+      params: zPatchAppsByAppIdWebappCompletionPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdWebappCompletionResponse)
+
+export const completion5 = {
+  get: get37,
+  patch: patch17,
+  reset: reset5,
+}
+
+export const post17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWebappWorkflowReset',
+    path: '/apps/{app_id}/webapp/workflow:reset',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWebappWorkflowResetPath }))
+  .output(zPostAppsByAppIdWebappWorkflowResetResponse)
+
+export const reset6 = {
+  post: post17,
+}
+
+export const get38 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWebappWorkflow',
+    path: '/apps/{app_id}/webapp/workflow',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWebappWorkflowPath }))
+  .output(zGetAppsByAppIdWebappWorkflowResponse)
+
+export const patch18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAppsByAppIdWebappWorkflow',
+    path: '/apps/{app_id}/webapp/workflow',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchAppsByAppIdWebappWorkflowBody,
+      params: zPatchAppsByAppIdWebappWorkflowPath,
+    }),
+  )
+  .output(zPatchAppsByAppIdWebappWorkflowResponse)
+
+export const workflow5 = {
+  get: get38,
+  patch: patch18,
+  reset: reset6,
+}
+
+export const webapp = {
+  advancedChat: advancedChat6,
+  agent: agent4,
+  agentChat: agentChat4,
+  chat: chat5,
+  completion: completion5,
+  workflow: workflow5,
+}
+
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -622,15 +1785,15 @@ export const post10 = oc
   )
   .output(zPostAppsByAppIdWorkflowRunResponse)
 
-export const run6 = {
-  post: post10,
+export const run8 = {
+  post: post18,
 }
 
-export const workflow2 = {
-  run: run6,
+export const workflow6 = {
+  run: run8,
 }
 
-export const post11 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -642,10 +1805,10 @@ export const post11 = oc
   .output(zPostAppsByAppIdPublishResponse)
 
 export const publish = {
-  post: post11,
+  post: post19,
 }
 
-export const get15 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -657,10 +1820,11 @@ export const get15 = oc
   .output(zGetAppsByAppIdResponse)
 
 export const byAppId = {
-  get: get15,
+  get: get39,
   advancedChat,
-  chat,
-  completion,
+  appInfo,
+  chat: chat2,
+  completion: completion2,
   dependencies,
   draft,
   dsl,
@@ -668,13 +1832,16 @@ export const byAppId = {
   files,
   humanInputForms,
   runs,
+  serviceApi,
   tasks,
   versions,
-  workflow: workflow2,
+  webappAccess,
+  webapp,
+  workflow: workflow6,
   publish,
 }
 
-export const get16 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -686,11 +1853,41 @@ export const get16 = oc
   .output(zGetAppsResponse)
 
 export const apps = {
-  get: get16,
+  get: get40,
   byAppId,
 }
 
-export const post12 = oc
+export const get41 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getNodeTypesByNodeType',
+    path: '/node-types/{node_type}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetNodeTypesByNodeTypePath }))
+  .output(zGetNodeTypesByNodeTypeResponse)
+
+export const byNodeType = {
+  get: get41,
+}
+
+export const get42 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getNodeTypes',
+    path: '/node-types',
+    tags: ['openapi'],
+  })
+  .output(zGetNodeTypesResponse)
+
+export const nodeTypes = {
+  get: get42,
+  byNodeType,
+}
+
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -702,10 +1899,10 @@ export const post12 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post12,
+  post: post20,
 }
 
-export const post13 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -717,10 +1914,10 @@ export const post13 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post13,
+  post: post21,
 }
 
-export const post14 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -732,10 +1929,10 @@ export const post14 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post14,
+  post: post22,
 }
 
-export const get17 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -747,10 +1944,10 @@ export const get17 = oc
   .output(zGetOauthDeviceLookupResponse)
 
 export const lookup = {
-  get: get17,
+  get: get43,
 }
 
-export const post15 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -762,7 +1959,7 @@ export const post15 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post15,
+  post: post23,
 }
 
 export const device = {
@@ -777,7 +1974,7 @@ export const oauth = {
   device,
 }
 
-export const get18 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -794,10 +1991,10 @@ export const get18 = oc
   .output(zGetPermittedExternalAppsByAppIdResponse)
 
 export const byAppId2 = {
-  get: get18,
+  get: get44,
 }
 
-export const get19 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -809,11 +2006,52 @@ export const get19 = oc
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
-  get: get19,
+  get: get45,
   byAppId: byAppId2,
 }
 
-export const post16 = oc
+export const get46 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdAccessSubjects',
+    path: '/workspaces/{workspace_id}/access-subjects',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdAccessSubjectsPath,
+      query: zGetWorkspacesByWorkspaceIdAccessSubjectsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdAccessSubjectsResponse)
+
+export const accessSubjects = {
+  get: get46,
+}
+
+export const post24 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsAdvancedChat',
+    path: '/workspaces/{workspace_id}/apps/advanced-chat',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody,
+      params: zPostWorkspacesByWorkspaceIdAppsAdvancedChatPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse)
+
+export const advancedChat7 = {
+  post: post24,
+}
+
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -825,14 +2063,14 @@ export const post16 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post16,
+  post: post25,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post17 = oc
+export const post26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -849,12 +2087,95 @@ export const post17 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post17,
+  post: post26,
   byImportId,
 }
 
+export const post27 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsWorkflow',
+    path: '/workspaces/{workspace_id}/apps/workflow',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdAppsWorkflowBody,
+      params: zPostWorkspacesByWorkspaceIdAppsWorkflowPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
+
+export const workflow7 = {
+  post: post27,
+}
+
 export const apps2 = {
+  advancedChat: advancedChat7,
   imports,
+  workflow: workflow7,
+}
+
+export const put8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspacesByWorkspaceIdDefaultModelsByModelType',
+    path: '/workspaces/{workspace_id}/default-models/{model_type}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeBody,
+      params: zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypePath,
+    }),
+  )
+  .output(zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse)
+
+export const byModelType = {
+  put: put8,
+}
+
+export const get47 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdDefaultModels',
+    path: '/workspaces/{workspace_id}/default-models',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdDefaultModelsPath }))
+  .output(zGetWorkspacesByWorkspaceIdDefaultModelsResponse)
+
+export const defaultModels = {
+  get: get47,
+  byModelType,
+}
+
+export const get48 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdMarketplacePlugins',
+    path: '/workspaces/{workspace_id}/marketplace/plugins',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdMarketplacePluginsPath,
+      query: zGetWorkspacesByWorkspaceIdMarketplacePluginsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdMarketplacePluginsResponse)
+
+export const plugins = {
+  get: get48,
+}
+
+export const marketplace = {
+  plugins,
 }
 
 export const delete4 = oc
@@ -868,7 +2189,7 @@ export const delete4 = oc
   .input(z.object({ params: zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath }))
   .output(zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse)
 
-export const patch = oc
+export const patch19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -886,10 +2207,10 @@ export const patch = oc
 
 export const byMemberId = {
   delete: delete4,
-  patch,
+  patch: patch19,
 }
 
-export const get20 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -905,7 +2226,7 @@ export const get20 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post18 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -923,12 +2244,452 @@ export const post18 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get20,
-  post: post18,
+  get: get49,
+  post: post28,
   byMemberId,
 }
 
-export const post19 = oc
+export const post29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId:
+      'postWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitch',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params:
+        zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchPath,
+    }),
+  )
+  .output(
+    zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse,
+  )
+
+export const switch_ = {
+  post: post29,
+}
+
+export const delete5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath,
+    }),
+  )
+  .output(zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse)
+
+export const patch20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdBody,
+      params: zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath,
+    }),
+  )
+  .output(zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse)
+
+export const byCredentialId = {
+  delete: delete5,
+  patch: patch20,
+  switch: switch_,
+}
+
+export const post30 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdModelProvidersByProviderCredentials',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsBody,
+      params: zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
+
+export const credentials = {
+  post: post30,
+  byCredentialId,
+}
+
+export const post31 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId:
+      'postWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitch',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchBody,
+      params:
+        zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchPath,
+    }),
+  )
+  .output(
+    zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse,
+  )
+
+export const switch2 = {
+  post: post31,
+}
+
+export const delete6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params:
+        zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+      query:
+        zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery,
+    }),
+  )
+  .output(
+    zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  )
+
+export const patch21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId:
+      'patchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdBody,
+      params:
+        zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+    }),
+  )
+  .output(
+    zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  )
+
+export const byCredentialId2 = {
+  delete: delete6,
+  patch: patch21,
+  switch: switch2,
+}
+
+export const post32 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentials',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody,
+      params: zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
+
+export const credentials2 = {
+  post: post32,
+  byCredentialId: byCredentialId2,
+}
+
+export const get50 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdModelProvidersByProviderModels',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath }))
+  .output(zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse)
+
+export const models = {
+  get: get50,
+  credentials: credentials2,
+}
+
+export const get51 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdModelProvidersByProvider',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdModelProvidersByProviderPath }))
+  .output(zGetWorkspacesByWorkspaceIdModelProvidersByProviderResponse)
+
+export const byProvider = {
+  get: get51,
+  credentials,
+  models,
+}
+
+export const get52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdModelProviders',
+    path: '/workspaces/{workspace_id}/model-providers',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdModelProvidersPath,
+      query: zGetWorkspacesByWorkspaceIdModelProvidersQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdModelProvidersResponse)
+
+export const modelProviders = {
+  get: get52,
+  byProvider,
+}
+
+export const get53 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdPluginTasksByTaskId',
+    path: '/workspaces/{workspace_id}/plugin-tasks/{task_id}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdPath }))
+  .output(zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse)
+
+export const byTaskId2 = {
+  get: get53,
+}
+
+export const pluginTasks = {
+  byTaskId: byTaskId2,
+}
+
+export const delete7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesByWorkspaceIdPluginsByPluginId',
+    path: '/workspaces/{workspace_id}/plugins/{plugin_id}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdPath }))
+  .output(zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponse)
+
+export const byPluginId = {
+  delete: delete7,
+}
+
+export const post33 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdPluginsInstall',
+    path: '/workspaces/{workspace_id}/plugins:install',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdPluginsInstallBody,
+      params: zPostWorkspacesByWorkspaceIdPluginsInstallPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
+
+export const install = {
+  post: post33,
+}
+
+export const post34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdPluginsUpgrade',
+    path: '/workspaces/{workspace_id}/plugins:upgrade',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdPluginsUpgradeBody,
+      params: zPostWorkspacesByWorkspaceIdPluginsUpgradePath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdPluginsUpgradeResponse)
+
+export const upgrade = {
+  post: post34,
+}
+
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdPlugins',
+    path: '/workspaces/{workspace_id}/plugins',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdPluginsPath,
+      query: zGetWorkspacesByWorkspaceIdPluginsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdPluginsResponse)
+
+export const plugins2 = {
+  get: get54,
+  byPluginId,
+  install,
+  upgrade,
+}
+
+export const post35 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId:
+      'postWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitch',
+    path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params:
+        zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchPath,
+    }),
+  )
+  .output(
+    zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse,
+  )
+
+export const switch3 = {
+  post: post35,
+}
+
+export const delete8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath,
+    }),
+  )
+  .output(zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse)
+
+export const patch22 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdBody,
+      params: zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath,
+    }),
+  )
+  .output(zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse)
+
+export const byCredentialId3 = {
+  delete: delete8,
+  patch: patch22,
+  switch: switch3,
+}
+
+export const post36 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdToolProvidersByProviderCredentials',
+    path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials',
+    successStatus: 201,
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
+      params: zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
+
+export const credentials3 = {
+  post: post36,
+  byCredentialId: byCredentialId3,
+}
+
+export const get55 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdToolProvidersByProvider',
+    path: '/workspaces/{workspace_id}/tool-providers/{provider}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath }))
+  .output(zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse)
+
+export const byProvider2 = {
+  get: get55,
+  credentials: credentials3,
+}
+
+export const get56 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdToolProviders',
+    path: '/workspaces/{workspace_id}/tool-providers',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdToolProvidersPath }))
+  .output(zGetWorkspacesByWorkspaceIdToolProvidersResponse)
+
+export const toolProviders = {
+  get: get56,
+  byProvider: byProvider2,
+}
+
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -939,11 +2700,11 @@ export const post19 = oc
   .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
-export const switch_ = {
-  post: post19,
+export const switch4 = {
+  post: post37,
 }
 
-export const get21 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -955,13 +2716,20 @@ export const get21 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get21,
+  get: get57,
+  accessSubjects,
   apps: apps2,
+  defaultModels,
+  marketplace,
   members,
-  switch: switch_,
+  modelProviders,
+  pluginTasks,
+  plugins: plugins2,
+  toolProviders,
+  switch: switch4,
 }
 
-export const get22 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -973,7 +2741,7 @@ export const get22 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get22,
+  get: get58,
   byWorkspaceId,
 }
 
@@ -983,6 +2751,7 @@ export const contract = {
   version,
   account,
   apps,
+  nodeTypes,
   oauth,
   permittedExternalApps,
   workspaces,

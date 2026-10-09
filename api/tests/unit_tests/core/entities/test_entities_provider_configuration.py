@@ -945,13 +945,14 @@ def test_create_provider_credential_persists_provider_and_rejects_duplicate(
         patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
         _mock_cache_boundaries() as (credentials_cache, configuration_cache),
     ):
-        configuration.create_provider_credential({"api_key": "raw"}, "Main")
+        created_id = configuration.create_provider_credential({"api_key": "raw"}, "Main")
     credential = sqlite_provider_session.scalar(
         select(ProviderCredential).where(ProviderCredential.credential_name == "Main")
     )
     provider = sqlite_provider_session.scalar(select(Provider).where(Provider.tenant_id == "tenant-1"))
     assert credential is not None
     assert provider is not None
+    assert created_id == credential.id
     assert provider.credential_id == credential.id
     credentials_cache.assert_called_once_with(
         tenant_id="tenant-1",
@@ -1147,11 +1148,12 @@ def test_create_update_and_delete_custom_model_credential(sqlite_provider_sessio
         patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"api_key": "enc"}),
         _mock_cache_boundaries() as (credentials_cache, configuration_cache),
     ):
-        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"api_key": "raw"}, "Main")
+        created_id = configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"api_key": "raw"}, "Main")
     credential = sqlite_provider_session.scalar(select(ProviderModelCredential))
     model = sqlite_provider_session.scalar(select(ProviderModel))
     assert credential is not None
     assert model is not None
+    assert created_id == credential.id
     assert model.credential_id == credential.id
     credential_id = credential.id
     model_id = model.id

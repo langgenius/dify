@@ -402,7 +402,7 @@ Machine-readable catalog of every op on this surface
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
+| 200 | Dependencies checked | **application/json**: [CheckDependenciesResponse](#checkdependenciesresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run
@@ -1745,6 +1745,61 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/default-models
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default models | **application/json**: [DefaultModelListResponse](#defaultmodellistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/default-models/{model_type}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DefaultModelPayload](#defaultmodelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default model set | **application/json**: [DefaultModelResponse](#defaultmodelresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/marketplace/plugins
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Only plugins of this category | No | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to search for; empty lists the most installed plugins | No | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Marketplace plugins | **application/json**: [MarketplacePluginListResponse](#marketplacepluginlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/members
 #### Parameters
 
@@ -1818,6 +1873,410 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Role updated | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | query | Only providers that serve this model type | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model providers | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider | **application/json**: [ModelProviderDetailResponse](#modelproviderdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ProviderCredentialCreatePayload](#providercredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ProviderCredentialUpdatePayload](#providercredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers/{provider}/models
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Models | **application/json**: [ModelListResponse](#modellistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelCredentialCreatePayload](#modelcredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelCredentialUpdatePayload](#modelcredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelRef](#modelref)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/plugin-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| task_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Install task | **application/json**: [PluginTaskResponse](#plugintaskresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/plugins
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Only plugins of this category | No | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Installed plugins | **application/json**: [PluginListResponse](#pluginlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/plugins/{plugin_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| plugin_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin uninstalled | **application/json**: [PluginDeleteResponse](#plugindeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/plugins:install
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PluginInstallPayload](#plugininstallpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Install started | **application/json**: [PluginTaskStartResponse](#plugintaskstartresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/plugins:upgrade
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PluginUpgradePayload](#pluginupgradepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Upgrade started | **application/json**: [PluginTaskStartResponse](#plugintaskstartresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/tool-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tool providers | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tool provider | **application/json**: [ToolProviderDetailResponse](#toolproviderdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/tool-providers/{provider}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ToolCredentialCreatePayload](#toolcredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ToolCredentialUpdatePayload](#toolcredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential is the default | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /workspaces/{workspace_id}:switch
@@ -2239,6 +2698,13 @@ mode is a closed enum of listable app types.
 | title | string | Page title | No |
 | use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
 
+#### CheckDependenciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+
 #### CheckDependenciesResult
 
 | Name | Type | Description | Required |
@@ -2272,6 +2738,73 @@ mode is a closed enum of listable app types.
 | app_id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+
+#### CredentialFormField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| options | [ string ] | Allowed values, when the field is a choice | Yes |
+| placeholder | string |  | Yes |
+| required | boolean |  | Yes |
+| show_on | [ object ] | Show this field only when these other fields have these values | Yes |
+| type | string |  | Yes |
+
+#### CredentialRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### CredentialWriteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### CustomModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+
+#### DefaultModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DefaultModelRow](#defaultmodelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### DefaultModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Model name, as in get.model | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### DefaultModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| provider | string |  | Yes |
+
+#### DefaultModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| provider | string |  | Yes |
 
 #### DeploymentEdition
 
@@ -2488,7 +3021,7 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| form | [ object ] | Form fields behind `input.inputs`, copied from the pausing event | No |
+| form | [ object ] | Form fields behind the hint's input: a paused run's form inputs, or credentials | No |
 | input | object | Ready-to-send input for `op`; unknown values are null | Yes |
 | op | string |  | Yes |
 | summary | string |  | Yes |
@@ -2535,6 +3068,41 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | ---- | ---- | ----------- | -------- |
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
+
+#### MarketplacePluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MarketplacePluginRow](#marketplacepluginrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### MarketplacePluginQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Only plugins of this category | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to search for; empty lists the most installed plugins | No |
+
+#### MarketplacePluginRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorized_category | string | Who vouches for the plugin: langgenius (official), partner or community; workspace install-scope rules check this | Yes |
+| brief | string |  | Yes |
+| category | string |  | Yes |
+| identifier | string | Latest versioned id; pass it to install.plugin | Yes |
+| install_count | integer |  | Yes |
+| installed | boolean |  | Yes |
+| installed_version | string |  | Yes |
+| label | string |  | Yes |
+| plugin_id | string |  | Yes |
+| version | string |  | Yes |
 
 #### MemberActionResponse
 
@@ -2603,6 +3171,94 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
+
+#### ModelCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| name | string |  | No |
+
+#### ModelCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| name | string |  | No |
+
+#### ModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelRow](#modelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ModelProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| configured | boolean |  | Yes |
+| credential_form | [ [CredentialFormField](#credentialformfield) ] |  | Yes |
+| credentials | [ [CredentialRef](#credentialref) ] |  | Yes |
+| custom_model_form | [ [CredentialFormField](#credentialformfield) ] |  | Yes |
+| custom_models | [ [CustomModelRow](#custommodelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| label | string |  | Yes |
+| model_types | [ string ] |  | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### ModelProviderListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model_type | [ModelType](#modeltype) | Only providers that serve this model type | No |
+
+#### ModelProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderRow](#modelproviderrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ModelProviderRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| configured | boolean |  | Yes |
+| label | string |  | Yes |
+| model_types | [ string ] |  | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### ModelRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
+#### ModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| features | [ string ] |  | Yes |
+| label | string |  | Yes |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| status | string |  | Yes |
+
+#### ModelType
+
+Enum class for model type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelType | string | Enum class for model type. |  |
 
 #### NodeRunPayload
 
@@ -2677,6 +3333,19 @@ Strict (extra='forbid').
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### PluginCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginCategory | string |  |  |
+
+#### PluginDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| plugin_id | string |  | Yes |
+
 #### PluginDependency
 
 | Name | Type | Description | Required |
@@ -2690,6 +3359,92 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginDependencyType | string |  |  |
+
+#### PluginInstallPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifiers | [ string ] | Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin (identifier) or check.console_app.dependency | Yes |
+
+#### PluginListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Only plugins of this category | No |
+
+#### PluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PluginRow](#pluginrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### PluginProvides
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model_provider | string | Model provider id this plugin adds, for describe.model_provider | Yes |
+| tool_provider | string | Tool provider id this plugin adds, for describe.tool_provider | Yes |
+
+#### PluginRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| identifier | string |  | Yes |
+| label | string |  | Yes |
+| latest_version | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provides | [PluginProvides](#pluginprovides) |  | Yes |
+| source | string |  | Yes |
+| version | string |  | Yes |
+
+#### PluginTaskItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifier | string |  | Yes |
+| message | string |  | Yes |
+| plugin_id | string |  | Yes |
+| status | string |  | Yes |
+
+#### PluginTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| plugins | [ [PluginTaskItem](#plugintaskitem) ] |  | Yes |
+| status | string | pending, running, success or failed | Yes |
+| task_id | string |  | Yes |
+
+#### PluginTaskStartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all_installed | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| task_id | string |  | Yes |
+
+#### PluginUpgradePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifier | string | Versioned id to upgrade to, from get.marketplace.plugin | Yes |
+| plugin_id | string | Installed plugin id such as langgenius/openai | Yes |
+
+#### ProviderCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| name | string | Credential name; the server makes one when absent | No |
+
+#### ProviderCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| name | string |  | No |
 
 #### PublishPayload
 
@@ -2849,6 +3604,49 @@ types it as a required `'success'` rather than an optional field.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
+
+#### ToolCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| name | string |  | No |
+
+#### ToolCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| name | string |  | No |
+
+#### ToolProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean | Ready to use: needs no credential, or the workspace has one | Yes |
+| credential_form | [ [CredentialFormField](#credentialformfield) ] | Fields of an api-key credential | Yes |
+| credential_types | [ string ] | api-key can be set here; oauth2 needs the console | Yes |
+| credentials | [ [CredentialRef](#credentialref) ] |  | Yes |
+| default_credential | [CredentialRef](#credentialref) |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| label | string |  | Yes |
+| provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
+
+#### ToolProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ToolProviderRow](#toolproviderrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ToolProviderRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean | Ready to use: needs no credential, or the workspace has one | Yes |
+| credential_types | [ string ] | api-key can be set here; oauth2 needs the console | Yes |
+| label | string |  | Yes |
+| provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
 
 #### UsageInfo
 

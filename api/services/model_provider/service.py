@@ -512,7 +512,7 @@ class ModelProviderService:
 
     def create_provider_credential(
         self, tenant_id: str, provider: str, credentials: dict[str, Any], credential_name: str | None
-    ) -> None:
+    ) -> str:
         """
         Create and save new provider credentials.
 
@@ -523,7 +523,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.create_provider_credential(credentials, credential_name)
+        return provider_configuration.create_provider_credential(credentials, credential_name)
 
     def update_provider_credential(
         self,
@@ -615,7 +615,7 @@ class ModelProviderService:
         model: str,
         credentials: dict[str, Any],
         credential_name: str | None,
-    ) -> None:
+    ) -> str:
         """
         create and save model credentials.
 
@@ -628,7 +628,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.create_custom_model_credential(
+        return provider_configuration.create_custom_model_credential(
             model_type=ModelType(model_type),
             model=model,
             credentials=credentials,

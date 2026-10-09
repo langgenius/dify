@@ -79,6 +79,15 @@ class OpenApiErrorCode(StrEnum):
     NODE_NOT_FOUND = "node_not_found"
     ACCESS_SUBJECTS_INVALID = "access_subjects_invalid"
     SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
+    MARKETPLACE_DISABLED = "marketplace_disabled"
+    MARKETPLACE_UNAVAILABLE = "marketplace_unavailable"
+    PLUGIN_INSTALL_FORBIDDEN = "plugin_install_forbidden"
+    PLUGIN_NOT_INSTALLED = "plugin_not_installed"
+    PROVIDER_NOT_FOUND = "provider_not_found"
+    CREDENTIAL_INVALID = "credential_invalid"
+    CREDENTIAL_OAUTH_ONLY = "credential_oauth_only"
+    CREDENTIAL_NOT_FOUND = "credential_not_found"
+    PLUGIN_SERVICE_UNAVAILABLE = "plugin_service_unavailable"
 
 
 class ErrorDetail(BaseModel):
@@ -353,3 +362,62 @@ class SecretMaskNotSecret(OpenApiError):  # noqa: N818
     code = 400
     error_code = OpenApiErrorCode.SECRET_MASK_NOT_SECRET
     description = "The value is the masked secret placeholder, which only a secret value_type can keep."
+
+
+class MarketplaceDisabled(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.MARKETPLACE_DISABLED
+    description = "Marketplace is disabled on this server."
+    hint = "Ask an admin to install the plugin."
+
+
+class MarketplaceUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.MARKETPLACE_UNAVAILABLE
+    description = "The marketplace did not answer."
+
+
+class PluginInstallForbidden(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.PLUGIN_INSTALL_FORBIDDEN
+    description = "Plugin install is not allowed here."
+
+
+class PluginNotInstalled(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.PLUGIN_NOT_INSTALLED
+    description = "This plugin is not installed in the workspace."
+    hint = "List installed plugins with get.plugin."
+
+
+class ProviderNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.PROVIDER_NOT_FOUND
+    description = "No provider with this id in the workspace."
+    hint = "Provider ids look like langgenius/openai/openai; get.plugin shows them under provides."
+
+
+class CredentialInvalid(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.CREDENTIAL_INVALID
+    description = "The provider rejected these credentials; nothing was saved."
+
+
+class CredentialOAuthOnly(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.CREDENTIAL_OAUTH_ONLY
+    description = "This provider uses OAuth."
+    hint = "Ask the user to authorize it in the console."
+
+
+class CredentialNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.CREDENTIAL_NOT_FOUND
+    description = "No credential with this id for this provider that you can see."
+    hint = "List them with the describe op of the provider."
+
+
+class PluginServiceUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.PLUGIN_SERVICE_UNAVAILABLE
+    description = "Plugin service is unavailable."

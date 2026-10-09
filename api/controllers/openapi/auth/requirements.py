@@ -19,21 +19,27 @@ from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
-from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded, WebAppAccessRequiresEE
+from controllers.openapi._errors import (
+    MemberLicenseExceeded,
+    MemberLimitExceeded,
+    PluginInstallForbidden,
+    WebAppAccessRequiresEE,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
-from models.account import TenantAccountRole
+from models.account import TenantAccountRole, TenantPluginInstallPermission
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
 from services.feature_service import FeatureService
+from services.plugin.plugin_permission_service import PluginPermissionService
 from services.system_feature_service import SystemFeatureService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
@@ -216,6 +222,32 @@ class CheckWorkspaceRole(Requirement):
             raise Forbidden("insufficient workspace role")
 
 
+class CheckPluginInstallSetting(Requirement):
+    """The console's `plugin_permission_required(install_required=True)`: the workspace's
+    "who can install plugins" setting. Inert wherever RBAC is on, as in the console.
+    A setting value this code does not know is refused.
+    """
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if subject.caller_role is not CreatorUserRole.ACCOUNT:
+            return
+        if dify_config.RBAC_ENABLED:
+            return
+        setting = PluginPermissionService.get_permission(load_workspace(ctx).id, session=session)
+        if setting is None:
+            return
+        match setting.install_permission:
+            case TenantPluginInstallPermission.EVERYONE:
+                return
+            case TenantPluginInstallPermission.ADMINS:
+                if load_workspace_role(ctx) in ADMIN_ROLES:
+                    return
+                raise PluginInstallForbidden("Plugin install is limited to admins in this workspace.")
+            case _:
+                raise PluginInstallForbidden("Plugin install is turned off in this workspace.")
+
+
 class CheckAppAccess(Requirement):
     """Run-scope comes from the declaration site, so it is not re-checked here.
 
@@ -275,6 +307,22 @@ def account_app_guards(permission: RBACPermission, *, scope: Scope, editor: bool
         CheckRBACPermission(RBACCheck(permission, PlainApp())),
     )
     return (*guards, CheckWorkspaceRole(EDITOR_ROLES)) if editor else guards
+
+
+def workspace_read() -> tuple[Requirement, ...]:
+    """Guards for a workspace read any member may make."""
+    return (CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ), CheckWorkspaceMember())
+
+
+def admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    """Guards for a workspace write the console gates with `is_admin_or_owner_required` and one RBAC permission."""
+    return (
+        CheckSubject(allowed=(AccountSubject,)),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckWorkspaceRole(ADMIN_ROLES),
+    )
 
 
 def account_settings_guards(

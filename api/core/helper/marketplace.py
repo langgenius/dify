@@ -4,6 +4,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+from pydantic import BaseModel, ConfigDict
 from yarl import URL
 
 from configs import dify_config
@@ -66,6 +67,57 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict[str, Any]]:
             raise ValueError("Marketplace did not return a valid plugins list")
         result.append(plugin)
     return result
+
+
+class MarketplaceVerification(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    authorized_category: str
+
+
+class MarketplaceSearchItem(BaseModel):
+    """The fields read from one marketplace search hit; the rest are ignored."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    plugin_id: str
+    latest_version: str
+    latest_package_identifier: str
+    category: str
+    label: dict[str, str]
+    brief: dict[str, str]
+    verification: MarketplaceVerification | None = None
+    install_count: int
+
+
+class MarketplaceSearchPage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    plugins: list[MarketplaceSearchItem]
+    total: int
+
+
+def search_plugins(*, query: str, category: str, page: int, page_size: int) -> MarketplaceSearchPage:
+    """The marketplace's own search, with the body the web plugin page sends."""
+    url = str(marketplace_api_url / "api/v1/plugins/search/advanced")
+    response = httpx.post(
+        url,
+        json={
+            "page": page,
+            "page_size": page_size,
+            "query": query,
+            "category": category,
+            "sort_by": "install_count",
+            "sort_order": "DESC",
+            "tags": [],
+            "exclude": [],
+            "type": "plugin",
+        },
+        headers={"X-Dify-Version": dify_config.project.version},
+        timeout=MARKETPLACE_TIMEOUT,
+    )
+    response.raise_for_status()
+    return MarketplaceSearchPage.model_validate(response.json()["data"])
 
 
 def record_install_plugin_event(plugin_unique_identifier: str) -> None:

@@ -604,7 +604,7 @@ class TestModelProviderServiceDelegation:
                 },
                 "create_provider_credential",
                 ({"token": "abc"}, "A"),
-                None,
+                "new-credential-id",
             ),
             (
                 "update_provider_credential",
@@ -663,6 +663,8 @@ class TestModelProviderServiceDelegation:
                 provider_method.assert_called_once_with(provider_call_kwargs)
         if method_name == "get_provider_credential":
             assert result == {"token": "abc"}
+        if method_name == "create_provider_credential":
+            assert result == "new-credential-id"
 
     @pytest.mark.parametrize(
         ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs", "provider_return"),
@@ -710,7 +712,7 @@ class TestModelProviderServiceDelegation:
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
                 },
-                None,
+                "new-credential-id",
             ),
             (
                 "update_model_credential",
@@ -807,6 +809,8 @@ class TestModelProviderServiceDelegation:
         getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
         if method_name == "get_model_credential":
             assert result == {"api_key": "x"}
+        if method_name == "create_model_credential":
+            assert result == "new-credential-id"
 
     @pytest.mark.parametrize(
         ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs"),

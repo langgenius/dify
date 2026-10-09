@@ -62,6 +62,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
 from functools import singledispatch
+from typing import Final
 from unittest.mock import patch
 
 import pytest
@@ -86,6 +87,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppMode,
     CheckAppQuota,
+    CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
@@ -284,6 +286,142 @@ ROUTES: tuple[Route, ...] = (
         "workspaces.members.update_role",
         "PATCH",
         "/workspaces/{workspace_id}/members/{member_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "plugins.marketplace",
+        "GET",
+        "/workspaces/{workspace_id}/marketplace/plugins",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route("plugins.list", "GET", "/workspaces/{workspace_id}/plugins", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("plugins.install", "POST", "/workspaces/{workspace_id}/plugins:install", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "plugins.task",
+        "GET",
+        "/workspaces/{workspace_id}/plugin-tasks/{task_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route("plugins.upgrade", "POST", "/workspaces/{workspace_id}/plugins:upgrade", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "plugins.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/plugins/{plugin_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.list",
+        "GET",
+        "/workspaces/{workspace_id}/model-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/model-providers/{provider}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.create",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.set",
+        "PATCH",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.switch",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.list",
+        "GET",
+        "/workspaces/{workspace_id}/tool-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/tool-providers/{provider}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.create",
+        "POST",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.set",
+        "PATCH",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.switch",
+        "POST",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.list",
+        "GET",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.create",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.set",
+        "PATCH",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+        query="model=llama3&model_type=llm",
+    ),
+    Route(
+        "models.credential.switch",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.list",
+        "GET",
+        "/workspaces/{workspace_id}/default-models",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.set",
+        "PUT",
+        "/workspaces/{workspace_id}/default-models/{model_type}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -1045,6 +1183,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     # (matches check_member_permission's own add/remove vs update split)
     "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "node_types.list": dict(_ANY_BEARER),
@@ -1241,6 +1381,34 @@ _REQ_EXTERNAL_DESCRIBE = (
 )
 
 
+def _req_plugin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckPluginInstallSetting(),
+    )
+
+
+def _req_admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckWorkspaceRole(_OWNER_ADMIN),
+    )
+
+
+_REQ_PLUGIN_TASK = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_READ),
+    CheckWorkspaceMember(),
+    CheckPluginInstallSetting(),
+)
+
+
 def _settings_req(
     mode: AppMode,
     perm: RBACPermission,
@@ -1272,6 +1440,31 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "workspaces.members.invite": (*_REQ_MEMBER_MANAGE, CheckWorkspaceInvitationQuota()),
     "workspaces.members.remove": _REQ_MEMBER_MANAGE,
     "workspaces.members.update_role": _REQ_ROLE_MANAGE,
+    "plugins.marketplace": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "plugins.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "plugins.install": _req_plugin_write(RBACPermission.PLUGIN_INSTALL),
+    "plugins.task": _REQ_PLUGIN_TASK,
+    "plugins.upgrade": _req_plugin_write(RBACPermission.PLUGIN_MODEL_CONFIG),
+    "plugins.delete": _req_plugin_write(RBACPermission.PLUGIN_DELETE),
+    "model_providers.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "model_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
+    "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "model_providers.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "tool_providers.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
+    "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tool_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tool_providers.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
+    "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.switch": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "default_models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "default_models.set": _req_admin_write(RBACPermission.PLUGIN_PREFERENCES),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
@@ -1782,6 +1975,10 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "env_id": str(uuid.uuid4()),
         "node_type": "llm",
         "node_id": "node-1",
+        "plugin_id": "langgenius/openai",
+        "provider": "langgenius/openai/openai",
+        "credential_id": str(uuid.uuid4()),
+        "model_type": "llm",
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -1901,8 +2098,14 @@ def test_allow_deny_matrix(
         assert body.get("message") == expected.message
 
 
+_PATH_PARAMS: Final = frozenset({"plugin_id", "provider"})
+
+
 def _rule_path(route: Route) -> str:
-    return "/openapi/v1" + route.path.replace("{", "<string:").replace("}", ">")
+    path = route.path
+    for name in _PATH_PARAMS:
+        path = path.replace(f"{{{name}}}", f"<path:{name}>")
+    return "/openapi/v1" + path.replace("{", "<string:").replace("}", ">")
 
 
 def _endpoint_spec(app: Flask, rule: Rule, method: str) -> EndpointSpec | None:
@@ -2007,6 +2210,52 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/_catalog"): frozenset({"200"}),
+    ("get", "/workspaces/{workspace_id}/marketplace/plugins"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/plugins"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/plugins:install"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/plugin-tasks/{task_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/plugins:upgrade"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/plugins/{plugin_id}"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/tool-providers"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/tool-providers/{provider}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
+    ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
+    ("post", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch"): frozenset(
+        {"200", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/model-providers"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/model-providers/{provider}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
+    ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
+    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch"): frozenset(
+        {"200", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/model-providers/{provider}/models"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
+        {"201", "422", "default"}
+    ),
+    ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    (
+        "post",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch",
+    ): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/default-models"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "422", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),

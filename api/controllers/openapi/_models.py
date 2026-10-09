@@ -12,12 +12,15 @@ from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._upload import UploadPart, UploadParts
+from core.plugin.entities.plugin import PluginCategory
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
+from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import
+from services.entities.dsl_entities import CheckDependenciesResult
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 100
@@ -65,7 +68,7 @@ class Hint(BaseModel):
     op: str
     input: dict[str, Any] = Field(description="Ready-to-send input for `op`; unknown values are null")
     form: list[dict[str, Any]] | None = Field(
-        default=None, description="Form fields behind `input.inputs`, copied from the pausing event"
+        default=None, description="Form fields behind the hint's input: a paused run's form inputs, or credentials"
     )
 
 
@@ -485,6 +488,107 @@ class MemberActionResponse(BaseModel):
     result: Literal["success"] = "success"
 
 
+class MarketplacePluginQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to search for; empty lists the most installed plugins")
+    category: PluginCategory | None = Field(None, description="Only plugins of this category")
+
+
+class MarketplacePluginRow(BaseModel):
+    plugin_id: str
+    identifier: str = Field(description="Latest versioned id; pass it to install.plugin")
+    version: str
+    category: str
+    label: str | None
+    brief: str | None
+    authorized_category: str | None = Field(
+        description=(
+            "Who vouches for the plugin: langgenius (official), partner or community; "
+            "workspace install-scope rules check this"
+        )
+    )
+    install_count: int
+    installed: bool
+    installed_version: str | None
+
+
+class MarketplacePluginListResponse(PaginationEnvelope[MarketplacePluginRow]):
+    pass
+
+
+class PluginListQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: PluginCategory | None = Field(None, description="Only plugins of this category")
+
+
+class PluginProvides(BaseModel):
+    model_provider: str | None = Field(description="Model provider id this plugin adds, for describe.model_provider")
+    tool_provider: str | None = Field(description="Tool provider id this plugin adds, for describe.tool_provider")
+
+
+class PluginRow(BaseModel):
+    plugin_id: str
+    identifier: str
+    version: str
+    latest_version: str | None
+    category: str
+    label: str | None
+    source: str
+    provides: PluginProvides
+
+
+class PluginListResponse(Hinted):
+    data: list[PluginRow]
+
+
+class PluginInstallPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    identifiers: list[str] = Field(
+        min_length=1,
+        description=(
+            "Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin "
+            "(identifier) or check.console_app.dependency"
+        ),
+    )
+
+
+class PluginUpgradePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_id: str = Field(description="Installed plugin id such as langgenius/openai")
+    identifier: str = Field(description="Versioned id to upgrade to, from get.marketplace.plugin")
+
+
+class PluginTaskStartResponse(Hinted):
+    task_id: str
+    all_installed: bool
+
+
+class PluginTaskItem(BaseModel):
+    plugin_id: str
+    identifier: str
+    status: str
+    message: str
+
+
+class PluginTaskResponse(Hinted):
+    task_id: str
+    status: str = Field(description="pending, running, success or failed")
+    plugins: list[PluginTaskItem]
+
+
+class PluginDeleteResponse(BaseModel):
+    plugin_id: str
+    deleted: bool
+
+
+class CheckDependenciesResponse(CheckDependenciesResult, Hinted):
+    pass
+
+
 class TaskStopResponse(BaseModel):
     """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
     {"result": "success"}, so `result` is required (no default) — the generated contract
@@ -883,3 +987,159 @@ class AccessSubjectListResponse(BaseModel):
     limit: int
     has_more: bool
     data: list[AccessSubjectRow]
+
+
+class CredentialFormField(BaseModel):
+    name: str
+    type: str
+    required: bool
+    label: str | None
+    placeholder: str | None
+    options: list[str] | None = Field(description="Allowed values, when the field is a choice")
+    show_on: list[dict[str, str]] = Field(description="Show this field only when these other fields have these values")
+
+
+class CredentialRef(BaseModel):
+    id: str
+    name: str | None
+
+
+class ModelProviderListQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_type: ModelType | None = Field(None, description="Only providers that serve this model type")
+
+
+class ModelProviderRow(BaseModel):
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    label: str | None
+    model_types: list[str]
+    configured: bool
+    active_credential: CredentialRef | None
+
+
+class ModelProviderListResponse(Hinted):
+    data: list[ModelProviderRow]
+
+
+class CustomModelRow(BaseModel):
+    model: str
+    model_type: str
+    active_credential: CredentialRef | None
+
+
+class ModelProviderDetailResponse(ModelProviderRow, Hinted):
+    credential_form: list[CredentialFormField]
+    credentials: list[CredentialRef]
+    custom_model_form: list[CredentialFormField] | None
+    custom_models: list[CustomModelRow]
+
+
+_CREDENTIALS_DESCRIPTION: Final = (
+    "Secret values. Pass with --credentials @- (stdin) or @file, never inline. "
+    "Field names come from credential_form in the describe op."
+)
+_CREDENTIALS_UPDATE_DESCRIPTION: Final = (
+    _CREDENTIALS_DESCRIPTION + " Send [__HIDDEN__] for a secret you keep unchanged."
+)
+
+
+class ProviderCredentialCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = Field(None, description="Credential name; the server makes one when absent")
+
+
+class ProviderCredentialUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = None
+
+
+class CredentialWriteResponse(Hinted):
+    id: str
+    name: str | None
+    active: bool
+
+
+class ToolProviderRow(BaseModel):
+    provider: str = Field(description="Tool provider id such as langgenius/tavily/tavily")
+    label: str | None
+    configured: bool = Field(description="Ready to use: needs no credential, or the workspace has one")
+    credential_types: list[str] = Field(description="api-key can be set here; oauth2 needs the console")
+
+
+class ToolProviderListResponse(Hinted):
+    data: list[ToolProviderRow]
+
+
+class ToolProviderDetailResponse(ToolProviderRow, Hinted):
+    credential_form: list[CredentialFormField] = Field(description="Fields of an api-key credential")
+    credentials: list[CredentialRef]
+    default_credential: CredentialRef | None
+
+
+class ToolCredentialCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = Field(None, max_length=30)
+
+
+class ToolCredentialUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = Field(None, max_length=30)
+
+
+class ModelRow(BaseModel):
+    model: str
+    model_type: str
+    label: str | None
+    status: str
+    features: list[str]
+
+
+class ModelListResponse(Hinted):
+    data: list[ModelRow]
+
+
+class ModelRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(description="Model name, as in get.model")
+    model_type: ModelType
+
+
+class ModelCredentialCreatePayload(ModelRef):
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = None
+
+
+class ModelCredentialUpdatePayload(ModelRef):
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = None
+
+
+class DefaultModelRow(BaseModel):
+    model_type: str
+    provider: str | None
+    model: str | None
+
+
+class DefaultModelListResponse(Hinted):
+    data: list[DefaultModelRow]
+
+
+class DefaultModelPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    model: str = Field(description="Model name, as in get.model")
+
+
+class DefaultModelResponse(DefaultModelRow, Hinted):
+    pass
