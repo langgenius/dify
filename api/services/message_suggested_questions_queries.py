@@ -1,7 +1,8 @@
 """Select message configuration using the existing Agent and Workflow policy owners.
 
-Each operation owns a short read session. Only scalar configuration or detached
-history leaves this module; model resolution and attachment I/O happen afterwards.
+Configuration preparation owns a short read session; history reads delegate
+session ownership to the repository. Only scalar configuration or detached history
+leaves this module; model resolution and attachment I/O happen afterwards.
 """
 
 from collections.abc import Mapping
@@ -31,13 +32,11 @@ from services.workflow_service import WorkflowService
 class SuggestedQuestionsQuery:
     """Coordinate repository reads with the existing ORM-based config readers.
 
-    This query owns each short session because AgentRuntimeConfigService,
+    Only prepare owns a short session because AgentRuntimeConfigService,
     WorkflowService and conversation config helpers still need a caller session.
-    The composition root supplies the shared MessageRepository; its suggested
-    question reads explicitly borrow that session rather than opening another.
-
-    TODO: Move session ownership into repositories once those config readers
-    expose detached results, keeping their configuration policies in services.
+    The shared MessageRepository borrows that session for configuration reads
+    and owns the separate history session. Its module docstring describes when
+    the remaining caller-session parameters can be removed.
     """
 
     def __init__(
@@ -144,5 +143,4 @@ class SuggestedQuestionsQuery:
         return model_config.suggested_questions_after_answer_dict
 
     def load_history(self, context: SuggestedQuestionsContext) -> PreparedHistory:
-        with self._session_factory(expire_on_commit=False) as session:
-            return self._repository.load_suggested_questions_history(session=session, context=context)
+        return self._repository.load_suggested_questions_history(context=context)

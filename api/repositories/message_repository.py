@@ -1,8 +1,13 @@
 """Message ownership and generation reads shared by message capabilities.
 
-More-like-this reads own short sessions and return detached data. Suggested
-questions still borrows its query coordinator's session because the existing
-Agent and Workflow configuration readers require the same caller session.
+History and more-like-this reads own short sessions and return detached data.
+Only suggested-question configuration preparation borrows the caller's session.
+
+TODO: Remove the session parameters from get_suggested_questions_context and
+get_model_config once AgentRuntimeConfigService, WorkflowService and conversation
+config helpers accept detached inputs and return detached results without a
+shared caller session. These repository methods can then own their sessions and
+return detached data too; configuration selection stays in the query/service layer.
 """
 
 import json
@@ -103,38 +108,37 @@ class MessageRepository:
             select(AppModelConfig).where(AppModelConfig.id == config_id, AppModelConfig.app_id == app_id)
         )
 
-    def load_suggested_questions_history(
-        self, *, session: Session, context: SuggestedQuestionsContext
-    ) -> PreparedHistory:
+    def load_suggested_questions_history(self, *, context: SuggestedQuestionsContext) -> PreparedHistory:
         # Model resolution separates the two read phases. Reload only the app
         # and conversation needed by the history reader, retaining their owner
         # scope without repeating actor and target-message admission queries.
-        app = self._get_app(session, app_id=context.app_id, tenant_id=context.tenant_id)
-        if app is None or app.mode != context.app_mode:
-            raise AppDefinitionUnavailableError(
-                f"App {context.app_id} is unavailable in tenant {context.tenant_id} with mode {context.app_mode}"
+        with self._session_factory(expire_on_commit=False) as session:
+            app = self._get_app(session, app_id=context.app_id, tenant_id=context.tenant_id)
+            if app is None or app.mode != context.app_mode:
+                raise AppDefinitionUnavailableError(
+                    f"App {context.app_id} is unavailable in tenant {context.tenant_id} with mode {context.app_mode}"
+                )
+            actor = context.actor
+            account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+            end_user_id = None if isinstance(actor, MessageAccount) else actor.end_user_id
+            conversation = session.scalar(
+                select(Conversation).where(
+                    Conversation.id == context.conversation_id,
+                    Conversation.app_id == context.app_id,
+                    Conversation.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
+                    Conversation.from_account_id == account_id,
+                    Conversation.from_end_user_id == end_user_id,
+                    Conversation.is_deleted.is_(False),
+                )
             )
-        actor = context.actor
-        account_id = actor.account_id if isinstance(actor, MessageAccount) else None
-        end_user_id = None if isinstance(actor, MessageAccount) else actor.end_user_id
-        conversation = session.scalar(
-            select(Conversation).where(
-                Conversation.id == context.conversation_id,
-                Conversation.app_id == context.app_id,
-                Conversation.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
-                Conversation.from_account_id == account_id,
-                Conversation.from_end_user_id == end_user_id,
-                Conversation.is_deleted.is_(False),
+            if conversation is None:
+                raise ConversationNotExistsError()
+            return TokenBufferMemory.load_history(
+                conversation=conversation,
+                app_record=app,
+                session=session,
+                message_limit=3,
             )
-        )
-        if conversation is None:
-            raise ConversationNotExistsError()
-        return TokenBufferMemory.load_history(
-            conversation=conversation,
-            app_record=app,
-            session=session,
-            message_limit=3,
-        )
 
     def get_more_like_this_source(
         self,
