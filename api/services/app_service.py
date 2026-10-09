@@ -14,12 +14,14 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -305,10 +307,21 @@ class AppService:
 
     @staticmethod
     def get_app_by_id(
-        app_id: str,
+        app_id: str | None,
         session: Session,
     ) -> App | None:
+        if app_id is None:
+            return None
         return session.get(App, app_id)
+
+    @staticmethod
+    def get_app_in_workspace(*, tenant_id: str, app_id: str, session: Session) -> App | None:
+        """Return the app within its owner workspace, or None if it is absent.
+
+        Keep the caller's session and leave status/API availability checks to
+        the caller so each admission surface retains its error contract.
+        """
+        return session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
     @staticmethod
     def get_visible_app_by_id(
@@ -874,6 +887,9 @@ class AppService:
             session=session,
             tenant_id=app.tenant_id,
             app_id=app.id,
+        )
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
         )
         session.delete(app)
         session.commit()

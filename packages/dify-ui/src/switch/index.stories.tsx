@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder.',
+          'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },

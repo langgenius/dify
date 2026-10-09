@@ -10,9 +10,9 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import HTTPException, InternalServerError, Unauthorized
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, UnauthorizedError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -42,6 +42,7 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import ExploreMessageInfiniteScrollPagination, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -84,7 +85,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
         except InstalledAppNotCompletionError as error:
@@ -109,7 +110,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Installed-app message operation failed")

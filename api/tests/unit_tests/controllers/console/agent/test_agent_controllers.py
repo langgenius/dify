@@ -1,7 +1,8 @@
+from collections.abc import Generator
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Self, cast
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -61,10 +62,12 @@ from controllers.console.app.message import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
 from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
 from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
+from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.enterprise.rbac_service import RBACService
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -73,6 +76,7 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
+from services.entities.app_entities import AgentAppPublicationCounts, AppListParams, CreateAppParams
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
 from tests.unit_tests.rbac_fakes import RBACDomain
@@ -143,7 +147,7 @@ def _persist_conversation_message(
     return conversation, message
 
 
-def _version_response(version_id: str = "version-1") -> dict:
+def _version_response(version_id: str = "version-1") -> dict[str, object]:
     return {
         "id": version_id,
         "agent_id": "agent-1",
@@ -169,8 +173,8 @@ def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
         assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
 
 
-def _workflow_composer_response(**overrides) -> dict:
-    response = {
+def _workflow_composer_response(**overrides: object) -> dict[str, object]:
+    response: dict[str, object] = {
         "variant": "workflow",
         "agent": None,
         "active_config_snapshot": None,
@@ -189,7 +193,7 @@ def _workflow_composer_response(**overrides) -> dict:
     return response
 
 
-def _agent_app_composer_response() -> dict:
+def _agent_app_composer_response() -> dict[str, object]:
     return {
         "variant": "agent_app",
         "agent": {
@@ -207,8 +211,8 @@ def _agent_app_composer_response() -> dict:
     }
 
 
-def _app_detail_obj(**overrides) -> App:
-    data = {
+def _app_detail_obj(**overrides: object) -> App:
+    data: dict[str, object] = {
         "id": "app-1",
         "tenant_id": "tenant-1",
         "name": "Iris",
@@ -243,7 +247,7 @@ def _account(*, account_id: str = "account-1", privileged: bool = False, timezon
     )
 
 
-def _candidates_response(variant: str) -> dict:
+def _candidates_response(variant: str) -> dict[str, object]:
     return {
         "variant": variant,
         "allowed_node_job_candidates": {},
@@ -358,7 +362,7 @@ def test_agent_app_list_and_create_use_agent_route(
     )
 
     class FakeAgentAccessFilter:
-        def apply_to_app_params(self, params, *, tenant_id: str, session: object) -> None:
+        def apply_to_app_params(self, params: AppListParams, *, tenant_id: str, session: object) -> None:
             captured["access_filter"] = {"tenant_id": tenant_id, "session": session}
             params.accessible_app_ids = ["app-list"]
 
@@ -375,7 +379,9 @@ def test_agent_app_list_and_create_use_agent_route(
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
 
     class FakeAppService:
-        def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
+        def get_paginate_apps(
+            self, user_id: str, tenant_id: str, params: AppListParams, session: Session
+        ) -> SimpleNamespace:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
                 page=1,
@@ -385,12 +391,14 @@ def test_agent_app_list_and_create_use_agent_route(
                 items=[listed_app],
             )
 
-        def get_agent_publication_counts(self, user_id: str, tenant_id: str, params, session):
+        def get_agent_publication_counts(
+            self, user_id: str, tenant_id: str, params: AppListParams, session: Session
+        ) -> AgentAppPublicationCounts:
             del session
             captured["counts"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return roster_controller.AgentAppPublicationCounts(published=1, drafts=0)
 
-        def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
+        def create_app(self, tenant_id: str, params: CreateAppParams, current_user: object, *, session: object) -> App:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
             return created_app
 
@@ -960,7 +968,7 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeyp
 
 
 def test_agent_api_key_count_scopes_tenant_and_keeps_legacy_tokens(sqlite_session: Session) -> None:
-    app_model = cast(App, _app_detail_obj())
+    app_model = _app_detail_obj()
     sqlite_session.add_all(
         [
             ApiToken(type=ApiTokenType.APP, token="owned", app_id=app_model.id, tenant_id=app_model.tenant_id),
@@ -1184,6 +1192,7 @@ def test_agent_version_queries_do_not_require_paid_plan(app: Flask, monkeypatch:
 )
 def test_agent_version_restore_requires_cloud_paid_plan(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     edition: DeploymentEdition,
     plan: CloudPlan,
     allowed: bool,
@@ -1195,7 +1204,7 @@ def test_agent_version_restore_requires_cloud_paid_plan(
     monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
     restore = Mock(return_value={"result": "success", "active_config_snapshot_id": version_id})
     monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore)
-    session = MagicMock(spec=Session)
+    session = sqlite_session
     api = AgentRosterVersionRestoreApi()
 
     if not allowed:
@@ -1203,7 +1212,7 @@ def test_agent_version_restore_requires_cloud_paid_plan(
             unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
         assert exc_info.value.code == 403
         restore.assert_not_called()
-        assert session.mock_calls == []
+        assert not session.in_transaction()
     else:
         restored = unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
         assert restored == {
@@ -1233,7 +1242,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     captured: dict[str, object] = {}
 
     class FakeObservabilityService:
-        def list_logs(self, *, app, agent_id, params):
+        def list_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> dict[str, object]:
             captured["logs"] = {"app": app, "agent_id": agent_id, "params": params}
             return {
                 "data": [
@@ -1269,7 +1278,9 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                 "has_more": False,
             }
 
-        def list_log_messages(self, *, app, agent_id, conversation_id, params):
+        def list_log_messages(
+            self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
+        ) -> dict[str, object]:
             captured["messages"] = {
                 "app": app,
                 "agent_id": agent_id,
@@ -1304,7 +1315,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                 "has_more": False,
             }
 
-        def list_log_sources(self, *, app, agent_id):
+        def list_log_sources(self, *, app: App, agent_id: str) -> dict[str, object]:
             captured["sources"] = {"app": app, "agent_id": agent_id}
             return {
                 "data": [
@@ -1324,7 +1335,9 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                 "groups": [{"type": "webapp", "label": "WEBAPP", "sources": []}],
             }
 
-        def get_statistics_summary(self, *, app, agent_id, params):
+        def get_statistics_summary(
+            self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams
+        ) -> dict[str, object]:
             captured["statistics"] = {"app": app, "agent_id": agent_id, "params": params}
             return {
                 "source": "all",
@@ -1517,7 +1530,7 @@ def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.Monk
     app_model = _app_detail_obj(id="app-1")
     captured: dict[str, object] = {}
 
-    def fake_copy_from_roster(**kwargs):
+    def fake_copy_from_roster(**kwargs: object) -> dict[str, object]:
         captured.update(kwargs)
         return _workflow_composer_response(
             binding={
@@ -1602,15 +1615,15 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         "agent_soul": {"prompt": {"system_prompt": "x"}},
     }
 
-    def load_agent_composer(**kwargs: object) -> dict:
+    def load_agent_composer(**kwargs: object) -> dict[str, object]:
         captured["load"] = kwargs
         return _agent_app_composer_response()
 
-    def save_agent_composer(**kwargs: object) -> dict:
+    def save_agent_composer(**kwargs: object) -> dict[str, object]:
         captured["save"] = kwargs
         return _agent_app_composer_response()
 
-    def get_agent_app_candidates(**kwargs: object) -> dict:
+    def get_agent_app_candidates(**kwargs: object) -> dict[str, object]:
         captured["candidates"] = kwargs
         return _candidates_response("agent_app")
 
@@ -1724,7 +1737,7 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
                 ]
             )
 
-        def __iter__(self):
+        def __iter__(self) -> Self:
             return self
 
         def __next__(self) -> str:
@@ -1736,6 +1749,7 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     stream = ClosableStream()
     with pytest.raises(CompletionRequestError) as exc_info:
         completion_controller._raise_agent_stream_error_before_response(stream)
+    assert exc_info.value.description is not None
     assert "Incorrect API key provided" in exc_info.value.description
     assert stream.closed is True
 
@@ -1754,7 +1768,7 @@ def test_agent_chat_stream_preflight_preserves_session_configuration_error() -> 
                 ]
             )
 
-        def __iter__(self):
+        def __iter__(self) -> Self:
             return self
 
         def __next__(self) -> str:
@@ -1768,6 +1782,7 @@ def test_agent_chat_stream_preflight_preserves_session_configuration_error() -> 
         completion_controller._raise_agent_stream_error_before_response(stream)
     assert exc_info.value.code == 409
     assert exc_info.value.error_code == "agent_session_configuration_changed"
+    assert exc_info.value.description is not None
     assert "Start a new conversation" in exc_info.value.description
     assert stream.closed is True
 
@@ -1870,39 +1885,30 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
 
 
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:
-    class ClosableResponse:
-        def __init__(self) -> None:
-            self._chunks = iter(
-                [
-                    "event: ping\n\n",
-                    'data: {"event":"message","answer":"working"}\n\n',
-                    'data: {"event":"message_end","message_id":"msg-1"}\n\n',
-                ]
-            )
-            self.closed = False
+    closed: list[bool] = []
 
-        def __iter__(self):
-            return self
+    def generate_response() -> Generator[str]:
+        try:
+            yield "event: ping\n\n"
+            yield 'data: {"event":"message","answer":"working"}\n\n'
+            yield 'data: {"event":"message_end","message_id":"msg-1"}\n\n'
+        finally:
+            closed.append(True)
 
-        def __next__(self) -> str:
-            return next(self._chunks)
-
-        def close(self) -> None:
-            self.closed = True
-
-    response = ClosableResponse()
+    # Retain the generator so garbage collection cannot satisfy the cleanup assertion.
+    response = generate_response()
     assert completion_controller._drain_streaming_generate_response(response) is None
-    assert response.closed is True
+    assert closed == [True]
 
 
 def test_drain_streaming_generate_response_maps_error_event() -> None:
-    response = iter(['data: {"event":"error","message":"backend failed"}\n\n'])
+    response = (chunk for chunk in ['data: {"event":"error","message":"backend failed"}\n\n'])
     with pytest.raises(CompletionRequestError, match="backend failed"):
         completion_controller._drain_streaming_generate_response(response)
 
 
 def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
-    response = iter(['data: {"event":"message","answer":"working"}\n\n'])
+    response = (chunk for chunk in ['data: {"event":"message","answer":"working"}\n\n'])
     with pytest.raises(CompletionRequestError, match="did not complete"):
         completion_controller._drain_streaming_generate_response(response)
 
@@ -2309,7 +2315,7 @@ def test_list_chat_messages_supports_first_id_pagination(
 
     class FakeMessagePaginationResponse:
         @classmethod
-        def model_validate(cls, pagination: object, from_attributes: bool = False) -> object:
+        def model_validate(cls, pagination: InfiniteScrollPagination, from_attributes: bool = False) -> SimpleNamespace:
             return SimpleNamespace(
                 model_dump=lambda mode: {
                     "data": [item.id for item in pagination.data],
@@ -2354,7 +2360,7 @@ def test_list_agent_chat_messages_uses_current_user_conversation(
 
     class FakeMessagePaginationResponse:
         @classmethod
-        def model_validate(cls, pagination: object, from_attributes: bool = False) -> object:
+        def model_validate(cls, pagination: InfiniteScrollPagination, from_attributes: bool = False) -> SimpleNamespace:
             return SimpleNamespace(
                 model_dump=lambda mode: {
                     "data": [item.id for item in pagination.data],
@@ -2425,7 +2431,7 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
     assert message.admin_feedback_with_session(session=sqlite_session) is None
 
 
-def test_dify_tool_candidate_response_keeps_granularity_fields():
+def test_dify_tool_candidate_response_keeps_granularity_fields() -> None:
     """Both selection granularities must survive the fields-layer model —
     the frontend needs granularity/tools_count to render the Tools menu."""
     from fields.agent_fields import AgentComposerDifyToolCandidateResponse

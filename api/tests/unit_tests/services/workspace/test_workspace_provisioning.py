@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from blinker import Signal
@@ -64,7 +64,7 @@ def test_owner_lookup_is_exact_and_tolerates_duplicate_emails(sqlite_session_fac
         session.commit()
         owner_ids = {first.id, second.id}
     repository = SQLAlchemyAccountRepository(sqlite_session_factory)
-    gateway = Mock(spec=WorkspaceProvisioningStore)
+    gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
     service = _service(owners=repository, provisioning=gateway)
     service.create(name="Test", owner_email="owner@example.com")
     assert gateway.provision.call_args.kwargs["owner_id"] in owner_ids
@@ -75,8 +75,8 @@ def test_owner_lookup_is_exact_and_tolerates_duplicate_emails(sqlite_session_fac
 
 @pytest.mark.parametrize("role", ["owner", "unknown", "ADMIN"])
 def test_invalid_roles_are_rejected_before_writes(role: str) -> None:
-    gateway = Mock(spec=WorkspaceProvisioningStore)
-    service = _service(owners=Mock(spec=WorkspaceOwnerQuery), provisioning=gateway)
+    gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
+    service = _service(owners=create_autospec(WorkspaceOwnerQuery, instance=True), provisioning=gateway)
     with pytest.raises(InvalidWorkspaceMemberRoleError):
         service.join_member(
             workspace_id="w", account_id="a", email="a@example.com", role=role, operator_account_id=None
@@ -85,8 +85,8 @@ def test_invalid_roles_are_rejected_before_writes(role: str) -> None:
 
 
 def test_member_operator_is_forwarded() -> None:
-    gateway = Mock(spec=WorkspaceProvisioningStore)
-    service = _service(owners=Mock(spec=WorkspaceOwnerQuery), provisioning=gateway)
+    gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
+    service = _service(owners=create_autospec(WorkspaceOwnerQuery, instance=True), provisioning=gateway)
     service.join_member(
         workspace_id="w", account_id="a", email="a@example.com", role="editor", operator_account_id="operator"
     )
@@ -100,9 +100,9 @@ def test_member_operator_is_forwarded() -> None:
 
 
 def test_missing_owner_is_rejected_before_creation() -> None:
-    owners = Mock(spec=WorkspaceOwnerQuery)
+    owners = create_autospec(WorkspaceOwnerQuery, instance=True)
     owners.find_first_by_email.return_value = None
-    gateway = Mock(spec=WorkspaceProvisioningStore)
+    gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
     service = _service(owners=owners, provisioning=gateway)
     with pytest.raises(WorkspaceOwnerNotFoundError):
         service.create(name="Test", owner_email="owner@example.com")
@@ -111,9 +111,9 @@ def test_missing_owner_is_rejected_before_creation() -> None:
 
 @pytest.mark.parametrize("owner_email", [None, "owner@example.com"])
 def test_create_delegation(owner_email: str | None) -> None:
-    owners = Mock(spec=WorkspaceOwnerQuery)
+    owners = create_autospec(WorkspaceOwnerQuery, instance=True)
     owners.find_first_by_email.return_value = OWNER
-    gateway = Mock(spec=WorkspaceProvisioningStore)
+    gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
     result = CreatedWorkspace("w", "Test", "sandbox", "normal", None, None, None, {})
     gateway.provision.return_value = result
     service = _service(owners=owners, provisioning=gateway)
@@ -302,7 +302,7 @@ def test_competing_initial_workspace_skips_key_and_owner_binding(
     account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     account = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
-    effects = Mock(spec=WorkspaceProvisioningEffects)
+    effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
     effects.prepare.side_effect = [
         WorkspaceCreation("winner", "Owner's Workspace", "winner-key", 123, 0, {}),
         WorkspaceCreation("skipped", "Owner's Workspace", "orphan-key", 123, 0, {}),
@@ -344,7 +344,7 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
 ) -> None:
     account = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     phases: list[str] = []
-    effects = Mock(spec=WorkspaceProvisioningEffects)
+    effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
 
     def record_lock(execution: ORMExecuteState) -> None:
         # SQLite exercises persistence; compile the actual ORM statement for
@@ -388,17 +388,18 @@ def _service(
     provisioning: WorkspaceProvisioningStore,
     effects: WorkspaceProvisioningEffects | None = None,
 ) -> WorkspaceProvisioningService:
-    policy = Mock(spec=WorkspaceCreationPolicy)
+    """Use the supplied effects, or prepare autospecced effects when omitted or None."""
+    policy = create_autospec(WorkspaceCreationPolicy, instance=True)
     policy.has_workspace_capacity.return_value = True
     if effects is None:
-        prepared = Mock(spec=WorkspaceProvisioningEffects)
+        prepared = create_autospec(WorkspaceProvisioningEffects, instance=True)
         prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 123, 0, {})
-        effects = prepared
+        effects = cast(WorkspaceProvisioningEffects, prepared)
     return WorkspaceProvisioningService(
         effects=effects,
         owners=owners,
         provisioning=provisioning,
         policies=policy,
-        memberships=Mock(spec=WorkspaceMembershipQuery),
-        members=Mock(spec=WorkspaceMemberWriter),
+        memberships=create_autospec(WorkspaceMembershipQuery, instance=True),
+        members=create_autospec(WorkspaceMemberWriter, instance=True),
     )

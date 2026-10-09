@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -294,6 +294,7 @@ def test_get_pause_record_loads_reasons_and_tokens_in_one_repository_call(
 
 def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
     caplog: pytest.LogCaptureFixture,
+    sqlite_session: Session,
 ) -> None:
     pause_model = WorkflowPause(
         workflow_id="workflow-1",
@@ -301,7 +302,9 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         state_object_key="workflow-state.json",
     )
     pause_model.id = "pause-1"
-    session = Mock(spec=Session)
+    session = sqlite_session
+    session.add(pause_model)
+    session.commit()
 
     with (
         patch(
@@ -313,7 +316,8 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         DifyAPISQLAlchemyWorkflowRunRepository._delete_pause_model(session, pause_model)
 
     delete_state_object.assert_called_once_with(pause_model.state_object_key)
-    session.delete.assert_called_once_with(pause_model)
+    session.commit()
+    assert session.get(WorkflowPause, "pause-1") is None
     assert "pause_id=pause-1" in caplog.text
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text

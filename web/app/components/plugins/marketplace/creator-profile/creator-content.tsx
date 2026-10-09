@@ -164,7 +164,7 @@ export default function CreatorContent({
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={`${t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })} ${selectedSort.label}`}
-              className="flex h-8 items-center rounded-lg px-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 items-center rounded-lg px-2 hover:bg-state-base-hover"
             >
               <span className="mr-1 system-sm-regular text-text-tertiary">
                 {t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })}

@@ -1,7 +1,7 @@
-from collections.abc import Sequence
-from unittest.mock import Mock, create_autospec
+from collections.abc import Callable, Generator, Sequence
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
@@ -11,31 +11,139 @@ from core.datasource.entities.datasource_entities import (
     OnlineDocumentPagesMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper import encrypter
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from core.plugin.impl.datasource import PluginDatasourceManager
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document
+from extensions.application_services.data_sources import build_data_source_credentials
+from models.enums import PermissionEnum
+from models.oauth import DatasourceProvider
 from services.data_source.credential_gateway import (
-    ActorDatasourceCredentialResolver,
-    DatasourceCredentialError,
+    ActorAwareDatasourceCredentialGateway,
     DatasourceCredentialNotFoundError,
 )
 from services.data_source.entities.notion_import import NotionPageType
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
+from tests.unit_tests.core.datasource.factories import datasource_entity, provider_entity
+
+type CredentialCalls = list[tuple[str, str, str, str, str]]
 
 
-def _credentials(credentials: dict[str, object], *, error: DatasourceCredentialError | None = None) -> Mock:
-    resolver = create_autospec(ActorDatasourceCredentialResolver, instance=True, spec_set=True)
-    resolver.resolve.return_value = credentials
-    resolver.resolve.side_effect = error
-    return resolver
+@pytest.fixture
+def credential_resolver(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls]:
+    """Run the real resolver, repository and codec; isolate plugin and key-store I/O."""
+    declaration = provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
+    declaration.credentials_schema = [ProviderConfig(type=ProviderConfigType.SECRET_INPUT, name="integration_secret")]
+    plugin_provider = PluginDatasourceProviderEntity(
+        provider="notion_datasource",
+        plugin_unique_identifier="langgenius/notion_datasource:1.0.0",
+        plugin_id="langgenius/notion_datasource",
+        declaration=declaration,
+    )
+
+    def fetch_provider(
+        self: PluginDatasourceManager, tenant_id: str, provider_id: str
+    ) -> PluginDatasourceProviderEntity:
+        del self
+        assert tenant_id == "workspace-1"
+        assert provider_id == "langgenius/notion_datasource/notion_datasource"
+        return plugin_provider
+
+    def decrypt_token(tenant_id: str, token: str) -> str:
+        assert (tenant_id, token) == ("workspace-1", "encrypted-secret")
+        return "secret"
+
+    monkeypatch.setattr(PluginDatasourceManager, "fetch_datasource_provider", fetch_provider)
+    monkeypatch.setattr(encrypter, "decrypt_token", decrypt_token)
+    resolver = build_data_source_credentials(database_client=sqlite_session_factory).actor
+    resolve = resolver.resolve
+    calls: CredentialCalls = []
+
+    def resolve_and_record(
+        *, workspace_id: str, actor_id: str, credential_id: str, provider: str, plugin_id: str
+    ) -> dict[str, object]:
+        calls.append((workspace_id, actor_id, credential_id, provider, plugin_id))
+        return resolve(
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            credential_id=credential_id,
+            provider=provider,
+            plugin_id=plugin_id,
+        )
+
+    monkeypatch.setattr(resolver, "resolve", resolve_and_record)
+    return resolver, calls
 
 
-def _runtime(messages: Sequence[OnlineDocumentPagesMessage] = ()) -> Mock:
-    runtime = create_autospec(OnlineDocumentDatasourcePlugin, instance=True)
-    runtime.runtime = DatasourceRuntime(tenant_id="workspace-1")
-    runtime.get_online_document_pages.return_value = iter(messages)
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
-    return runtime
+def _store_credentials(session_factory: sessionmaker[Session], credentials: dict[str, object]) -> None:
+    record = DatasourceProvider(
+        tenant_id="workspace-1",
+        user_id="actor-1",
+        name="Notion",
+        provider="notion_datasource",
+        plugin_id="langgenius/notion_datasource",
+        auth_type="api-key",
+        encrypted_credentials=credentials,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    record.id = "credential-1"
+    with session_factory.begin() as session:
+        session.add(record)
+
+
+def _runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    messages: Sequence[OnlineDocumentPagesMessage] = (),
+) -> tuple[OnlineDocumentDatasourcePlugin, list[tuple[str, dict[str, object], str]]]:
+    runtime = OnlineDocumentDatasourcePlugin(
+        entity=datasource_entity("notion_datasource"),
+        runtime=DatasourceRuntime(tenant_id="workspace-1"),
+        tenant_id="workspace-1",
+        icon="icon.svg",
+        plugin_unique_identifier="langgenius/notion_datasource",
+    )
+    calls: list[tuple[str, dict[str, object], str]] = []
+
+    def get_online_document_pages(
+        user_id: str,
+        datasource_parameters: dict[str, object],
+        provider_type: str,
+    ) -> Generator[OnlineDocumentPagesMessage]:
+        calls.append((user_id, datasource_parameters, provider_type))
+        yield from messages
+
+    monkeypatch.setattr(runtime, "get_online_document_pages", get_online_document_pages)
+    return runtime, calls
+
+
+def _runtime_loader(runtime: OnlineDocumentDatasourcePlugin) -> Callable[..., object]:
+    def load_runtime(
+        *,
+        provider_id: str,
+        datasource_name: str,
+        tenant_id: str,
+        datasource_type: DatasourceProviderType,
+    ) -> object:
+        del provider_id, datasource_name, tenant_id, datasource_type
+        return runtime
+
+    return load_runtime
+
+
+def _unexpected_runtime_loader(
+    *,
+    provider_id: str,
+    datasource_name: str,
+    tenant_id: str,
+    datasource_type: DatasourceProviderType,
+) -> object:
+    del provider_id, datasource_name, tenant_id, datasource_type
+    raise AssertionError("runtime loader should not be called")
 
 
 def _page(page_id: str, *, with_icon: bool = True, page_type: str = "page") -> OnlineDocumentPage:
@@ -49,8 +157,13 @@ def _page(page_id: str, *, with_icon: bool = True, page_type: str = "page") -> O
     )
 
 
-def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
-    runtime = _runtime(
+def test_list_authorized_pages_groups_paginated_results_by_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    credential_resolver: tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls],
+) -> None:
+    runtime, runtime_calls = _runtime(
+        monkeypatch,
         messages=(
             OnlineDocumentPagesMessage(
                 result=[
@@ -81,10 +194,22 @@ def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
                     ),
                 ]
             ),
-        )
+        ),
     )
-    resolver = _credentials({"integration_secret": "secret"})
-    loader = Mock(return_value=runtime)
+    _store_credentials(sqlite_session_factory, {"integration_secret": "encrypted-secret"})
+    resolver, credential_calls = credential_resolver
+    loader_calls: list[tuple[str, str, str, DatasourceProviderType]] = []
+
+    def loader(
+        *,
+        provider_id: str,
+        datasource_name: str,
+        tenant_id: str,
+        datasource_type: DatasourceProviderType,
+    ) -> object:
+        loader_calls.append((provider_id, datasource_name, tenant_id, datasource_type))
+        return runtime
+
     gateway = PluginNotionSourceGateway(credentials=resolver, runtime_loader=loader)
 
     workspaces = gateway.list_authorized_pages(
@@ -98,28 +223,28 @@ def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
     assert workspaces[0].pages[0].page_icon.emoji == "📄"
     assert workspaces[1].pages[0].page_icon is None
     assert runtime.runtime.credentials == {"integration_secret": "secret"}
-    runtime.get_online_document_pages.assert_called_once_with(
-        user_id="actor-1",
-        datasource_parameters={},
-        provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
-    )
-    resolver.resolve.assert_called_once_with(
-        workspace_id="workspace-1",
-        actor_id="actor-1",
-        credential_id="credential-1",
-        provider="notion_datasource",
-        plugin_id="langgenius/notion_datasource",
-    )
-    loader.assert_called_once_with(
-        provider_id="langgenius/notion_datasource/notion_datasource",
-        datasource_name="notion_datasource",
-        tenant_id="workspace-1",
-        datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
-    )
+    assert runtime_calls == [("actor-1", {}, DatasourceProviderType.ONLINE_DOCUMENT)]
+    assert credential_calls == [
+        ("workspace-1", "actor-1", "credential-1", "notion_datasource", "langgenius/notion_datasource")
+    ]
+    assert loader_calls == [
+        (
+            "langgenius/notion_datasource/notion_datasource",
+            "notion_datasource",
+            "workspace-1",
+            DatasourceProviderType.ONLINE_DOCUMENT,
+        )
+    ]
 
 
-def test_list_authorized_pages_skips_unknown_page_types() -> None:
-    runtime = _runtime(
+def test_list_authorized_pages_skips_unknown_page_types(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    credential_resolver: tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls],
+) -> None:
+    _store_credentials(sqlite_session_factory, {"integration_secret": "encrypted-secret"})
+    runtime, _ = _runtime(
+        monkeypatch,
         messages=(
             OnlineDocumentPagesMessage(
                 result=[
@@ -132,11 +257,11 @@ def test_list_authorized_pages_skips_unknown_page_types() -> None:
                     )
                 ]
             ),
-        )
+        ),
     )
     gateway = PluginNotionSourceGateway(
-        credentials=_credentials({"integration_secret": "secret"}),
-        runtime_loader=Mock(return_value=runtime),
+        credentials=credential_resolver[0],
+        runtime_loader=_runtime_loader(runtime),
     )
 
     workspaces = gateway.list_authorized_pages(
@@ -146,13 +271,52 @@ def test_list_authorized_pages_skips_unknown_page_types() -> None:
     assert [page.page_id for page in workspaces[0].pages] == ["known"]
 
 
-def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
-    factory = create_autospec(NotionExtractor, spec_set=True)
-    factory.return_value.extract.return_value = [Document(page_content="one"), Document(page_content="two")]
+def test_preview_requires_secret_and_passes_it_only_to_extractor(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    credential_resolver: tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls],
+) -> None:
+    _store_credentials(sqlite_session_factory, {"integration_secret": "encrypted-secret"})
+    extractor_calls: list[NotionExtractor] = []
+    factory_calls: list[tuple[str, str, str, str, Callable[[], str], str]] = []
+
+    def extract(extractor: NotionExtractor) -> list[Document]:
+        extractor_calls.append(extractor)
+        return [Document(page_content="one"), Document(page_content="two")]
+
+    def extractor_factory(
+        *,
+        notion_workspace_id: str,
+        notion_obj_id: str,
+        notion_page_type: str,
+        notion_access_token: str,
+        notion_token_loader: Callable[[], str],
+        tenant_id: str,
+    ) -> NotionExtractor:
+        factory_calls.append(
+            (
+                notion_workspace_id,
+                notion_obj_id,
+                notion_page_type,
+                notion_access_token,
+                notion_token_loader,
+                tenant_id,
+            )
+        )
+        return NotionExtractor(
+            notion_workspace_id=notion_workspace_id,
+            notion_obj_id=notion_obj_id,
+            notion_page_type=notion_page_type,
+            notion_access_token=notion_access_token,
+            notion_token_loader=notion_token_loader,
+            tenant_id=tenant_id,
+        )
+
+    monkeypatch.setattr(NotionExtractor, "extract", extract)
     gateway = PluginNotionSourceGateway(
-        credentials=_credentials({"integration_secret": "secret"}),
-        runtime_loader=Mock(),
-        extractor_factory=factory,
+        credentials=credential_resolver[0],
+        runtime_loader=_unexpected_runtime_loader,
+        extractor_factory=extractor_factory,
     )
 
     content = gateway.preview_page(
@@ -164,18 +328,26 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
     )
 
     assert content == "one\ntwo"
-    extractor_args = factory.call_args.kwargs
-    assert extractor_args["notion_obj_id"] == "page-1"
-    assert extractor_args["notion_page_type"] == "page"
-    assert extractor_args["notion_access_token"] == "secret"
-    assert extractor_args["notion_token_loader"]() == "secret"
-    assert extractor_args["tenant_id"] == "workspace-1"
+    assert len(extractor_calls) == 1
+    assert type(extractor_calls[0]) is NotionExtractor
+    assert len(factory_calls) == 1
+    workspace_id, object_id, page_type, access_token, token_loader, tenant_id = factory_calls[0]
+    assert workspace_id == ""
+    assert object_id == "page-1"
+    assert page_type == "page"
+    assert access_token == "secret"
+    assert token_loader() == "secret"
+    assert tenant_id == "workspace-1"
 
 
-def test_preview_fails_closed_when_secret_is_missing() -> None:
+def test_preview_fails_closed_when_secret_is_missing(
+    sqlite_session_factory: sessionmaker[Session],
+    credential_resolver: tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls],
+) -> None:
+    _store_credentials(sqlite_session_factory, {})
     gateway = PluginNotionSourceGateway(
-        credentials=_credentials({}),
-        runtime_loader=Mock(),
+        credentials=credential_resolver[0],
+        runtime_loader=_unexpected_runtime_loader,
     )
 
     with pytest.raises(NotionImportCredentialUnavailableError):
@@ -188,15 +360,18 @@ def test_preview_fails_closed_when_secret_is_missing() -> None:
         )
 
 
-def test_gateway_translates_credential_infrastructure_failure() -> None:
+def test_gateway_translates_credential_infrastructure_failure(
+    credential_resolver: tuple[ActorAwareDatasourceCredentialGateway, CredentialCalls],
+) -> None:
     gateway = PluginNotionSourceGateway(
-        credentials=_credentials({}, error=DatasourceCredentialNotFoundError()),
-        runtime_loader=Mock(),
+        credentials=credential_resolver[0],
+        runtime_loader=_unexpected_runtime_loader,
     )
 
-    with pytest.raises(NotionImportCredentialUnavailableError):
+    with pytest.raises(NotionImportCredentialUnavailableError) as error:
         gateway.list_authorized_pages(
             workspace_id="workspace-1",
             actor_id="actor-1",
             credential_id="credential-1",
         )
+    assert isinstance(error.value.__cause__, DatasourceCredentialNotFoundError)

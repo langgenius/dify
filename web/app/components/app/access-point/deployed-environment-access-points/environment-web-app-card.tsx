@@ -2,20 +2,19 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CustomizeModal from '@/app/components/app/overview/customize'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
@@ -61,11 +60,12 @@ export function EnvironmentWebAppCard({
     'navigation',
   ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)
-  const [showCustomize, setShowCustomize] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const params = {
@@ -189,17 +189,12 @@ export function EnvironmentWebAppCard({
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
         actions={
           <>
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
+            <CustomizeDialog
+              appId={appId}
+              api_base_url={apiQuery.data?.base_url ?? ''}
+              mode={appInfo?.mode}
               disabled={!actionsAvailable || !apiQuery.isSuccess || !canManageAccessPoint}
-              onClick={() => setShowCustomize(true)}
-            >
-              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-              {t(($) => $['overview.appInfo.customize.entry'], {
-                ns: 'appOverview',
-              })}
-            </Button>
+            />
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
@@ -257,13 +252,6 @@ export function EnvironmentWebAppCard({
           onSave={actions.saveSiteConfig}
         />
       )}
-      <CustomizeModal
-        isShow={showCustomize}
-        onClose={() => setShowCustomize(false)}
-        appId={appId}
-        api_base_url={apiQuery.data?.base_url ?? ''}
-        mode={appInfo?.mode}
-      />
       {showAccess && (
         <EnvironmentAccessControl
           appId={appId}
@@ -286,7 +274,7 @@ export function EnvironmentWebAppCard({
               })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -296,7 +284,7 @@ export function EnvironmentWebAppCard({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -71,7 +71,6 @@ const ConditionNumber = ({
         >
           <NumberFieldGroup className="border-0 bg-transparent hover:bg-transparent">
             <NumberFieldInput
-              className="rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
               inputMode="decimal"
               aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
                 ns: 'workflowModels',

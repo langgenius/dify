@@ -177,16 +177,16 @@ it('retains a caller action across upserts and promise failure', async () => {
       })
       .catch(() => {})
   })
-  const failedToast = screen.getByRole('dialog', { name: 'Loading' })
+  const failedToast = screen.getByRole('dialog', { name: 'Failed' })
   await user.click(
     within(failedToast).getByRole('button', { name: 'common.operation.copyErrorDetails' }),
   )
-  expect(copy).toHaveBeenCalledWith('Loading\nFailed')
+  expect(copy).toHaveBeenCalledWith('Failed')
   await user.click(screen.getByRole('button', { name: 'Details' }))
   expect(retry).toHaveBeenCalledTimes(2)
 })
 
-it('copies the resolved string description without retaining loading text', async () => {
+it('copies the resolved string title without retaining loading text', async () => {
   const { toast, user } = setup()
   await act(async () => {
     await toast
@@ -198,7 +198,7 @@ it('copies the resolved string description without retaining loading text', asyn
       .catch(() => {})
   })
   expect(screen.queryByText('Loading')).not.toBeInTheDocument()
-  expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Failed' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   expect(copy).toHaveBeenCalledWith('Failed')
 })

@@ -30,7 +30,7 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
-from libs.helper import dump_response, extract_remote_ip
+from libs.helper import EmailStr, dump_response, extract_remote_ip
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.errors import workspace as workspace_errors
@@ -43,7 +43,7 @@ from services.errors.workspace import (
 
 
 class MemberInvitePayload(BaseModel):
-    emails: list[str] = Field(min_length=1)
+    emails: list[EmailStr] = Field(min_length=1)
     role: str
     language: str | None = None
 
@@ -172,7 +172,7 @@ class MemberInviteEmailApi(Resource):
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @console_ns.response(
         HTTPStatus.BAD_REQUEST,
-        "Invalid role or workspace member limit exceeded",
+        "Invalid email, role, or workspace member limit exceeded",
         console_ns.models[MemberInviteErrorResponse.__name__],
     )
     @console_account_admission()

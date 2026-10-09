@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import event, select
@@ -351,7 +351,7 @@ def test_bulk_invitation_counts_new_accounts_and_members_before_writing(
         "get_license",
         Mock(return_value=LicenseModel(seats=LicenseLimitationModel(enabled=True, size=3, limit=3))),
     )
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     gateway = WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
     workspace_id, owner_id, _ = members
     account_domain.accounts.create_account("outside@example.com", "Outside", "en-US")
@@ -400,7 +400,7 @@ def test_bulk_invitation_retains_partial_results_under_workspace_lock(
 
 @pytest.fixture
 def owner_transfer(account_domain: AccountDomain) -> tuple[WorkspaceOwnerTransferService, Mock]:
-    challenges = Mock(spec=OwnerTransferGateway)
+    challenges = create_autospec(OwnerTransferGateway, instance=True)
     challenges.is_ip_limited.return_value = False
     challenges.is_verification_limited.return_value = False
     challenges.read_token.return_value = OwnerTransferToken("owner@example.com", "123456")

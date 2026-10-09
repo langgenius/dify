@@ -6,17 +6,23 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 
 from constants import HIDDEN_VALUE
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_account_admission
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
-from models.api_based_extension import APIBasedExtension
-from services.api_based_extension_service import APIBasedExtensionService
+from machinery.context import RequestContext
+from services.api_based_extension_application_service import (
+    APIBasedExtensionError,
+    APIBasedExtensionInput,
+    APIBasedExtensionRecord,
+    APIBasedExtensionUpdate,
+)
 from services.code_based_extension_service import CodeBasedExtensionService
 
 from ..common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from . import console_ns
-from .wraps import account_initialization_required, model_validate, setup_required, with_current_tenant_id
+from .wraps import account_initialization_required, model_validate, setup_required
 
 
 class CodeBasedExtensionQuery(BaseModel):
@@ -77,6 +83,10 @@ register_response_schema_models(
 )
 
 
+def _extension_response(extension: APIBasedExtensionRecord) -> dict[str, Any]:
+    return dump_response(APIBasedExtensionResponse, extension)
+
+
 @console_ns.route("/code-based-extension")
 class CodeBasedExtensionAPI(Resource):
     @console_ns.doc("get_code_based_extension")
@@ -103,41 +113,32 @@ class APIBasedExtensionAPI(Resource):
     @console_ns.doc("get_api_based_extensions")
     @console_ns.doc(description="Get all API-based extensions for current tenant")
     @console_ns.response(200, "Success", console_ns.models[APIBasedExtensionListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str):
-        return dump_response(
-            APIBasedExtensionListResponse,
-            APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id, session=db.session()),
-        )
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        extensions = application_services().api_based_extensions.list_extensions(request_context)
+        return dump_response(APIBasedExtensionListResponse, extensions)
 
     @console_ns.doc("create_api_based_extension")
     @console_ns.doc(description="Create a new API-based extension")
     @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(201, "Extension created successfully", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
+    @console_account_admission()
     @model_validate(APIBasedExtensionPayload)
-    def post(self, req_data: APIBasedExtensionPayload, current_tenant_id: str):
-        extension_data = APIBasedExtension(
-            tenant_id=current_tenant_id,
-            name=req_data.name,
-            api_endpoint=req_data.api_endpoint,
-            api_key=req_data.api_key,
-        )
+    def post(self, req_data: APIBasedExtensionPayload, request_context: RequestContext):
+        try:
+            extension = application_services().api_based_extensions.create_extension(
+                request_context,
+                APIBasedExtensionInput(
+                    name=req_data.name,
+                    api_endpoint=req_data.api_endpoint,
+                    api_key=req_data.api_key,
+                ),
+            )
+        except APIBasedExtensionError as error:
+            # Legacy clients receive the 400 `invalid_param` envelope for every extension failure.
+            raise ValueError(str(error)) from None
 
-        extension = APIBasedExtensionService.save(extension_data, session=db.session())
-        return APIBasedExtensionResponse(
-            id=extension.id,
-            name=extension.name,
-            api_endpoint=extension.api_endpoint,
-            api_key=req_data.api_key,
-            created_at=to_timestamp(extension.created_at),
-        ).model_dump(mode="json"), 201
+        return _extension_response(extension), 201
 
 
 @console_ns.route("/api-based-extension/<uuid:id>")
@@ -146,70 +147,48 @@ class APIBasedExtensionDetailAPI(Resource):
     @console_ns.doc(description="Get API-based extension by ID")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.response(200, "Success", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, id: UUID):
-        api_based_extension_id = str(id)
+    @console_account_admission()
+    def get(self, request_context: RequestContext, id: UUID):
+        try:
+            extension = application_services().api_based_extensions.get_extension(request_context, str(id))
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
-        return dump_response(
-            APIBasedExtensionResponse,
-            APIBasedExtensionService.get_with_tenant_id(
-                current_tenant_id, api_based_extension_id, session=db.session()
-            ),
-        )
+        return _extension_response(extension)
 
     @console_ns.doc("update_api_based_extension")
     @console_ns.doc(description="Update API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(200, "Extension updated successfully", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
+    @console_account_admission()
     @model_validate(APIBasedExtensionPayload)
-    def post(self, req_data: APIBasedExtensionPayload, current_tenant_id: str, id: UUID):
-        api_based_extension_id = str(id)
+    def post(self, req_data: APIBasedExtensionPayload, request_context: RequestContext, id: UUID):
+        try:
+            extension = application_services().api_based_extensions.update_extension(
+                request_context,
+                str(id),
+                APIBasedExtensionUpdate(
+                    name=req_data.name,
+                    api_endpoint=req_data.api_endpoint,
+                    # The console echoes the masked key back; keep the stored key when it is sent unchanged.
+                    api_key=None if req_data.api_key == HIDDEN_VALUE else req_data.api_key,
+                ),
+            )
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            current_tenant_id, api_based_extension_id, session=db.session()
-        )
-
-        api_key_for_response = extension_data_from_db.api_key
-
-        extension_data_from_db.name = req_data.name
-        extension_data_from_db.api_endpoint = req_data.api_endpoint
-
-        if req_data.api_key != HIDDEN_VALUE:
-            extension_data_from_db.api_key = req_data.api_key
-            api_key_for_response = req_data.api_key
-
-        APIBasedExtensionService.save(extension_data_from_db, session=db.session())
-        return APIBasedExtensionResponse(
-            id=extension_data_from_db.id,
-            name=extension_data_from_db.name,
-            api_endpoint=extension_data_from_db.api_endpoint,
-            api_key=api_key_for_response,
-            created_at=to_timestamp(extension_data_from_db.created_at),
-        ).model_dump(mode="json")
+        return _extension_response(extension)
 
     @console_ns.doc("delete_api_based_extension")
     @console_ns.doc(description="Delete API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.response(204, "Extension deleted successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def delete(self, current_tenant_id: str, id: UUID):
-        api_based_extension_id = str(id)
-
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            current_tenant_id, api_based_extension_id, session=db.session()
-        )
-
-        APIBasedExtensionService.delete(extension_data_from_db, session=db.session())
+    @console_account_admission()
+    def delete(self, request_context: RequestContext, id: UUID):
+        try:
+            application_services().api_based_extensions.delete_extension(request_context, str(id))
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
         return "", 204
