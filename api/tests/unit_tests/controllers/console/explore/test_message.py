@@ -2,10 +2,10 @@
 
 import json
 from collections.abc import Generator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, override
 from uuid import uuid4
 
 import pytest
@@ -21,13 +21,15 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp
 from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating
-from models.model import Conversation, Message, MessageFeedback
+from models.model import AppModelConfig, Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
-from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from repositories.message_repository import MessageRepository
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
-from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
+from services.installed_app_generation_service import GenerationResponse
 from services.installed_app_message_service import InstalledAppMessageService, MessageFeedbackEvent
+from services.message_more_like_this_service import (MessageMoreLikeThisService, MoreLikeThisGenerator, MoreLikeThisResponse, MoreLikeThisSource)
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -45,12 +47,12 @@ _BLOCKING: dict[str, object] = {"answer": "你好", "metadata": {}, "usage": Non
 @dataclass(frozen=True)
 class _InstalledAppServices:
     messages: InstalledAppMessageService
-    generation: InstalledAppGenerationService
 
 
 @dataclass(frozen=True)
 class _Services:
     installed_apps: _InstalledAppServices
+    message_more_like_this: "MessageMoreLikeThisService | _Messages"
 
 
 @dataclass
@@ -62,7 +64,7 @@ class _Messages:
     extras: dict[str, list[dict[str, JsonValue]]] = field(default_factory=dict)
     extra_calls: list[list[str]] = field(default_factory=list)
     feedback_events: list[MessageFeedbackEvent] = field(default_factory=list)
-    generation_calls: list[tuple[str, str, str, bool]] = field(default_factory=list)
+    generation_calls: list[tuple[str, str, MessageActor, str, bool]] = field(default_factory=list)
     generation_response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING))
     external_error: Exception | None = None
 
@@ -84,16 +86,17 @@ class _Messages:
         self.feedback_events.append(feedback)
 
     def generate(
-        self, *, app_id: str, account_id: str, args: Mapping[str, object], streaming: bool
-    ) -> GenerationResponse:
-        pytest.fail(f"Unexpected normal generation: {app_id=}, {account_id=}, {args=}, {streaming=}")
-
-    def generate_more_like_this(
-        self, *, app_id: str, account_id: str, message_id: str, streaming: bool
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        actor: MessageActor,
+        message_id: str,
+        streaming: bool,
     ) -> GenerationResponse:
         self.assert_sessions_closed()
         self.assert_unused()
-        self.generation_calls.append((app_id, account_id, message_id, streaming))
+        self.generation_calls.append((app_id, app_owner_tenant_id, actor, message_id, streaming))
         if self.external_error is not None:
             raise self.external_error
         return self.generation_response
@@ -146,10 +149,8 @@ def messages(
                 get_extra_contents=state.get_extra_contents,
                 emit_feedback=state.emit_feedback,
             ),
-            generation=InstalledAppGenerationService(
-                usage=SQLAlchemyInstalledAppRepository(session_factory=factory), runtime=state
-            ),
         ),
+        message_more_like_this=state,
     )
     monkeypatch.setattr(module, "application_services", lambda: state.services)
     for resource, suffix in (
@@ -486,8 +487,81 @@ def test_more_like_this_preserves_blocking_response_and_does_not_update_usage(me
         "Content-Length": str(len(response.data)),
     }
     assert messages.generation_calls == [
-        (messages.harness.target_app.id, messages.harness.account.id, message_id, False)
+        (
+            messages.harness.target_app.id,
+            messages.harness.target_app.tenant_id,
+            MessageAccount(account_id=messages.harness.account.id),
+            message_id,
+            False,
+        )
     ]
+    messages.assert_unused()
+
+
+@pytest.mark.parametrize(
+    ("current", "field", "value"),
+    [
+        (True, "more_like_this", '{"secret":"private-config-value"'),
+        (True, "more_like_this", '["private-config-value"]'),
+        (False, "model", '{"secret":"private-config-value"'),
+        (False, "model", '["private-config-value"]'),
+        (False, "model", '{"completion_params":["private-config-value"]}'),
+        (False, "model", None),
+    ],
+    ids=["feature-json", "feature-shape", "model-json", "model-shape", "parameter-shape", "missing-model"],
+)
+def test_more_like_this_corrupt_persisted_configuration_returns_app_unavailable(
+    messages: _Messages, current: bool, field: str, value: str | None
+) -> None:
+    """None represents a missing model payload in an existing configuration row."""
+
+    class NoGeneration(MoreLikeThisGenerator):
+        @override
+        def generate(
+            self,
+            *,
+            source: MoreLikeThisSource,
+            actor: MessageActor,
+            model_config: dict[str, JsonValue],
+            streaming: bool,
+        ) -> MoreLikeThisResponse:
+            pytest.fail("Invalid persisted configuration must not reach model generation")
+
+    _set_mode(messages, AppMode.COMPLETION)
+    conversation = _conversation(messages)
+    message = _message(messages, conversation)
+    current_config = AppModelConfig(app_id=messages.harness.target_app.id, more_like_this='{"enabled":true}')
+    historical_config = AppModelConfig(app_id=messages.harness.target_app.id, model='{"name":"historical-model"}')
+    with messages.factory.begin() as session:
+        session.add_all([messages.harness.account, current_config, historical_config])
+        session.flush()
+        session.execute(
+            update(App).where(App.id == messages.harness.target_app.id).values(app_model_config_id=current_config.id)
+        )
+        session.execute(
+            update(Conversation)
+            .where(Conversation.id == conversation.id)
+            .values(app_model_config_id=historical_config.id)
+        )
+        config_id = current_config.id if current else historical_config.id
+        session.execute(update(AppModelConfig).where(AppModelConfig.id == config_id).values({field: value}))
+    messages.services = replace(
+        messages.services,
+        message_more_like_this=MessageMoreLikeThisService(
+            repository=MessageRepository(session_factory=messages.factory), generator=NoGeneration()
+        ),
+    )
+
+    response = messages.request("more-like-this", message_id=message.id)
+
+    _error(
+        response,
+        status=400,
+        code="app_unavailable",
+        message="App unavailable, please check your app configurations.",
+    )
+    assert b"private-config-value" not in response.data
+    messages.assert_sessions_closed()
     messages.assert_unused()
 
 

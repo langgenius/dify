@@ -544,9 +544,9 @@ Generate a new completion similar to an existing message (completion apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled |  |
+| 400 | Bad Request - Not a completion app, app unavailable, or model invocation failed |  |
 | 401 | Unauthorized |  |
-| 403 | Forbidden |  |
+| 403 | Forbidden - Access denied or more-like-this disabled |  |
 | 404 | Message Not Found |  |
 | 500 | Internal Server Error |  |
 

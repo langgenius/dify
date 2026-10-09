@@ -48,6 +48,7 @@ from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -57,8 +58,11 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_generation_service import InstalledAppNotCompletionError
 from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
+from services.message_more_like_this_service import (
+    MoreLikeThisConfigNotFoundError,
+    MoreLikeThisNotCompletionError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +87,13 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             return view(*args, **kwargs)
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
-        except AppDefinitionUnavailableError as error:
+        except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
         except (AccountNotFoundError, MessageActorNotFoundError) as error:
             raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
-        except InstalledAppNotCompletionError as error:
+        except MoreLikeThisNotCompletionError as error:
             raise NotCompletionAppError() from error
         except MessageNotExistsError as error:
             raise MessageNotFoundHTTPError() from error
@@ -190,9 +194,12 @@ class MessageMoreLikeThisApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> Response:
-        response = application_services().installed_apps.generation.generate_more_like_this(
-            installed_app=installed_app,
-            account_id=request_context.account_id,
+        if installed_app.app_mode != "completion":
+            raise NotCompletionAppError()
+        response = application_services().message_more_like_this.generate(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             message_id=str(message_id),
             streaming=query.response_mode == "streaming",
         )

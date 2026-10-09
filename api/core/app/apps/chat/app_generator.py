@@ -238,7 +238,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
-                user=user,
                 stream=streaming,
             )
 

@@ -3,14 +3,13 @@ from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
+from flask import Response
 from pydantic import BaseModel, Field, TypeAdapter
-from sqlalchemy.orm import Session
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.console.app.wraps import with_session
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -25,7 +24,6 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.wraps import WebApiResource
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -33,19 +31,24 @@ from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.app_generate_service import AppGenerateService
 from services.entities.message_entities import MessageEndUser
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
+)
+from services.message_more_like_this_service import (
+    MoreLikeThisConfigNotFoundError,
+    MoreLikeThisNotCompletionError,
 )
 from services.message_service import MessageService
 
@@ -165,26 +168,24 @@ class MessageMoreLikeThisApi(WebApiResource):
     @web_ns.doc(params=query_params_from_model(MessageMoreLikeThisQuery))
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request - Not a completion app or feature disabled",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Message Not Found",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request - Not a completion app, app unavailable, or model invocation failed",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden - Access denied or more-like-this disabled",
+            HTTPStatus.NOT_FOUND: "Message Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    @with_session
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[GeneratedAppResponse.__name__])
     @model_validate(MessageMoreLikeThisQuery)
     def get(
         self,
         query: MessageMoreLikeThisQuery,
-        session: Session,
         app_model: App,
         end_user: EndUser,
         message_id: UUID,
-    ):
-        if app_model.mode != "completion":
+    ) -> Response:
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
         message_id_str = str(message_id)
@@ -192,17 +193,22 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = query.response_mode == "streaming"
 
         try:
-            response = AppGenerateService.generate_more_like_this(
-                session=session,
-                app_model=app_model,
-                user=end_user,
+            response = application_services().message_more_like_this.generate(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                actor=MessageEndUser(end_user_id=end_user.id),
                 message_id=message_id_str,
-                invoke_from=InvokeFrom.WEB_APP,
                 streaming=streaming,
             )
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MoreLikeThisNotCompletionError as error:
+            raise NotCompletionAppError() from error
         except MessageNotExistsError:
             raise NotFoundError("Message Not Exists.")
         except MoreLikeThisDisabledError:
@@ -215,8 +221,8 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
+        except (BaseHTTPException, ValueError):
+            raise
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

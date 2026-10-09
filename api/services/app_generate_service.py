@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -477,35 +477,6 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-
-    @classmethod
-    def generate_more_like_this(
-        cls,
-        app_model: App,
-        user: Account | EndUser,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-        streaming: bool = True,
-    ) -> Mapping | Generator:
-        """
-        Generate more like this
-        :param app_model: app model
-        :param user: user
-        :param message_id: message id
-        :param invoke_from: invoke from
-        :param streaming: streaming
-        :return:
-        """
-        return CompletionAppGenerator().generate_more_like_this(
-            session=session,
-            app_model=app_model,
-            message_id=message_id,
-            user=user,
-            invoke_from=invoke_from,
-            stream=streaming,
-        )
 
     @classmethod
     def _get_workflow(

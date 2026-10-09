@@ -44,8 +44,6 @@ ignore_imports =
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
     core.app.apps.chat.app_generator -> services.conversation_service
     core.app.apps.common.workflow_response_converter -> services.variable_truncator
-    core.app.apps.completion.app_generator -> services.errors.app
-    core.app.apps.completion.app_generator -> services.errors.message
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
@@ -985,6 +983,20 @@ forbidden_modules =
     services.agent.runtime_config_service
     services.agent.roster_service
 allow_indirect_imports = True
+
+[importlinter:contract:message-more-like-this-boundary]
+name = More-like-this policy is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.message_more_like_this_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
 
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral
