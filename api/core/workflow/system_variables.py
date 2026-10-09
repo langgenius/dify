@@ -215,9 +215,16 @@ def inject_default_system_variable_mappings(
     node_type: str,
     node_data: object,
     variable_mapping: Mapping[str, Sequence[str]],
+    supports_conversation: bool,
 ) -> Mapping[str, Sequence[str]]:
-    """Add workflow-owned implicit sys mappings that `graphon` should not know about."""
+    """Add workflow-owned implicit sys mappings that `graphon` should not know about.
 
+    `supports_conversation` is False for apps without conversations, such as Workflow apps.
+    Those apps never provide `sys.query`, so the implicit query mapping is skipped.
+    """
+
+    if not supports_conversation:
+        return variable_mapping
     if node_type != BuiltinNodeTypes.LLM or getattr(node_data, "memory", None) is None:
         return variable_mapping
 
