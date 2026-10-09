@@ -81,6 +81,25 @@ class AppTaskControlService:
         set_app_task_stop_flag(task_id, redis=self._redis_client)
         send_abort_command(task_id, redis=self._redis_client)
 
+    def stop_workflow_task(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> bool:
+        """Apply durable workflow admission while retaining this service's Redis transport."""
+        return AppTaskService.stop_workflow_task(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            task_id=task_id,
+            app_mode=app_mode,
+            owner=owner,
+            redis=self._redis_client,
+        )
+
 
 class AppTaskService:
     """Compatibility entry point for callers outside ApplicationServices."""
@@ -93,11 +112,13 @@ class AppTaskService:
         task_id: str,
         app_mode: AppMode,
         owner: tuple[CreatorUserRole, str] | None,
+        redis: RedisClientWrapper | None = None,
     ) -> bool:
         """Stop a persisted pause, or signal its currently executing attempt.
 
         A paused task has no engine consuming Redis commands. Its durable
         transition and form invalidation must complete before acknowledging stop.
+        Omitted Redis uses the compatibility transport; injected callers supply theirs.
         """
         try:
             task_id = str(UUID(task_id))
@@ -111,7 +132,9 @@ class AppTaskService:
         if run is not None and run.status == WorkflowExecutionStatus.RUNNING:
             # Resume has claimed the pause, but may not have opened its queue.
             # The repository has already checked the complete app/user owner.
-            AppTaskControlService(redis_client=redis_client).stop_workflow_task_no_user_check(task_id=task_id)
+            AppTaskControlService(
+                redis_client=redis if redis is not None else redis_client
+            ).stop_workflow_task_no_user_check(task_id=task_id)
             return True
         if run is None:
             return False

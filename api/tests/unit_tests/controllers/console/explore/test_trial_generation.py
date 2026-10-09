@@ -30,6 +30,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
+from models.enums import CreatorUserRole
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -110,22 +111,29 @@ class _Tasks:
     calls: list[str] = field(default_factory=list)
     chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def stop_task(
-        self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode, tenant_id: str, app_id: str
-    ) -> None:
+    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode) -> None:
         assert invoke_from == InvokeFrom.EXPLORE
-        assert tenant_id
-        assert app_id
         self.chat_calls.append((task_id, user_id, app_mode))
 
     def stop_workflow_task(
-        self, *, task_id: str, tenant_id: str, app_id: str, app_mode: AppMode, owner: object
+        self,
+        *,
+        task_id: str,
+        tenant_id: str,
+        app_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
     ) -> None:
-        assert owner is None
         assert tenant_id
         assert app_id
-        assert app_mode == AppMode.WORKFLOW
-        self.calls.append(task_id)
+        if app_mode == AppMode.ADVANCED_CHAT:
+            assert owner is not None
+            assert owner[0] == CreatorUserRole.ACCOUNT
+            self.chat_calls.append((task_id, owner[1], app_mode))
+        else:
+            assert owner is None
+            assert app_mode == AppMode.WORKFLOW
+            self.calls.append(task_id)
 
 
 @dataclass(frozen=True)
@@ -218,8 +226,6 @@ def harness(
 
     for module in (trial_module, admission_module):
         monkeypatch.setattr(module, "application_services", lambda: services)
-    monkeypatch.setattr(trial_module.AppTaskService, "stop_task", services.app_tasks.stop_task)
-    monkeypatch.setattr(trial_module.AppTaskService, "stop_workflow_task", services.app_tasks.stop_workflow_task)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
     monkeypatch.setattr(login_module, "current_user", account)
     monkeypatch.setattr(login_module, "check_csrf_token", csrf)
