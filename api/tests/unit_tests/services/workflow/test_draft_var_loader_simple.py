@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.file_reference import build_file_reference
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
@@ -18,6 +19,7 @@ from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.workflow.draft_variable_service import DraftVarLoader
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 
 
 def _persist_offloaded_variable(
@@ -68,6 +70,9 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, sqlite_engine: Engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
             load_file=Mock(),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_engine, expire_on_commit=False)
@@ -292,8 +297,7 @@ class TestDraftVarLoaderSimple:
 
         with (
             patch.object(draft_var_loader, "_load_file") as load_file,
-            patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
-            patch("models.workflow.build_file_from_stored_mapping", return_value=rebuilt_file) as rebuild_file,
+            patch.object(draft_var_loader._file_inputs, "restore", return_value=rebuilt_file) as rebuild_file,
         ):
             load_file.return_value = json.dumps(raw_file).encode()
 
@@ -304,7 +308,7 @@ class TestDraftVarLoaderSimple:
         assert variable.name == "test_file"
         assert variable.description == "test file description"
         assert variable.value == rebuilt_file
-        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
+        rebuild_file.assert_called_once_with(mapping=raw_file, tenant_id="test-tenant-id")
 
     @pytest.mark.parametrize(
         "sqlite_session",
@@ -348,7 +352,6 @@ class TestDraftVarLoaderSimple:
         offloaded_variable.selector = ["node2", "offloaded_var"]
 
         with (
-            patch("repositories.workflow.draft_variable_repository.StorageKeyLoader"),
             patch.object(
                 draft_var_loader,
                 "_load_offloaded_variable",
@@ -395,7 +398,6 @@ class TestDraftVarLoaderSimple:
         sqlite_session.commit()
 
         with (
-            patch("repositories.workflow.draft_variable_repository.StorageKeyLoader"),
             patch("services.workflow.draft_variable_service.ThreadPoolExecutor") as executor_cls,
         ):
             executor = executor_cls.return_value.__enter__.return_value
