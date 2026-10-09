@@ -219,7 +219,7 @@ def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) ->
     ]
 
 
-def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
+def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str]:
     """A run stream whose `human_input_required` events carry hints that target the submit route above."""
 
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)

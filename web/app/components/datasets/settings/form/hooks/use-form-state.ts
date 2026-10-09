@@ -68,7 +68,6 @@ export const useFormState = () => {
 
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
-  const [showIconPicker, setShowIconPicker] = useState(false)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
@@ -131,11 +130,6 @@ export const useFormState = () => {
   const memberList = useMemo<Member[]>(() => {
     return membersData?.accounts ?? []
   }, [membersData])
-
-  // Icon handlers
-  const handleOpenAppIconPicker = useCallback(() => {
-    setShowIconPicker(true)
-  }, [])
 
   const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     const newIconInfo: IconInfo = {
@@ -303,9 +297,6 @@ export const useFormState = () => {
 
     // Icon
     iconInfo,
-    showIconPicker,
-    setShowIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
 
     // Permission

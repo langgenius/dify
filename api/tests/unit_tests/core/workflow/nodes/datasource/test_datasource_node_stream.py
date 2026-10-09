@@ -49,7 +49,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
             return "icon"
 
         @classmethod
-        def stream_node_events(cls, **kwargs: object) -> Generator[StreamCompletedEvent, None, None]:
+        def stream_node_events(cls, **kwargs: object) -> Generator[StreamCompletedEvent]:
             assert kwargs["tenant_id"] == "t1"
             assert kwargs["credentials"] == {"integration_secret": "token"}
             yield from ()

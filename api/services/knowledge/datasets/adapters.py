@@ -44,7 +44,7 @@ _INDEXING_IN_PROGRESS = (
 
 
 @contextmanager
-def _translate_permissions() -> Generator[None, None, None]:
+def _translate_permissions() -> Generator[None]:
     try:
         yield
     except NoPermissionError as error:

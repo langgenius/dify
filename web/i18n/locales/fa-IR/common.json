@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "تولید ناموفق بود",
   "actionMsg.modifiedSuccessfully": "با موفقیت تغییر یافت",
   "actionMsg.modifiedUnsuccessfully": "تغییر ناموفق بود",
-  "actionMsg.noModification": "در حال حاضر تغییری وجود ندارد.",
   "actionMsg.payCancelled": "پرداخت لغو شد",
   "actionMsg.paySucceeded": "پرداخت موفق",
   "agentStrategyPage.description": "مشخص کنید AI Agent شما چگونه استدلال و تصمیم‌گیری می‌کند — از جمله نحوه انتخاب ابزارها، پردازش نتایج و حل خودکار مسائل.",

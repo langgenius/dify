@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Сгенерировано неудачно",
   "actionMsg.modifiedSuccessfully": "Изменено успешно",
   "actionMsg.modifiedUnsuccessfully": "Изменено неудачно",
-  "actionMsg.noModification": "На данный момент нет изменений.",
   "actionMsg.payCancelled": "Оплата отменена",
   "actionMsg.paySucceeded": "Оплата прошла успешно",
   "agentStrategyPage.description": "Определите, как ваш AI Agent рассуждает и принимает решения — как выбирает инструменты, обрабатывает результаты и автономно решает задачи.",

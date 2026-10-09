@@ -13,65 +13,35 @@ async function renderPicker() {
   )
   await screen.getByRole('button', { name: 'Time 1:30 PM' }).click()
   const hours = screen.getByRole('listbox', { name: 'Hour' })
+  await expect.element(hours.getByRole('option', { name: '1', exact: true })).toHaveFocus()
   return { screen, hours, column: hours.element(), changed }
 }
 
-// Intent events are synthetic; scroll geometry, focus, smooth settling and submission use Chromium.
-function moveGesture(column: Element, top: number, touch = false) {
-  column.dispatchEvent(touch ? new Event('touchstart') : new WheelEvent('wheel', { deltaY: top }))
+// Any scroll the column did not start is a selection; Chromium snaps it to a row.
+function scrollColumn(column: Element, top: number) {
   column.scrollTo({ top, behavior: 'instant' })
-  column.dispatchEvent(new Event('scroll'))
 }
 
-it('snaps a wheel gesture to the top and selects a draft without committing', async () => {
+it('selects the row a scroll rests on, moves focus there and does not commit', async () => {
   const { screen, hours, column, changed } = await renderPicker()
-  moveGesture(column, 67)
-  column.dispatchEvent(new Event('scrollend'))
-  await expect
-    .element(hours.getByRole('option', { name: '4', exact: true }))
-    .toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => column.scrollTop).toBe(78)
+  scrollColumn(column, 67)
+  const fourth = hours.getByRole('option', { name: '4', exact: true })
+  await expect.element(fourth).toHaveAttribute('aria-selected', 'true')
+  await expect.element(fourth).toHaveFocus()
+  expect(column.scrollTop).toBe(78)
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
   expect(changed).toHaveBeenCalledExactlyOnceWith('16:30')
 })
 
-it('highlights the nearest top row during touch without snapping or moving focus until release', async () => {
+it('keeps a clicked target selected throughout positioning after a scroll', async () => {
   const { screen, hours, column, changed } = await renderPicker()
-  const first = hours.getByRole('option', { name: '1', exact: true })
-  const selectedBackground = getComputedStyle(first.element()).backgroundColor
-  moveGesture(column, 67, true)
-  const fourth = hours.getByRole('option', { name: '4', exact: true })
-  await expect.element(fourth).toHaveAttribute('aria-selected', 'true')
-  expect(getComputedStyle(fourth.element()).backgroundColor).toBe(selectedBackground)
-  await expect.element(first).toHaveAttribute('aria-selected', 'false')
-  await expect.element(first).toHaveFocus()
-  expect(column.scrollTop).toBe(67)
-  column.scrollTo({ top: 92, behavior: 'instant' })
-  column.dispatchEvent(new Event('scroll'))
-  const fifth = hours.getByRole('option', { name: '5', exact: true })
-  await expect.element(fifth).toHaveAttribute('aria-selected', 'true')
-  expect(column.scrollTop).toBe(92)
-  expect(changed).not.toHaveBeenCalled()
-  await expect.element(screen.getByRole('button', { name: 'Time 1:30 PM' })).toBeInTheDocument()
-  column.dispatchEvent(new Event('touchend'))
-  column.dispatchEvent(new Event('scrollend'))
-  await expect.poll(() => column.scrollTop).toBe(104)
-  await expect.element(fifth).toHaveFocus()
-  await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('17:30')
-})
-
-it('keeps a clicked target selected throughout positioning after interrupting a gesture', async () => {
-  const { screen, hours, column, changed } = await renderPicker()
-  moveGesture(column, 67, true)
+  scrollColumn(column, 67)
   await expect
     .element(hours.getByRole('option', { name: '4', exact: true }))
     .toHaveAttribute('aria-selected', 'true')
   const target = hours.getByRole('option', { name: '6', exact: true })
   await target.click({ scroll: 'none' })
-  column.dispatchEvent(new Event('touchend'))
-  column.dispatchEvent(new Event('scrollend'))
   await expect.element(target).toHaveAttribute('aria-selected', 'true')
   await expect.poll(() => column.scrollTop).toBe(130)
   await expect.element(target).toHaveAttribute('aria-selected', 'true')
@@ -79,7 +49,7 @@ it('keeps a clicked target selected throughout positioning after interrupting a 
   expect(changed).toHaveBeenCalledExactlyOnceWith('18:30')
 })
 
-it('aligns AM and PM to the same top anchor for keyboard, click and touch selection', async () => {
+it('aligns AM and PM to the same top anchor for keyboard, click and scroll selection', async () => {
   const { screen, changed } = await renderPicker()
   const period = screen.getByRole('listbox', { name: 'Period' })
   const column = period.element()
@@ -92,49 +62,51 @@ it('aligns AM and PM to the same top anchor for keyboard, click and touch select
   expect(column.scrollTop).toBe(0)
   await pm.click({ scroll: 'none' })
   await expect.poll(() => column.scrollTop).toBe(26)
-  moveGesture(column, 6, true)
+  await expect.element(pm).toHaveAttribute('aria-selected', 'true')
+  scrollColumn(column, 6)
   await expect.element(am).toHaveAttribute('aria-selected', 'true')
-  expect(column.scrollTop).toBe(6)
+  expect(column.scrollTop).toBe(0)
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
   expect(changed).toHaveBeenCalledExactlyOnceWith('01:30')
 })
 
-it('settles both moving columns synchronously when OK is clicked', async () => {
+it('applies both scrolled columns when OK is clicked', async () => {
   const { screen, column, changed } = await renderPicker()
   const minutes = screen.getByRole('listbox', { name: 'Minute' }).element()
-  moveGesture(column, 67, true)
-  moveGesture(minutes, 1050, true)
+  scrollColumn(column, 67)
+  scrollColumn(minutes, 1050)
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
   expect(changed).toHaveBeenCalledExactlyOnceWith('16:40')
 })
 
-it('continues keyboard navigation from the moving candidate and ignores its late scrollend', async () => {
+it('continues keyboard navigation from the scrolled row', async () => {
   const { hours, column, changed } = await renderPicker()
-  moveGesture(column, 67, true)
-  await userEvent.keyboard('{ArrowDown}')
-  column.dispatchEvent(new Event('touchend'))
-  column.dispatchEvent(new Event('scrollend'))
-  await expect.element(hours.getByRole('option', { name: '5', exact: true })).toHaveFocus()
+  scrollColumn(column, 67)
   await expect
-    .element(hours.getByRole('option', { name: '5', exact: true }))
+    .element(hours.getByRole('option', { name: '4', exact: true }))
     .toHaveAttribute('aria-selected', 'true')
-  expect(column.scrollTop).toBe(104)
+  await userEvent.keyboard('{ArrowDown}')
+  const fifth = hours.getByRole('option', { name: '5', exact: true })
+  await expect.element(fifth).toHaveFocus()
+  await expect.poll(() => column.scrollTop).toBe(104)
+  await expect.element(fifth).toHaveAttribute('aria-selected', 'true')
   expect(changed).not.toHaveBeenCalled()
 })
 
-it('lets Now override all moving columns and keeps focus on Now', async () => {
+it('lets Now override scrolled columns and keeps focus on Now', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(new Date('2025-01-15T13:30:00Z').getTime())
   try {
     const { screen, hours, column, changed } = await renderPicker()
-    moveGesture(column, 67, true)
+    scrollColumn(column, 67)
+    await expect
+      .element(hours.getByRole('option', { name: '4', exact: true }))
+      .toHaveAttribute('aria-selected', 'true')
     await screen.getByRole('button', { name: 'Now', exact: true }).click()
-    column.dispatchEvent(new Event('touchend'))
-    column.dispatchEvent(new Event('scrollend'))
+    await expect.poll(() => column.scrollTop).toBe(0)
     await expect
       .element(hours.getByRole('option', { name: '1', exact: true }))
       .toHaveAttribute('aria-selected', 'true')
-    expect(column.scrollTop).toBe(0)
     await expect.element(screen.getByRole('button', { name: 'Now', exact: true })).toHaveFocus()
     expect(changed).not.toHaveBeenCalled()
   } finally {
@@ -142,49 +114,34 @@ it('lets Now override all moving columns and keeps focus on Now', async () => {
   }
 })
 
-it('discards an unfinished gesture on Escape and ignores detached scroll events', async () => {
-  const { screen, column, changed } = await renderPicker()
-  moveGesture(column, 67, true)
+it('discards a scrolled draft on Escape', async () => {
+  const { screen, hours, column, changed } = await renderPicker()
+  scrollColumn(column, 67)
+  await expect
+    .element(hours.getByRole('option', { name: '4', exact: true }))
+    .toHaveAttribute('aria-selected', 'true')
   await userEvent.keyboard('{Escape}')
-  column.dispatchEvent(new Event('touchend'))
-  column.dispatchEvent(new Event('scrollend'))
   await expect.element(screen.getByRole('button', { name: 'Time 1:30 PM' })).toHaveFocus()
   expect(changed).not.toHaveBeenCalled()
 })
 
-it('does not interpret an edge wheel or programmatic scrolling as selection', async () => {
-  const { hours, column } = await renderPicker()
-  column.dispatchEvent(new WheelEvent('wheel', { deltaY: -100 }))
-  column.dispatchEvent(new Event('scrollend'))
-  await expect
-    .element(hours.getByRole('option', { name: '1', exact: true }))
-    .toHaveAttribute('aria-selected', 'true')
-  column.scrollTo({ top: 78, behavior: 'instant' })
-  column.dispatchEvent(new Event('scroll'))
-  column.dispatchEvent(new Event('scrollend'))
-  await expect
-    .element(hours.getByRole('option', { name: '1', exact: true }))
-    .toHaveAttribute('aria-selected', 'true')
-})
-
-it('does not lose an unfinished selection when only a modifier key is pressed', async () => {
-  const { screen, column, changed } = await renderPicker()
-  moveGesture(column, 67, true)
-  await userEvent.keyboard('{Shift}')
-  await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('16:30')
-})
-
-it('recognizes scrolling when the compositor moves before the passive wheel callback', async () => {
-  const { hours, column } = await renderPicker()
-  column.scrollTo({ top: 67, behavior: 'instant' })
-  column.dispatchEvent(new WheelEvent('wheel', { deltaY: 67 }))
-  column.dispatchEvent(new Event('scroll'))
-  column.dispatchEvent(new Event('scrollend'))
-  await expect
-    .element(hours.getByRole('option', { name: '4', exact: true }))
-    .toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => column.scrollTop).toBe(78)
+it('commits the highlighted row when OK is clicked while a column is still scrolling', async () => {
+  const { screen, changed } = await renderPicker()
+  const minutes = screen.getByRole('listbox', { name: 'Minute' }).element()
+  const ok = screen.getByRole('button', { name: 'OK', exact: true }).element() as HTMLElement
+  minutes.scrollTo({ top: 0, behavior: 'smooth' })
+  const seen = await new Promise<{ minute: string; top: number }>((resolve) => {
+    function frame() {
+      const minute = minutes.querySelector('[aria-selected="true"]')!.textContent
+      if (minute === '30') return requestAnimationFrame(frame)
+      const top = minutes.scrollTop
+      ok.click()
+      resolve({ minute, top })
+    }
+    requestAnimationFrame(frame)
+  })
+  expect(seen.top).toBeGreaterThan(0)
+  expect(changed).toHaveBeenCalledExactlyOnceWith(`13:${seen.minute}`)
 })
 
 it('settles through the quiet fallback when scrollend is unavailable', async () => {
@@ -195,34 +152,11 @@ it('settles through the quiet fallback when scrollend is unavailable', async () 
   Reflect.deleteProperty(owner!, 'onscrollend')
   try {
     const { hours, column } = await renderPicker()
-    moveGesture(column, 67, true)
-    column.dispatchEvent(new Event('touchend'))
-    await expect
-      .element(hours.getByRole('option', { name: '4', exact: true }))
-      .toHaveAttribute('aria-selected', 'true')
-    await expect.poll(() => column.scrollTop).toBe(78)
-  } finally {
-    Object.defineProperty(owner!, 'onscrollend', descriptor)
-  }
-})
-
-it('settles the fallback after a final wheel event produces no additional scroll', async () => {
-  let owner: object | null = HTMLElement.prototype
-  while (owner && !Object.hasOwn(owner, 'onscrollend')) owner = Object.getPrototypeOf(owner)
-  expect(owner).not.toBeNull()
-  const descriptor = Object.getOwnPropertyDescriptor(owner!, 'onscrollend')!
-  Reflect.deleteProperty(owner!, 'onscrollend')
-  try {
-    const { hours, column } = await renderPicker()
-    moveGesture(column, 67)
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    )
-    column.dispatchEvent(new WheelEvent('wheel', { deltaY: 1 }))
-    await expect
-      .element(hours.getByRole('option', { name: '4' }))
-      .toHaveAttribute('aria-selected', 'true')
-    await expect.poll(() => column.scrollTop).toBe(78)
+    scrollColumn(column, 67)
+    const fourth = hours.getByRole('option', { name: '4', exact: true })
+    await expect.element(fourth).toHaveAttribute('aria-selected', 'true')
+    await expect.element(fourth).toHaveFocus()
+    expect(column.scrollTop).toBe(78)
   } finally {
     Object.defineProperty(owner!, 'onscrollend', descriptor)
   }

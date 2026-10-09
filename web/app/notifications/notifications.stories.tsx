@@ -1,45 +1,10 @@
-import type { ToastApi, ToastManager, ToastViewportProps } from '@langgenius/dify-ui/toast'
+import type { ToastApi } from '@langgenius/dify-ui/toast'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import {
-  createToast,
-  createToastManager,
-  ToastCard,
-  ToastPortal,
-  ToastProvider,
-  ToastViewport,
-  useToastManager,
-} from '@langgenius/dify-ui/toast'
+import { createToast, createToastManager, Toaster } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
 import { toast as globalToast } from '.'
 import { AppToastHost } from './host'
-
-function ToastCards() {
-  const { toasts } = useToastManager<Record<string, never>>()
-  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
-}
-
-function ExampleToastHost({
-  manager,
-  timeout,
-  limit,
-  offset,
-}: {
-  manager: ToastManager
-  timeout?: number
-  limit?: number
-  offset?: ToastViewportProps['offset']
-}) {
-  return (
-    <ToastProvider toastManager={manager} timeout={timeout} limit={limit}>
-      <ToastPortal>
-        <ToastViewport offset={offset}>
-          <ToastCards />
-        </ToastViewport>
-      </ToastPortal>
-    </ToastProvider>
-  )
-}
 
 type Scenario = { label: string; run: (toast: ToastApi) => void }
 type PlaygroundProps = {
@@ -98,7 +63,7 @@ function Playground({
         />
       </label>
       {primitive ? (
-        <ExampleToastHost manager={manager} timeout={timeout} limit={limit} />
+        <Toaster toastManager={manager} timeout={timeout} limit={limit} />
       ) : (
         <AppToastHost manager={manager} timeout={timeout} limit={limit} />
       )}
@@ -120,9 +85,8 @@ type Story = StoryObj<typeof meta>
 export const Tones: Story = {
   args: {
     description:
-      'Only error notifications gain an automatic copy action. Plain, success, warning, and info retain the primitive appearance.',
+      'Only error notifications gain an automatic copy action. Success, warning, and info retain the primitive appearance.',
     scenarios: [
-      { label: 'Plain', run: (toast) => toast('New activity') },
       {
         label: 'Success',
         run: (toast) => toast.success('Saved', { description: 'Your changes are available.' }),

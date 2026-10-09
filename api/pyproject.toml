@@ -1,7 +1,7 @@
 [project]
 name = "dify-api"
 version = "1.17.1"
-requires-python = "~=3.12.0"
+requires-python = "~=3.13.0"
 
 dependencies = [
     # Legacy: mature and widely deployed
@@ -317,7 +317,7 @@ trace-weave = ["dify-trace-weave"]
 project-includes = ["."]
 project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.13.0"
 infer-with-first-use = true
 min-severity = "warn"
 errors = { missing-override-decorator = "error", unnecessary-type-conversion = "info" }

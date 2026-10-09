@@ -55,7 +55,7 @@ vp run dify-web#lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layou
 This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
 owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
 
-Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
+Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, or Markdown:
 
 ```sh
 vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
@@ -68,7 +68,7 @@ The primary rule baseline lives in `lint.config.ts` and is connected through the
 
 Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
-The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
+The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
 ### Type-aware Linting
 
@@ -107,7 +107,7 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Code-only fallback rules | ESLint globally ignores all code files. Six core fallback rules, JS `dot-notation`, and other code-only ESLint checks are listed only in comments rather than executable configuration.                          |
 | Declaration files        | Oxlint excludes declaration files and ESLint no longer processes code. The former 223-rule declaration snapshot and CLI declaration import restriction are not enforced.                                         |
 | Generated contracts      | Both linters and Vite+ type checking ignore `packages/contracts/**`; Oxfmt remains the only staged quality step for the contracts package.                                                                       |
-| Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, TOML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                        |
+| Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                              |
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
 

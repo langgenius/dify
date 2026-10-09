@@ -1,4 +1,5 @@
 import type { GeneratedGraph } from '../types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import {
@@ -42,6 +43,26 @@ const makeGraph = (): GeneratedGraph => ({
   edges: [],
   viewport: { x: 0, y: 0, zoom: 0.7 },
 })
+
+const makeGraphWithMemory = (): GeneratedGraph => {
+  const graph = makeGraph()
+  const llmNode = {
+    id: 'llm-1',
+    type: 'custom',
+    position: { x: 300, y: 0 },
+    data: {
+      type: BlockEnum.LLM,
+      title: 'LLM',
+      desc: '',
+      memory: {
+        role_prefix: { user: '', assistant: '' },
+        window: { enabled: false, size: 10 },
+      },
+    },
+  }
+  graph.nodes.push(llmNode)
+  return graph
+}
 
 describe('applyToNewApp', () => {
   beforeEach(() => {
@@ -96,6 +117,31 @@ describe('applyToNewApp', () => {
       expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }),
     )
     expect(result.appMode).toBe(AppModeEnum.ADVANCED_CHAT)
+  })
+
+  it('should remove LLM memory before saving a generated Workflow draft', async () => {
+    await applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraphWithMemory(),
+      instruction: 'Summarize a URL',
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
+  })
+
+  it('should preserve LLM memory when saving a generated Chatflow draft', async () => {
+    const graph = makeGraphWithMemory()
+
+    await applyToNewApp({
+      mode: 'advanced-chat',
+      graph,
+      instruction: 'Answer questions in a conversation',
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).toHaveProperty('memory')
+    expect(savedGraph).toEqual(graph)
   })
 
   // The derived name keeps the user instruction recognisable in the apps list
@@ -211,6 +257,30 @@ describe('applyToCurrentApp', () => {
     vi.clearAllMocks()
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
+
+  it('should remove LLM memory before replacing the current Workflow draft', async () => {
+    await applyToCurrentApp({
+      appId: 'app-42',
+      appMode: AppModeEnum.WORKFLOW,
+      graph: makeGraphWithMemory(),
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
+  })
+
+  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+    'should preserve LLM memory when the current app mode is %s',
+    async (appMode) => {
+      const graph = makeGraphWithMemory()
+
+      await applyToCurrentApp({ appId: 'app-42', appMode, graph })
+
+      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+      expect(savedGraph.nodes[1].data).toHaveProperty('memory')
+      expect(savedGraph).toEqual(graph)
+    },
+  )
 
   // Happy path: the fetch yields an existing draft so the sync MUST include
   // its hash. Without this, the backend rejects the write with

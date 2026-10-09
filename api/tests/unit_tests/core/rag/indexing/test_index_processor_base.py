@@ -288,18 +288,34 @@ class TestBaseIndexProcessor:
 
         assert files == []
 
+    @pytest.mark.parametrize(
+        ("content_disposition", "expected_filename"),
+        [
+            ("attachment; filename=test-image.png", "test-image.png"),
+            ('attachment; filename="test image.png"', "test image.png"),
+            ('attachment; filename="chart%20final.png"', "chart%20final.png"),
+            ("attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87.png", "中文.png"),
+            ("attachment; filename*=UTF-8''chart%20final.png", "chart final.png"),
+            ("attachment; filename*=UTF-8''chart%2520final.png", "chart%20final.png"),
+        ],
+    )
     def test_download_image_success_with_filename_from_content_disposition(
-        self, processor: _ForwardingBaseIndexProcessor, sqlite_engine: Engine
+        self,
+        processor: _ForwardingBaseIndexProcessor,
+        sqlite_engine: Engine,
+        content_disposition: str,
+        expected_filename: str,
     ) -> None:
         response = Mock()
         response.headers = {
             "Content-Length": "4",
-            "content-disposition": "attachment; filename=test-image.png",
+            "content-disposition": content_disposition,
             "content-type": "image/png",
         }
         response.raise_for_status.return_value = None
         response.iter_bytes.return_value = [b"data"]
-        upload_result = _upload(upload_id=str(uuid4()), name="test-image.png")
+        upload_result = _upload(upload_id=str(uuid4()), name=expected_filename)
+        current_user = _account()
 
         with (
             patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
@@ -310,10 +326,15 @@ class TestBaseIndexProcessor:
             patch("services.file_service.FileService") as mock_file_service,
         ):
             mock_file_service.return_value.upload_file.return_value = upload_result
-            upload_id = processor._download_image("https://example.com/test.png", current_user=_account())
+            upload_id = processor._download_image("https://example.com/test.png", current_user=current_user)
 
         assert upload_id == upload_result.id
-        mock_file_service.return_value.upload_file.assert_called_once()
+        mock_file_service.return_value.upload_file.assert_called_once_with(
+            filename=expected_filename,
+            content=b"data",
+            mimetype="image/png",
+            user=current_user,
+        )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
         too_large = Mock()

@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "ສ້າງບໍ່ສຳເລັດ",
   "actionMsg.modifiedSuccessfully": "ແກ້ໄຂສຳເລັດແລ້ວ",
   "actionMsg.modifiedUnsuccessfully": "ແກ້ໄຂບໍ່ສຳເລັດ",
-  "actionMsg.noModification": "ບໍ່ມີການແກ້ໄຂໃນຕອນນີ້.",
   "actionMsg.payCancelled": "ຍົກເລີກການຊຳລະເງິນ",
   "actionMsg.paySucceeded": "ຊຳລະເງິນສຳເລັດແລ້ວ",
   "agentStrategyPage.description": "ກຳນົດວິທີທີ່ຕົວແທນ AI ຂອງທ່ານໃຊ້ເຫດຜົນ ແລະ ຕັດສິນໃຈ — ລວມທັງວິທີການເລືອກເຄື່ອງມື, ຈັດການຜົນລັດ ແລະ ແກ້ໄຂບັນຫາດ້ວຍຕົນເອງ.",
