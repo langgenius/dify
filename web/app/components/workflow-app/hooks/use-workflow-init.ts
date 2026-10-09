@@ -169,7 +169,6 @@ export const useWorkflowInit = () => {
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: initialGraph,
-                force: initialGraph.nodes.length === 0 && initialGraph.edges.length === 0,
                 features: {
                   retriever_resource: { enabled: true },
                 },
