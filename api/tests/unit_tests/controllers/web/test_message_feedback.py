@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT
-from controllers.web.message import MessageFeedbackApi
+from controllers.web.message import MessageFeedbackApi, MessageListApi
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_database import db
@@ -110,6 +110,7 @@ def harness(
     )
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
+    api.add_resource(MessageListApi, "/messages")
     passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
     yield _Harness(
         app,

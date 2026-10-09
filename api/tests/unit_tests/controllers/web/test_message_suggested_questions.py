@@ -27,6 +27,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from models.provider import Provider
 from models.workflow import Workflow
 from repositories.message_repository import MessageRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
@@ -138,7 +139,11 @@ def harness(
     db.init_app(app)
     event.listen(db.session.session_factory, "after_begin", track_session)
     queries = SuggestedQuestionsQuery(
-        session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
+        session_factory=read_factory,
+        repository=MessageRepository(
+            session_factory=read_factory,
+            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=read_factory),
+        ),
     )
     services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
     app.extensions["application_services"] = services

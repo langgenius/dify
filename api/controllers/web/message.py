@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from flask import Response
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
@@ -26,9 +26,8 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
-from fields.conversation_fields import MessageResponseSource, ResultResponse
-from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.exception import BaseHTTPException
@@ -51,7 +50,6 @@ from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
     MoreLikeThisNotCompletionError,
 )
-from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -79,36 +77,35 @@ class MessageListApi(WebApiResource):
     @web_ns.doc(params=query_params_from_model(MessageListQuery))
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request - Not a chat app or app unavailable",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "Conversation, First Message, or End User Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
     @model_validate(MessageListQuery)
-    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser):
+    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         try:
-            session = db.session()
-            pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, query.conversation_id, query.first_id, query.limit, session=session
+            pagination = application_services().message_queries.get_page(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                conversation_id=query.conversation_id,
+                first_id=query.first_id,
+                limit=query.limit,
             )
-            adapter = TypeAdapter(WebMessageListItem)
-            items = [
-                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
-                for message in pagination.data
-            ]
-            return WebMessageInfiniteScrollPagination(
-                limit=pagination.limit,
-                has_more=pagination.has_more,
-                data=items,
-            ).model_dump(mode="json")
+            return helper.dump_response(WebMessageInfiniteScrollPagination, pagination)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
         except ConversationNotExistsError:
             raise NotFoundError("Conversation Not Exists.")
         except FirstMessageNotExistsError:

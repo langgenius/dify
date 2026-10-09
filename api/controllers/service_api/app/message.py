@@ -4,9 +4,8 @@ from typing import Annotated
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
+from pydantic import BaseModel, Field, WithJsonSchema
 
-import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
 from controllers.common.fields import SimpleResultStringListResponse
@@ -24,18 +23,17 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.flask_admission import service_api_app_admission, service_api_end_user_admission
 from controllers.service_api.schema import expect_with_user
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.conversation_fields import MessageResponseSource, ResultResponse
+from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response
 from machinery.context import ServiceApiEndUserContext, ServiceApiRequestContext
 from models.enums import FeedbackRating
-from models.model import App, AppMode, EndUser
+from models.model import AppMode
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageEndUser
@@ -47,7 +45,6 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -100,54 +97,60 @@ class MessageListApi(Resource):
         ),
         tags=["Conversations"],
         responses={
-            200: "Successfully retrieved conversation history.",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            404: "- `not_found` : Conversation does not exist.\n- `not_found` : First message does not exist.",
+            HTTPStatus.OK: "Successfully retrieved conversation history.",
+            HTTPStatus.BAD_REQUEST: (
+                "`not_chat_app` : App mode does not match the API route. "
+                "`app_unavailable` : App is no longer available."
+            ),
+            HTTPStatus.NOT_FOUND: (
+                "- `not_found` : Conversation does not exist.\n- `not_found` : First message does not exist."
+            ),
         },
     )
     @service_api_ns.doc(params=query_params_from_model(MessageListQuery))
     @service_api_ns.doc(description="List messages in a conversation")
     @service_api_ns.doc(
         responses={
-            200: "Messages retrieved successfully",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            401: "Unauthorized - invalid API token",
-            404: "Conversation or first message not found",
+            HTTPStatus.OK: "Messages retrieved successfully",
+            HTTPStatus.BAD_REQUEST: (
+                "`not_chat_app` : App mode does not match the API route. "
+                "`app_unavailable` : App is no longer available."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
+            HTTPStatus.NOT_FOUND: "Conversation or first message not found",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Messages retrieved successfully",
         service_api_ns.models[MessageInfiniteScrollPagination.__name__],
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @model_validate(MessageListQuery)
-    def get(self, query_args: MessageListQuery, app_model: App, end_user: EndUser):
+    def get(self, query_args: MessageListQuery, context: ServiceApiEndUserContext) -> dict[str, object]:
         """List messages in a conversation.
 
         Retrieves messages with pagination support using first_id.
         """
-        app_mode = AppMode.value_of(app_model.mode)
+        app_mode = context.app_mode
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        conversation_id = query_args.conversation_id
-        first_id = query_args.first_id or None
-
         try:
-            session = db.session()
-            pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, conversation_id, first_id, query_args.limit, session=session
+            pagination = application_services().message_queries.get_page(
+                app_id=context.app_id,
+                app_owner_tenant_id=context.tenant_id,
+                actor=MessageEndUser(end_user_id=context.end_user_id),
+                conversation_id=query_args.conversation_id,
+                first_id=query_args.first_id or None,
+                limit=query_args.limit,
             )
-            adapter = TypeAdapter(MessageListItem)
-            items = [
-                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
-                for message in pagination.data
-            ]
-            return MessageInfiniteScrollPagination(
-                limit=pagination.limit, has_more=pagination.has_more, data=items
-            ).model_dump(mode="json")
-        except services.errors.conversation.ConversationNotExistsError:
+            return dump_response(MessageInfiniteScrollPagination, pagination)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except ConversationNotExistsError:
             raise NotFoundError("Conversation Not Exists.")
         except FirstMessageNotExistsError:
             raise NotFoundError("First Message Not Exists.")

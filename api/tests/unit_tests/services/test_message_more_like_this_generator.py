@@ -31,6 +31,7 @@ from models import App, AppMode, AppModelConfig, Conversation, EndUser, Message,
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.provider import Provider, ProviderModel, ProviderType
 from repositories.message_repository import MessageRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageEndUser
 from services.message_more_like_this_generator import (
     MessageMoreLikeThisGenerator,
@@ -113,7 +114,9 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
 
     factory = sessionmaker(bind=sqlite_engine)
     service = MessageMoreLikeThisService(
-        repository=MessageRepository(session_factory=factory),
+        repository=MessageRepository(
+            session_factory=factory, extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=factory)
+        ),
         generator=MessageMoreLikeThisGenerator(session_factory=factory),
     )
     app = Flask(__name__)

@@ -495,10 +495,10 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebMessageInfiniteScrollPagination](#webmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request |  |
+| 400 | Bad Request - Not a chat app or app unavailable |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
+| 404 | Conversation, First Message, or End User Not Found |  |
 | 500 | Internal Server Error |  |
 
 ### [POST] /messages/{message_id}/feedbacks

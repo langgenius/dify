@@ -30,6 +30,7 @@ from models.model import AppModelConfig, DifySetup
 from models.provider import Provider
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -171,7 +172,11 @@ def harness(
         trial_enabled=True,
     )
     queries = SuggestedQuestionsQuery(
-        session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
+        session_factory=read_factory,
+        repository=MessageRepository(
+            session_factory=read_factory,
+            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=read_factory),
+        ),
     )
     services = _ApplicationServices(
         trial_apps=_TrialAppServices(access=TrialAppAccessService(apps=trial_apps)),

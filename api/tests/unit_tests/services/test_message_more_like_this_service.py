@@ -17,6 +17,7 @@ from models import Account, App, AppMode, AppModelConfig, Conversation, EndUser,
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.provider import Provider
 from repositories.message_repository import MessageRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 from services.errors.app import MoreLikeThisDisabledError
@@ -155,7 +156,9 @@ def harness(
         scoped_sessions.append(session)
 
     event.listen(db.session.session_factory, "after_begin", record_scoped)
-    repository = MessageRepository(session_factory=factory)
+    repository = MessageRepository(
+        session_factory=factory, extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=factory)
+    )
     with flask_app.test_request_context("/more-like-this"):
         yield _Harness(
             service=MessageMoreLikeThisService(
