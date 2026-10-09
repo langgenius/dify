@@ -112,7 +112,7 @@ catalog:
   '@storybook/addon-vitest': 10.6.1
   '@storybook/nextjs-vite': 10.6.1
   '@storybook/react': 10.6.1
-  '@storybook/react-vite': 10.6.0
+  '@storybook/react-vite': 10.6.1
   '@streamdown/math': 1.0.3
   '@svgdotjs/svg.js': 3.2.8
   '@t3-oss/env-core': 0.13.11
