@@ -12,7 +12,7 @@ def test_default_make_test_runs_backend_unit_suites():
     assert "api/providers/vdb/*/tests/unit_tests" in dry_run_output
     assert "api/providers/trace/*/tests/unit_tests" in dry_run_output
     assert "-p no:benchmark" in dry_run_output
-    assert "api/tests/unit_tests/controllers" in dry_run_output
+    assert "--ignore=api/tests/unit_tests/controllers" not in dry_run_output
     assert "--start-middleware" not in dry_run_output
     assert "api/tests/integration_tests/workflow" not in dry_run_output
     assert "api/tests/test_containers_integration_tests" not in dry_run_output

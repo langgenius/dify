@@ -10,10 +10,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import TokenType
-from controllers.openapi import bp as openapi_bp
-from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext
@@ -25,6 +22,11 @@ from models.model import AppMode, IconType
 
 @pytest.fixture
 def openapi_app():
+    # File-based shards also load this conftest in the xdist coordinator. Only
+    # workers serving requests need the controller registration imports.
+    from app_factory import create_flask_app_with_configs
+    from controllers.openapi import bp as openapi_bp
+
     # the real factory: flask-restx wire behaviour (404 route suggestions) is app config
     app = create_flask_app_with_configs()
     app.config["TESTING"] = True
@@ -66,6 +68,8 @@ def admitted_bearer(
     flask-login mount, which needs a real Flask login manager it has no reason to
     carry here.
     """
+    from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
 
     account_id, workspace_id, app_id = (str(uuid.uuid4()) for _ in range(3))

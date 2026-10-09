@@ -7,7 +7,8 @@ import pytest
 from dev.pytest_sharding import main, select_test_files
 
 
-def test_file_shards_cover_each_test_file_once(tmp_path: Path) -> None:
+@pytest.mark.parametrize("include_controllers", [False, True])
+def test_file_shards_cover_each_test_file_once(tmp_path: Path, include_controllers: bool) -> None:
     unit = tmp_path / "unit"
     provider = tmp_path / "provider"
     controllers = unit / "controllers"
@@ -18,19 +19,21 @@ def test_file_shards_cover_each_test_file_once(tmp_path: Path) -> None:
         provider / "test_a.py",
         provider / "test_c.py",
     }
+    if include_controllers:
+        expected.add(controllers / "test_controller.py")
+    ignored = [] if include_controllers else [controllers]
     for path in expected | {controllers / "test_controller.py", unit / "conftest.py", unit / "helper.py"}:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
 
     shards = [
-        select_test_files([unit, provider, unit], shard_index=i, shard_total=3, ignored=[controllers])
-        for i in range(1, 4)
+        select_test_files([unit, provider, unit], shard_index=i, shard_total=3, ignored=ignored) for i in range(1, 4)
     ]
     selected = [path for shard in shards for path in shard]
     assert len(selected) == len(set(selected))
     assert set(selected) == expected
     assert max(map(len, shards)) - min(map(len, shards)) <= 1
-    assert shards[1] == select_test_files([provider, unit], shard_index=2, shard_total=3, ignored=[controllers])
+    assert shards[1] == select_test_files([provider, unit], shard_index=2, shard_total=3, ignored=ignored)
 
 
 @pytest.mark.parametrize(("index", "total"), [(0, 3), (4, 3), (1, 0), (1, -1)])

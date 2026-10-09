@@ -1,6 +1,7 @@
 # API unit-test sharding
 
-The workflow plans shards before pytest collection. Files with recorded durations
+The workflow plans three shards across ordinary unit tests, controllers, and
+provider unit tests before pytest collection. Files with recorded durations
 are sorted longest first and assigned to the least-loaded shard. Unseen files are
 assigned round robin. File discovery always comes from the current checkout, so
 stale history cannot omit new tests or reintroduce deleted files.
@@ -14,10 +15,12 @@ assigned to a runner are collected; shared oversized files are collected on each
 assigned runner. All workers use the same frozen plan. Ordinary xdist scheduling
 continues inside each runner.
 
-Successful coordinator reports are uploaded as two small timing artifacts. The
+Successful coordinator reports are uploaded as one timing artifact per shard,
+named `api-unit-durations-<index>-of-<total>`. The total lets the statistics updater
+reject incomplete observations when the shard count changes. The
 public [dify-test-infra](https://github.com/langgenius/dify-test-infra) repository
-collects complete observations from successful CI on merged Dify PRs daily at
-03:05 UTC. It averages up to five recent samples and publishes `stats/test-times.json`
+collects complete observations from successful CI on merged Dify PRs hourly at
+minute 05 UTC. It averages up to five recent samples and publishes `stats/test-times.json`
 on its `generated-stats` branch. Metadata records the source runs. No timing data
 or generated history is committed to Dify itself.
 
@@ -42,16 +45,16 @@ Local examples (from repository root):
 
 ```sh
 uv run --project api python api/dev/pytest_sharding.py \
-  --shard-index 1 --shard-total 2 --durations /tmp/durations.json \
-  --write-plan /tmp/plan.json --ignore api/tests/unit_tests/controllers \
+  --shard-index 1 --shard-total 3 --durations /tmp/durations.json \
+  --write-plan /tmp/plan.json \
   api/tests/unit_tests api/providers/vdb/*/tests/unit_tests api/providers/trace/*/tests/unit_tests
 uv run --project api python api/dev/pytest_sharding.py \
-  --shard-index 1 --shard-total 2 --plan /tmp/plan.json api > /tmp/files.txt
+  --shard-index 1 --shard-total 3 --plan /tmp/plan.json api > /tmp/files.txt
 uv run --project api pytest --file-shard-plan /tmp/plan.json \
-  --shard-index 1 --shard-total 2 --write-test-durations /tmp/durations-1.json \
+  --shard-index 1 --shard-total 3 --write-test-durations /tmp/durations-1.json \
   @/tmp/files.txt
 ```
 
-Repeat the last two commands for shard 2. Merge their file durations by addition
+Repeat the last two commands for shards 2 and 3. Merge their file durations by addition
 before using them as the next history snapshot. Keep generated files outside the
 checkout locally.
