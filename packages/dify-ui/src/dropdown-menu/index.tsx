@@ -133,12 +133,12 @@ function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelP
 }
 
 type DropdownMenuPositionerProps = Omit<Menu.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
+  placement: Placement
 }
 
 function DropdownMenuPositioner({
   className,
-  placement = 'bottom-end',
+  placement,
   sideOffset = 4,
   alignOffset = 0,
   ...props
@@ -175,8 +175,9 @@ function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
 }
 
 type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children'> &
-  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'sideOffset'> & {
     children: React.ReactNode
+    placement?: Placement
   }
 
 function DropdownMenuContent({
@@ -234,9 +235,10 @@ function DropdownMenuSubTrigger({
 
 type DropdownMenuSubContentProps = DropdownMenuContentProps
 
+// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function DropdownMenuSubContent({
   children,
-  placement = 'left-start',
+  placement = 'inline-end-start',
   sideOffset = 4,
   alignOffset = 0,
   className,
