@@ -261,16 +261,18 @@ export default function AccountSetting({
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
-                  <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                    {activeItem?.title ?? activeItem?.name}
-                    {activeItem?.description && (
-                      <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                        {activeItem?.description}
-                      </div>
-                    )}
+                {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
+                  <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
+                    <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                      {activeItem?.title ?? activeItem?.name}
+                      {activeItem?.description && (
+                        <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                          {activeItem?.description}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}

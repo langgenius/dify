@@ -411,12 +411,14 @@ describe('IpPoliciesPage', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Other Policy')
   })
 
-  it.each(['create', 'edit', 'delete'] as const)(
+  it.each(['create_empty', 'create', 'edit', 'delete'] as const)(
     'stops %s when manager permission is revoked',
     async (action) => {
       const user = userEvent.setup()
       const queryClient = createConsoleQueryClient()
-      seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+      seedNetworkAccessGroups(queryClient, {
+        groups: action === 'create_empty' ? [] : [createNetworkAccessGroupFixture()],
+      })
       renderWithConsoleQuery(
         <NuqsTestingAdapter>
           <IpPoliciesPage />
@@ -428,8 +430,12 @@ describe('IpPoliciesPage', () => {
         },
       )
 
-      if (action === 'create') {
-        await user.click(screen.getByRole('button', { name: 'Add' }))
+      if (action === 'create' || action === 'create_empty') {
+        await user.click(
+          screen.getByRole('button', {
+            name: action === 'create_empty' ? 'Create IP Policy' : 'Add',
+          }),
+        )
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'New policy')
         await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
       } else {
@@ -447,6 +453,7 @@ describe('IpPoliciesPage', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
         expect(
           screen.queryByRole('button', { name: /^(Create|Save|Delete)$/ }),
         ).not.toBeInTheDocument()
@@ -487,43 +494,154 @@ describe('IpPoliciesPage', () => {
     },
   )
 
-  it('opens the new policy dialog from Add', async () => {
-    const user = userEvent.setup()
-    const queryClient = createConsoleQueryClient()
-    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
-    renderWithConsoleQuery(
-      <NuqsTestingAdapter>
-        <IpPoliciesPage />
-      </NuqsTestingAdapter>,
-      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
-    )
+  it.each(['owner', 'admin'] as const)(
+    'opens a fresh empty-state form for %s on each visit',
+    async (role) => {
+      const user = userEvent.setup()
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        {
+          queryClient,
+          currentWorkspace: { role },
+          systemFeatures: { deployment_edition: 'CLOUD' },
+        },
+      )
 
-    expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
-  })
+      expect(screen.getByRole('heading', { name: 'No IP policies yet' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Create IP Policy' })).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+      expect(vi.mocked(trackEvent).mock.calls).toEqual([
+        ['ip_policy_interaction', { action: 'settings_tab_viewed' }],
+        [
+          'ip_policy_interaction',
+          { action: 'form_opened', mode: 'create', source: 'list_empty_state' },
+        ],
+      ])
 
-  it('posts a new policy when Create is clicked', async () => {
+      await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Unsaved policy')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
+      expect(vi.mocked(trackEvent).mock.calls).toEqual([
+        ['ip_policy_interaction', { action: 'settings_tab_viewed' }],
+        [
+          'ip_policy_interaction',
+          { action: 'form_opened', mode: 'create', source: 'list_empty_state' },
+        ],
+        [
+          'ip_policy_interaction',
+          { action: 'form_opened', mode: 'create', source: 'list_empty_state' },
+        ],
+      ])
+    },
+  )
+
+  it.each(['list_empty_state', 'list_add_button'] as const)(
+    'creates a policy from %s and refreshes the list',
+    async (source) => {
+      const user = userEvent.setup()
+      const initialGroups = source === 'list_add_button' ? [createNetworkAccessGroupFixture()] : []
+      const created = createNetworkAccessGroupFixture({ id: 'new-group', name: 'Office' })
+      const posted: Array<{ method: string; url: string; body: unknown }> = []
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        const request = input instanceof Request ? input : new Request(String(input), init)
+        const bodyText =
+          request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text()
+        posted.push({
+          method: request.method,
+          url: request.url,
+          body: bodyText ? JSON.parse(bodyText) : null,
+        })
+        if (request.method === 'POST')
+          return Response.json({ group: created, entitled: true }, { status: 201 })
+        if (new URL(request.url).pathname.endsWith('/network-access-groups'))
+          return Response.json({
+            tenant_id: 'workspace-1',
+            entitled: true,
+            groups: [...initialGroups, created],
+          })
+        return Response.json({ client_ip: '203.0.113.42' })
+      })
+      const queryClient = createConsoleQueryClient()
+      seedNetworkAccessGroups(queryClient, { entitled: true, groups: initialGroups })
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <IpPoliciesPage />
+        </NuqsTestingAdapter>,
+        { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: source === 'list_empty_state' ? 'Create IP Policy' : 'Add',
+        }),
+      )
+      await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
+      await user.click(screen.getByPlaceholderText('10.0.0.0/8'))
+      await user.paste('10.0.0.0/8')
+      expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'Create' }))
+
+      await waitFor(() => {
+        expect(posted).toContainEqual({
+          method: 'POST',
+          url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups',
+          body: {
+            name: 'Office',
+            description: '',
+            allowed_cidrs: ['10.0.0.0/8'],
+          },
+        })
+      })
+      expect(await screen.findByRole('button', { name: 'Office' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
+        action: 'form_opened',
+        mode: 'create',
+        source,
+      })
+      await waitFor(() =>
+        expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+          mode: 'create',
+          source,
+          result: 'success',
+          policy_id: created.id,
+          entry_count: 1,
+          validation_error_types: [],
+        }),
+      )
+    },
+  )
+
+  it('keeps the empty-state source and validation history through a failed creation and retry', async () => {
     const user = userEvent.setup()
     const created = createNetworkAccessGroupFixture({ name: 'Office' })
-    const posted: Array<{ method: string; url: string; body: unknown }> = []
+    let attempts = 0
     vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(String(input), init)
-      const bodyText =
-        request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text()
-      posted.push({
-        method: request.method,
-        url: request.url,
-        body: bodyText ? JSON.parse(bodyText) : null,
-      })
-      return new Response(JSON.stringify({ group: created, entitled: true }), {
-        status: 201,
-        headers: { 'content-type': 'application/json' },
-      })
+      if (request.method === 'POST') {
+        attempts += 1
+        return attempts === 1
+          ? Response.json({ message: 'Unavailable' }, { status: 503 })
+          : Response.json({ group: created, entitled: true }, { status: 201 })
+      }
+      if (new URL(request.url).pathname.endsWith('/network-access-groups'))
+        return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [created] })
+      return Response.json({ client_ip: '203.0.113.42' })
     })
     const queryClient = createConsoleQueryClient()
-    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+    seedNetworkAccessGroups(queryClient)
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
         <IpPoliciesPage />
@@ -531,23 +649,114 @@ describe('IpPoliciesPage', () => {
       { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
-    await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
-    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Office')
+    const entry = screen.getByPlaceholderText('10.0.0.0/8')
+    await user.click(entry)
+    await user.paste('999.0.0.1')
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+    await user.clear(entry)
+    await user.paste('10.0.0.0/8')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
-    await waitFor(() => {
-      expect(posted).toContainEqual({
-        method: 'POST',
-        url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups',
-        body: {
-          name: 'Office',
-          description: '',
-          allowed_cidrs: ['10.0.0.0/8'],
-        },
-      })
+    const analytics = {
+      mode: 'create',
+      source: 'list_empty_state',
+      entry_count: 1,
+      validation_error_types: ['octet_out_of_range'],
+    }
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+        ...analytics,
+        result: 'failed',
+        fail_reason: 'network',
+      }),
+    )
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Office')
+    expect(entry).toHaveValue('10.0.0.0/8')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(
+        vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'ip_policy_save'),
+      ).toEqual([
+        ['ip_policy_save', { ...analytics, result: 'failed', fail_reason: 'network' }],
+        ['ip_policy_save', { ...analytics, result: 'success', policy_id: created.id }],
+      ]),
+    )
+    expect(
+      vi
+        .mocked(trackEvent)
+        .mock.calls.filter(([, properties]) => properties?.action === 'form_opened'),
+    ).toHaveLength(1)
+  })
+
+  it('keeps empty-state creation unavailable to editors', () => {
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient)
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        currentWorkspace: { role: 'editor' },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      },
+    )
+
+    expect(screen.getByRole('heading', { name: 'No IP policies yet' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+    expect(trackEvent).toHaveBeenCalledExactlyOnceWith('ip_policy_interaction', {
+      action: 'settings_tab_viewed',
     })
+  })
+
+  it('opens pricing without reporting a form when the empty workspace is not entitled', async () => {
+    const user = userEvent.setup()
+    const onUrlUpdate = vi.fn()
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { entitled: false })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trackEvent).toHaveBeenCalledExactlyOnceWith('ip_policy_interaction', {
+      action: 'settings_tab_viewed',
+    })
+  })
+
+  it('does not show the empty state while policies are loading or when the request fails', async () => {
+    let resolveGroups!: (response: Response) => void
+    vi.mocked(globalThis.fetch).mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveGroups = resolve
+      }),
+    )
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      { systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+    await act(async () => {
+      resolveGroups(Response.json({ message: 'Unavailable' }, { status: 503 }))
+    })
+    expect(await screen.findByText(deploymentTranslations['common.loadFailed'])).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
   })
 
   it('lists existing policies and opens edit from the row', async () => {
