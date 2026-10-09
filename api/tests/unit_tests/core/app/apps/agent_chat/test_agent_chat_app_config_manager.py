@@ -1,5 +1,4 @@
 import uuid
-from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.agent_chat.app_config_manager import (
+    AgentChatAppConfig,
     AgentChatAppConfigManager,
 )
 from core.entities.agent_entities import PlanningStrategy
@@ -27,7 +27,14 @@ def _app() -> App:
 
 
 def _config() -> AppModelConfig:
-    return AppModelConfig(app_id="app1")
+    model = AppModelConfig(app_id="app1")
+    config = model.to_dict(annotation_reply={"enabled": False})
+    config["model"] = {"provider": "langgenius/openai/openai", "name": "m", "mode": "chat"}
+    config["pre_prompt"] = "Help {{name}}."
+    config["user_input_form"] = [{"text-input": {"variable": "name", "label": "Name", "required": True}}]
+    config["external_data_tools"] = [{"enabled": True, "variable": "weather", "type": "api", "config": {}}]
+    config["agent_mode"] = {"enabled": True, "strategy": "function_call", "tools": [], "prompt": None}
+    return model.from_model_config_dict(config)
 
 
 def _conversation() -> Conversation:
@@ -58,113 +65,65 @@ def _session() -> Session:
 
 
 class TestAgentChatAppConfigManagerGetAppConfig:
-    def test_get_app_config_override_config(self, mocker: MockerFixture):
-        app_model = _app()
+    def test_get_app_config_override_config(self) -> None:
         app_model_config = _config()
-
-        override_config = {"model": {"provider": "p"}}
-
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.AgentConfigManager.convert")
-        mocker.patch.object(AgentChatAppConfigManager, "convert_features")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.BasicVariablesConfigManager.convert",
-            return_value=("variables", "external"),
-        )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.AgentChatAppConfig",
-            side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
-        )
+        override_config = app_model_config.to_dict(annotation_reply={"enabled": False})
+        override_config["pre_prompt"] = "Override {{name}}."
 
         result = AgentChatAppConfigManager.get_app_config(
-            app_model=app_model,
+            app_model=_app(),
             app_model_config=app_model_config,
             conversation=None,
             override_config_dict=override_config,
             annotation_reply=None,
         )
 
+        assert isinstance(result, AgentChatAppConfig)
         assert result.app_model_config_dict == override_config
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS
-        assert result.variables == "variables"
-        assert result.external_data_variables == "external"
+        assert result.model.provider == "langgenius/openai/openai"
+        assert result.model.model == "m"
+        assert result.prompt_template.simple_prompt_template == "Override {{name}}."
+        assert app_model_config.pre_prompt == "Help {{name}}."
+        assert len(result.variables) == 1
+        assert result.variables[0].variable == "name"
+        assert result.variables[0].required is True
+        assert len(result.external_data_variables) == 1
+        assert result.external_data_variables[0].variable == "weather"
+        assert result.external_data_variables[0].type == "api"
+        assert result.agent is not None
+        assert result.agent.strategy.value == "function-calling"
 
-    def test_get_app_config_conversation_specific(self, mocker: MockerFixture):
-        app_model = _app()
+    @pytest.mark.parametrize(
+        ("conversation", "expected_from"),
+        [
+            (_conversation(), EasyUIBasedAppModelConfigFrom.CONVERSATION_SPECIFIC_CONFIG),
+            (None, EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG),
+        ],
+    )
+    def test_get_app_config_stored_config(
+        self,
+        conversation: Conversation | None,
+        expected_from: EasyUIBasedAppModelConfigFrom,
+    ) -> None:
+        """None selects the latest app config; a conversation selects its supplied config."""
         app_model_config = _config()
-        annotation_reply = {"enabled": False}
-        conversation = _conversation()
-        to_dict = mocker.patch.object(
-            AppModelConfig,
-            "to_dict",
-            return_value={"model": {"provider": "p"}},
-        )
-
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.AgentConfigManager.convert")
-        mocker.patch.object(AgentChatAppConfigManager, "convert_features")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.BasicVariablesConfigManager.convert",
-            return_value=("variables", "external"),
-        )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.AgentChatAppConfig",
-            side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
-        )
-
         result = AgentChatAppConfigManager.get_app_config(
-            app_model=app_model,
+            app_model=_app(),
             app_model_config=app_model_config,
             conversation=conversation,
             override_config_dict=None,
-            annotation_reply=annotation_reply,
+            annotation_reply={"enabled": False},
         )
 
-        assert result.app_model_config_dict == {"model": {"provider": "p"}}
-        assert result.app_model_config_from.value == "conversation-specific-config"
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-
-    def test_get_app_config_latest_config(self, mocker: MockerFixture):
-        app_model = _app()
-        app_model_config = _config()
-        annotation_reply = {"enabled": False}
-        to_dict = mocker.patch.object(
-            AppModelConfig,
-            "to_dict",
-            return_value={"model": {"provider": "p"}},
-        )
-
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.convert")
-        mocker.patch("core.app.apps.agent_chat.app_config_manager.AgentConfigManager.convert")
-        mocker.patch.object(AgentChatAppConfigManager, "convert_features")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.BasicVariablesConfigManager.convert",
-            return_value=("variables", "external"),
-        )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_config_manager.AgentChatAppConfig",
-            side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
-        )
-
-        result = AgentChatAppConfigManager.get_app_config(
-            app_model=app_model,
-            app_model_config=app_model_config,
-            conversation=None,
-            override_config_dict=None,
-            annotation_reply=annotation_reply,
-        )
-
-        assert result.app_model_config_from.value == "app-latest-config"
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert isinstance(result, AgentChatAppConfig)
+        assert result.app_model_config_from == expected_from
+        assert result.app_model_config_id == app_model_config.id
+        assert result.app_model_config_dict == app_model_config.to_dict(annotation_reply={"enabled": False})
+        assert result.prompt_template.simple_prompt_template == "Help {{name}}."
+        assert result.model.model == "m"
+        assert result.agent is not None
+        assert result.agent.strategy.value == "function-calling"
 
     def test_get_app_config_requires_annotation_reply_without_override(self):
         with pytest.raises(ValueError, match="Annotation reply config is required"):
