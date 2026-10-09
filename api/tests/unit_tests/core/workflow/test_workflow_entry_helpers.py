@@ -316,7 +316,8 @@ class TestWorkflowEntrySingleStepRun:
         assert node.id == "node-id"
         assert list(generator) == ["event"]
         variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
-        @pytest.mark.parametrize(
+        
+    @pytest.mark.parametrize(
         ("workflow_type", "expects_query_mapping"),
         [(WorkflowType.WORKFLOW, False), (WorkflowType.CHAT, True)],
     )
