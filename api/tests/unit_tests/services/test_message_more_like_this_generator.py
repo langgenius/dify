@@ -1,74 +1,56 @@
-"""Run completion preparation, record creation and response handling with real dependencies."""
+"""Real completion preparation, stored files and failure cleanup without provider stubs.
+
+The worker/Redis and provider transport paths live in the container suite. These
+cases use invalid persisted provider data to stop model preparation before I/O.
+"""
 
 import json
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast, override
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from httpx import Request, Response
-from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from pydantic import JsonValue
+from sqlalchemy import Connection, Engine, delete, event, func, select
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core.app.file_access import get_current_file_access_scope
-from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
-from core.entities.provider_entities import CustomProviderConfiguration
-from core.errors.error import ProviderTokenNotInitError
-from core.file import remote_fetcher
-from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.provider_manager import ProviderManager
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.workflow.file_reference import resolve_file_record_id
+from extensions import ext_hosting_provider
 from extensions.ext_database import db
-from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.file.constants import FILE_MODEL_IDENTITY
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from graphon.model_runtime.entities.model_entities import AIModelEntity
-from models import (
-    Account,
-    App,
-    AppMode,
-    AppModelConfig,
-    Conversation,
-    EndUser,
-    Message,
-    MessageFile,
-    ToolFile,
-    UploadFile,
-)
+from graphon.model_runtime.entities.model_entities import ModelType
+from models import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.provider import Provider, ProviderModel, ProviderType
 from repositories.message_repository import MessageRepository
 from services.entities.message_entities import MessageEndUser
-from services.message_more_like_this_generator import MessageMoreLikeThisGenerator, _MoreLikeThisEventStream
-from services.message_more_like_this_service import (
-    MessageMoreLikeThisService,
-    MoreLikeThisResponse,
+from services.message_more_like_this_generator import (
+    MessageMoreLikeThisGenerator,
+    _file_mapping,
+    _MoreLikeThisEventStream,
+    _restore_inputs,
 )
-from tests.unit_tests.core.model_fixtures import make_model_config
-
-_PROVIDER = "langgenius/openai/openai"
-_MODEL = "test-model"
+from services.message_more_like_this_service import MessageMoreLikeThisService, MoreLikeThisFile, MoreLikeThisResponse
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Runtime:
     app: Flask
     service: MessageMoreLikeThisService
-    generator: MessageMoreLikeThisGenerator
     app_id: str
     tenant_id: str
     end_user_id: str
     message_id: str
     historical_config_id: str
-    provider: ProviderConfiguration
-    closed_sessions: list[Session]
-    model_parameters: list[dict[str, object]]
-    prompts: list[str]
+    sessions: list[Session]
 
     def generate(self) -> MoreLikeThisResponse:
         with self.app.test_request_context("/messages/regenerate"):
@@ -82,9 +64,7 @@ class _Runtime:
 
 
 @pytest.fixture
-def runtime(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> _Runtime:
+def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Runtime]:
     tenant_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
         app_record = App(
@@ -96,9 +76,8 @@ def runtime(
         current = AppModelConfig(app_id=app_record.id, more_like_this='{"enabled":true}')
         historical = AppModelConfig(
             app_id=app_record.id,
-            more_like_this='{"enabled":false}',
             model=json.dumps(
-                {"provider": _PROVIDER, "name": _MODEL, "mode": "chat", "completion_params": {"temperature": 0.1}}
+                {"provider": "langgenius/openai/openai", "name": "test-model", "mode": "chat", "completion_params": {}}
             ),
             pre_prompt="Historical prompt",
         )
@@ -119,7 +98,7 @@ def runtime(
         message = Message(
             app_id=app_record.id,
             conversation_id=conversation.id,
-            inputs={"count": 0, "empty": "", "items": []},
+            inputs={},
             query="Original query",
             message={},
             answer="Original answer",
@@ -129,137 +108,61 @@ def runtime(
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,
         )
-        session.add(message)
+        session.add_all([message, Provider(tenant_id=tenant_id, provider_name="invalid/provider", is_valid=True)])
         session.flush()
 
-    closed_sessions: list[Session] = []
-
-    class TrackedSession(Session):
-        @override
-        def close(self) -> None:
-            super().close()
-            closed_sessions.append(self)
-
-    factory = cast(sessionmaker[Session], sessionmaker(bind=sqlite_engine, class_=TrackedSession))
-    generator = MessageMoreLikeThisGenerator(session_factory=factory)
-    service = MessageMoreLikeThisService(repository=MessageRepository(session_factory=factory), generator=generator)
-    app = Flask(__name__)
-    app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
-    db.init_app(app)
-    config = make_model_config(provider=_PROVIDER, model=_MODEL, mode="chat")
-    provider = config.provider_model_bundle.configuration
-    provider.tenant_id = tenant_id
-    provider.provider.models = [config.model_schema]
-    provider.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "test-key"})
-    model_parameters: list[dict[str, object]] = []
-    prompts: list[str] = []
-
-    def configurations(_manager: ProviderManager, tenant_id: str) -> ProviderConfigurations:
-        assert tenant_id == provider.tenant_id
-        assert len(closed_sessions) >= 2
-        assert all(not session.in_transaction() and not session.identity_map for session in closed_sessions)
-        configurations = ProviderConfigurations(tenant_id=tenant_id)
-        configurations.configurations[_PROVIDER] = provider
-        return configurations
-
-    def schema(_runtime: PluginModelRuntime, **_kwargs: object) -> AIModelEntity:
-        return config.model_schema
-
-    def tokens(_runtime: PluginModelRuntime, **_kwargs: object) -> int:
-        return 1
-
-    def invoke(
-        _runtime: PluginModelRuntime,
-        *,
-        prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, object],
-        stream: bool,
-        **_kwargs: object,
-    ) -> LLMResult:
-        assert not stream
-        assert len(closed_sessions) == 3
-        assert all(not session.in_transaction() and not session.identity_map for session in closed_sessions)
-        parameters.append(dict(model_parameters))
-        prompts.extend(prompt.get_text_content() for prompt in prompt_messages)
-        return LLMResult(
-            model=_MODEL,
-            prompt_messages=list(prompt_messages),
-            message=AssistantPromptMessage(content="New answer"),
-            usage=LLMUsage.empty_usage(),
-        )
-
-    def load_file(filename: str) -> bytes:
-        assert filename in {"stored/image.png", "tools/image.png"}
-        assert len(closed_sessions) == 3
-        assert all(not session.in_transaction() for session in closed_sessions)
-        return b"test image content"
-
-    parameters = model_parameters
-    # Replace only credential loading and provider network calls. Config managers,
-    # ModelConfigConverter, the worker, queue, record writes and pipeline stay real.
-    monkeypatch.setattr(ProviderManager, "get_configurations", configurations)
-    monkeypatch.setattr(PluginModelRuntime, "get_model_schema", schema)
-    monkeypatch.setattr(PluginModelRuntime, "get_llm_num_tokens", tokens)
-    monkeypatch.setattr(PluginModelRuntime, "invoke_llm", invoke)
-    monkeypatch.setattr(storage, "load_once", load_file)
-    return _Runtime(
-        app,
-        service,
-        generator,
-        app_record.id,
-        tenant_id,
-        end_user.id,
-        message.id,
-        historical.id,
-        provider,
-        closed_sessions,
-        model_parameters,
-        prompts,
+    factory = sessionmaker(bind=sqlite_engine)
+    service = MessageMoreLikeThisService(
+        repository=MessageRepository(session_factory=factory),
+        generator=MessageMoreLikeThisGenerator(session_factory=factory),
     )
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+    db.init_app(app)
+    sessions: list[Session] = []
+
+    def observe(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    event.listen(factory, "after_begin", observe)
+    with app.app_context():
+        event.listen(db.session.session_factory, "after_begin", observe)
+        try:
+            yield _Runtime(app, service, app_record.id, tenant_id, end_user.id, message.id, historical.id, sessions)
+        finally:
+            event.remove(db.session.session_factory, "after_begin", observe)
+            db.session.remove()
+            db.engine.dispose()
+            event.remove(factory, "after_begin", observe)
 
 
-def test_real_runtime_creates_a_new_completion_and_closes_queries_before_model_invocation(
+def test_real_model_preparation_failure_closes_queries_without_creating_records(
     runtime: _Runtime, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    response = runtime.generate()
-    assert isinstance(response, Mapping)
-    assert response["answer"] == "New answer"
-    assert response["message_id"] != runtime.message_id
-    assert runtime.model_parameters == [{"temperature": 0.9}]
-    assert any("Historical prompt" in prompt for prompt in runtime.prompts)
-    with sqlite_session_factory() as session:
-        message = session.get(Message, response["message_id"])
-        original = session.get(Message, runtime.message_id)
-        assert message is not None
-        assert original is not None
-        assert message.conversation_id != original.conversation_id
-        assert message.query == "Original query"
-        assert message._inputs == {"count": 0, "empty": "", "items": []}
-        assert message.from_end_user_id == runtime.end_user_id
-        assert message.from_account_id is None
-        assert message.answer == "New answer"
-        assert session.scalar(select(func.count()).select_from(Message)) == 2
-
-
-def test_model_preparation_error_does_not_create_generation_records(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    runtime.provider.custom_configuration.provider = None
-    with pytest.raises(ProviderTokenNotInitError):
+    with pytest.raises(ValueError, match="Invalid plugin id invalid/provider"):
         runtime.generate()
-    assert len(runtime.closed_sessions) == 2
+    assert runtime.sessions
+    assert all(not session.in_transaction() and not session.identity_map for session in runtime.sessions)
+    assert get_current_file_access_scope() is None
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(Message)) == 1
         assert session.scalar(select(func.count()).select_from(Conversation)) == 1
 
 
-def _attach_file(
-    runtime: _Runtime,
-    session_factory: sessionmaker[Session],
-    *,
-    transfer_method: FileTransferMethod,
-    number_limits: int,
-) -> tuple[str, str | None]:
+def _attach_file(runtime: _Runtime, session_factory: sessionmaker[Session], *, limit: int = 2) -> UploadFile:
+    upload = UploadFile(
+        tenant_id=runtime.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="stored/image.png",
+        name="image.png",
+        size=123,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=runtime.end_user_id,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        used=True,
+    )
     with session_factory.begin() as session:
         config = session.get(AppModelConfig, runtime.historical_config_id)
         assert config is not None
@@ -267,187 +170,161 @@ def _attach_file(
             {
                 "enabled": True,
                 "allowed_file_types": ["image"],
-                "allowed_file_upload_methods": ["local_file", "remote_url", "tool_file"],
-                "number_limits": number_limits,
-                "image": {"detail": "high"},
+                "allowed_file_upload_methods": ["local_file"],
+                "number_limits": limit,
             }
         )
-        file_id: str | None = None
-        url: str | None = "https://example.com/image.png"
-        if transfer_method == FileTransferMethod.LOCAL_FILE:
-            uploaded = UploadFile(
-                tenant_id=runtime.tenant_id,
-                storage_type=StorageType.LOCAL,
-                key="stored/image.png",
-                name="image.png",
-                size=123,
-                extension="png",
-                mime_type="image/png",
+        session.add(upload)
+        session.add(
+            MessageFile(
+                message_id=runtime.message_id,
+                type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                upload_file_id=upload.id,
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=runtime.end_user_id,
-                created_at=datetime(2026, 1, 1, tzinfo=UTC),
-                used=True,
+                belongs_to=MessageFileBelongsTo.USER,
             )
-            session.add(uploaded)
-            file_id = uploaded.id
-            url = None
-        elif transfer_method == FileTransferMethod.TOOL_FILE:
-            tool_file = ToolFile(
-                user_id=runtime.end_user_id,
-                tenant_id=runtime.tenant_id,
-                conversation_id=None,
-                file_key="tools/image.png",
-                mimetype="image/png",
-                original_url="https://example.com/image.png",
-                name="tool-image.png",
-                size=123,
-            )
-            session.add(tool_file)
-            session.flush()
-            file_id = tool_file.id
-            url = f"https://example.com/tools/{tool_file.id}.png"
-        message_file = MessageFile(
-            message_id=runtime.message_id,
-            type=FileType.IMAGE,
-            transfer_method=transfer_method,
-            url=url,
-            upload_file_id=file_id if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-            created_by_role=CreatorUserRole.END_USER,
-            created_by=runtime.end_user_id,
-            belongs_to=MessageFileBelongsTo.USER,
         )
-        session.add(message_file)
-        return message_file.id, file_id
+    return upload
 
 
-@pytest.mark.parametrize("transfer_method", [FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE])
-def test_real_runtime_rebuilds_owned_file_references_without_rewriting_history(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], transfer_method: FileTransferMethod
+@pytest.mark.parametrize("failure", ["missing", "tenant", "owner"])
+def test_file_restoration_rejects_missing_or_foreign_uploads_before_model_resolution(
+    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], failure: str
 ) -> None:
-    message_file_id, file_id = _attach_file(
-        runtime, sqlite_session_factory, transfer_method=transfer_method, number_limits=2
-    )
-    response = runtime.generate()
-    assert isinstance(response, Mapping)
-    with sqlite_session_factory() as session:
-        original = session.get(MessageFile, message_file_id)
-        regenerated = session.scalar(select(MessageFile).where(MessageFile.message_id == response["message_id"]))
-        assert original is not None
-        assert regenerated is not None
-        assert regenerated.upload_file_id == file_id
-        assert regenerated.transfer_method == transfer_method
-        assert regenerated.created_by == runtime.end_user_id
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            assert original.upload_file_id is None
-
-
-def test_remote_file_metadata_is_fetched_only_after_source_sessions_close(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _attach_file(runtime, sqlite_session_factory, transfer_method=FileTransferMethod.REMOTE_URL, number_limits=2)
-    requests: list[tuple[str, str]] = []
-
-    def request(method: str, url: str, **_kwargs: object) -> Response:
-        assert method in {"HEAD", "GET"}
-        assert len(runtime.closed_sessions) == (2 if method == "HEAD" else 3)
-        assert all(not session.in_transaction() for session in runtime.closed_sessions)
-        scope = get_current_file_access_scope()
-        assert scope is not None
-        assert scope.tenant_id == runtime.tenant_id
-        assert scope.user_id == runtime.end_user_id
-        requests.append((method, url))
-        return Response(
-            200,
-            request=Request(method, url),
-            headers={"Content-Type": "image/png", "Content-Length": "123"},
-            content=b"test image content",
-        )
-
-    monkeypatch.setattr(remote_fetcher, "make_request", request)
-    response = runtime.generate()
-    assert isinstance(response, Mapping)
-    assert response["answer"] == "New answer"
-    assert requests.count(("HEAD", "https://example.com/image.png")) == 1
-    assert ("GET", "https://example.com/image.png") in requests
-
-
-@pytest.mark.parametrize("foreign_scope", ["tenant", "end_user"])
-def test_file_restoration_rejects_foreign_uploads_before_model_resolution(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], foreign_scope: str
-) -> None:
-    _, file_id = _attach_file(
-        runtime, sqlite_session_factory, transfer_method=FileTransferMethod.LOCAL_FILE, number_limits=2
-    )
+    upload = _attach_file(runtime, sqlite_session_factory)
     with sqlite_session_factory.begin() as session:
-        file = session.get(UploadFile, file_id)
+        file = session.get(UploadFile, upload.id)
         assert file is not None
-        if foreign_scope == "tenant":
+        if failure == "missing":
+            session.delete(file)
+        elif failure == "tenant":
             file.tenant_id = str(uuid4())
         else:
             file.created_by = str(uuid4())
     with pytest.raises(ValueError, match="Invalid upload file"):
         runtime.generate()
-    assert runtime.model_parameters == []
-    assert len(runtime.closed_sessions) == 2
+    assert all(not session.in_transaction() and not session.identity_map for session in runtime.sessions)
+    assert get_current_file_access_scope() is None
 
 
-def test_attachment_count_limit_is_preserved(runtime: _Runtime, sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_attachment_count_limit_stops_generation(
+    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     for _ in range(2):
-        _attach_file(runtime, sqlite_session_factory, transfer_method=FileTransferMethod.LOCAL_FILE, number_limits=1)
+        _attach_file(runtime, sqlite_session_factory, limit=1)
     with pytest.raises(ValueError, match="Number of image files exceeds"):
         runtime.generate()
-    assert runtime.model_parameters == []
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(Message)) == 1
 
 
-def test_stored_input_files_use_the_admitted_tenant_instead_of_embedded_tenant(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session]
+@pytest.mark.parametrize("as_list", [False, True])
+def test_stored_input_restoration_reloads_metadata_using_the_admitted_tenant(
+    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], as_list: bool
 ) -> None:
-    _, file_id = _attach_file(
-        runtime, sqlite_session_factory, transfer_method=FileTransferMethod.LOCAL_FILE, number_limits=2
+    uploaded = _attach_file(runtime, sqlite_session_factory)
+    mapping: dict[str, JsonValue] = {
+        "dify_model_identity": FILE_MODEL_IDENTITY,
+        "type": "image",
+        "transfer_method": "local_file",
+        "related_id": uploaded.id,
+        "tenant_id": str(uuid4()),
+        "filename": "untrusted-name.png",
+    }
+    scope = FileAccessScope(
+        tenant_id=runtime.tenant_id,
+        user_id=runtime.end_user_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
     )
-    with sqlite_session_factory.begin() as session:
-        message = session.get(Message, runtime.message_id)
-        assert message is not None
-        message.inputs = {
-            "file": {
-                "dify_model_identity": FILE_MODEL_IDENTITY,
-                "type": "image",
-                "transfer_method": "local_file",
-                "related_id": file_id,
-                "tenant_id": str(uuid4()),
-                "filename": "untrusted-name.png",
-            }
-        }
-    response = runtime.generate()
-    assert isinstance(response, Mapping)
-    with sqlite_session_factory() as session:
-        regenerated = session.get(Message, response["message_id"])
-        assert regenerated is not None
-        assert regenerated._inputs["file"]["filename"] == "image.png"
-        assert resolve_file_record_id(regenerated._inputs["file"]["reference"]) == file_id
+    with bind_file_access_scope(scope):
+        restored = _restore_inputs(
+            {"file": [mapping] if as_list else mapping, "count": 0, "empty": "", "items": []},
+            tenant_id=runtime.tenant_id,
+        )
+    file = restored["file"][0] if as_list else restored["file"]
+    assert isinstance(file, File)
+    assert file.filename == "image.png"
+    assert resolve_file_record_id(file.reference) == uploaded.id
+    assert restored["count"] == 0
+    assert restored["empty"] == ""
+    assert restored["items"] == []
+    assert mapping["filename"] == "untrusted-name.png"
 
 
-def test_preparation_commits_cannot_flush_the_callers_pending_session(
+def test_real_provider_initialization_commit_does_not_flush_the_callers_pending_session(
     runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    resolve = ProviderManager.get_configurations
-
-    def committing_lookup(manager: ProviderManager, tenant_id: str) -> ProviderConfigurations:
-        result = resolve(manager, tenant_id)
-        db.session.commit()
-        return result
-
-    monkeypatch.setattr(ProviderManager, "get_configurations", committing_lookup)
-    with runtime.app.test_request_context("/caller"):
-        pending = Account(name="Uncommitted", email="pending@example.com")
-        db.session.add(pending)
-        runtime.generate()
-        assert pending in db.session.new
+    provider_name = "langgenius/openai/openai"
+    with sqlite_session_factory.begin() as session:
+        session.execute(delete(Provider).where(Provider.tenant_id == runtime.tenant_id))
+        session.add(Provider(tenant_id=runtime.tenant_id, provider_name=provider_name, is_valid=True))
+        # Model records are normalized after real hosting initialization commits.
+        session.add(
+            ProviderModel(
+                tenant_id=runtime.tenant_id,
+                provider_name="invalid/provider",
+                model_name="broken",
+                model_type=ModelType.LLM,
+                is_valid=True,
+            )
+        )
+    monkeypatch.setattr(
+        ext_hosting_provider.hosting_configuration,
+        "provider_map",
+        {provider_name: HostingProvider(enabled=True, quota_unit=QuotaUnit.TIMES, quotas=[TrialHostingQuota()])},
+    )
+    caller = db.session()
+    pending = caller.get(App, runtime.app_id)
+    assert pending is not None
+    pending.name = "Pending caller change"
+    try:
+        with pytest.raises(ValueError, match="Invalid plugin id invalid/provider"):
+            runtime.generate()
+        assert db.session() is caller
+        assert caller.in_transaction()
+        assert pending in caller.dirty
         with sqlite_session_factory() as session:
-            assert session.scalar(select(Account).where(Account.email == "pending@example.com")) is None
-        db.session.rollback()
+            trial = session.scalar(
+                select(Provider).where(
+                    Provider.tenant_id == runtime.tenant_id,
+                    Provider.provider_type == ProviderType.SYSTEM,
+                    Provider.quota_type == ProviderQuotaType.TRIAL,
+                )
+            )
+            assert trial is not None
+            assert session.scalar(select(App.name).where(App.id == runtime.app_id)) == "Completion"
+    finally:
+        caller.rollback()
+
+
+@pytest.mark.parametrize(
+    ("transfer_method", "url", "upload_file_id", "expected"),
+    [
+        (FileTransferMethod.LOCAL_FILE, None, None, "no upload_file_id"),
+        (FileTransferMethod.REMOTE_URL, None, None, "no url"),
+        (FileTransferMethod.TOOL_FILE, None, None, "no tool file reference"),
+        (FileTransferMethod.DATASOURCE_FILE, None, "record", "invalid transfer_method"),
+    ],
+)
+def test_invalid_stored_attachment_reports_the_message_file_id(
+    transfer_method: FileTransferMethod, url: str | None, upload_file_id: str | None, expected: str
+) -> None:
+    file = MoreLikeThisFile("message-file-id", "image", transfer_method, url, upload_file_id)
+    with pytest.raises(ValueError, match=f"MessageFile message-file-id .*{expected}"):
+        _file_mapping(file)
+
+
+@pytest.mark.parametrize("record_id", [None, "explicit-file-id"])
+def test_legacy_tool_reference_is_recovered_without_changing_the_stored_reference(record_id: str | None) -> None:
+    file = MoreLikeThisFile(
+        "message-file-id", "image", "tool_file", "https://example.com/tools/legacy-id.png", record_id
+    )
+    mapping = _file_mapping(file)
+    assert mapping["tool_file_id"] == (record_id or "legacy-id")
+    assert file.upload_file_id == record_id
 
 
 @pytest.mark.parametrize("termination", ["exhaust", "partial", "error"])
@@ -459,7 +336,8 @@ def test_event_stream_encodes_events_and_closes_its_source(termination: str) -> 
             yield {"event": "message", "answer": "hello"}
             yield "ping"
             if termination == "error":
-                raise RuntimeError("provider stream failed")
+                # A real iterator failure tests this iterator wrapper's ownership.
+                json.loads("{")
         finally:
             closed.append(True)
 
@@ -469,7 +347,36 @@ def test_event_stream_encodes_events_and_closes_its_source(termination: str) -> 
         stream.close()
     else:
         assert next(stream) == "event: ping\n\n"
-        with pytest.raises(RuntimeError if termination == "error" else StopIteration):
+        with pytest.raises(json.JSONDecodeError if termination == "error" else StopIteration):
             next(stream)
     stream.close()
+    assert closed == [True]
+
+
+@pytest.mark.parametrize("consume_all", [False, True])
+def test_flask_response_close_releases_its_real_event_iterator(consume_all: bool) -> None:
+    from libs.helper import compact_generate_response
+
+    closed: list[bool] = []
+
+    def events() -> Generator[Mapping[str, object] | str, None, None]:
+        try:
+            yield {"event": "message", "answer": "hello"}
+            yield {"event": "message_end"}
+        finally:
+            closed.append(True)
+
+    with Flask(__name__).test_request_context():
+        response = compact_generate_response(_MoreLikeThisEventStream(events()))
+        try:
+            assert response.mimetype == "text/event-stream"
+            if consume_all:
+                assert response.get_data(as_text=True) == (
+                    'data: {"event":"message","answer":"hello"}\n\ndata: {"event":"message_end"}\n\n'
+                )
+            else:
+                assert next(iter(response.response)) == 'data: {"event":"message","answer":"hello"}\n\n'
+                assert not closed
+        finally:
+            response.close()
     assert closed == [True]
