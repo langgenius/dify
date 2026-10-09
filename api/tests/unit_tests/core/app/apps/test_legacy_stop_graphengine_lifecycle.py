@@ -5,10 +5,10 @@ import pytest
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueTextChunkEvent
 from models.model import AppMode
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 
 
 def _message_queue_manager(app_mode: str) -> MessageBasedAppQueueManager:

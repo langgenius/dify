@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -55,6 +54,7 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowAppLog
+from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from tests.unit_tests.model_factories import make_end_user, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -67,7 +67,7 @@ def _end_user(*, end_user_id: str = "user", session_id: str = "session") -> EndU
     return make_end_user(end_user_id=end_user_id, tenant_id="tenant", app_id="app", session_id=session_id)
 
 
-def _make_pipeline():
+def _make_pipeline(*, workflow_runtime, tool_providers):
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
         app_id="app",
@@ -93,20 +93,25 @@ def _make_pipeline():
     user = _end_user()
 
     pipeline = WorkflowAppGenerateTaskPipeline(
+        contexts=workflow_runtime.contexts,
+        logs=workflow_runtime.logs,
         application_generate_entity=application_generate_entity,
         workflow=workflow,
         queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
         user=user,
         stream=False,
         draft_var_saver_factory=lambda **kwargs: None,
+        tool_providers=tool_providers,
     )
 
     return pipeline
 
 
 class TestWorkflowGenerateTaskPipeline:
-    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
-        pipeline = _make_pipeline()
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(
+        self, *, workflow_runtime, tool_providers
+    ):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(
                 variables=build_system_variables(workflow_execution_id="run-id"),
@@ -153,8 +158,8 @@ class TestWorkflowGenerateTaskPipeline:
             }
         ]
 
-    def test_to_blocking_response_handles_finish(self):
-        pipeline = _make_pipeline()
+    def test_to_blocking_response_handles_finish(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
 
         def _gen():
             yield WorkflowFinishStreamResponse(
@@ -178,24 +183,24 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert response.data.outputs == {"ok": True}
 
-    def test_listen_audio_msg_returns_audio_stream(self):
-        pipeline = _make_pipeline()
+    def test_listen_audio_msg_returns_audio_stream(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
 
-    def test_handle_ping_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_ping_event(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.ping_stream_response = lambda: PingStreamResponse(task_id="task")
 
         responses = list(pipeline._handle_ping_event(QueuePingEvent()))
 
         assert isinstance(responses[0], PingStreamResponse)
 
-    def test_handle_error_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_error_event(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
@@ -203,18 +208,16 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine):
-        pipeline = _make_pipeline()
+    def test_handle_workflow_started_event_sets_run_id(
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
+    ):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.db",
-            SimpleNamespace(engine=sqlite_engine),
-        )
         monkeypatch.setattr(pipeline, "_save_workflow_app_log", lambda **kwargs: None)
 
         responses = list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
@@ -222,8 +225,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert pipeline._workflow_execution_id == "run-id"
         assert responses == ["started"]
 
-    def test_handle_node_succeeded_event_saves_output(self):
-        pipeline = _make_pipeline()
+    def test_handle_node_succeeded_event_saves_output(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
         pipeline._workflow_execution_id = "run-id"
@@ -242,8 +245,8 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert responses == ["done"]
 
-    def test_handle_workflow_failed_event_yields_error(self):
-        pipeline = _make_pipeline()
+    def test_handle_workflow_failed_event_yields_error(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -259,8 +262,8 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert responses[0] == "finish"
 
-    def test_handle_text_chunk_event_publishes_tts(self):
-        pipeline = _make_pipeline()
+    def test_handle_text_chunk_event_publishes_tts(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         published: list[object] = []
 
         class _Publisher:
@@ -277,8 +280,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
 
-    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
@@ -292,16 +295,16 @@ class TestWorkflowGenerateTaskPipeline:
         assert response.data.node_id == "llm-1"
         assert response.data.is_final is False
 
-    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
 
         assert responses == []
 
-    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
@@ -312,8 +315,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert response.data.reasoning == ""
         assert response.data.is_final is True
 
-    def test_dispatch_event_handles_node_failed(self):
-        pipeline = _make_pipeline()
+    def test_dispatch_event_handles_node_failed(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
 
         event = QueueNodeFailedEvent(
@@ -329,8 +332,8 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert list(pipeline._dispatch_event(event)) == ["done"]
 
-    def test_handle_stop_event_yields_finish(self):
-        pipeline = _make_pipeline()
+    def test_handle_stop_event_yields_finish(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -349,11 +352,11 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses == ["finish"]
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
-    def test_save_workflow_app_log_created_from(self, sqlite_session: Session):
-        pipeline = _make_pipeline()
+    def test_save_workflow_app_log_created_from(self, sqlite_session: Session, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._application_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         pipeline._user_id = "user"
-        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id")
+        pipeline._save_workflow_app_log(workflow_run_id="run-id")
         sqlite_session.flush()
 
         saved_log = sqlite_session.scalar(select(WorkflowAppLog))
@@ -361,8 +364,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert saved_log.workflow_run_id == "run-id"
         assert saved_log.created_from == "service-api"
 
-    def test_iteration_loop_and_human_input_handlers(self):
-        pipeline = _make_pipeline()
+    def test_iteration_loop_and_human_input_handlers(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
         pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = lambda **kwargs: "iter"
         pipeline._workflow_response_converter.workflow_iteration_next_to_stream_response = lambda **kwargs: "next"
@@ -459,8 +462,10 @@ class TestWorkflowGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert list(pipeline._handle_agent_log_event(agent_event)) == ["log"]
 
-    def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch: pytest.MonkeyPatch):
-        pipeline = _make_pipeline()
+    def test_wrapper_process_stream_response_emits_audio_end(
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
+    ):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -489,7 +494,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow.execution.adapters.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
@@ -498,7 +503,7 @@ class TestWorkflowGenerateTaskPipeline:
         assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_init_with_end_user_sets_role_and_system_user(self):
+    def test_init_with_end_user_sets_role_and_system_user(self, *, workflow_runtime, tool_providers):
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -525,19 +530,22 @@ class TestWorkflowGenerateTaskPipeline:
         end_user = _end_user(end_user_id="end-user-id", session_id="session-id")
 
         pipeline = WorkflowAppGenerateTaskPipeline(
+            contexts=workflow_runtime.contexts,
+            logs=workflow_runtime.logs,
             application_generate_entity=application_generate_entity,
             workflow=workflow,
             queue_manager=queue_manager,
             user=end_user,
             stream=False,
             draft_var_saver_factory=lambda **kwargs: None,
+            tool_providers=tool_providers,
         )
 
         assert pipeline._created_by_role == CreatorUserRole.END_USER
         assert system_variables_to_mapping(pipeline._workflow_system_variables)["user_id"] == "session-id"
 
-    def test_process_returns_stream_and_blocking_variants(self):
-        pipeline = _make_pipeline()
+    def test_process_returns_stream_and_blocking_variants(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.stream = True
         pipeline._wrapper_process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
@@ -570,8 +578,8 @@ class TestWorkflowGenerateTaskPipeline:
         blocking_response = pipeline.process()
         assert blocking_response.workflow_run_id == "run-id"
 
-    def test_to_blocking_response_handles_error_and_unexpected_end(self):
-        pipeline = _make_pipeline()
+    def test_to_blocking_response_handles_error_and_unexpected_end(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
 
         def _error_gen():
             yield ErrorStreamResponse(task_id="task", err=ValueError("boom"))
@@ -585,8 +593,8 @@ class TestWorkflowGenerateTaskPipeline:
         with pytest.raises(ValueError, match="queue listening stopped unexpectedly"):
             pipeline._to_blocking_response(_unexpected_gen())
 
-    def test_to_stream_response_tracks_workflow_run_id(self):
-        pipeline = _make_pipeline()
+    def test_to_stream_response_tracks_workflow_run_id(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
 
         def _gen():
             yield WorkflowStartStreamResponse(
@@ -605,20 +613,22 @@ class TestWorkflowGenerateTaskPipeline:
         assert stream_responses[0].workflow_run_id == "run-id"
         assert stream_responses[1].workflow_run_id == "run-id"
 
-    def test_listen_audio_msg_returns_none_without_publisher(self):
-        pipeline = _make_pipeline()
+    def test_listen_audio_msg_returns_none_without_publisher(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         assert pipeline._listen_audio_msg(publisher=None, task_id="task") is None
 
-    def test_wrapper_process_stream_response_without_tts(self):
-        pipeline = _make_pipeline()
+    def test_wrapper_process_stream_response_without_tts(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_features_dict = {}
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         responses = list(pipeline._wrapper_process_stream_response())
         assert responses == [PingStreamResponse(task_id="task")]
 
-    def test_wrapper_process_stream_response_uses_a_blocking_terminal_read(self, monkeypatch: pytest.MonkeyPatch):
-        pipeline = _make_pipeline()
+    def test_wrapper_process_stream_response_uses_a_blocking_terminal_read(
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
+    ):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -642,7 +652,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow.execution.adapters.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
@@ -652,9 +662,9 @@ class TestWorkflowGenerateTaskPipeline:
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
     def test_wrapper_process_stream_response_does_not_swallow_audio_queue_exceptions(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
     ):
-        pipeline = _make_pipeline()
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._base_task_pipeline.stream = True
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -676,39 +686,15 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow.execution.adapters.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
         with pytest.raises(RuntimeError, match="tts failure"):
             list(pipeline._wrapper_process_stream_response())
 
-    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
-    def test_database_session_rolls_back_on_error(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_engine, sqlite_session: Session
-    ):
-        pipeline = _make_pipeline()
-        pipeline._application_generate_entity.invoke_from = InvokeFrom.SERVICE_API
-        pipeline._user_id = "user"
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.db",
-            SimpleNamespace(engine=sqlite_engine),
-        )
-
-        def persist_then_fail() -> None:
-            with pipeline._database_session() as session:
-                pipeline._save_workflow_app_log(session=session, workflow_run_id="run-id")
-                session.flush()
-                raise RuntimeError("db error")
-
-        with pytest.raises(RuntimeError, match="db error"):
-            persist_then_fail()
-
-        sqlite_session.expire_all()
-        assert sqlite_session.scalar(select(WorkflowAppLog)) is None
-
-    def test_node_retry_and_started_handlers_cover_none_and_value(self):
-        pipeline = _make_pipeline()
+    def test_node_retry_and_started_handlers_cover_none_and_value(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
 
         retry_event = QueueNodeRetryEvent(
@@ -744,8 +730,8 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._workflow_response_converter.workflow_node_start_to_stream_response = lambda **kwargs: "started"
         assert list(pipeline._handle_node_started_event(started_event)) == ["started"]
 
-    def test_handle_node_exception_event_saves_output(self):
-        pipeline = _make_pipeline()
+    def test_handle_node_exception_event_saves_output(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         saved_ids: list[str] = []
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "failed"
         pipeline._save_output_for_event = lambda event, node_execution_id: saved_ids.append(node_execution_id)
@@ -765,8 +751,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses == ["failed"]
         assert saved_ids == ["exec-id"]
 
-    def test_success_partial_and_pause_handlers(self):
-        pipeline = _make_pipeline()
+    def test_success_partial_and_pause_handlers(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -790,13 +776,13 @@ class TestWorkflowGenerateTaskPipeline:
         pause_event = QueueWorkflowPausedEvent(reasons=[], outputs={}, paused_nodes=["node"])
         assert list(pipeline._handle_workflow_paused_event(pause_event)) == ["pause-a", "pause-b"]
 
-    def test_text_chunk_handler_returns_empty_when_text_missing(self):
-        pipeline = _make_pipeline()
+    def test_text_chunk_handler_returns_empty_when_text_missing(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         event = QueueTextChunkEvent.model_construct(text=None, from_variable_selector=None)
         assert list(pipeline._handle_text_chunk_event(event)) == []
 
-    def test_dispatch_event_direct_failed_and_unhandled_paths(self):
-        pipeline = _make_pipeline()
+    def test_dispatch_event_direct_failed_and_unhandled_paths(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -814,8 +800,8 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert list(pipeline._dispatch_event(SimpleNamespace())) == []
 
-    def test_process_stream_response_main_match_paths_and_cleanup(self):
-        pipeline = _make_pipeline()
+    def test_process_stream_response_main_match_paths_and_cleanup(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
@@ -844,8 +830,8 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses == ["started", "text", "dispatched", "error"]
         assert publisher_calls == []
 
-    def test_process_stream_response_break_paths(self):
-        pipeline = _make_pipeline()
+    def test_process_stream_response_break_paths(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
 
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueWorkflowFailedEvent(error="fail", exceptions_count=1))]
@@ -866,32 +852,34 @@ class TestWorkflowGenerateTaskPipeline:
         assert list(pipeline._process_stream_response()) == ["stopped"]
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
-    def test_save_workflow_app_log_covers_invoke_from_variants(self, sqlite_session: Session):
-        pipeline = _make_pipeline()
+    def test_save_workflow_app_log_covers_invoke_from_variants(
+        self, sqlite_session: Session, *, workflow_runtime, tool_providers
+    ):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         pipeline._user_id = "user-id"
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.EXPLORE
-        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id")
+        pipeline._save_workflow_app_log(workflow_run_id="run-id")
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
-        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id-2")
+        pipeline._save_workflow_app_log(workflow_run_id="run-id-2")
         sqlite_session.flush()
         saved_logs = sqlite_session.scalars(select(WorkflowAppLog).order_by(WorkflowAppLog.workflow_run_id)).all()
         assert [log.created_from for log in saved_logs] == ["installed-app", "web-app"]
 
         count_before = len(saved_logs)
         pipeline._application_generate_entity.invoke_from = InvokeFrom.DEBUGGER
-        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id="run-id-3")
+        pipeline._save_workflow_app_log(workflow_run_id="run-id-3")
         sqlite_session.flush()
         assert len(sqlite_session.scalars(select(WorkflowAppLog)).all()) == count_before
 
         pipeline._application_generate_entity.invoke_from = InvokeFrom.WEB_APP
-        pipeline._save_workflow_app_log(session=sqlite_session, workflow_run_id=None)
+        pipeline._save_workflow_app_log(workflow_run_id=None)
         sqlite_session.flush()
         assert len(sqlite_session.scalars(select(WorkflowAppLog)).all()) == count_before
 
-    def test_save_output_for_event_writes_draft_variables(self):
-        pipeline = _make_pipeline()
+    def test_save_output_for_event_writes_draft_variables(self, *, workflow_runtime, tool_providers):
+        pipeline = _make_pipeline(workflow_runtime=workflow_runtime, tool_providers=tool_providers)
         saver_calls: list[tuple[object, object]] = []
         captured_factory_args: dict[str, object] = {}
 

@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
@@ -35,6 +34,7 @@ from graphon.graph_events import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 
 
 class _RepoRecorder:
@@ -138,7 +138,7 @@ class TestWorkflowPersistenceLayer:
         layer, _, _, _ = _make_layer()
 
         monkeypatch.setattr(
-            "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+            "services.workflow.execution.adapters.workflow_entry.WorkflowEntry.handle_special_values",
             lambda inputs: inputs,
         )
 

@@ -1,22 +1,26 @@
-import json
-import time
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import create_engine, event, select
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState
-from models.account import Account
+from models.base import TypeBase
+from models.enums import CreatorUserRole
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import WorkflowAppLog
+from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from tests.unit_tests.model_factories import make_account, make_end_user, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -25,82 +29,129 @@ def bind_queue_redis(monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[Red
     monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis_transport[0])
 
 
-def _build_workflow_app_config() -> WorkflowUIBasedAppConfig:
-    return WorkflowUIBasedAppConfig(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        app_mode=AppMode.WORKFLOW,
-        workflow_id="workflow-id",
-    )
+@pytest.fixture
+def log_store():
+    # This database is deliberately separate from the application's global database.
+    engine = create_engine("sqlite://", poolclass=QueuePool)
+    TypeBase.metadata.create_all(engine, tables=[WorkflowAppLog.__table__])
+    sessions = sessionmaker(engine, expire_on_commit=False)
+    try:
+        yield sessions, build_workflow_execution_dependencies(sessions)
+    finally:
+        engine.dispose()
 
 
-def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
-    return WorkflowAppGenerateEntity(
+def build_pipeline(runtime, invoke_from, user, *, tool_providers):
+    workflow = make_workflow(workflow_id="workflow-id", app_id="app-id", tenant_id="tenant-id", features="{}")
+    entity = WorkflowAppGenerateEntity(
         task_id="task-id",
-        app_config=_build_workflow_app_config(),
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            app_mode=AppMode.WORKFLOW,
+            workflow_id=workflow.id,
+        ),
         inputs={},
         files=[],
-        user_id="user-id",
+        user_id=user.id,
         stream=False,
-        invoke_from=InvokeFrom.SERVICE_API,
-        workflow_execution_id=run_id,
+        invoke_from=invoke_from,
+        workflow_execution_id="run-id",
     )
-
-
-def _build_runtime_state(run_id: str) -> GraphRuntimeState:
-    variable_pool = build_test_variable_pool(variables=build_system_variables(workflow_execution_id=run_id))
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-
-def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
+    state = GraphRuntimeState(
+        variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+        start_at=0,
+    )
     queue_manager = WorkflowAppQueueManager(
-        task_id="task-id", user_id="user-id", invoke_from=InvokeFrom.SERVICE_API, app_mode=AppMode.WORKFLOW
+        task_id=entity.task_id,
+        user_id=user.id,
+        invoke_from=invoke_from,
+        app_mode=AppMode.WORKFLOW,
     )
-    queue_manager.graph_runtime_state = _build_runtime_state(run_id)
-    workflow = Workflow(
-        id="workflow-id",
-        tenant_id="tenant-id",
-        app_id="app-id",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        features=json.dumps({}),
-        created_by="user-id",
-    )
-    user = Account(name="user", email="user@example.com")
-    pipeline = WorkflowAppGenerateTaskPipeline(
-        application_generate_entity=_build_generate_entity(run_id),
+    queue_manager.graph_runtime_state = state
+    return WorkflowAppGenerateTaskPipeline(
+        contexts=runtime.contexts,
+        logs=runtime.logs,
+        application_generate_entity=entity,
         workflow=workflow,
         queue_manager=queue_manager,
         user=user,
         stream=False,
-        draft_var_saver_factory=MagicMock(),
+        draft_var_saver_factory=lambda **_kwargs: NoopDraftVariableSaver(),
+        tool_providers=tool_providers,
     )
-    pipeline._database_session = unbound_session_factory
-    return pipeline
 
 
-def test_workflow_app_log_saved_only_on_initial_start(unbound_session_factory: sessionmaker[Session]) -> None:
-    run_id = "run-initial"
-    pipeline = _build_pipeline(run_id, unbound_session_factory)
-    pipeline._save_workflow_app_log = MagicMock()
+@pytest.mark.parametrize(
+    ("invoke_from", "created_from"),
+    [
+        (InvokeFrom.SERVICE_API, "service-api"),
+        (InvokeFrom.OPENAPI, "openapi"),
+        (InvokeFrom.EXPLORE, "installed-app"),
+        (InvokeFrom.WEB_APP, "web-app"),
+    ],
+)
+@pytest.mark.parametrize("account", [True, False])
+def test_start_commits_log_to_injected_database_before_response(
+    log_store, invoke_from, created_from, account, *, tool_providers
+):
+    sessions, runtime = log_store
+    user = make_account(account_id="user-id") if account else make_end_user(end_user_id="user-id")
+    pipeline = build_pipeline(runtime, invoke_from, user, tool_providers=tool_providers)
+    responses = pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent(reason=WorkflowStartReason.INITIAL))
 
-    event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.INITIAL)
-    list(pipeline._handle_workflow_started_event(event))
+    assert next(responses).workflow_run_id == "run-id"
+    assert sessions.kw["bind"].pool.checkedout() == 0
+    with sessions() as session:
+        log = session.scalars(select(WorkflowAppLog)).one()
+        assert (log.tenant_id, log.app_id, log.workflow_id, log.workflow_run_id) == (
+            "tenant-id",
+            "app-id",
+            "workflow-id",
+            "run-id",
+        )
+        assert log.created_from == created_from
+        assert log.created_by == user.id
+        assert log.created_by_role == (CreatorUserRole.ACCOUNT if account else CreatorUserRole.END_USER)
+    assert list(responses) == []
 
-    pipeline._save_workflow_app_log.assert_called_once()
-    _, kwargs = pipeline._save_workflow_app_log.call_args
-    assert kwargs["workflow_run_id"] == run_id
-    assert pipeline._workflow_execution_id == run_id
+    list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)))
+    with sessions() as session:
+        assert session.scalars(select(WorkflowAppLog)).one().id == log.id
 
 
-def test_workflow_app_log_skipped_on_resumption_start(unbound_session_factory: sessionmaker[Session]) -> None:
-    run_id = "run-resume"
-    pipeline = _build_pipeline(run_id, unbound_session_factory)
-    pipeline._save_workflow_app_log = MagicMock()
+@pytest.mark.parametrize(
+    "invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.TRIGGER, InvokeFrom.PUBLISHED_PIPELINE, InvokeFrom.VALIDATION]
+)
+def test_debug_and_pipeline_starts_do_not_create_application_logs(log_store, invoke_from, *, tool_providers):
+    sessions, runtime = log_store
+    pipeline = build_pipeline(runtime, invoke_from, make_account(account_id="user-id"), tool_providers=tool_providers)
+    assert len(list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))) == 1
+    with sessions() as session:
+        assert session.scalar(select(WorkflowAppLog)) is None
 
-    event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
-    list(pipeline._handle_workflow_started_event(event))
 
-    pipeline._save_workflow_app_log.assert_not_called()
-    assert pipeline._workflow_execution_id == run_id
+def test_log_failure_rolls_back_and_releases_connection_for_retry(log_store, *, tool_providers):
+    sessions, runtime = log_store
+    pipeline = build_pipeline(
+        runtime, InvokeFrom.SERVICE_API, make_account(account_id="user-id"), tool_providers=tool_providers
+    )
+
+    def fail_after_insert(session, _flush_context):
+        assert session.scalar(select(WorkflowAppLog)) is not None
+        raise RuntimeError("commit failed")
+
+    event.listen(sessions, "after_flush", fail_after_insert)
+    try:
+        with pytest.raises(RuntimeError, match="commit failed"):
+            list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
+    finally:
+        event.remove(sessions, "after_flush", fail_after_insert)
+
+    assert sessions.kw["bind"].pool.checkedout() == 0
+    with sessions() as session:
+        assert session.scalar(select(WorkflowAppLog)) is None
+
+    assert len(list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))) == 1
+    with sessions() as session:
+        assert session.scalars(select(WorkflowAppLog)).one().workflow_run_id == "run-id"

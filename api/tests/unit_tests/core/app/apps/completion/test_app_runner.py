@@ -1,29 +1,33 @@
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-import core.app.apps.completion.app_runner as module
-from core.app.apps.completion.app_runner import CompletionAppRunner
+import services.app.generation.adapters.completion_runner as module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.moderation.base import ModerationError
+from extensions.application_services.retrieval import build_dataset_retrieval
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
+from services.app.generation.adapters.completion_runner import CompletionAppRunner
+from services.app.generation.retrieval import ApplicationDatasetRetriever
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
 
 
 @pytest.fixture
-def runner():
-    return CompletionAppRunner()
+def runner(*, app_records, sqlite_session_factory):
+    return CompletionAppRunner(
+        retrieval=build_dataset_retrieval(sqlite_session_factory),
+        records=app_records,
+    )
 
 
 def _build_app_config(dataset=None, external_tools=None, additional_features=None):
@@ -109,13 +113,6 @@ def _persist_records(session: Session) -> tuple[App, Message]:
 
 
 class TestCompletionAppRunner:
-    def test_run_app_not_found(self, runner, mocker: MockerFixture, sqlite_session: Session):
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        with pytest.raises(ValueError):
-            runner.run(app_generate_entity, MagicMock(), _message(), sqlite_session)
-
     def test_run_moderation_error_outputs_direct(self, runner, mocker: MockerFixture, sqlite_session: Session):
         _, message = _persist_records(sqlite_session)
 
@@ -127,7 +124,7 @@ class TestCompletionAppRunner:
         runner.direct_output = MagicMock()
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, app_record=sqlite_session.get(App, APP_ID))
 
         runner.direct_output.assert_called_once()
         runner._handle_invoke_result.assert_not_called()
@@ -143,7 +140,7 @@ class TestCompletionAppRunner:
         runner.check_hosting_moderation = MagicMock(return_value=True)
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, app_record=sqlite_session.get(App, APP_ID))
 
         runner._handle_invoke_result.assert_not_called()
 
@@ -171,9 +168,9 @@ class TestCompletionAppRunner:
         runner.recalc_llm_max_tokens = MagicMock()
         runner._handle_invoke_result = MagicMock()
 
-        dataset_retrieval = MagicMock()
+        dataset_retrieval = create_autospec(ApplicationDatasetRetriever, instance=True, spec_set=True)
         dataset_retrieval.retrieve.return_value = ("ctx", ["file1"])
-        mocker.patch.object(module, "DatasetRetrieval", return_value=dataset_retrieval)
+        runner._retrieval = lambda _: dataset_retrieval
 
         model_instance = MagicMock()
         model_instance.invoke_llm.return_value = "invoke_result"
@@ -181,68 +178,11 @@ class TestCompletionAppRunner:
         model_manager.get_model_instance.return_value = model_instance
         mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
-        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, app_record=sqlite_session.get(App, APP_ID))
 
         dataset_retrieval.retrieve.assert_called_once()
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
-
-    def test_run_closes_explicit_session_before_stream_consumption(
-        self, runner, mocker: MockerFixture, sqlite_session: Session
-    ):
-        _, message = _persist_records(sqlite_session)
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-        queue_manager = MagicMock()
-
-        events = []
-        session = sqlite_session
-        original_close = session.close
-
-        def record_commit(_session: Session) -> None:
-            events.append("commit")
-
-        def record_close() -> None:
-            events.append("close")
-            original_close()
-
-        runner.organize_prompt_messages = MagicMock(return_value=([], None))
-        runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
-        runner.check_hosting_moderation = MagicMock(return_value=False)
-        runner.recalc_llm_max_tokens = MagicMock()
-        runner._handle_invoke_result = MagicMock(side_effect=lambda invoke_result, **kwargs: list(invoke_result))
-
-        model_instance = MagicMock()
-
-        def invoke_stream():
-            events.append("first-chunk")
-            yield "chunk"
-
-        def invoke_llm(**kwargs):
-            events.append("invoke")
-            return invoke_stream()
-
-        model_instance.invoke_llm.side_effect = invoke_llm
-        model_manager = MagicMock()
-        model_manager.get_model_instance.return_value = model_instance
-        mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
-        mocker.patch.object(session, "close", side_effect=record_close)
-
-        event.listen(session, "after_commit", record_commit)
-        try:
-            runner.run(app_generate_entity, queue_manager, message, session)
-        finally:
-            event.remove(session, "after_commit", record_commit)
-
-        assert events == ["commit", "close", "invoke", "first-chunk"]
-        runner._handle_invoke_result.assert_called_once_with(
-            invoke_result=ANY,
-            queue_manager=queue_manager,
-            stream=True,
-            message_id="msg",
-            user_id="user",
-            tenant_id=TENANT_ID,
-        )
 
     @pytest.mark.parametrize("stream", [False, True])
     def test_run_invokes_model_resolved_by_model_manager(
@@ -269,7 +209,7 @@ class TestCompletionAppRunner:
         model_manager.get_model_instance.return_value = model_instance
         model_manager_factory = mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
-        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, app_record=sqlite_session.get(App, APP_ID))
 
         model_manager_factory.assert_called_once_with(tenant_id=TENANT_ID)
         model_manager.get_model_instance.assert_called_once_with(
@@ -300,7 +240,7 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=True)
 
-        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, app_record=sqlite_session.get(App, APP_ID))
 
         assert (
             runner.organize_prompt_messages.call_args.kwargs["image_detail_config"]

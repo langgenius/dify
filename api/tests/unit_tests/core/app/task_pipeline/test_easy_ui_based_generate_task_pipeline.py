@@ -35,7 +35,6 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     StreamEvent,
 )
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
@@ -43,6 +42,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
 from tests.unit_tests.core.model_fixtures import make_model_config
 
 
@@ -185,6 +185,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     @pytest.fixture
     def pipeline(
         self,
+        app_records,
         application_generate_entity,
         queue_manager,
         conversation,
@@ -194,6 +195,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     ):
         """Create an EasyUIBasedGenerateTaskPipeline instance with mocked dependencies."""
         pipeline = EasyUIBasedGenerateTaskPipeline(
+            records=app_records,
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
@@ -309,9 +311,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         # Assert
         assert len(responses) == 1
         assert task_state.llm_result == result
-        session = pipeline._save_message.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert committed_sessions == [session]
+        assert "session" not in pipeline._save_message.call_args.kwargs
         pipeline._message_end_to_stream_response.assert_called_once()
 
     def test_error_event(self, pipeline, committed_sessions):
@@ -331,10 +331,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
 
         # Assert
         assert len(responses) == 1
-        session = pipeline.handle_error.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert committed_sessions == [session]
-        pipeline.handle_error.assert_called_once_with(event=error_event, session=session, message_id="test-message-id")
+        assert len(committed_sessions) == 1
+        pipeline.handle_error.assert_called_once_with(event=error_event)
         pipeline.error_to_stream_response.assert_called_once()
 
     def test_ping_event(self, pipeline):
@@ -418,10 +416,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
         # Assert
-        session = pipeline._save_message.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert committed_sessions == [session]
-        pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
+        assert "session" not in pipeline._save_message.call_args.kwargs
+        pipeline._save_message.assert_called_once_with(trace_manager=trace_manager, preserve_existing_usage=False)
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling multiple events in sequence."""

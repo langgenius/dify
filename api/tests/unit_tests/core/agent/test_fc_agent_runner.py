@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -12,8 +12,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.agent.errors import AgentMaxIterationError
-from core.agent.fc_agent_runner import FunctionCallAgentRunner
-from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
@@ -29,6 +27,7 @@ from graphon.model_runtime.entities.message_entities import (
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
+from services.agent.chat.function_call_runner import FunctionCallAgentRunner
 
 # ==============================
 # Dummy Helper Classes
@@ -111,16 +110,18 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
+def runner(
+    mocker: MockerFixture, sqlite_engine: Engine, app_records, agent_tool_invoker: MagicMock
+) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
-        "core.agent.base_agent_runner.BaseAgentRunner.__init__",
+        "services.agent.chat.base_runner.BaseAgentRunner.__init__",
         return_value=None,
     )
 
     # Patch streaming chunk models to avoid validation on dummy message objects
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunk", MagicMock)
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", MagicMock)
+    mocker.patch("services.agent.chat.function_call_runner.LLMResultChunk", MagicMock)
+    mocker.patch("services.agent.chat.function_call_runner.LLMResultChunkDelta", MagicMock)
 
     app_config = MagicMock()
     app_config.app_id = "app"
@@ -143,6 +144,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,
@@ -166,6 +168,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     runner.message = message
     runner.user_id = "user"
     runner.model_instance = model_instance
+    runner._tool_invoker = agent_tool_invoker
 
     runner.stream_tool_call = False
     runner.memory = None
@@ -183,6 +186,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     runner.update_prompt_message_tool = MagicMock()
 
     try:
+        runner._records = app_records
         yield runner
     finally:
         runner.session.close()
@@ -282,7 +286,7 @@ class TestOrganizeUserQuery:
     def test_with_files_uses_image_detail_config(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         file_content = TextPromptMessageContent(data="file-content")
         mock_to_prompt = mocker.patch(
-            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            "services.agent.chat.function_call_runner.file_manager.to_prompt_message_content",
             return_value=file_content,
         )
 
@@ -351,28 +355,23 @@ class TestBuildDatasetToolImageContents:
         tool.__class__.__name__ = "DatasetRetrieverTool"
         response = "![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview)"
 
-        assert runner._build_dataset_tool_image_contents(runner.session, response, tool) == []
+        assert runner._build_dataset_tool_image_contents(response, tool) == []
 
     def test_builds_image_contents_from_dataset_tool_preview_links(
         self, runner: FunctionCallAgentRunner, mocker: MockerFixture
     ):
-        from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+        from services.tools.dataset.tool import DatasetRetrieverTool
 
         runner.vision_enabled = True
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png")
         to_prompt_content = mocker.patch(
-            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            "services.agent.chat.function_call_runner.file_manager.to_prompt_message_content",
             return_value=image_content,
         )
-        grant_access = mocker.patch("core.agent.fc_agent_runner.grant_upload_file_access")
-        sign_preview = mocker.patch(
-            "core.agent.fc_agent_runner.sign_upload_file_preview_url",
-            return_value="http://localhost:5001/files/file-id/file-preview?sign=1",
-        )
-        build_reference = mocker.patch("core.agent.fc_agent_runner.build_file_reference", return_value="file-ref")
+        grant_access = mocker.patch("services.agent.chat.function_call_runner.grant_upload_file_access")
 
         upload_file = UploadFile(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=runner.tenant_id,
             storage_type=StorageType.LOCAL,
             key="image_files/chart.png",
             name="chart.png",
@@ -409,10 +408,12 @@ class TestBuildDatasetToolImageContents:
             "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
         )
 
+        from core.app.app_config.entities import DatasetRetrieveConfigEntity
+        from core.app.entities.app_invoke_entities import InvokeFrom
         from core.tools.__base.tool_runtime import ToolRuntime
         from core.tools.entities.common_entities import I18nObject
         from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
-        from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
+        from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 
         tool = DatasetRetrieverTool(
             entity=ToolEntity(
@@ -423,25 +424,22 @@ class TestBuildDatasetToolImageContents:
                 description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
             ),
             runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
-            retrieval_tool=RetrievalTool(
-                tenant_id=upload_file.tenant_id,
-                dataset_id="dataset-id",
-                return_resource=True,
-                retriever_from="dev",
-                retrieve_config=DatasetRetrieveConfigEntity(
-                    retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
-                ),
-                inputs={},
-            ),
+            retrieval=create_autospec(DatasetRetrieval, instance=True),
+            dataset_id="dataset-id",
+            config=DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE),
+            top_k=2,
+            inputs={},
+            invoke_from=InvokeFrom.DEBUGGER,
+            return_resource=True,
+            hit_callback=MagicMock(),
+            app_id="app",
         )
-        contents = runner._build_dataset_tool_image_contents(session, response, tool)
+        contents = runner._build_dataset_tool_image_contents(response, tool)
 
         assert contents == [image_content]
         assert contents[0].type == PromptMessageContentType.IMAGE
         grant_access.assert_called_once()
         assert list(grant_access.call_args.args[0]) == ["890985e9-c2f1-484e-bc7b-62010a337e6d"]
-        sign_preview.assert_called_once_with(upload_file.id, upload_file.extension)
-        build_reference.assert_called_once_with(record_id=str(upload_file.id))
         to_prompt_content.assert_called_once()
 
 
@@ -458,7 +456,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
         assert "session" not in runner.create_agent_thought.call_args.kwargs
         assert "session" not in runner.save_agent_thought.call_args.kwargs
@@ -500,8 +498,8 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(session, message, "query"))
-        assert events == ["commit", "close", "first-chunk"]
+        outputs = list(runner.run(message, "query"))
+        assert events == ["first-chunk"]
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
@@ -524,7 +522,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [generator(), final_result]
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
     def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
@@ -535,7 +533,7 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
@@ -562,9 +560,9 @@ class TestRunMethod:
                 return real_dumps(obj, *args, **kwargs)
             raise TypeError("boom")
 
-        mocker.patch("core.agent.fc_agent_runner.json.dumps", side_effect=flaky_dumps)
+        mocker.patch("services.agent.chat.function_call_runner.json.dumps", side_effect=flaky_dumps)
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
 
     def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
@@ -582,10 +580,10 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner):
         message = _make_message()
 
         tool_call = MagicMock()
@@ -606,12 +604,9 @@ class TestRunMethod:
 
         tool_invoke_meta = MagicMock()
         tool_invoke_meta.to_dict.return_value = {"ok": True}
-        mocker.patch(
-            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], tool_invoke_meta),
-        )
+        runner._tool_invoker.return_value = ("ok", ["file1"], tool_invoke_meta)
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
         assert any(
             isinstance(call.args[0], QueueMessageFileEvent)
@@ -636,4 +631,4 @@ class TestRunMethod:
         runner.model_instance.invoke_llm.return_value = result
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(runner.session, message, "query"))
+            list(runner.run(message, "query"))

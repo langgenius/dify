@@ -6,15 +6,15 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -81,13 +81,25 @@ def _message() -> Message:
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture):
-    gen = AgentChatAppGenerator()
+def generator(
+    app_records,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    annotation_replies,
+    workflow_runtime,
+):
+    gen = AgentChatAppGenerator(
+        dataset_tools=workflow_runtime.dataset_tools,
+        annotations=annotation_replies,
+        records=app_records,
+        tool_sessions=sqlite_session_factory,
+    )
     mocker.patch(
-        "core.app.apps.agent_chat.app_generator.current_app",
+        "services.app.generation.adapters.agent_chat.current_app",
         new=mocker.MagicMock(_get_current_object=mocker.MagicMock()),
     )
-    mocker.patch("core.app.apps.agent_chat.app_generator.contextvars.copy_context", return_value="ctx")
+    mocker.patch("services.app.generation.adapters.agent_chat.contextvars.copy_context", return_value="ctx")
     return gen
 
 
@@ -156,53 +168,53 @@ class TestAgentChatAppGeneratorGenerate:
         generator._handle_response = mocker.MagicMock(return_value="response")
 
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.config_validate",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.config_validate",
             return_value={"validated": True},
         )
         app_config = mocker.MagicMock(variables={}, prompt_template=mocker.MagicMock(), external_data_variables=[])
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.get_app_config",
             return_value=app_config,
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
+            "services.app.generation.adapters.agent_chat.ModelConfigConverter.convert",
             return_value=mocker.MagicMock(),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
+            "services.app.generation.adapters.agent_chat.FileUploadConfigManager.convert",
             return_value=mocker.MagicMock(),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.file_factory.build_from_mappings",
+            "services.app.generation.adapters.agent_chat.file_factory.build_from_mappings",
             return_value=["file-obj"],
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.ConversationService.get_conversation",
+            "repositories.app.generation_repository.AppGenerationRepository.conversation",
             return_value=_conversation(),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
+            "services.app.generation.adapters.agent_chat.TraceQueueManager",
             return_value=mocker.MagicMock(),
         )
 
         queue_manager = mocker.MagicMock()
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager",
+            "services.app.generation.adapters.agent_chat.MessageBasedAppQueueManager",
             return_value=queue_manager,
         )
 
         thread_obj = mocker.MagicMock()
         thread_constructor = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.threading.Thread",
+            "services.app.generation.adapters.agent_chat.threading.Thread",
             return_value=thread_obj,
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateResponseConverter.convert",
             return_value={"result": "ok"},
         )
         app_entity = mocker.MagicMock(task_id="task", user_id="user", invoke_from=invoke_from)
         generate_entity = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateEntity",
             return_value=app_entity,
         )
 
@@ -226,8 +238,8 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        assert generator._get_app_model_config.call_args.kwargs["session"] is session
-        assert generator._init_generate_records.call_args.kwargs["session"] is session
+        assert "session" not in generator._get_app_model_config.call_args.kwargs
+        assert "session" not in generator._init_generate_records.call_args.kwargs
         assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         worker_call = thread_constructor.call_args
         inspect.signature(worker_call.kwargs["target"]).bind(**worker_call.kwargs["kwargs"])
@@ -248,48 +260,48 @@ class TestAgentChatAppGeneratorGenerate:
         to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "p"}})
 
         load_annotation_reply_config = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.load_annotation_reply_config",
+            "repositories.app.generation_repository.AppGenerationRepository.annotation_config",
             return_value=annotation_reply,
         )
         get_app_config = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.get_app_config",
             return_value=mocker.MagicMock(variables={}, prompt_template=mocker.MagicMock(), external_data_variables=[]),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
+            "services.app.generation.adapters.agent_chat.ModelConfigConverter.convert",
             return_value=mocker.MagicMock(),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
+            "services.app.generation.adapters.agent_chat.FileUploadConfigManager.convert",
             return_value=None,
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.file_factory.build_from_mappings",
+            "services.app.generation.adapters.agent_chat.file_factory.build_from_mappings",
             return_value=["file-obj"],
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
+            "services.app.generation.adapters.agent_chat.TraceQueueManager",
             return_value=mocker.MagicMock(),
         )
 
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager",
+            "services.app.generation.adapters.agent_chat.MessageBasedAppQueueManager",
             return_value=mocker.MagicMock(),
         )
 
         thread_obj = mocker.MagicMock()
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.threading.Thread",
+            "services.app.generation.adapters.agent_chat.threading.Thread",
             return_value=thread_obj,
         )
 
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateResponseConverter.convert",
             return_value={"result": "ok"},
         )
         app_entity = mocker.MagicMock(task_id="task", user_id="user", invoke_from=InvokeFrom.WEB_APP)
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateEntity",
             return_value=app_entity,
         )
 
@@ -306,7 +318,7 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        load_annotation_reply_config.assert_called_once_with(session, "app1")
+        load_annotation_reply_config.assert_called_once_with(tenant_id="tenant", app_id="app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
@@ -318,16 +330,15 @@ class TestAgentChatAppGeneratorWorker:
         def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
-        mocker.patch("core.app.apps.agent_chat.app_generator.preserve_flask_contexts", ctx_manager)
+        mocker.patch("services.app.generation.adapters.agent_chat.preserve_flask_contexts", ctx_manager)
 
     def test_generate_worker_handles_generate_task_stopped(self, generator, mocker: MockerFixture):
         queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+        mocker.patch.object(generator._records, "load", return_value=(_app(), _conversation(), _message()))
 
         runner = mocker.MagicMock()
         runner.run.side_effect = GenerateTaskStoppedError()
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        mocker.patch("services.app.generation.adapters.agent_chat.AgentChatAppRunner", return_value=runner)
 
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -351,12 +362,11 @@ class TestAgentChatAppGeneratorWorker:
     )
     def test_generate_worker_publishes_errors(self, generator, mocker: MockerFixture, error):
         queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+        mocker.patch.object(generator._records, "load", return_value=(_app(), _conversation(), _message()))
 
         runner = mocker.MagicMock()
         runner.run.side_effect = error
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        mocker.patch("services.app.generation.adapters.agent_chat.AgentChatAppRunner", return_value=runner)
 
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -377,16 +387,15 @@ class TestAgentChatAppGeneratorWorker:
         caplog: pytest.LogCaptureFixture,
     ):
         queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+        mocker.patch.object(generator._records, "load", return_value=(_app(), _conversation(), _message()))
 
         runner = mocker.MagicMock()
         runner.run.side_effect = ValueError("bad")
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        mocker.patch("services.app.generation.adapters.agent_chat.AgentChatAppRunner", return_value=runner)
 
         apply_config_overrides(monkeypatch, DEBUG=True)
 
-        with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
+        with caplog.at_level(logging.ERROR, logger="services.app.generation.adapters.agent_chat"):
             generator._generate_worker(
                 flask_app=mocker.MagicMock(),
                 context=mocker.MagicMock(),

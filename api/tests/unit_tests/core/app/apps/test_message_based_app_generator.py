@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -13,10 +12,10 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from models.account import Account
 from models.model import App, AppMode, Conversation, Message
+from services.app.generation.message_records import MessageBasedAppGenerator
 from services.errors.app_model_config import AppModelConfigBrokenError
 from tests.unit_tests.model_factories import make_account, make_app
 
@@ -93,16 +92,20 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
     )
 
 
-def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(sqlite_session: Session):
+def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(
+    app_records, *, annotation_replies
+):
     app_config = _make_app_config(AppMode.COMPLETION)
     entity = DummyCompletionGenerateEntity(app_config=app_config)
 
-    generator = MessageBasedAppGenerator()
+    generator = MessageBasedAppGenerator(
+        annotations=annotation_replies,
+        records=app_records,
+    )
 
     conversation, message = generator._init_generate_records(
         entity,
         conversation=None,
-        session=sqlite_session,
     )
 
     assert conversation.id is not None
@@ -111,16 +114,18 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
     assert hasattr(entity, "is_new_conversation") is False
 
 
-def test_init_generate_records_sets_conversation_fields_for_chat_entity(sqlite_session: Session):
+def test_init_generate_records_sets_conversation_fields_for_chat_entity(app_records, *, annotation_replies):
     app_config = _make_app_config(AppMode.CHAT)
     entity = _make_chat_generate_entity(app_config)
 
-    generator = MessageBasedAppGenerator()
+    generator = MessageBasedAppGenerator(
+        annotations=annotation_replies,
+        records=app_records,
+    )
 
     conversation, _ = generator._init_generate_records(
         entity,
         conversation=None,
-        session=sqlite_session,
     )
 
     assert entity.conversation_id == conversation.id
@@ -129,8 +134,13 @@ def test_init_generate_records_sets_conversation_fields_for_chat_entity(sqlite_s
 
 
 class TestMessageBasedAppGeneratorExtras:
-    def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        generator = MessageBasedAppGenerator()
+    def test_handle_response_closed_file_raises_stopped(
+        self, app_records, monkeypatch: pytest.MonkeyPatch, *, annotation_replies
+    ):
+        generator = MessageBasedAppGenerator(
+            annotations=annotation_replies,
+            records=app_records,
+        )
 
         class _Pipeline:
             def __init__(self, **kwargs) -> None:
@@ -140,7 +150,7 @@ class TestMessageBasedAppGeneratorExtras:
                 raise ValueError("I/O operation on closed file.")
 
         monkeypatch.setattr(
-            "core.app.apps.message_based_app_generator.EasyUIBasedGenerateTaskPipeline",
+            "services.app.generation.message_records.EasyUIBasedGenerateTaskPipeline",
             _Pipeline,
         )
 
@@ -154,28 +164,38 @@ class TestMessageBasedAppGeneratorExtras:
                 stream=False,
             )
 
-    def test_get_app_model_config_requires_valid_config(self, sqlite_session: Session):
-        generator = MessageBasedAppGenerator()
+    def test_get_app_model_config_requires_valid_config(self, app_records, *, annotation_replies):
+        generator = MessageBasedAppGenerator(
+            annotations=annotation_replies,
+            records=app_records,
+        )
         app_model = _app()
-        session = sqlite_session
 
         with pytest.raises(AppModelConfigBrokenError):
-            generator._get_app_model_config(app_model, conversation=None, session=session)
+            generator._get_app_model_config(app_model, conversation=None)
 
         conversation = Conversation(id="conversation-id", app_id="app", app_model_config_id="missing-id")
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(
                 app_model=_app(),
                 conversation=conversation,
-                session=session,
             )
 
-    def test_get_conversation_introduction_handles_missing_inputs(self):
+    def test_get_conversation_introduction_handles_missing_inputs(self, app_records, *, annotation_replies):
         app_config = _make_app_config(AppMode.CHAT)
         app_config.additional_features.opening_statement = "Hello {{name}}"
         entity = _make_chat_generate_entity(app_config)
         entity.inputs = {}
 
-        generator = MessageBasedAppGenerator()
+        generator = MessageBasedAppGenerator(
+            annotations=annotation_replies,
+            records=app_records,
+        )
 
         assert generator._get_conversation_introduction(entity) == "Hello {name}"
+
+
+@pytest.fixture(autouse=True)
+def message_app(sqlite_session):
+    sqlite_session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
+    sqlite_session.commit()

@@ -51,10 +51,6 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
-from core.app.apps.agent_app import app_runner as app_runner_module
-from core.app.apps.agent_app.app_runner import AgentAppRunner
-from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -65,20 +61,38 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
-from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import AppMode, Message, MessageAgentThought
+from services.app.generation.adapters import agent_runner as app_runner_module
+from services.app.generation.adapters.agent_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequestBuilder,
+)
+from services.app.generation.adapters.agent_runner import AgentAppRunner
+from services.app.generation.errors import AgentSessionSnapshotIncompatibleError
+from services.app.generation.ports import MessageIdentity
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 @pytest.fixture(autouse=True)
 def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     """Bind local runner dependencies without reaching external services."""
-    monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    sqlite_session.add_all(
+        [
+            make_app(),
+            make_conversation(
+                conversation_id="conv-1", app_id="app-1", inputs={}, from_source=ConversationFromSource.API
+            ),
+            _message_record(),
+        ]
+    )
+    sqlite_session.commit()
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        "services.app.generation.adapters.agent_request_builder.resolve_model_context_window",
         lambda **_kwargs: None,
     )
 
@@ -663,8 +677,12 @@ def _runner(
     store: _FakeSessionStore,
     *,
     text_delta_debounce_seconds: float = 0,
+    app_records,
+    human_forms,
 ) -> AgentAppRunner:
     return AgentAppRunner(
+        forms=human_forms,
+        records=app_records,
         request_builder=AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
@@ -736,12 +754,12 @@ def _saved_user_query(qm: _FakeQueueManager) -> str:
     return content
 
 
-def test_successful_turn_publishes_chunk_and_message_end_and_saves_session() -> None:
+def test_successful_turn_publishes_chunk_and_message_end_and_saves_session(*, app_records, human_forms) -> None:
     client = FakeAgentBackendRunClient()  # SUCCESS: output {"text": "hello agent"}
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     assert client.request is not None
     assert client.request.on_exit.default.value == "suspend"
@@ -766,11 +784,11 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session() -> 
     assert pending_tool_call_id is None
 
 
-def test_turn_uses_resolved_backend_binding_before_backend_invocation() -> None:
+def test_turn_uses_resolved_backend_binding_before_backend_invocation(*, app_records, human_forms) -> None:
     client = FakeAgentBackendRunClient()
     store = _FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
 
-    _run(_runner(client, store), _FakeQueueManager())
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), _FakeQueueManager())
 
     assert client.request is not None
     layers = {layer["name"]: layer for layer in client.request.model_dump(mode="json")["composition"]["layers"]}
@@ -780,13 +798,13 @@ def test_turn_uses_resolved_backend_binding_before_backend_invocation() -> None:
 
 
 def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_output(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records, human_forms
 ) -> None:
     client = _StreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -808,12 +826,16 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert store.saved
 
 
-def test_successful_turn_persists_usage_without_a_queue_consumer(sqlite_session: Session) -> None:
-    sqlite_session.add(_message_record())
-    sqlite_session.flush()
+def test_successful_turn_persists_usage_without_a_queue_consumer(
+    sqlite_session: Session, *, app_records, human_forms
+) -> None:
+    sqlite_session.merge(_message_record())
+    sqlite_session.commit()
 
     _run(
-        _runner(_StreamingFakeAgentBackendRunClient(), _FakeSessionStore()),
+        _runner(
+            _StreamingFakeAgentBackendRunClient(), _FakeSessionStore(), human_forms=human_forms, app_records=app_records
+        ),
         _FakeQueueManager(),
     )
 
@@ -827,12 +849,14 @@ def test_successful_turn_persists_usage_without_a_queue_consumer(sqlite_session:
     assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 8
 
 
-def test_successful_turn_routes_single_agent_message_delta(sqlite_session: Session) -> None:
+def test_successful_turn_routes_single_agent_message_delta(
+    sqlite_session: Session, *, app_records, human_forms
+) -> None:
     client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -845,7 +869,9 @@ def test_successful_turn_routes_single_agent_message_delta(sqlite_session: Sessi
     assert rows == []
 
 
-def test_thought_commit_failure_rolls_back_and_turn_continues(sqlite_session: Session) -> None:
+def test_thought_commit_failure_rolls_back_and_turn_continues(
+    sqlite_session: Session, *, app_records, human_forms
+) -> None:
     rollback_events: list[Session] = []
     should_fail = True
 
@@ -858,29 +884,32 @@ def test_thought_commit_failure_rolls_back_and_turn_continues(sqlite_session: Se
     def record_rollback(session: Session) -> None:
         rollback_events.append(session)
 
-    event.listen(sqlite_session, "before_commit", fail_first_commit)
-    event.listen(sqlite_session, "after_rollback", record_rollback)
+    event.listen(Session, "before_commit", fail_first_commit)
+    event.listen(Session, "after_rollback", record_rollback)
     try:
         client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
         store = _FakeSessionStore()
         qm = _FakeQueueManager()
 
-        _run(_runner(client, store), qm)
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
     finally:
-        event.remove(sqlite_session, "before_commit", fail_first_commit)
-        event.remove(sqlite_session, "after_rollback", record_rollback)
+        event.remove(Session, "before_commit", fail_first_commit)
+        event.remove(Session, "after_rollback", record_rollback)
 
-    assert rollback_events == [sqlite_session]
+    assert len(rollback_events) == 1
+    assert rollback_events[0] is not sqlite_session
     assert _thought_rows(sqlite_session) == []
     assert _llm_result(qm).message.content == "hello agent"
 
 
-def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null() -> None:
+def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null(
+    *, app_records, human_forms
+) -> None:
     client = _NullOutputFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -892,13 +921,13 @@ def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_li
 
 
 def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_message(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records, human_forms
 ) -> None:
     client = _StreamingTextNullOutputFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -912,12 +941,14 @@ def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_m
     assert rows[0].answer == "streamed answer"
 
 
-def test_successful_turn_routes_agent_answer_to_agent_message(sqlite_session: Session) -> None:
+def test_successful_turn_routes_agent_answer_to_agent_message(
+    sqlite_session: Session, *, app_records, human_forms
+) -> None:
     client = _AgentAnswerStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -937,14 +968,14 @@ def test_successful_turn_routes_agent_answer_to_agent_message(sqlite_session: Se
 
 
 def test_agent_message_deltas_are_debounced_to_agent_message(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, app_records, human_forms
 ) -> None:
     monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.2))
     client = _StreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store, text_delta_debounce_seconds=0.5), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records, text_delta_debounce_seconds=0.5), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -955,13 +986,13 @@ def test_agent_message_deltas_are_debounced_to_agent_message(
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records, human_forms
 ) -> None:
     client = _ProcessStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -980,14 +1011,14 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
 
 
 def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records, human_forms
 ) -> None:
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
     client = _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(queue_manager=qm)
 
     with pytest.raises(GenerateTaskStoppedError):
-        _run(_runner(client, store), qm)
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -1000,11 +1031,11 @@ def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
     assert client.cancel_after == ["3-0"]
 
 
-def test_tool_result_without_identity_does_not_attach_to_previous_tool(
-    sqlite_session: Session,
-) -> None:
+def test_tool_result_without_identity_does_not_attach_to_previous_tool(sqlite_session: Session, *, app_records) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1044,9 +1075,11 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 
-def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
+def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session, *, app_records) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1060,9 +1093,11 @@ def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -
     assert rows[0].answer == "intermediate "
 
 
-def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session) -> None:
+def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session, *, app_records) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1119,9 +1154,11 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     assert rows[0].observation == "Knowledge base search results: browser skill"
 
 
-def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) -> None:
+def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session, *, app_records) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1175,11 +1212,11 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
     assert rows[1].tool_input == '{"cmd": "date"}'
 
 
-def test_tool_result_without_call_id_matches_unique_open_tool_name(
-    sqlite_session: Session,
-) -> None:
+def test_tool_result_without_call_id_matches_unique_open_tool_name(sqlite_session: Session, *, app_records) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1220,10 +1257,12 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
 
 
 def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records
 ) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1293,10 +1332,12 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
 
 
 def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_distinct_rows(
-    sqlite_session: Session,
+    sqlite_session: Session, *, app_records
 ) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
@@ -1343,19 +1384,19 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
     assert rows[1].observation == "out output"
 
 
-def test_prior_session_snapshot_is_threaded_into_request() -> None:
+def test_prior_session_snapshot_is_threaded_into_request(*, app_records, human_forms) -> None:
     prior = _compatible_session_snapshot()
     client = FakeAgentBackendRunClient()
     store = _FakeSessionStore(loaded=prior)
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     assert client.request is not None
     assert client.request.session_snapshot is prior
 
 
-def test_incompatible_session_snapshot_is_rejected_before_backend_invocation() -> None:
+def test_incompatible_session_snapshot_is_rejected_before_backend_invocation(*, app_records, human_forms) -> None:
     compatible = _compatible_session_snapshot()
     stale = CompositorSessionSnapshot(
         layers=[layer for layer in compatible.layers if layer.name != "agent_soul_prompt"]
@@ -1364,19 +1405,19 @@ def test_incompatible_session_snapshot_is_rejected_before_backend_invocation() -
     store = _FakeSessionStore(loaded=stale)
 
     with pytest.raises(AgentSessionSnapshotIncompatibleError, match="Start a new conversation"):
-        _run(_runner(client, store), _FakeQueueManager())
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), _FakeQueueManager())
 
     assert client.request is None
     assert store.saved == []
 
 
-def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() -> None:
+def test_debug_session_scope_can_reuse_conversation_across_config_snapshots(*, app_records, human_forms) -> None:
     prior = _compatible_session_snapshot()
     client = FakeAgentBackendRunClient()
     store = _FakeSessionStore(loaded=prior)
     qm = _FakeQueueManager()
 
-    _runner(client, store).run(
+    _runner(client, store, human_forms=human_forms, app_records=app_records).run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
         agent_config_snapshot_id="snap-new",
@@ -1396,24 +1437,27 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() ->
     assert store.saved[0][0].agent_config_snapshot_id == "snap-new"
 
 
-def test_failed_run_raises_agent_backend_error() -> None:
+def test_failed_run_raises_agent_backend_error(*, app_records, human_forms) -> None:
     client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
     with pytest.raises(AgentBackendRunFailedError, match="fake failure .*agent_run_id=fake-run-1"):
-        _run(_runner(client, store), qm)
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
     # No message-end on failure; post-exit session state is still saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
     assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
 
 
-def test_failed_run_persists_partial_usage(sqlite_session: Session) -> None:
-    sqlite_session.add(_message_record())
-    sqlite_session.flush()
+def test_failed_run_persists_partial_usage(sqlite_session: Session, *, app_records, human_forms) -> None:
+    sqlite_session.merge(_message_record())
+    sqlite_session.commit()
 
     with pytest.raises(AgentBackendRunFailedError, match="failed after model calls"):
-        _run(_runner(_UsageFailedClient(), _FakeSessionStore()), _FakeQueueManager())
+        _run(
+            _runner(_UsageFailedClient(), _FakeSessionStore(), human_forms=human_forms, app_records=app_records),
+            _FakeQueueManager(),
+        )
 
     sqlite_session.expire_all()
     message = sqlite_session.get(Message, "msg-1")
@@ -1426,22 +1470,28 @@ def test_failed_run_persists_partial_usage(sqlite_session: Session) -> None:
     assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 12
 
 
-def test_partial_usage_persistence_ignores_missing_message() -> None:
-    AgentAppRunner._persist_message_usage(
-        message_id="missing",
+def test_partial_usage_persistence_ignores_missing_message(app_records, *, human_forms) -> None:
+    _runner(
+        FakeAgentBackendRunClient(), _FakeSessionStore(), human_forms=human_forms, app_records=app_records
+    )._persist_message_usage(
+        identity=MessageIdentity("tenant-1", "app-1", "conv-1", "missing"),
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
 
 @pytest.mark.parametrize("metadata", ["{", "[]"])
-def test_partial_usage_persistence_recovers_invalid_metadata(metadata: str, sqlite_session: Session) -> None:
+def test_partial_usage_persistence_recovers_invalid_metadata(
+    metadata: str, sqlite_session: Session, app_records, *, human_forms
+) -> None:
     message = _message_record()
     message.message_metadata = metadata
-    sqlite_session.add(message)
-    sqlite_session.flush()
+    sqlite_session.merge(message)
+    sqlite_session.commit()
 
-    AgentAppRunner._persist_message_usage(
-        message_id=message.id,
+    _runner(
+        FakeAgentBackendRunClient(), _FakeSessionStore(), human_forms=human_forms, app_records=app_records
+    )._persist_message_usage(
+        identity=MessageIdentity("tenant-1", "app-1", "conv-1", message.id),
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
@@ -1452,21 +1502,31 @@ def test_partial_usage_persistence_recovers_invalid_metadata(metadata: str, sqli
     assert json.loads(persisted.message_metadata)["usage"]["total_tokens"] == 3
 
 
-def test_partial_usage_persistence_rolls_back_database_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.get.side_effect = RuntimeError("database unavailable")
-    monkeypatch.setattr(app_runner_module.db, "session", session)
+def test_partial_usage_persistence_rolls_back_database_error(
+    app_records, sqlite_session: Session, *, human_forms
+) -> None:
+    engine = sqlite_session.get_bind()
 
-    AgentAppRunner._persist_message_usage(
-        message_id="msg-1",
-        usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
-    )
+    def fail(_conn, _cursor, statement, _params, _ctx, _many):
+        if statement.startswith("UPDATE messages"):
+            raise RuntimeError("database unavailable")
 
-    session.rollback.assert_called_once()
+    event.listen(engine, "before_cursor_execute", fail)
+    try:
+        _runner(
+            FakeAgentBackendRunClient(), _FakeSessionStore(), human_forms=human_forms, app_records=app_records
+        )._persist_message_usage(
+            identity=MessageIdentity("tenant-1", "app-1", "conv-1", "msg-1"),
+            usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", fail)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(Message, "msg-1").message_tokens == 0
 
 
 @pytest.mark.parametrize("outcome", ["failed", "stopped"])
-def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> None:
+def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str, *, app_records, human_forms) -> None:
     store = _ExplodingSessionStore()
     queue_manager: _FakeQueueManager = _FakeQueueManager() if outcome == "failed" else _StoppedQueueManager()
     client = FakeAgentBackendRunClient(
@@ -1475,7 +1535,7 @@ def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> N
     expected_error = AgentBackendRunFailedError if outcome == "failed" else GenerateTaskStoppedError
 
     with pytest.raises(expected_error, match="fake failure" if outcome == "failed" else None):
-        _run(_runner(client, store), queue_manager)
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), queue_manager)
 
     assert store.save_attempts == [CompositorSessionSnapshot(layers=[])]
 
@@ -1485,24 +1545,23 @@ def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> N
     [("failed", AgentBackendRunFailedError), ("cancelled", AgentBackendError)],
 )
 def test_terminal_without_snapshot_preserves_prior_app_session_without_write(
-    terminal_type: str,
-    expected_error: type[Exception],
+    terminal_type: str, expected_error: type[Exception], *, app_records, human_forms
 ) -> None:
     store = _FakeSessionStore()
     client = _TerminalWithoutSnapshotFakeAgentBackendRunClient(terminal_type=terminal_type)
 
     with pytest.raises(expected_error):
-        _run(_runner(client, store), _FakeQueueManager())
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), _FakeQueueManager())
 
     assert store.saved == []
 
 
-def test_failed_run_prefers_run_failure_type_over_binding_lost_reason() -> None:
+def test_failed_run_prefers_run_failure_type_over_binding_lost_reason(*, app_records, human_forms) -> None:
     client = _RunLimitBindingLostFakeAgentBackendRunClient()
     store = _FakeSessionStore()
 
     with pytest.raises(AgentBackendRunFailedError) as raised:
-        _run(_runner(client, store), _FakeQueueManager())
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), _FakeQueueManager())
 
     assert raised.value.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
     assert raised.value.reason == "binding_lost"
@@ -1563,26 +1622,29 @@ def test_agent_backend_failure_to_exception_prefers_run_failure_type_over_known_
     }
 
 
-def test_stopped_task_waits_for_cancelled_snapshot_and_saves_session() -> None:
+def test_stopped_task_waits_for_cancelled_snapshot_and_saves_session(*, app_records, human_forms) -> None:
     client = _RecordingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _StoppedQueueManager()
 
     with pytest.raises(GenerateTaskStoppedError):
-        _run(_runner(client, store), qm)
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     assert client.cancelled_run_ids == ["fake-run-1"]
     assert len(store.saved) == 1
     assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
 
 
-def test_stopped_task_persists_partial_usage(sqlite_session: Session) -> None:
-    sqlite_session.add(_message_record())
-    sqlite_session.flush()
+def test_stopped_task_persists_partial_usage(sqlite_session: Session, *, app_records, human_forms) -> None:
+    sqlite_session.merge(_message_record())
+    sqlite_session.commit()
     client = _UsageCancellationClient()
 
     with pytest.raises(GenerateTaskStoppedError):
-        _run(_runner(client, _FakeSessionStore()), _StoppedQueueManager())
+        _run(
+            _runner(client, _FakeSessionStore(), human_forms=human_forms, app_records=app_records),
+            _StoppedQueueManager(),
+        )
 
     sqlite_session.expire_all()
     message = sqlite_session.get(Message, "msg-1")
@@ -1594,12 +1656,12 @@ def test_stopped_task_persists_partial_usage(sqlite_session: Session) -> None:
     assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 21
 
 
-def test_cancel_and_wait_failure_preserves_stopped_app_outcome() -> None:
+def test_cancel_and_wait_failure_preserves_stopped_app_outcome(*, app_records, human_forms) -> None:
     client = _CancelAndWaitFailingClient()
     store = _FakeSessionStore()
 
     with pytest.raises(GenerateTaskStoppedError):
-        _run(_runner(client, store), _StoppedQueueManager())
+        _run(_runner(client, store, human_forms=human_forms, app_records=app_records), _StoppedQueueManager())
 
     assert client.cancel_after == [None]
     assert store.saved == []
@@ -1612,14 +1674,14 @@ def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
 
 
-def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
+def test_ask_human_pauses_turn_creates_form_and_persists_correlation(app_records, human_forms) -> None:
     # ENG-635/637: the PAUSED scenario emits a dify.ask_human deferred call, so
     # the chat turn ends by creating a conversation-owned HITL form + saving the
     # pause correlation, instead of crashing. Stub the form repo (DB-free).
     client = _UsagePausedClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
-    runner = _runner(client, store)
+    runner = _runner(client, store, human_forms=human_forms, app_records=app_records)
 
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
@@ -1641,7 +1703,9 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
     assert store.saved[0][4] == "fake-ask-human-1"
 
 
-def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_submitted_form_resumes_turn_with_deferred_tool_results(
+    monkeypatch: pytest.MonkeyPatch, *, app_records, human_forms
+) -> None:
     # ENG-638: a turn that runs while a pending form is answered threads the
     # human's reply into the request as deferred_tool_results.
     snapshot = _compatible_session_snapshot()
@@ -1664,13 +1728,13 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
     store = _FakeSessionStore(loaded_session=stored)
     submitted = AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"ok": True}))
     monkeypatch.setattr(
-        "core.app.apps.agent_app.app_runner.resolve_ask_human_form",
+        "services.app.generation.adapters.agent_runner.resolve_ask_human_form",
         lambda **_kwargs: submitted,
     )
 
     client = FakeAgentBackendRunClient()  # SUCCESS -> the resumed run completes
     qm = _FakeQueueManager()
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store, human_forms=human_forms, app_records=app_records), qm)
 
     assert client.request is not None
     assert client.request.deferred_tool_results is not None
