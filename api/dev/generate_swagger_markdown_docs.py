@@ -349,14 +349,14 @@ def parse_args() -> argparse.Namespace:
         "--openapi-dir",
         dest="openapi_dir",
         type=Path,
-        default=Path("openapi"),
-        help="Directory where intermediate JSON spec files will be written.",
+        default=API_ROOT / "openapi",
+        help="Directory where intermediate JSON spec files will be written (default: api/openapi).",
     )
     parser.add_argument(
         "--markdown-dir",
         type=Path,
-        default=Path("openapi/markdown"),
-        help="Directory where split Markdown API docs will be written.",
+        default=API_ROOT / "openapi" / "markdown",
+        help="Directory where split Markdown API docs will be written (default: api/openapi/markdown).",
     )
     parser.add_argument(
         "--keep-swagger-json",
