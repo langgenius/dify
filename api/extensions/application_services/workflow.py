@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
+from typing import Any, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.annotation_reply import AnnotationReplies
 from models.human_input_contracts import HumanInputFormFactory
@@ -17,6 +21,7 @@ from services.app.generation.agent_config import AgentAppConfigurations
 from services.human_input.ports import HumanInputFormReader
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.tools.provider_queries import ToolProviders
+from services.tools.tool_engine import ToolEngine
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 from services.workflow.execution.ports import (
@@ -25,7 +30,41 @@ from services.workflow.execution.ports import (
     NodeExecutionWriterFactory,
     PauseReasonResolver,
     WorkflowExecutionLogs,
+    WorkflowToolInvoker,
 )
+
+
+class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
+    """Keep a transaction open until a workflow tool's lazy output is fully consumed."""
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    @override
+    def __call__(
+        self,
+        *,
+        tool: Tool,
+        tool_parameters: dict[str, Any],
+        user_id: str,
+        workflow_tool_callback: DifyWorkflowCallbackHandler,
+        workflow_call_depth: int,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        with self._sessions.begin() as session:
+            yield from ToolEngine.generic_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=tool_parameters,
+                user_id=user_id,
+                workflow_tool_callback=workflow_tool_callback,
+                workflow_call_depth=workflow_call_depth,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+            )
 
 
 @dataclass(frozen=True)
@@ -37,6 +76,7 @@ class WorkflowExecutionDependencies:
     logs: WorkflowExecutionLogs
     tools: WorkflowToolQueries
     tool_providers: ToolProviders
+    tool_invoker: WorkflowToolInvoker
     agent_bindings: WorkflowAgentRuntimeBindings
     chat_records: ChatflowRecords
     annotation_replies: AnnotationReplies
@@ -96,6 +136,7 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
         retrieval=retrieval,
         tools=WorkflowToolRepository(database_client),
         tool_providers=ToolProviderRepository(database_client),
+        tool_invoker=_SessionBoundWorkflowToolInvoker(database_client),
         agent_bindings=WorkflowAgentBindingResolver(database_client),
         chat_records=records,
         annotation_replies=build_annotation_replies(database_client),

@@ -86,7 +86,7 @@ def test_adapter_mapping_overrides_moved_nodes_without_mutating_shared_registry(
     )
 
 
-def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
+def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> None:
     api_root = Path(__file__).resolve().parents[4]
 
     # `PYTHONSAFEPATH=1` enables Python's safe-path mode, which suppresses the
