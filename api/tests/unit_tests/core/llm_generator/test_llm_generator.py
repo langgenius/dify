@@ -1,7 +1,6 @@
 """Tests for LLM generation and database-backed instruction modification."""
 
 import json
-from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -9,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import ModelConfig
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
@@ -37,15 +36,9 @@ from tests.unit_tests.core.model_fixtures import make_model_config, make_model_i
 
 
 @pytest.fixture
-def database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind the shared SQLite session to the generator's scoped-session interface."""
-
-    registry = scoped_session(lambda: sqlite_session)
-    monkeypatch.setattr(llm_generator_module.db, "session", registry)
-    try:
-        yield sqlite_session
-    finally:
-        registry.remove()
+def database(sqlite_session: Session) -> Session:
+    """Use the real SQLite session passed explicitly to the generator."""
+    return sqlite_session
 
 
 @pytest.fixture
