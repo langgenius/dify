@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "متادیتا به عنوان یک فیلتر حیاتی عمل می‌کند که دقت و ارتباط اطلاعات بازیابی را بهبود می‌بخشد. شما می‌توانید متادیتا را برای این سند در اینجا ویرایش و اضافه کنید.",
   "metadata.documentMetadata.startLabeling": "شروع برچسب‌گذاری",
   "metadata.documentMetadata.technicalParameters": "پارامترهای فنی",
+  "metadata.externalDescription": "نام و نوع فیلدهای پشتیبانی‌شده توسط API دانش خارجی را تنظیم کنید. ارائه‌دهنده خارجی مقادیر را مدیریت می‌کند؛ تغییرات فوراً ذخیره می‌شوند.",
   "metadata.metadata": "متادیتا",
   "metadata.selectMetadata.manageAction": "مدیریت",
   "metadata.selectMetadata.newAction": "متادیتای جدید",

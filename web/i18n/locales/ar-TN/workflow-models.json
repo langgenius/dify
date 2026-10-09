@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "تم الاحتفاظ بهذه الشروط غير المتوافقة: {{fields}}. عالج التعارضات قبل الاسترجاع.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "إنشاء شروط تصفية البيانات الوصفية تلقائيًا بناءً على متغير الاستعلام",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "إنشاء شروط تصفية البيانات الوصفية تلقائيًا بناءً على استعلام المستخدم",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "تلقائي",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "بحث في البيانات الوصفية",
   "nodes.knowledgeRetrieval.metadata.panel.select": "حدد متغيرًا...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "شروط تصفية البيانات الوصفية",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "يجب أن تكون أسماء الحقول وأنواعها متطابقة في جميع قواعد المعرفة المحددة: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "تصفية البيانات الوصفية هي عملية استخدام سمات البيانات الوصفية (مثل العلامات، الفئات، أو أذونات الوصول) لتحسين والتحكم في استرجاع المعلومات ذات الصلة داخل النظام.",
   "nodes.knowledgeRetrieval.metadata.title": "تصفية البيانات الوصفية",
   "nodes.knowledgeRetrieval.outputVars.content": "المحتوى المقسم",

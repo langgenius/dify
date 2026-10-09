@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "تعمل البيانات الوصفية كمرشح حاسم يعزز دقة وملاءمة استرجاع المعلومات. يمكنك تعديل وإضافة بيانات وصفية لهذا المستند هنا.",
   "metadata.documentMetadata.startLabeling": "بدء التصنيف",
   "metadata.documentMetadata.technicalParameters": "المعلمات الفنية",
+  "metadata.externalDescription": "اضبط أسماء الحقول وأنواعها التي تدعمها واجهة المعرفة الخارجية. يدير المزوّد الخارجي القيم؛ وتُحفظ التغييرات فورًا.",
   "metadata.metadata": "بيانات وصفية",
   "metadata.selectMetadata.manageAction": "إدارة",
   "metadata.selectMetadata.newAction": "بيانات وصفية جديدة",

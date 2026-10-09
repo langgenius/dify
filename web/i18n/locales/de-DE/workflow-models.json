@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Diese inkompatiblen Bedingungen wurden beibehalten: {{fields}}. Beheben Sie die Konflikte vor der Suche.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Automatisch Filterbedingungen für Metadaten basierend auf Abfragevariablen generieren.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Automatisch Metadatenfilterbedingungen basierend auf der Benutzeranfrage generieren",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automatisch",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Suchmetadaten",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Wählen Sie eine Variable aus...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Metadatenfilterbedingungen",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Felder müssen in allen ausgewählten Wissensdatenbanken denselben Namen und Typ haben: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.",
   "nodes.knowledgeRetrieval.metadata.title": "Metadatenfilterung",
   "nodes.knowledgeRetrieval.outputVars.content": "Segmentierter Inhalt",

@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "ये असंगत शर्तें सुरक्षित रखी गई हैं: {{fields}}। खोज से पहले विरोध दूर करें।",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "क्वेरी वेरिएबल के आधार पर स्वचालित रूप से मेटाडेटा फ़िल्टरिंग शर्तें उत्पन्न करें",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "उपयोगकर्ता प्रश्न के आधार पर स्वचालित रूप से मेटाडेटा फिल्टरिंग शर्तें उत्पन्न करें।",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "स्वचालित",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "खोज मेटाडेटा",
   "nodes.knowledgeRetrieval.metadata.panel.select": "परिवर्तनशील को चुनें...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "मेटाडेटा फ़िल्टर स्थितियाँ",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "सभी चयनित ज्ञान आधारों में फ़ील्ड का नाम और प्रकार समान होना चाहिए: {{fields}}।",
   "nodes.knowledgeRetrieval.metadata.tip": "मेटाडेटा छानने की प्रक्रिया है जिसमें मेटाडेटा विशेषताओं (जैसे टैग, श्रेणियाँ, या पहुंच अनुमतियाँ) का उपयोग करके एक प्रणाली के भीतर प्रासंगिक जानकारी की पुनर्प्राप्ति को सुधारने और नियंत्रित करने के लिए किया जाता है।",
   "nodes.knowledgeRetrieval.metadata.title": "मेटाडेटा फ़िल्टरिंग",
   "nodes.knowledgeRetrieval.outputVars.content": "विभाजित सामग्री",

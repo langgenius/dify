@@ -56,11 +56,13 @@ from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatase
 from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_ASSISTANT_PROMPT_1,
     METADATA_FILTER_ASSISTANT_PROMPT_2,
+    METADATA_FILTER_ASSISTANT_PROMPT_4,
     METADATA_FILTER_COMPLETION_PROMPT,
     METADATA_FILTER_SYSTEM_PROMPT,
     METADATA_FILTER_USER_PROMPT_1,
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
+    METADATA_FILTER_USER_PROMPT_4,
 )
 from core.tools.signature import sign_upload_file_preview_url
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
@@ -98,6 +100,13 @@ from repositories.knowledge.dataset_read_repository import get_dataset_available
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
 from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.metadata.filtering import (
+    MetadataField,
+    MetadataFilterGenerationError,
+    metadata_prompt_fields,
+    shared_metadata_fields,
+    validate_automatic_metadata_filters,
+)
 from services.knowledge.retrieval.attachments import authorize_retrieved_segment
 
 default_retrieval_model: DefaultRetrievalModelDict = {
@@ -1620,11 +1629,16 @@ class DatasetRetrieval:
         tenant_id: str,
         user_id: str,
         metadata_model_config: ModelConfig,
-    ) -> list[dict[str, Any]] | None:
+    ) -> list[dict[str, Any]]:
         # get all metadata field
-        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_stmt = select(DatasetMetadata).where(
+            DatasetMetadata.dataset_id.in_(dataset_ids), DatasetMetadata.tenant_id == tenant_id
+        )
         metadata_fields = session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        shared_fields = shared_metadata_fields(
+            dataset_ids,
+            [MetadataField(dataset_id=field.dataset_id, name=field.name, type=field.type) for field in metadata_fields],
+        )
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1636,7 +1650,7 @@ class DatasetRetrieval:
         prompt_messages, stop = self._get_prompt_template(
             model_config=model_config,
             mode=metadata_model_config.mode,
-            metadata_fields=all_metadata_fields,
+            metadata_fields=shared_fields,
             query=query or "",
         )
 
@@ -1657,22 +1671,12 @@ class DatasetRetrieval:
             self._record_usage(usage)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
-            automatic_metadata_filters = []
-            if "metadata_map" in result_text_json:
-                metadata_map = result_text_json["metadata_map"]
-                for item in metadata_map:
-                    if item.get("metadata_field_name") in all_metadata_fields:
-                        automatic_metadata_filters.append(
-                            {
-                                "metadata_name": item.get("metadata_field_name"),
-                                "value": item.get("metadata_field_value"),
-                                "condition": item.get("comparison_operator"),
-                            }
-                        )
+            return validate_automatic_metadata_filters(result_text_json, shared_fields)
+        except MetadataFilterGenerationError:
+            raise
         except Exception as e:
-            logger.warning(e, exc_info=True)
-            return None
-        return automatic_metadata_filters
+            logger.warning("Automatic metadata filtering failed", exc_info=True)
+            raise MetadataFilterGenerationError("Automatic metadata filtering failed; retrieval was stopped") from e
 
     @classmethod
     def process_metadata_filter_func(
@@ -1819,10 +1823,11 @@ class DatasetRetrieval:
         )
 
     def _get_prompt_template(
-        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[str], query: str
+        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: Mapping[str, str], query: str
     ):
         model_mode = ModelMode(mode)
-        input_text = query
+        input_text = json.dumps(query, ensure_ascii=False)
+        schema = json.dumps(metadata_prompt_fields(metadata_fields), ensure_ascii=False)
 
         prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
         if model_mode == ModelMode.CHAT:
@@ -1841,11 +1846,15 @@ class DatasetRetrieval:
                 role=PromptMessageRole.ASSISTANT, text=METADATA_FILTER_ASSISTANT_PROMPT_2
             )
             prompt_template.append(assistant_prompt_message_2)
+            prompt_template.append(ChatModelMessage(role=PromptMessageRole.USER, text=METADATA_FILTER_USER_PROMPT_4))
+            prompt_template.append(
+                ChatModelMessage(role=PromptMessageRole.ASSISTANT, text=METADATA_FILTER_ASSISTANT_PROMPT_4)
+            )
             user_prompt_message_3 = ChatModelMessage(
                 role=PromptMessageRole.USER,
                 text=METADATA_FILTER_USER_PROMPT_3.format(
                     input_text=input_text,
-                    metadata_fields=json.dumps(metadata_fields, ensure_ascii=False),
+                    metadata_fields=schema,
                 ),
             )
             prompt_template.append(user_prompt_message_3)
@@ -1853,7 +1862,7 @@ class DatasetRetrieval:
             prompt_template = CompletionModelPromptTemplate(
                 text=METADATA_FILTER_COMPLETION_PROMPT.format(
                     input_text=input_text,
-                    metadata_fields=json.dumps(metadata_fields, ensure_ascii=False),
+                    metadata_fields=schema,
                 )
             )
 

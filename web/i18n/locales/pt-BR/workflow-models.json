@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Estas condições incompatíveis foram preservadas: {{fields}}. Resolva os conflitos antes da busca.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Gere automaticamente condições de filtragem de metadados com base na Variável de Consulta",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Gerar automaticamente condições de filtragem de metadados com base na consulta do usuário",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automático",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Pesquisar metadados",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Selecione a variável...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Condições de filtro de metadados",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Os campos devem ter o mesmo nome e tipo em todas as bases selecionadas: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "A filtragem de metadados é o processo de usar atributos de metadados (como etiquetas, categorias ou permissões de acesso) para refinar e controlar a recuperação de informações relevantes dentro de um sistema.",
   "nodes.knowledgeRetrieval.metadata.title": "Filtragem de Metadados",
   "nodes.knowledgeRetrieval.outputVars.content": "Conteúdo segmentado",

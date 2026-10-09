@@ -3,6 +3,7 @@ import type { DataSet } from '@/models/datasets'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
+import ExternalMetadataSection from './external-metadata-section'
 
 const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
@@ -92,6 +93,11 @@ const ExternalKnowledgeSection = ({
           </div>
         </div>
       </div>
+      <ExternalMetadataSection
+        key={currentDataset.id}
+        datasetId={currentDataset.id}
+        readonly={readonly}
+      />
     </>
   )
 }

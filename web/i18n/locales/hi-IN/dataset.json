@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "मेटाडेटा एक महत्वपूर्ण फ़िल्टर के रूप में कार्य करता है जो जानकारी प्राप्त करने की सटीकता और प्रासंगिकता को बढ़ाता है। आप इस दस्तावेज़ के लिए मेटाडेटा को यहाँ संशोधित और जोड़ सकते हैं।",
   "metadata.documentMetadata.startLabeling": "लेबलिंग शुरू करें",
   "metadata.documentMetadata.technicalParameters": "तकनीकी पैरामीटर",
+  "metadata.externalDescription": "अपने बाहरी ज्ञान API द्वारा समर्थित फ़ील्ड नाम और प्रकार सेट करें। मान बाहरी प्रदाता संभालता है; बदलाव तुरंत सहेजे जाते हैं।",
   "metadata.metadata": "मेटाडेटा",
   "metadata.selectMetadata.manageAction": "प्रबंधित करें",
   "metadata.selectMetadata.newAction": "नया मेटाडेटा",

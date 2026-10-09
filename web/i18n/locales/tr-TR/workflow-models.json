@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Uyumsuz koşullar korundu: {{fields}}. Aramadan önce çakışmaları giderin.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Sorgu Değişkenine dayalı olarak otomatik olarak meta veri filtreleme koşulları oluşturun",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Kullanıcı sorgusuna dayalı olarak otomatik olarak meta veri filtreleme koşulları oluşturun.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Otomatik",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Arama meta verileri",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Değişkeni seç...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Meta Verisi Filtre Koşulları",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Alanlar seçilen tüm bilgi tabanlarında aynı ada ve türe sahip olmalıdır: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.",
   "nodes.knowledgeRetrieval.metadata.title": "Meta Verileri Filtreleme",
   "nodes.knowledgeRetrieval.outputVars.content": "Parça içeriği",

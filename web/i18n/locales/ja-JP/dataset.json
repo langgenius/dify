@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "メタデータはドキュメントに関する情報で、ドキュメントの属性を説明するために使用されます。メタデータを活用することで、ドキュメントをより効率的に整理・管理できます。",
   "metadata.documentMetadata.startLabeling": "ラベリングを開始",
   "metadata.documentMetadata.technicalParameters": "技術パラメータ",
+  "metadata.externalDescription": "外部ナレッジ API が対応するフィールド名と型を設定します。値は外部サービスが管理し、変更はすぐに保存されます。",
   "metadata.metadata": "メタデータ",
   "metadata.selectMetadata.manageAction": "管理",
   "metadata.selectMetadata.newAction": "新規メタデータ",

@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metadata berfungsi sebagai filter penting yang meningkatkan akurasi dan relevansi pengambilan informasi. Anda dapat memodifikasi dan menambahkan metadata untuk dokumen ini di sini.",
   "metadata.documentMetadata.startLabeling": "Mulai Pelabelan",
   "metadata.documentMetadata.technicalParameters": "Parameter teknis",
+  "metadata.externalDescription": "Atur nama dan tipe kolom yang didukung API pengetahuan eksternal Anda. Nilai dikelola penyedia eksternal; perubahan langsung disimpan.",
   "metadata.metadata": "Metadata",
   "metadata.selectMetadata.manageAction": "Urus",
   "metadata.selectMetadata.newAction": "Metadata Baru",

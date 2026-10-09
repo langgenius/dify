@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "以下条件与已选知识库不兼容，已保留：{{fields}}。请在检索前解决冲突。",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "根据 Query Variable 自动生成元数据过滤条件",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "根据用户查询自动生成元数据过滤条件",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "自动",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "搜索元数据",
   "nodes.knowledgeRetrieval.metadata.panel.select": "选择变量...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "元数据过滤条件",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "以下字段在所有已选知识库中的名称和类型必须一致：{{fields}}。",
   "nodes.knowledgeRetrieval.metadata.tip": "元数据过滤是使用元数据属性（例如标签、类别或访问权限）来细化和控制系统内相关信息的检索过程。",
   "nodes.knowledgeRetrieval.metadata.title": "元数据过滤",
   "nodes.knowledgeRetrieval.outputVars.content": "分段内容",

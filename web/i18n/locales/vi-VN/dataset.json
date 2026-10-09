@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Dữ liệu siêu thông tin đóng vai trò là một bộ lọc quan trọng giúp nâng cao độ chính xác và tính liên quan của việc truy xuất thông tin. Bạn có thể chỉnh sửa và thêm dữ liệu siêu thông tin cho tài liệu này ở đây.",
   "metadata.documentMetadata.startLabeling": "Bắt đầu gán nhãn",
   "metadata.documentMetadata.technicalParameters": "Các Thông Số Kỹ Thuật",
+  "metadata.externalDescription": "Cấu hình tên và kiểu trường mà API tri thức bên ngoài hỗ trợ. Nhà cung cấp bên ngoài quản lý giá trị; thay đổi được lưu ngay.",
   "metadata.metadata": "Siêu dữ liệu",
   "metadata.selectMetadata.manageAction": "Quản lý",
   "metadata.selectMetadata.newAction": "Siêu dữ liệu mới",

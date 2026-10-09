@@ -26,6 +26,7 @@ const MetadataFilter = ({
   metadataFilterMode = MetadataFilteringModeEnum.disabled,
   handleMetadataFilterModeChange,
   metadataModelConfig,
+  metadataSchemaConflicts = [],
   handleMetadataModelChange,
   handleMetadataCompletionParamsChange,
   ...restProps
@@ -82,6 +83,14 @@ const MetadataFilter = ({
           </div>
         </CollapseActions>
       </CollapseHeader>
+      {metadataSchemaConflicts.length > 0 && (
+        <div role="status" className="px-4 text-xs text-text-warning">
+          {t(($) => $['nodes.knowledgeRetrieval.metadata.schemaConflict'], {
+            ns: 'workflowModels',
+            fields: metadataSchemaConflicts.join(', '),
+          })}
+        </div>
+      )}
       <CollapseContent>
         {metadataFilterMode === MetadataFilteringModeEnum.automatic && (
           <>

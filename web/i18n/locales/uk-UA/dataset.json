@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Метадані слугують критичною фільтрацією, що підвищує точність і актуальність витягування інформації. Ви можете змінити та додати метадані для цього документа тут.",
   "metadata.documentMetadata.startLabeling": "Почати маркування",
   "metadata.documentMetadata.technicalParameters": "Технічні параметри",
+  "metadata.externalDescription": "Налаштуйте назви й типи полів зовнішнього API знань. Значеннями керує зовнішній постачальник; зміни зберігаються одразу.",
   "metadata.metadata": "Метадані",
   "metadata.selectMetadata.manageAction": "Керувати",
   "metadata.selectMetadata.newAction": "Нові метадані",

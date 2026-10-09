@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "元数据是关于文档的数据，用于描述文档的属性。元数据可以帮助您更好地组织和管理文档。",
   "metadata.documentMetadata.startLabeling": "开始标注",
   "metadata.documentMetadata.technicalParameters": "技术参数",
+  "metadata.externalDescription": "配置外部知识 API 支持的字段名称和类型。字段值由外部服务提供，修改会立即保存。",
   "metadata.metadata": "元数据",
   "metadata.selectMetadata.manageAction": "管理",
   "metadata.selectMetadata.newAction": "新建元数据",

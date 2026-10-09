@@ -9,6 +9,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { isMetadataConditionCompatible } from '../../../metadata-schema'
 import MetadataIcon from '../metadata-icon'
 import ConditionDate from './condition-date'
 import ConditionNumber from './condition-number'
@@ -61,18 +62,9 @@ const ConditionItem = ({
   }, [onRemoveCondition, condition.id])
 
   const currentMetadata = useMemo(() => {
-    if (condition.metadata_id) {
-      const foundByIdAndName = metadataList.find(
-        (metadata) => metadata.id === condition.metadata_id && metadata.name === condition.name,
-      )
-      if (foundByIdAndName) return foundByIdAndName
-
-      const foundById = metadataList.filter((metadata) => metadata.id === condition.metadata_id)
-      if (foundById.length === 1) return foundById[0]
-    }
-
+    if (!isMetadataConditionCompatible(condition, metadataList)) return undefined
     return metadataList.find((metadata) => metadata.name === condition.name)
-  }, [metadataList, condition.metadata_id, condition.name])
+  }, [metadataList, condition])
 
   const handleConditionOperatorChange = useCallback(
     (operator: ComparisonOperator) => {
@@ -88,12 +80,7 @@ const ConditionItem = ({
   )
 
   const valueAndValueMethod = useMemo(() => {
-    if (
-      (currentMetadata?.type === MetadataFilteringVariableType.string ||
-        currentMetadata?.type === MetadataFilteringVariableType.number ||
-        currentMetadata?.type === MetadataFilteringVariableType.select) &&
-      typeof condition.value === 'string'
-    ) {
+    if (typeof condition.value === 'string') {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
       const matchedStartNumber = isCommonVariable ? 2 : 3
       const matched = condition.value.match(regex)
@@ -115,12 +102,14 @@ const ConditionItem = ({
       value: condition.value,
       valueMethod: 'constant',
     }
-  }, [currentMetadata, condition.value, isCommonVariable])
-  const [localValueMethod, setLocalValueMethod] = useState(valueAndValueMethod.valueMethod)
+  }, [condition.value, isCommonVariable])
+  const [emptyValueMethod, setEmptyValueMethod] = useState('constant')
+  const localValueMethod =
+    condition.value === undefined ? emptyValueMethod : valueAndValueMethod.valueMethod
 
   const handleValueMethodChange = useCallback(
     (v: string) => {
-      setLocalValueMethod(v)
+      setEmptyValueMethod(v)
       onUpdateCondition?.(condition.id, { ...condition, value: undefined })
     },
     [condition, onUpdateCondition],
@@ -148,19 +137,26 @@ const ConditionItem = ({
                 <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
               <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
-                {currentMetadata?.name}
+                {currentMetadata?.name ?? condition.name}
               </div>
-              <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
+              <div className="system-xs-regular text-text-tertiary">
+                {currentMetadata?.type ?? condition.type}
+              </div>
             </div>
           </div>
           <div className="mx-1 h-3 w-px bg-divider-regular"></div>
           <ConditionOperator
-            disabled={!canChooseOperator}
+            disabled={!canChooseOperator || !currentMetadata}
             variableType={currentMetadata?.type || MetadataFilteringVariableType.string}
             value={condition.comparison_operator}
             onSelect={handleConditionOperatorChange}
           />
         </div>
+        {!currentMetadata && (
+          <div className="px-2 py-1 text-xs text-text-destructive">
+            {String(condition.value ?? '')}
+          </div>
+        )}
         <div className="border-t border-t-divider-subtle">
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
             (currentMetadata?.type === MetadataFilteringVariableType.string ||

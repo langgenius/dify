@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "메타데이터는 정보 검색의 정확성과 관련성을 향상시키는 중요한 필터 역할을 합니다. 이 문서에 대한 메타데이터를 여기에서 수정하고 추가할 수 있습니다.",
   "metadata.documentMetadata.startLabeling": "레이블링 시작",
   "metadata.documentMetadata.technicalParameters": "기술 매개변수",
+  "metadata.externalDescription": "외부 지식 API가 지원하는 필드 이름과 유형을 설정하세요. 값은 외부 제공자가 관리하며 변경 사항은 즉시 저장됩니다.",
   "metadata.metadata": "메타데이터",
   "metadata.selectMetadata.manageAction": "관리",
   "metadata.selectMetadata.newAction": "새 메타데이터",

@@ -538,7 +538,7 @@ describe('knowledge-retrieval path', () => {
       expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
     })
 
-    it('should remove stale metadata conditions and open the manual metadata panel', async () => {
+    it('should preserve incompatible metadata conditions and open the manual metadata panel', async () => {
       const user = userEvent.setup()
       const handleRemoveCondition = vi.fn()
 
@@ -564,7 +564,10 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      expect(handleRemoveCondition).toHaveBeenCalledWith('condition-stale')
+      expect(handleRemoveCondition).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'workflowModels.nodes.knowledgeRetrieval.metadata.conditionConflict',
+      )
 
       await user.click(
         screen.getByRole('button', {
@@ -573,6 +576,41 @@ describe('knowledge-retrieval path', () => {
       )
 
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
+    })
+
+    it('preserves a dynamic condition across incompatible and compatible dataset switches', () => {
+      const metadata = createMetadata()
+      const condition = createCondition({
+        name: metadata.name,
+        type: metadata.type,
+        value: '{{#start.category#}}',
+      })
+      const props: MetadataShape = {
+        selectedDatasetsLoaded: true,
+        metadataList: [metadata],
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [condition],
+        },
+        handleAddCondition: vi.fn(),
+        handleRemoveCondition: vi.fn(),
+        handleToggleConditionLogicalOperator: vi.fn(),
+        handleUpdateCondition: vi.fn(),
+      }
+      const { rerender } = render(<MetadataTrigger {...props} />)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      rerender(<MetadataTrigger {...props} metadataList={[]} />)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      rerender(
+        <MetadataTrigger
+          {...props}
+          metadataList={[{ ...metadata, id: 'another-dataset-field' }]}
+        />,
+      )
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(props.handleRemoveCondition).not.toHaveBeenCalled()
+      expect(props.handleUpdateCondition).not.toHaveBeenCalled()
+      expect(condition.value).toBe('{{#start.category#}}')
     })
 
     it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
