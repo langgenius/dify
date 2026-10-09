@@ -192,10 +192,10 @@ describe('useWorkflowInit', () => {
             nodes: [],
             edges: [],
           },
+          force: true,
         }),
       }),
     )
-    expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params).not.toHaveProperty('force')
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
   })
@@ -225,11 +225,11 @@ describe('useWorkflowInit', () => {
               nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
               edges: [],
             },
+            force: true,
           }),
         }),
       ),
     )
-    expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params).not.toHaveProperty('force')
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         showOnboarding: false,
