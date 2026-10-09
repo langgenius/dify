@@ -6,7 +6,7 @@ from typing import Any, override
 import pandas as pd
 
 from core.rag.extractor.extractor_base import BaseExtractor
-from core.rag.extractor.helpers import detect_file_encodings
+from core.rag.extractor.helpers import CSV_DELIMITER_SAMPLE_CHARS, detect_csv_delimiter, detect_file_encodings
 from core.rag.models.document import Document
 
 
@@ -59,8 +59,17 @@ class CSVExtractor(BaseExtractor):
     def _read_from_file(self, csvfile) -> list[Document]:
         docs = []
         try:
+            csv_args = dict(self.csv_args)
+            if "sep" not in csv_args and "delimiter" not in csv_args:
+                # A file named .csv is not always comma separated, and pandas
+                # defaults to a comma: reading a semicolon separated export with
+                # one gives a single column holding the whole row.
+                sample = csvfile.read(CSV_DELIMITER_SAMPLE_CHARS)
+                csvfile.seek(0)
+                csv_args["sep"] = detect_csv_delimiter(sample)
+
             # load csv file into pandas dataframe
-            df = pd.read_csv(csvfile, on_bad_lines="skip", **self.csv_args)
+            df = pd.read_csv(csvfile, on_bad_lines="skip", **csv_args)
 
             # check source column exists
             if self.source_column and self.source_column not in df.columns:
