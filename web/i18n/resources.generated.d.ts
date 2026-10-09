@@ -4978,6 +4978,8 @@ export default interface Resources {
     'common.branch': 'BRANCH'
     'common.chooseDSL': 'Choose DSL file'
     'common.chooseStartNodeToRun': 'Choose the start node to run'
+    'common.clearCanvasConfirmDescription': 'Saving will clear this workflow. Continue?'
+    'common.clearCanvasConfirmTitle': 'Clear the canvas?'
     'common.clipboardVersionCompatibilityWarning': 'This content was copied from a different Dify app version. Some parts may be incompatible.'
     'common.commentMode': 'Comment Mode'
     'common.configure': 'Configure'

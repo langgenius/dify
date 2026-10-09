@@ -1,25 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { BodyPayloadValueType, BodyType } from '../../types'
-import CurlPanel from '../curl-panel'
+import { CurlImportDialog } from '../curl-import-dialog'
 import * as curlParser from '../curl-parser'
 
-const { mockHandleNodeSelect, mockToastError } = vi.hoisted(() => ({
-  mockHandleNodeSelect: vi.fn(),
+const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
-
-vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
-
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodeSelect: mockHandleNodeSelect,
-    }),
-  }
-})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -27,7 +15,7 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-describe('curl-panel', () => {
+describe('CurlImportDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -103,61 +91,72 @@ describe('curl-panel', () => {
     })
   })
 
-  describe('component actions', () => {
-    it('should import a parsed curl node and reselect the node after saving', async () => {
+  describe('dialog sessions', () => {
+    const triggerName = 'workflowIntegrations.nodes.http.curl.title'
+
+    it('imports the parsed request and closes', async () => {
       const user = userEvent.setup()
-      const onHide = vi.fn()
-      const handleCurlImport = vi.fn()
-
-      render(
-        <CurlPanel nodeId="node-1" isShow onHide={onHide} handleCurlImport={handleCurlImport} />,
-      )
-
+      const onImport = vi.fn()
+      render(<CurlImportDialog readOnly={false} onImport={onImport} />)
+      await user.click(screen.getByRole('button', { name: triggerName }))
       await user.type(screen.getByRole('textbox'), 'curl https://example.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(onHide).toHaveBeenCalledTimes(1)
-      expect(handleCurlImport).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'get',
-          url: 'https://example.com',
-        }),
+      expect(onImport).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'get', url: 'https://example.com' }),
       )
-      expect(mockHandleNodeSelect).toHaveBeenNthCalledWith(1, 'node-1', true)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
-    it('should notify the user when the curl command is invalid', async () => {
+    it.each(['Cancel', 'Escape'])(
+      'discards the draft after %s and opens a fresh form',
+      async (dismissal) => {
+        const user = userEvent.setup()
+        const onImport = vi.fn()
+        render(<CurlImportDialog readOnly={false} onImport={onImport} />)
+        const trigger = screen.getByRole('button', { name: triggerName })
+        await user.click(trigger)
+        await user.type(screen.getByRole('textbox'), 'curl https://example.com')
+        if (dismissal === 'Cancel')
+          await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+        else await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        await user.click(trigger)
+        expect(screen.getByRole('textbox')).toHaveValue('')
+        expect(onImport).not.toHaveBeenCalled()
+      },
+    )
+
+    it('keeps invalid input available for correction without importing', async () => {
       const user = userEvent.setup()
-
-      render(<CurlPanel nodeId="node-1" isShow onHide={vi.fn()} handleCurlImport={vi.fn()} />)
-
+      const onImport = vi.fn()
+      render(<CurlImportDialog readOnly={false} onImport={onImport} />)
+      await user.click(screen.getByRole('button', { name: triggerName }))
       await user.type(screen.getByRole('textbox'), 'invalid')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
         expect.stringContaining('Invalid cURL command'),
       )
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveValue('invalid')
+      expect(onImport).not.toHaveBeenCalled()
     })
 
-    it('should keep the panel open when parsing returns no node and no error', async () => {
+    it('offers no editor while read-only and ends an open session when permission changes', async () => {
       const user = userEvent.setup()
-      const onHide = vi.fn()
-      const handleCurlImport = vi.fn()
-      vi.spyOn(curlParser, 'parseCurl').mockReturnValueOnce({
-        node: null,
-        error: null,
-      })
-
-      render(
-        <CurlPanel nodeId="node-1" isShow onHide={onHide} handleCurlImport={handleCurlImport} />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(onHide).not.toHaveBeenCalled()
-      expect(handleCurlImport).not.toHaveBeenCalled()
-      expect(mockHandleNodeSelect).not.toHaveBeenCalled()
-      expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
+      const onImport = vi.fn()
+      const { rerender } = render(<CurlImportDialog readOnly onImport={onImport} />)
+      expect(screen.getByText(triggerName)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: triggerName })).not.toBeInTheDocument()
+      rerender(<CurlImportDialog readOnly={false} onImport={onImport} />)
+      await user.click(screen.getByRole('button', { name: triggerName }))
+      await user.type(screen.getByRole('textbox'), 'curl https://example.com')
+      rerender(<CurlImportDialog readOnly onImport={onImport} />)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      rerender(<CurlImportDialog readOnly={false} onImport={onImport} />)
+      await user.click(screen.getByRole('button', { name: triggerName }))
+      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(onImport).not.toHaveBeenCalled()
     })
   })
 })

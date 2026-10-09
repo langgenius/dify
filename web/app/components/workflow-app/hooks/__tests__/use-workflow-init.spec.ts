@@ -195,6 +195,7 @@ describe('useWorkflowInit', () => {
         }),
       }),
     )
+    expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params).not.toHaveProperty('force')
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
   })
@@ -228,6 +229,7 @@ describe('useWorkflowInit', () => {
         }),
       ),
     )
+    expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params).not.toHaveProperty('force')
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         showOnboarding: false,

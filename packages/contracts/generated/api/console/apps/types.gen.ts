@@ -951,6 +951,7 @@ export type SyncDraftWorkflowPayload = {
   features: {
     [key: string]: unknown
   }
+  force?: boolean
   graph: {
     [key: string]: unknown
   }
