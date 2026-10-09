@@ -320,11 +320,6 @@ export const zMessageFeedbackPayload = z.object({
 })
 
 /**
- * TextFileResponse
- */
-export const zTextFileResponse = z.string()
-
-/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
@@ -6235,24 +6230,6 @@ export const zPostAppsByAppIdFeedbacksPath = z.object({
  * Feedback updated successfully
  */
 export const zPostAppsByAppIdFeedbacksResponse = zSimpleResultResponse
-
-export const zGetAppsByAppIdFeedbacksExportPath = z.object({
-  app_id: z.uuid(),
-})
-
-export const zGetAppsByAppIdFeedbacksExportQuery = z.object({
-  end_date: z.string().optional(),
-  format: z.enum(['csv', 'json']).optional().default('csv'),
-  from_source: z.enum(['admin', 'user']).optional(),
-  has_comment: z.boolean().optional(),
-  rating: z.enum(['dislike', 'like']).optional(),
-  start_date: z.string().optional(),
-})
-
-/**
- * Feedback data exported successfully
- */
-export const zGetAppsByAppIdFeedbacksExportResponse = zTextFileResponse
 
 export const zPostAppsByAppIdIconBody = zAppIconPayload
 

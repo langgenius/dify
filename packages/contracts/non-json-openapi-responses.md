@@ -27,7 +27,6 @@ The current Flask-RESTX generator still emits these response entries under `appl
 
 | Spec    | Method | Path                                                          | Runtime response                                                        | Schema             |
 | ------- | ------ | ------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------ |
-| console | GET    | `/apps/{app_id}/feedbacks/export`                             | `text/csv` attachment by default; `format=json` returns JSON attachment | `TextFileResponse` |
 | console | GET    | `/workspaces/current/customized-snippets/{snippet_id}/export` | `application/x-yaml` attachment                                         | `TextFileResponse` |
 
 ## Fixed SSE Streams
