@@ -455,10 +455,10 @@ class TriggerProviderService:
             )
             # Subscription credentials must use the credentials schema (same as add/update/read paths),
             # not the OAuth client schema, otherwise tokens are (de)crypted with the wrong secret fields.
-            encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
+                config=provider_controller.get_credential_schema_config(subscription.credential_type),
+                cache=NoOpProviderCredentialCache(),
             )
 
             # Decrypt current credentials

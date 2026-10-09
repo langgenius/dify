@@ -451,7 +451,7 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     _patch_provider(mocker, provider_controller)
     encrypter = _encrypter(decrypted={"refresh": "old"}, encrypted={"access": "new"})
     create_encrypter = mocker.patch.object(
-        service_module, "create_trigger_provider_encrypter_for_subscription", return_value=(encrypter, Mock())
+        service_module, "create_provider_encrypter", return_value=(encrypter, Mock())
     )
     mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client": "system"})
     handler = Mock()
@@ -468,7 +468,8 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     clear_cache.assert_called_once()
     # Credentials must be (de)crypted with the subscription credentials schema, not the OAuth client schema.
     create_encrypter.assert_called_once()
-    assert create_encrypter.call_args.kwargs["controller"] is provider_controller
+    provider_controller.get_credential_schema_config.assert_called_once_with(subscription.credential_type)
+    assert create_encrypter.call_args.kwargs["config"] is provider_controller.get_credential_schema_config.return_value
     provider_controller.get_oauth_client_schema.assert_not_called()
 
 
