@@ -280,8 +280,8 @@ class BaseIndexProcessor(ABC):
             if content_disposition:
                 _, params = parse_options_header(content_disposition)
                 if "filename" in params:
+                    # Werkzeug decodes filename*; preserve literal percent escapes in the result.
                     filename = params["filename"]
-                    filename = unquote(filename)
 
             if not filename:
                 parsed_url = urlparse(image_url)
