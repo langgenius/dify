@@ -17,8 +17,8 @@ const RunningTitle = () => {
       />
       <span>
         {isChatMode
-          ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`
-          : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
+          ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`
+          : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`}
       </span>
       <span className="mx-1">·</span>
       <span className="ml-1 flex h-4.5 items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600 uppercase">
