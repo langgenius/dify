@@ -28,6 +28,8 @@
   "menus.plugins": "Tích hợp",
   "menus.status": "beta",
   "menus.tools": "Công cụ",
+  "settings.accessToken": "Mã truy cập",
+  "settings.accessTokenDescription": "Tạo mã Service API chỉ cho phép truy cập các ứng dụng và cơ sở tri thức đã chọn.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Thanh toán",
   "settings.customEndpoint": "Điểm cuối tùy chỉnh",
