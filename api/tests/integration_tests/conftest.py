@@ -68,7 +68,7 @@ def flask_app() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def setup_account(request) -> Generator[Account, None, None]:
+def setup_account(request) -> Generator[Account]:
     """`dify_setup` completes the setup process for the Dify application.
 
     It creates `Account` and `Tenant`, and inserts a `DifySetup` record into the database.
@@ -117,6 +117,6 @@ def auth_header(setup_account) -> dict[str, str]:
 
 
 @pytest.fixture
-def test_client() -> Generator[FlaskClient, None, None]:
+def test_client() -> Generator[FlaskClient]:
     with _CACHED_APP.test_client() as client:
         yield client

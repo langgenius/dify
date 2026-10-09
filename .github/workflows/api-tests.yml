@@ -25,7 +25,7 @@ jobs:
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           enable-cache: false
       - name: Download shared timing baseline
         # Public statistics are independent of PR refs and require no credentials.
@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - '3.12'
+          - '3.13'
         shardIndex:
           - 1
           - 2
@@ -152,11 +152,11 @@ jobs:
           retention-days: 1
 
   api-controllers:
-    name: API Controller Tests (3.12)
+    name: API Controller Tests (3.13)
     runs-on: depot-ubuntu-24.04
     env:
       PYTHONUNBUFFERED: '1'
-      COVERAGE_FILE: coverage-controllers-3.12
+      COVERAGE_FILE: coverage-controllers-3.13
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -167,7 +167,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
@@ -192,7 +192,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: api-test-results-controllers-3.12
+          name: api-test-results-controllers-3.13
           path: test-results/*.xml
           if-no-files-found: warn
           retention-days: 7
@@ -200,7 +200,7 @@ jobs:
       - name: Upload controller coverage data
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: api-coverage-controllers-3.12
+          name: api-coverage-controllers-3.13
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -220,7 +220,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - '3.12'
+          - '3.13'
 
     steps:
       - name: Checkout code
@@ -286,7 +286,7 @@ jobs:
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Download coverage data
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

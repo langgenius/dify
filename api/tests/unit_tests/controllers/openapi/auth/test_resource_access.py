@@ -43,7 +43,7 @@ def resource_fixture(
     sqlite_session: Session,
     config_overrides: Callable[..., None],
     app_services: AppServices,
-) -> Generator[ResourceFixture, None, None]:
+) -> Generator[ResourceFixture]:
     config_overrides(ENABLE_OAUTH_BEARER=True)
     tenant = Tenant(name="Token workspace")
     tenant.id = str(uuid4())
