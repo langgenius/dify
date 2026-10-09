@@ -1424,6 +1424,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    WORKFLOW_DEBUG_RESERVATION_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds to start a trigger-debug worker or renew its running lease",
+        default=600,
+    )
     ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK: bool = Field(
         description="Enable recovery of persisted workflow draft upload cleanup requests",
         default=True,
