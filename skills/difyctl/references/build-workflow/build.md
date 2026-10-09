@@ -40,14 +40,15 @@ Work on this one app for the whole build. Change it by importing over its draft.
 3. Import over the draft with that `draft_hash`:
 
    ```bash
-   difyctl import console_app dsl --app-id <app_id> --mode yaml-content \
-     --yaml-content "$(cat difyctl/<app-slug>/app.yml)" --draft-hash <draft_hash> --json
+   jq -Rs '{yaml_content: .}' difyctl/<app-slug>/app.yml |
+     difyctl import console_app dsl --app-id <app_id> --mode yaml-content --draft-hash <draft_hash> --input @- --json
    ```
 
-   - `--yaml-content` takes the YAML text itself. It does not read `@file`.
+   - Send the YAML through stdin with `--input @-`, as above. Do not pass it as `--yaml-content "$(cat …)"`: a large file breaks the command line.
    - A failed import exits 1 with an error envelope on stderr that carries the server's message. Stop and show the human the message.
    - If the draft changed since your export, the server's message says to export again. Someone else changed the draft. Export again, show the human the difference, and never overwrite it.
-   - A successful import prints a result. Check its `status`. Go on only when it is `completed`. On `completed-with-warnings` or `pending`, stop and read `warnings`.
+   - A successful import prints a result. Check its `status`. Go on only when it is `completed`. On `completed-with-warnings`, stop and read `warnings`.
+   - `pending` means the DSL version differs from the server's, and the draft has not changed. Show the human `imported_dsl_version` and `current_dsl_version`. If they agree, run `difyctl confirm console_app dsl_import --import-id <id> --json` with the result's `id`.
    - Each import changes the hash. Export again before the next import.
    - Read [dsl.md](dsl.md) for what else an import changes.
 

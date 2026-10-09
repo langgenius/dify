@@ -1,6 +1,10 @@
 import type { TestWorld } from '@test/fixtures/kernel'
+import { existsSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { PENDING_FILE_NAME } from '@/auth/logout'
+import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
@@ -111,4 +115,38 @@ it('resume with no pending login and no saved login is not_logged_in', async () 
   const w = await testContext({ login: false, argv: ['login', '--resume'] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
+})
+
+it('resume with no pending login and the token gone is not_logged_in', async () => {
+  const w = await testContext({ login: true, argv: ['login', '--resume'] })
+  worlds.push(w)
+  const fresh = new Context()
+  const login = await (await fresh.get(session)).require()
+  await (await fresh.get(token)).remove(login)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
+})
+
+it('resume under an env login reports the env login', async () => {
+  const w = await testContext({ login: false, env: true, argv: ['login', '--resume'] })
+  worlds.push(w)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ server: w.mock.url, email: 'env' })
+})
+
+it('a new login drops a pending --no-wait login', async () => {
+  const seed = await testContext({ login: false })
+  worlds.push(seed)
+  const pendingFile = join(seed.dir, PENDING_FILE_NAME)
+  writeFileSync(
+    pendingFile,
+    `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: stale\n`,
+  )
+  const w = await testContext({
+    login: false,
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
+    reuseDirOf: seed,
+  })
+  worlds.push(w)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(existsSync(pendingFile)).toBe(false)
 })

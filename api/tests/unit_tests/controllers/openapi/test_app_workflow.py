@@ -8,7 +8,14 @@ from flask import Flask
 from pydantic import ValidationError
 
 from controllers.openapi import app_workflow
-from controllers.openapi._errors import RunNotFound, SecretMaskNotSecret, SecretMaskUnknownId, VersionNotFound
+from controllers.openapi._errors import (
+    DraftNotFound,
+    EnvVariableNotFound,
+    RunNotFound,
+    SecretMaskNotSecret,
+    SecretMaskUnknownId,
+    VersionNotFound,
+)
 from controllers.openapi._models import (
     EnvVariableSetPayload,
     RestoreResponse,
@@ -28,7 +35,7 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
 from core.helper import encrypter
 from graphon.variables import SecretVariable, StringVariable
-from models.account import Account
+from models.account import Account, Tenant
 from models.model import App, AppMode
 from models.workflow import Workflow
 
@@ -40,7 +47,9 @@ class _EndpointView(Protocol):
 
 
 def _app_context(app_id: str = "app-1", **view_args: str) -> Context:
-    ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": app_id, **view_args})
+    ctx = Context(cast(Subject, SimpleNamespace(account_id="account-1")), Mock(), {"app_id": app_id, **view_args})
+    ctx._workspace = Tenant(name="w")
+    ctx._workspace.id = "tenant-1"
     ctx._app = App(id=app_id, tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
     account = Account(name="tester", email="tester@example.com")
     account.id = "account-1"
@@ -118,6 +127,60 @@ def test_set_env_rejects_the_mask_as_a_plain_value(app: Flask, monkeypatch: pyte
     service.patch_draft_workflow_environment_variables.assert_not_called()
 
 
+def test_set_env_without_a_draft_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = None
+
+    body = EnvVariableSetPayload(name="KEY", value_type="string", value="v")
+    api = AppEnvItemApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="PUT"):
+        with pytest.raises(DraftNotFound):
+            cast(_EndpointView, api.put).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1", body=body)
+
+    service.patch_draft_workflow_environment_variables.assert_not_called()
+
+
+def test_delete_env_without_a_draft_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = None
+
+    api = AppEnvItemApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
+        with pytest.raises(DraftNotFound):
+            cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1")
+
+    service.patch_draft_workflow_environment_variables.assert_not_called()
+
+
+def test_delete_env_with_an_unknown_id_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unknown id must not report success while deleting nothing."""
+    stored = StringVariable(id="e-1", name="KEY", value="v", selector=["env", "KEY"])
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+
+    api = AppEnvItemApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/env/typo", method="DELETE"):
+        with pytest.raises(EnvVariableNotFound):
+            cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="typo"), "app-1", "typo")
+
+    service.patch_draft_workflow_environment_variables.assert_not_called()
+
+
+def test_delete_env_removes_a_stored_variable(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    stored = StringVariable(id="e-1", name="KEY", value="v", selector=["env", "KEY"])
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+
+    api = AppEnvItemApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
+        cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1")
+
+    service.patch_draft_workflow_environment_variables.assert_called_once()
+    assert service.patch_draft_workflow_environment_variables.call_args.kwargs["deleted_environment_variable_ids"] == [
+        "e-1"
+    ]
+
+
 def test_set_env_payload_rejects_a_value_type_the_console_does_not_allow() -> None:
     with pytest.raises(ValidationError):
         EnvVariableSetPayload(name="KEY", value_type="boolean", value=True)
@@ -165,7 +228,6 @@ def test_run_node_list_is_not_found_for_a_run_of_another_app(app: Flask, monkeyp
     runs = Mock()
     runs.get_workflow_run.return_value = None
     monkeypatch.setattr(app_workflow, "application_services", lambda: SimpleNamespace(workflow_runs=runs))
-    monkeypatch.setattr(app_workflow, "_request_context", lambda _ctx: None)
     run_id = "11111111-1111-4111-8111-111111111111"
 
     api = AppRunNodeListApi()

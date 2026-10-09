@@ -19,6 +19,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import (
     DraftNotFound,
+    EnvVariableNotFound,
     NodeNotFound,
     OpenApiError,
     RunNotFound,
@@ -48,7 +49,6 @@ from controllers.openapi.app_run import _DRAFT_RUN_GUARDS, require_mode
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckAppMode, account_app_guards
 from core.helper import encrypter
-from core.logging.context import get_request_id, get_trace_id
 from core.workflow.llm_environment_variable import environment_variable_value_type
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -65,7 +65,6 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.helper import to_timestamp
-from machinery.context import RequestContext
 from models import AppMode, WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
@@ -88,10 +87,6 @@ _ENV_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_VIEW_LAYOUT, sco
 _ENV_WRITE_GUARDS: Final = account_app_guards(RBACPermission.APP_EDIT, scope=Scope.WORKSPACE_WRITE, editor=True)
 
 
-def _request_context(ctx: Context) -> RequestContext:
-    return RequestContext(get_request_id(), get_trace_id(), ctx.account.id, ctx.workspace.id)
-
-
 def _require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
     """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
     a UUID-typed database column and fail as a 500."""
@@ -103,7 +98,7 @@ def _require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
 
 def _require_run(ctx: Context, run_id: str) -> WorkflowRun:
     run = application_services().workflow_runs.get_workflow_run(
-        _request_context(ctx), app_id=ctx.app.id, run_id=_require_uuid(run_id, not_found=RunNotFound)
+        ctx.request_context, app_id=ctx.app.id, run_id=_require_uuid(run_id, not_found=RunNotFound)
     )
     if run is None:
         raise RunNotFound()
@@ -145,7 +140,7 @@ class AppRunListApi(Resource):
         if query.status is not None:
             args["status"] = query.status
         pagination = application_services().workflow_runs.get_paginate_workflow_runs(
-            _request_context(ctx),
+            ctx.request_context,
             app_id=ctx.app.id,
             args=args,
             triggered_from=WorkflowRunTriggeredFrom(query.triggered_from or WorkflowRunTriggeredFrom.DEBUGGING),
@@ -184,7 +179,7 @@ class AppRunNodeListApi(Resource):
         require_mode(ctx.app, *GRAPH_MODES)
         run = _require_run(ctx, run_id)
         steps = application_services().workflow_runs.get_workflow_run_node_executions(
-            _request_context(ctx), app_id=ctx.app.id, run_id=run.id
+            ctx.request_context, app_id=ctx.app.id, run_id=run.id
         )
         return WorkflowRunNodeExecutionListResponse.model_validate({"data": steps})
 
@@ -308,9 +303,14 @@ def env_variable_rows(variables: Iterable[VariableBase]) -> list[EnvVariableRow]
     ]
 
 
-def _stored_secret_ids(draft: Workflow | None) -> set[str]:
+def _require_draft(ctx: Context) -> Workflow:
+    draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
     if draft is None:
-        return set()
+        raise DraftNotFound()
+    return draft
+
+
+def _stored_secret_ids(draft: Workflow) -> set[str]:
     return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
 
 
@@ -340,10 +340,7 @@ class AppEnvListApi(Resource):
     )
     def get(self, ctx: Context, app_id: str):
         require_mode(ctx.app, *GRAPH_MODES)
-        draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
-        if draft is None:
-            raise DraftNotFound()
-        return EnvVariableListResponse(data=env_variable_rows(draft.environment_variables))
+        return EnvVariableListResponse(data=env_variable_rows(_require_draft(ctx).environment_variables))
 
 
 @openapi_ns.route("/apps/<string:app_id>/env/<string:env_id>")
@@ -371,13 +368,12 @@ class AppEnvItemApi(Resource):
     )
     def put(self, ctx: Context, app_id: str, env_id: str, *, body: EnvVariableSetPayload):
         require_mode(ctx.app, *GRAPH_MODES)
+        draft = _require_draft(ctx)
         if body.value == encrypter.full_mask_token() and body.value_type != EnvVariableValueType.SECRET:
             raise SecretMaskNotSecret()
         [mapping] = Workflow.normalize_environment_variable_mappings([{**body.model_dump(mode="json"), "id": env_id}])
-        if mapping["value"] == HIDDEN_VALUE:
-            draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
-            if env_id not in _stored_secret_ids(draft):
-                raise SecretMaskUnknownId()
+        if mapping["value"] == HIDDEN_VALUE and env_id not in _stored_secret_ids(draft):
+            raise SecretMaskUnknownId()
         try:
             variable = variable_factory.build_environment_variable_from_mapping(mapping)
         except VariableError as exc:
@@ -396,6 +392,8 @@ class AppEnvItemApi(Resource):
     )
     def delete(self, ctx: Context, app_id: str, env_id: str):
         require_mode(ctx.app, *GRAPH_MODES)
+        if all(variable.id != env_id for variable in _require_draft(ctx).environment_variables):
+            raise EnvVariableNotFound()
         _patch_env(ctx, upserts=[], deletions=[env_id])
         return SimpleResultResponse(result="success")
 
@@ -407,9 +405,7 @@ def run_draft_node(
     ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str
 ) -> WorkflowRunNodeExecutionResponse:
     workflow_service = WorkflowService()
-    draft = workflow_service.get_draft_workflow(app_model=ctx.app, session=ctx.session)
-    if draft is None:
-        raise DraftNotFound()
+    draft = _require_draft(ctx)
     node = next((node for node in draft.graph_dict.get("nodes", []) if node.get("id") == node_id), None)
     if node is None:
         raise NodeNotFound()

@@ -1,19 +1,17 @@
 import type { PollSuccess } from '@/auth/device-api'
 import type { CommandContext } from '@/plugins/base'
+import type { YamlStore } from '@/store/store'
 import { hostname } from 'node:os'
-import { join } from 'node:path'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
-import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
+import { assertNotEnvLogin, pendingLoginStore, revokeAndClearSession } from '@/auth/logout'
 import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Command } from '@/plugins/commands/command'
-import { env } from '@/plugins/env'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
-import { YamlStore } from '@/store/store'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '@/util/browser'
 import { DEFAULT_HOST, resolveHost, validateVerificationURI } from '@/util/host'
 
@@ -45,7 +43,6 @@ const INPUT = z.object({
     ),
 })
 
-const PENDING_FILE_NAME = 'login-pending.yml'
 const PENDING_STATUS = 'pending'
 const PENDING_SCHEMA = z.object({
   server: z.string(),
@@ -91,12 +88,12 @@ export default class Login extends Command<typeof INPUT> {
   ]
 
   async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const pendingStore = await pendingLoginStore(ctx)
+    if (input.resume) return resume(ctx, pendingStore)
+
     const sessionService = await ctx.get(session)
     assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
-
-    const { configDir } = await ctx.get(env)
-    const pendingStore = new YamlStore(join(configDir, PENDING_FILE_NAME))
-    if (input.resume) return resume(ctx, pendingStore)
+    await pendingStore.rm()
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
@@ -144,6 +141,7 @@ async function resume(ctx: CommandContext, pendingStore: YamlStore) {
   if (!parsed.success) {
     const current = await (await ctx.get(session)).current()
     if (current === null) throw notLoggedIn()
+    await (await ctx.get(token)).get()
     return {
       server: current.server,
       email: current.email,

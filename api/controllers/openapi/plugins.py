@@ -88,6 +88,9 @@ def _plugin_errors() -> Generator[None, None, None]:
         raise BadRequest(error.description) from error
     except PluginDaemonInternalError as error:
         raise PluginServiceUnavailable() from error
+    except httpx.HTTPError as error:
+        # The daemon client wraps its own transport errors, so a raw httpx error comes from the marketplace.
+        raise MarketplaceUnavailable() from error
 
 
 def _require_marketplace() -> None:

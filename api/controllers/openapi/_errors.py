@@ -72,6 +72,7 @@ class OpenApiErrorCode(StrEnum):
     VERSION_NOT_FOUND = "version_not_found"
     VERSION_NOT_RESTORABLE = "version_not_restorable"
     DRAFT_NOT_FOUND = "draft_not_found"
+    ENV_VARIABLE_NOT_FOUND = "env_variable_not_found"
     SECRET_MASK_UNKNOWN_ID = "secret_mask_unknown_id"
     WEBAPP_ACCESS_REQUIRES_EE = "webapp_access_requires_ee"
     WEBAPP_ACCESS_UNAVAILABLE = "webapp_access_unavailable"
@@ -347,6 +348,12 @@ class DraftNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.DRAFT_NOT_FOUND
     description = "This app has no draft."
+
+
+class EnvVariableNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.ENV_VARIABLE_NOT_FOUND
+    description = "The draft has no environment variable with this id."
 
 
 class SecretMaskUnknownId(OpenApiError):  # noqa: N818

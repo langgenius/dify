@@ -1,8 +1,9 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { PENDING_FILE_NAME } from '@/auth/logout'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
 import { session } from '@/plugins/session'
@@ -30,6 +31,15 @@ it('revokes the session on the server and clears local state', async () => {
   await expect((await new Context().get(token)).get()).rejects.toMatchObject({
     code: 'not_logged_in',
   })
+})
+
+it('drops a pending --no-wait login', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: stale\n')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(existsSync(pendingFile)).toBe(false)
 })
 
 it('still clears local state and reports a failed server revoke', async () => {

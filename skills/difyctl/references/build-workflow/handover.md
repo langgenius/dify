@@ -20,7 +20,7 @@ Start when every slice in `plan.md` is ticked. In the commands below, `<mode>` i
      difyctl set webapp <mode> --app-id <app_id> --enabled --json
      ```
 
-   - Service API (needs an admin): keep it on or turn it off, with `--enabled` or `--enabled=false`. Warn the human first: with the Service API off, difyctl can no longer export, test, run, publish or restore this app. Import still works. An admin can turn it back on with `difyctl set service_api <mode> --app-id <app_id> --enabled`.
+   - Service API (needs an admin): keep it on or turn it off, with `--enabled` or `--enabled=false`. Warn the human first: with the Service API off, difyctl can no longer export, test, run, publish or restore this app, and it no longer appears in `difyctl get console_app` or `describe console_app`. Import still works. Note the app id before turning it off. An admin can turn it back on with `difyctl set service_api <mode> --app-id <app_id> --enabled`.
 
      ```bash
      difyctl set service_api <mode> --app-id <app_id> --enabled --json

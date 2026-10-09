@@ -233,9 +233,11 @@ main() {
 
     case ":${PATH}:" in
         *":${bin_dir}:"*)
-            "$target_bin" version >/dev/null 2>&1 \
-                && printf 'verify: run "difyctl version"\n' \
-                || err "binary present but failed to execute; check ${target_bin}"
+            if ! "$target_bin" version >/dev/null 2>&1; then
+                err "binary present but failed to execute; check ${target_bin}"
+                return 0
+            fi
+            printf 'verify: run "difyctl version"\n'
             ;;
         *)
             printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"

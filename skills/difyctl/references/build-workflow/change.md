@@ -8,6 +8,8 @@ Use this path when the app already exists. It reuses the four phases.
    difyctl get console_app --name <name> --json
    ```
 
+   An app whose Service API is off does not show up here, and `describe console_app` cannot read it. If the app is missing, ask the human for its id and whether its Service API is off.
+
 2. Export first.
    - List the versions. Note the `id` of the row with `current: true`: that is the live version.
    - Export that version and save it as `difyctl/<app-slug>/live.yml`. This is the live baseline.
@@ -23,8 +25,8 @@ Use this path when the app already exists. It reuses the four phases.
    If the draft differs from the live version, show the human the difference. Ask which one to start from. If the human picks live, import `live.yml` over the draft with the draft's `draft_hash`. Check the result as in [build.md](build.md).
 
    ```bash
-   difyctl import console_app dsl --app-id <app_id> --mode yaml-content \
-     --yaml-content "$(cat difyctl/<app-slug>/live.yml)" --draft-hash <draft_hash> --json
+   jq -Rs '{yaml_content: .}' difyctl/<app-slug>/live.yml |
+     difyctl import console_app dsl --app-id <app_id> --mode yaml-content --draft-hash <draft_hash> --input @- --json
    ```
 
    Publishing replaces the live version, so that version id is the one to go back to. To go back, copy it into the draft, then publish:

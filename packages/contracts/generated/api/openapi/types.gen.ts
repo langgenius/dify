@@ -790,6 +790,7 @@ export type OpenApiErrorCode =
   | 'credential_not_found'
   | 'credential_oauth_only'
   | 'draft_not_found'
+  | 'env_variable_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
   | 'filename_not_exists'

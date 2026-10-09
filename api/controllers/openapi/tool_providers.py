@@ -30,7 +30,7 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import admin_write, workspace_read
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -62,6 +62,17 @@ def _provider_errors() -> Generator[None, None, None]:
         yield
     except ToolProviderNotFoundError as error:
         raise ProviderNotFound(str(error)) from error
+
+
+@contextmanager
+def _credential_errors() -> Generator[None, None, None]:
+    try:
+        yield
+    except ValueError as error:
+        # The service rewraps every failure as a bare ValueError; the original is its __context__.
+        if isinstance(error.__context__, ToolProviderCredentialValidationError):
+            raise CredentialInvalid(str(error)) from error
+        raise BadRequest(str(error)) from error
 
 
 def _controller(workspace_id: str, provider: str):
@@ -187,7 +198,7 @@ class ToolProviderCredentialsApi(Resource):
     def post(self, ctx: Context, workspace_id: str, provider: str, *, body: ToolCredentialCreatePayload):
         if not _api_key_supported(_controller(ctx.workspace.id, provider)):
             raise CredentialOAuthOnly()
-        try:
+        with _credential_errors():
             result = BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=ctx.account.id,
                 api_type=CredentialType.API_KEY,
@@ -196,8 +207,6 @@ class ToolProviderCredentialsApi(Resource):
                 credentials=body.credentials,
                 name=body.name,
             )
-        except ValueError as error:
-            raise CredentialInvalid(str(error)) from error
         return _write_response(ctx, provider, result["id"]), HTTPStatus.CREATED
 
 
@@ -226,7 +235,7 @@ class ToolProviderCredentialApi(Resource):
     ):
         if _visible_credential(ctx, provider, credential_id).credential_type != CredentialType.API_KEY:
             raise CredentialOAuthOnly()
-        try:
+        with _credential_errors():
             BuiltinToolManageService.update_builtin_tool_provider(
                 user_id=ctx.account.id,
                 tenant_id=ctx.workspace.id,
@@ -235,8 +244,6 @@ class ToolProviderCredentialApi(Resource):
                 credentials=body.credentials,
                 name=body.name,
             )
-        except ValueError as error:
-            raise CredentialInvalid(str(error)) from error
         return _write_response(ctx, provider, credential_id)
 
     @endpoint(
