@@ -23,6 +23,7 @@ from models.workflow import (
     is_system_variable_editable,
 )
 from services.workflow.draft_variable_service import (
+    DraftFileRestorer,
     DraftFileUploader,
     DraftVariableReader,
     DraftVariableSaver,
@@ -78,12 +79,14 @@ class WorkflowVariableService:
         *,
         repository: DebugVariableStore,
         files: DraftFileUploader,
+        file_inputs: DraftFileRestorer,
         executions: DraftExecutionReader,
         storage: DraftVariableStorage,
         defer_file_cleanup: Callable[[list[str]], object],
     ) -> None:
         self._repository = repository
         self._files = files
+        self._file_inputs = file_inputs
         self._executions = executions
         self._storage = storage
         self._defer_file_cleanup = defer_file_cleanup
@@ -285,7 +288,14 @@ class WorkflowVariableService:
         self, app_id: str, tenant_id: str, user_id: str, conversation_variables: Sequence[VariableBase]
     ) -> VariableLoader:
         self._repository.prefill(conversation_defaults(app_id, conversation_variables, user_id))
-        return DraftVarLoader(self._repository, app_id, tenant_id, user_id, load_file=self._storage.load)
+        return DraftVarLoader(
+            self._repository,
+            app_id,
+            tenant_id,
+            user_id,
+            load_file=self._storage.load,
+            file_inputs=self._file_inputs,
+        )
 
     def workflow_loader(self, workflow: Workflow, user_id: str) -> VariableLoader:
         return self._loader(workflow.app_id, workflow.tenant_id, user_id, workflow.conversation_variables)
@@ -295,6 +305,7 @@ class WorkflowVariableService:
             DraftVariableSaver,
             repository=self._repository,
             files=self._files,
+            file_inputs=self._file_inputs,
             cleanup_files=self._cleanup_or_defer,
             tenant_id=tenant_id,
             user=account,
