@@ -15,7 +15,7 @@ from core.workflow.variable_prefixes import (
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from factories.variable_factory import build_segment, segment_to_variable
+from factories.variable_factory import build_segment, build_segment_with_type, segment_to_variable
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.nodes import BuiltinNodeTypes
@@ -23,15 +23,11 @@ from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
 from graphon.variable_loader import VariableLoader
 from graphon.variables import Segment, StringSegment, VariableBase
 from graphon.variables.consts import SELECTORS_LENGTH
-from graphon.variables.segments import (
-    ArrayFileSegment,
-    FileSegment,
-)
+from graphon.variables.segments import ArrayFileSegment
 from graphon.variables.types import SegmentType
 from graphon.variables.utils import dumps_with_segments
 from libs.uuid_utils import uuidv7
 from models import Account, UploadFile
-from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from services.variable_truncator import VariableTruncator
 
@@ -40,7 +36,6 @@ class DraftVariableReader(Protocol):
     def get_draft_variables_by_selectors(
         self, app_id: str, selectors: Sequence[list[str]], user_id: str
     ) -> list[WorkflowDraftVariable]: ...
-    def load_file_keys(self, tenant_id: str, files: list[File]) -> None: ...
 
 
 class DraftVariableWriter(Protocol):
@@ -52,6 +47,10 @@ class DraftFileUploader(Protocol):
     def upload_file(
         self, *, filename: str, content: bytes, mimetype: str, user: Account, tenant_id: str
     ) -> UploadFile: ...
+
+
+class DraftFileRestorer(Protocol):
+    def restore(self, *, tenant_id: str, mapping: dict[str, Any]) -> File: ...
 
 
 def conversation_defaults(app_id: str, variables: Sequence[VariableBase], user_id: str) -> list[WorkflowDraftVariable]:
@@ -98,15 +97,26 @@ class DraftVarLoader(VariableLoader):
         user_id: str,
         *,
         load_file: Callable[[str], bytes],
+        file_inputs: DraftFileRestorer,
     ):
         self._repository = repository
         self._app_id = app_id
         self._user_id = user_id
         self._tenant_id = tenant_id
         self._load_file = load_file
+        self._file_inputs = file_inputs
 
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
+
+    def _build_segment(self, value_type: SegmentType, value: Any) -> Segment:
+        # The owner may be an App, Pipeline or Snippet. Use the invocation's
+        # tenant and file gateway instead of asking the ORM to resolve an App.
+        if value_type == SegmentType.FILE:
+            value = self._file_inputs.restore(tenant_id=self._tenant_id, mapping=value)
+        elif value_type == SegmentType.ARRAY_FILE:
+            value = [self._file_inputs.restore(tenant_id=self._tenant_id, mapping=item) for item in value]
+        return build_segment_with_type(value_type, value)
 
     @override
     def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
@@ -118,26 +128,13 @@ class DraftVarLoader(VariableLoader):
 
         draft_vars = self._repository.get_draft_variables_by_selectors(self._app_id, selectors, self._user_id)
 
-        # Important:
-        files: list[File] = []
-        # FileSegment and ArrayFileSegment are not subject to offloading, so their values
-        # can be safely accessed before any offloading logic is applied.
-        for draft_var in draft_vars:
-            value = draft_var.get_value()
-            match value:
-                case FileSegment():
-                    files.append(value.value)
-                case ArrayFileSegment():
-                    files.extend(value.value)
-        self._repository.load_file_keys(self._tenant_id, files)
-
         offloaded_draft_vars = []
         for draft_var in draft_vars:
             if draft_var.is_truncated():
                 offloaded_draft_vars.append(draft_var)
                 continue
 
-            segment = draft_var.get_value()
+            segment = self._build_segment(draft_var.value_type, json.loads(draft_var.value))
             variable = segment_to_variable(
                 segment=segment,
                 selector=draft_var.get_selector(),
@@ -182,7 +179,7 @@ class DraftVarLoader(VariableLoader):
             return (draft_var.node_id, draft_var.name), variable
 
         deserialized = json.loads(content)
-        segment = draft_var.build_segment_from_serialized_value(variable_file.value_type, deserialized)
+        segment = self._build_segment(variable_file.value_type, deserialized)
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
@@ -289,6 +286,7 @@ class DraftVariableSaver:
         *,
         repository: DraftVariableWriter,
         files: DraftFileUploader,
+        file_inputs: DraftFileRestorer,
         cleanup_files: Callable[[list[str]], None],
         tenant_id: str,
         user: Account,
@@ -298,6 +296,7 @@ class DraftVariableSaver:
         # field. These are distinct database fields with different purposes.
         self._repository = repository
         self._files = files
+        self._file_inputs = file_inputs
         self._cleanup_files = cleanup_files
         self._uploaded_file_ids: list[str] = []
         self._variable_files: list[WorkflowDraftVariableFile] = []
@@ -368,8 +367,8 @@ class DraftVariableSaver:
                     # Here we know the type of variable must be `array[file]`, we
                     # just rebuild files from the serialized payload.
                     files = [
-                        build_file_from_stored_mapping(
-                            file_mapping=v,
+                        self._file_inputs.restore(
+                            mapping=v,
                             tenant_id=self._tenant_id,
                         )
                         for v in value
