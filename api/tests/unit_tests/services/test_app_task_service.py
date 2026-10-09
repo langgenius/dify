@@ -4,7 +4,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
+from types import SimpleNamespace
 from typing import override
+from unittest.mock import MagicMock
 
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -14,6 +16,8 @@ import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_redis import RedisClientWrapper
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.app_task_service import AppTaskControlService, AppTaskService
 
@@ -274,9 +278,56 @@ def test_legacy_static_entry_point_passes_global_client_through_the_same_impleme
     # Only the legacy composition point gets a global client; lower-level globals remain traps.
     monkeypatch.setattr(task_module, "redis_client", redis)
 
-    AppTaskService.stop_task(_TASK_ID, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT)
+    AppTaskService.stop_task(
+        _TASK_ID, InvokeFrom.SERVICE_API, _USER_ID, AppMode.CHAT, tenant_id="tenant-1", app_id="app-1"
+    )
 
     assert redis.reads == [_OWNER_KEY]
-    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.operations == ["legacy_flag"]
     _assert_stop_flag(redis)
-    _assert_graph_command(redis)
+
+
+@pytest.mark.parametrize("cached_owner", [None, b"end-user-other", b"account-user-1"])
+def test_live_chatflow_stop_does_not_send_either_signal_for_another_owner(
+    monkeypatch: pytest.MonkeyPatch, cached_owner: bytes | None
+) -> None:
+    task_id = "11111111-1111-1111-1111-111111111111"
+    redis = _StopRedis(values={_OWNER_KEY: cached_owner} if cached_owner else {})
+    repository = MagicMock()
+    repository.stop_paused_workflow_task.return_value = None
+    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=None))
+    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", lambda _: repository)
+    monkeypatch.setattr(task_module, "redis_client", redis)
+    AppTaskService.stop_task(
+        task_id, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-1"
+    )
+    repository.stop_paused_workflow_task.assert_called_once_with(
+        tenant_id="tenant-1", app_id="app-1", task_id=task_id, owner=(CreatorUserRole.END_USER, _USER_ID)
+    )
+    assert redis.operations == []
+    assert redis.commands == {}
+
+
+def test_live_chatflow_stop_sends_signals_for_its_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    task_id = "11111111-1111-1111-1111-111111111111"
+    redis = _StopRedis(values={_OWNER_KEY: b"end-user-user-1"})
+    repository = MagicMock()
+    repository.stop_paused_workflow_task.return_value = SimpleNamespace(status=WorkflowExecutionStatus.RUNNING)
+    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=None))
+    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", lambda _: repository)
+    monkeypatch.setattr(task_module, "redis_client", redis)
+    AppTaskService.stop_task(
+        task_id, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-1"
+    )
+    assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+    assert json.loads(redis.commands[f"workflow:{task_id}:commands"][0])["command_type"] == "abort"
+
+
+def test_invalid_workflow_task_id_is_rejected_before_database_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    repository_factory = MagicMock()
+    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", repository_factory)
+    with pytest.raises(ValueError, match="Invalid task ID"):
+        AppTaskService.stop_workflow_task(
+            tenant_id="tenant-1", app_id="app-1", task_id="not-a-uuid", app_mode=AppMode.WORKFLOW, owner=None
+        )
+    repository_factory.assert_not_called()

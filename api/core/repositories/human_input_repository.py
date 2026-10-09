@@ -35,6 +35,7 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from repositories.human_input_errors import FormAlreadyHandledError
 
 
 @dataclasses.dataclass(frozen=True)
@@ -660,9 +661,11 @@ class HumanInputFormSubmissionRepository:
         submission_end_user_id: str | None,
     ) -> HumanInputFormRecord:
         with session_factory.create_session() as session, session.begin():
-            form_model = session.get(HumanInputForm, form_id)
+            form_model = session.get(HumanInputForm, form_id, with_for_update=True)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")
+            if form_model.status != HumanInputFormStatus.WAITING:
+                raise FormAlreadyHandledError(form_model.status)
 
             recipient_model = session.get(HumanInputFormRecipient, recipient_id) if recipient_id else None
 

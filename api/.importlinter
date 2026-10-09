@@ -56,6 +56,9 @@ ignore_imports =
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
+    # Legacy debug callers delegate input hydration to the application owner during core migration.
+    core.app.apps.workflow_app_runner -> services.workflow_node_variables
+    core.workflow.workflow_entry -> services.workflow_node_variables
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service

@@ -187,6 +187,8 @@ class CompletionStopApi(WebApiResource):
             raise NotCompletionAppError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,
@@ -302,6 +304,8 @@ class ChatStopApi(WebApiResource):
             raise NotChatAppError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,

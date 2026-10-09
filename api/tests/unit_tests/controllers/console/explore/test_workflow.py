@@ -2,6 +2,7 @@ import json
 from collections.abc import Generator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask, got_request_exception
@@ -9,9 +10,13 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.console.explore.workflow as workflow_module
+import services.app_task_service as app_task_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -31,7 +36,7 @@ from tests.unit_tests.services.test_app_task_service import _StopRedis
 __all__ = ["harness"]
 
 _LAST_USED_AT = datetime(2026, 9, 1, 12, 0, 0)
-_TASK_ID = "workflow-task-with-non-uuid-id"
+_TASK_ID = "a1111111-1111-1111-1111-111111111111"
 _STOP_KEY = f"generate_task_stopped:{_TASK_ID}"
 _COMMAND_KEY = f"workflow:{_TASK_ID}:commands"
 
@@ -100,6 +105,22 @@ def runtime(
         installation = session.get(InstalledApp, harness.installed_app.id)
         assert installation is not None
         installation.last_used_at = _LAST_USED_AT
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id=harness.target_app.tenant_id,
+                app_id=harness.target_app.id,
+                workflow_id="workflow-1",
+                task_id=_TASK_ID,
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=harness.account.id,
+            )
+        )
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
     services = _Services(
         installed_apps=_InstalledAppServices(
@@ -111,6 +132,8 @@ def runtime(
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
     monkeypatch.setattr(workflow_module, "application_services", lambda: services)
+    monkeypatch.setattr(app_task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(app_task_module, "redis_client", stop_redis)
     harness.api.add_resource(
         workflow_module.InstalledAppWorkflowRunApi,
         "/installed-apps/<uuid:installed_app_id>/workflows/run",

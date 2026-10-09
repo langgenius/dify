@@ -237,6 +237,8 @@ def adapt_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[
         raise TypeError(f"node data must be a mapping, got {type(node_data).__name__}")
 
     node_type = normalized.get("type")
+    if node_type == BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR:
+        normalized["type"] = BuiltinNodeTypes.VARIABLE_AGGREGATOR
     if node_type == BuiltinNodeTypes.HUMAN_INPUT:
         return adapt_human_input_node_data_for_graph(normalized)
     if node_type == BuiltinNodeTypes.TOOL:

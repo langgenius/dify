@@ -8,7 +8,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from pydantic import BaseModel
@@ -871,7 +871,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
 
     _resume_app_execution({"workflow_run_id": workflow_run_id})
 
-    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity)
+    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity, before_resume=ANY)
     resume_advanced_chat.assert_called_once()
     assert resume_advanced_chat.call_args.kwargs["conversation"].id == conversation_id
     assert resume_advanced_chat.call_args.kwargs["message"].id == "expected-message-id"
@@ -966,6 +966,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
 
     calls: list[str] = []
     clear_signals = MagicMock(side_effect=lambda task_id: calls.append(f"clear:{task_id}"))
+    workflow_run_repo.resume_workflow_pause.side_effect = lambda *_, before_resume: before_resume()
     resume_workflow = MagicMock(side_effect=lambda **_kwargs: calls.append("resume"))
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task.clear_app_task_cancellation_signals", clear_signals)
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_workflow", resume_workflow)
