@@ -1,7 +1,8 @@
 """Integration coverage for the console MCP provider HTTP endpoint."""
 
 import json
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, call, patch
 
 import pytest
 from flask import Flask
@@ -9,6 +10,7 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from core.tools.entities.api_entities import ToolProviderApiEntity
+from services.tools.mcp_tools_manage_service import ReconnectResult
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -31,7 +33,7 @@ def _tool_payload() -> dict[str, object]:
     }
 
 
-def _provider_entity() -> ToolProviderApiEntity:
+def _provider_entity(*, tools: list[dict[str, object]] | None = None) -> ToolProviderApiEntity:
     return ToolProviderApiEntity.model_validate(
         {
             "id": "provider-1",
@@ -48,7 +50,7 @@ def _provider_entity() -> ToolProviderApiEntity:
             "allow_delete": True,
             "plugin_id": "langgenius/provider",
             "plugin_unique_identifier": "langgenius/provider:1.0.0",
-            "tools": [_tool_payload()],
+            "tools": tools or [],
             "labels": ["utilities"],
             "server_url": "",
             "updated_at": 1710000000,
@@ -73,20 +75,19 @@ def test_create_mcp_provider_populates_tools(
     client: FlaskClient,
     db_session_with_containers: Session,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, tenant = create_console_account_and_tenant(db_session_with_containers)
     headers = authenticate_console_client(client, account)
-    service = MagicMock()
-    service.create_provider.return_value = MagicMock(id="provider-1")
-    service.get_provider.return_value = MagicMock(id="provider-1", tenant_id="t1")
+    created_provider = _provider_entity()
+    connected_provider = _provider_entity(tools=[_tool_payload()])
+    reconnect = ReconnectResult(authed=True, tools=json.dumps([_tool_payload()]), encrypted_credentials="{}")
+    db_provider = SimpleNamespace(authed=False, tools="[]")
 
-    with (
-        patch("controllers.console.workspace.tool_providers.MCPToolManageService", return_value=service, autospec=True),
-        patch(
-            "services.tools.legacy_tools_transform_service.ToolTransformService.mcp_provider_to_user_provider",
-            return_value=_provider_entity(),
-            autospec=True,
-        ),
-    ):
+    with patch("controllers.console.workspace.tool_providers.MCPToolManageService", autospec=True) as service_cls:
+        service = service_cls.return_value
+        service.create_provider.return_value = "provider-1"
+        service.get_provider_by_id.return_value = db_provider
+        service_cls.provider_response.side_effect = [created_provider, connected_provider]
+        service_cls.reconnect_with_url.return_value = reconnect
         response = client.post(
             "/console/api/workspaces/current/tool-provider/mcp",
             data=json.dumps(
@@ -106,6 +107,22 @@ def test_create_mcp_provider_populates_tools(
             content_type="application/json",
         )
 
+    create_kwargs = service.create_provider.call_args.kwargs
+    assert create_kwargs["tenant_id"] == tenant.id
+    assert create_kwargs["user_id"] == account.id
+    assert create_kwargs["server_url"] == "http://example.com/mcp"
+    service_cls.provider_response.assert_has_calls(
+        [
+            call(tenant_id=tenant.id, provider_id="provider-1", tool_providers=ANY),
+            call(tenant_id=tenant.id, provider_id="provider-1", tool_providers=ANY),
+        ]
+    )
+    service_cls.reconnect_with_url.assert_called_once_with(
+        server_url="http://example.com/mcp", headers={}, timeout=5.0, sse_read_timeout=30.0
+    )
+    service.get_provider_by_id.assert_called_once_with(provider_id="provider-1", tenant_id=tenant.id)
+    assert db_provider.authed is True
+    assert db_provider.tools == reconnect.tools
     assert response.status_code == 200
     body = response.get_json()
     assert body["id"] == "provider-1"

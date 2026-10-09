@@ -7,9 +7,9 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.errors import AccessDeniedError
 from controllers.common.fields import BinaryFileResponse, SuccessResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -47,7 +47,7 @@ from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.tool_manager import ToolManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -67,7 +67,8 @@ from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
-from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.tool_manager import ToolManager
+from services.tools.tools_transform_service import ToolTransformService
 
 _PLUGIN_PACKAGE_UPLOAD_PARAMS = {
     "pkg": {
@@ -533,7 +534,7 @@ def _list_hardcoded_builtin_tool_providers(
     """List builtin providers using the same search and tag semantics as category plugins."""
     db_builtin_providers = {
         str(ToolProviderID(provider.provider)): provider
-        for provider in ToolManager.list_default_builtin_providers(tenant_id)
+        for provider in application_services().tools.tool_providers.default_builtin(tenant_id=tenant_id)
     }
     builtin_providers = []
 
@@ -1095,7 +1096,7 @@ class PluginChangePermissionApi(Resource):
     @model_validate(ParserPermissionChange)
     def post(self, req_data: ParserPermissionChange, tenant_id: str, user: Account):
         if not user.is_admin_or_owner:
-            raise Forbidden()
+            raise AccessDeniedError()
 
         set_permission_result = PluginPermissionService.change_permission(
             tenant_id, req_data.install_permission, req_data.debug_permission, session=db.session()
@@ -1207,7 +1208,7 @@ class PluginChangeAutoUpgradeApi(Resource):
     @model_validate(ParserAutoUpgradeChange)
     def post(self, req_data: ParserAutoUpgradeChange, tenant_id: str, user: Account):
         if not dify_config.RBAC_ENABLED and not user.is_admin_or_owner:
-            raise Forbidden()
+            raise AccessDeniedError()
 
         auto_upgrade = req_data.auto_upgrade
         set_auto_upgrade_strategy_result = PluginAutoUpgradeService.change_strategy(

@@ -16,9 +16,9 @@ from pydantic import (
     model_validator,
 )
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.errors import AccessDeniedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -73,13 +73,11 @@ from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
-from services.tools.legacy_api_tools_manage_service import ApiToolManageService, ApiToolPreviewResult
-from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService, OAuthDataType
-from services.tools.legacy_tools_manage_service import ToolCommonService
-from services.tools.legacy_tools_transform_service import ToolTransformService
-from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.api_tools_manage_service import ApiToolManageService, ApiToolPreviewResult
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService, OAuthDataType
 from services.tools.tool_labels_service import ToolLabelsService
+from services.tools.tools_manage_service import ToolCommonService
 
 logger = logging.getLogger(__name__)
 
@@ -508,7 +506,11 @@ class ToolProviderListApi(Resource):
 
         return _dump_tool_provider_payload_list(
             ToolCommonService.list_tool_providers(
-                user.id, tenant_id, cast(ToolProviderTypeApiLiteral | None, query.type)
+                user.id,
+                tenant_id,
+                cast(ToolProviderTypeApiLiteral | None, query.type),
+                workflow_queries=application_services().tools.workflow_queries,
+                tool_providers=application_services().tools.tool_providers,
             ),
         )
 
@@ -756,9 +758,7 @@ class ToolApiProviderListToolsApi(Resource):
         return dump_response(
             ToolApiListResponse,
             ApiToolManageService.list_api_tool_provider_tools(
-                user.id,
-                tenant_id,
-                query.provider,
+                user.id, tenant_id, query.provider, tool_providers=application_services().tools.tool_providers
             ),
         )
 
@@ -834,9 +834,7 @@ class ToolApiProviderGetApi(Resource):
         return dump_response(
             ApiProviderDetailResponse,
             ApiToolManageService.get_api_tool_provider(
-                user.id,
-                tenant_id,
-                query.provider,
+                user.id, tenant_id, query.provider, tool_providers=application_services().tools.tool_providers
             ),
         )
 
@@ -917,7 +915,7 @@ class ToolWorkflowProviderCreateApi(Resource):
     def post(self, req_data: WorkflowToolCreatePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
-            WorkflowToolManageService.create_workflow_tool(
+            application_services().tools.workflows.create_workflow_tool(
                 user_id=user.id,
                 tenant_id=tenant_id,
                 workflow_app_id=req_data.workflow_app_id,
@@ -947,7 +945,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
     def post(self, req_data: WorkflowToolUpdatePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
-            WorkflowToolManageService.update_workflow_tool(
+            application_services().tools.workflows.update_workflow_tool(
                 user.id,
                 tenant_id,
                 req_data.workflow_tool_id,
@@ -977,7 +975,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
     def post(self, req_data: WorkflowToolDeletePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
-            WorkflowToolManageService.delete_workflow_tool(
+            application_services().tools.workflows.delete_workflow_tool(
                 user.id,
                 tenant_id,
                 req_data.workflow_tool_id,
@@ -1000,13 +998,13 @@ class ToolWorkflowProviderGetApi(Resource):
         query = query_params_from_request(WorkflowToolGetQuery)
 
         if query.workflow_tool_id:
-            tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
+            tool = application_services().tools.workflows.get_workflow_tool_by_tool_id(
                 user.id,
                 tenant_id,
                 query.workflow_tool_id,
             )
         elif query.workflow_app_id:
-            tool = WorkflowToolManageService.get_workflow_tool_by_app_id(
+            tool = application_services().tools.workflows.get_workflow_tool_by_app_id(
                 user.id,
                 tenant_id,
                 query.workflow_app_id,
@@ -1033,7 +1031,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
         return dump_response(
             ToolApiListResponse,
-            WorkflowToolManageService.list_single_workflow_tools(
+            application_services().tools.workflows.list_single_workflow_tools(
                 user.id,
                 tenant_id,
                 query.workflow_tool_id,
@@ -1056,8 +1054,7 @@ class ToolBuiltinListApi(Resource):
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                    user.id,
-                    tenant_id,
+                    user.id, tenant_id, tool_providers=application_services().tools.tool_providers
                 )
             ],
         )
@@ -1076,7 +1073,7 @@ class ToolApiListApi(Resource):
             [
                 provider.to_dict()
                 for provider in ApiToolManageService.list_api_tools(
-                    tenant_id,
+                    tenant_id, tool_providers=application_services().tools.tool_providers
                 )
             ],
         )
@@ -1096,7 +1093,7 @@ class ToolWorkflowListApi(Resource):
         return _dump_tool_provider_payload_list(
             [
                 provider.to_dict()
-                for provider in WorkflowToolManageService.list_tenant_workflow_tools(
+                for provider in application_services().tools.workflows.list_tenant_workflow_tools(
                     user.id,
                     tenant_id,
                 )
@@ -1135,9 +1132,11 @@ class ToolPluginOAuthApi(Resource):
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
 
-        oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
+        oauth_client_params = BuiltinToolManageService.get_oauth_client(
+            tenant_id=tenant_id, provider=provider, tool_providers=application_services().tools.tool_providers
+        )
         if oauth_client_params is None:
-            raise Forbidden("no oauth available client config found for this tool provider")
+            raise AccessDeniedError("no oauth available client config found for this tool provider")
 
         # Visibility is chosen by the user in the frontend before the redirect,
         # then read back in the callback below when the credential is created.
@@ -1187,11 +1186,11 @@ class ToolOAuthCallback(Resource):
     def get(self, provider: str):
         context_id = request.cookies.get("context_id")
         if not context_id:
-            raise Forbidden("context_id not found")
+            raise AccessDeniedError("context_id not found")
 
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
-            raise Forbidden("Invalid context_id")
+            raise AccessDeniedError("Invalid context_id")
 
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
@@ -1200,9 +1199,11 @@ class ToolOAuthCallback(Resource):
         tenant_id: str = context["tenant_id"]
 
         oauth_handler = OAuthHandler()
-        oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
+        oauth_client_params = BuiltinToolManageService.get_oauth_client(
+            tenant_id, provider, tool_providers=application_services().tools.tool_providers
+        )
         if oauth_client_params is None:
-            raise Forbidden("no oauth available client config found for this tool provider")
+            raise AccessDeniedError("no oauth available client config found for this tool provider")
 
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
@@ -1391,7 +1392,7 @@ class ToolProviderMCPApi(Resource):
         # 1) Create provider in a short transaction (no network I/O inside)
         with session_factory.create_session() as session, session.begin():
             service = MCPToolManageService(session=session)
-            result = service.create_provider(
+            provider_id = service.create_provider(
                 tenant_id=tenant_id,
                 user_id=user.id,
                 server_url=req_data.server_url,
@@ -1405,6 +1406,10 @@ class ToolProviderMCPApi(Resource):
                 authentication=authentication,
                 identity_mode=_resolve_identity_mode(req_data.identity_mode, current=IdentityMode.OFF),
             )
+
+        result = MCPToolManageService.provider_response(
+            tenant_id=tenant_id, provider_id=provider_id, tool_providers=application_services().tools.tool_providers
+        )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
         #    Perform network I/O outside any DB session to avoid holding locks.
@@ -1422,7 +1427,9 @@ class ToolProviderMCPApi(Resource):
                 db_provider.authed = reconnect.authed
                 db_provider.tools = reconnect.tools
 
-                result = ToolTransformService.mcp_provider_to_user_provider(db_provider)
+            result = MCPToolManageService.provider_response(
+                tenant_id=tenant_id, provider_id=result.id, tool_providers=application_services().tools.tool_providers
+            )
         except Exception:
             # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
@@ -1586,10 +1593,10 @@ class ToolMCPDetailApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
-        with sessionmaker(db.engine).begin() as session:
-            service = MCPToolManageService(session=session)
-            provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
-            return _dump_tool_provider_payload(ToolTransformService.mcp_provider_to_user_provider(provider).to_dict())
+        provider = MCPToolManageService.provider_response(
+            tenant_id=tenant_id, provider_id=provider_id, tool_providers=application_services().tools.tool_providers
+        )
+        return _dump_tool_provider_payload(provider.to_dict())
 
 
 @console_ns.route("/workspaces/current/tools/mcp")
@@ -1601,12 +1608,10 @@ class ToolMCPListAllApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str):
 
-        with sessionmaker(db.engine).begin() as session:
-            service = MCPToolManageService(session=session)
-            # Skip sensitive data decryption for list view to improve performance
-            tools = service.list_providers(tenant_id=tenant_id, include_sensitive=False)
-
-            return _dump_tool_provider_payload_list([tool.to_dict() for tool in tools])
+        tools = MCPToolManageService.list_providers(
+            tenant_id=tenant_id, include_sensitive=False, tool_providers=application_services().tools.tool_providers
+        )
+        return _dump_tool_provider_payload_list([tool.to_dict() for tool in tools])
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/update/<path:provider_id>")

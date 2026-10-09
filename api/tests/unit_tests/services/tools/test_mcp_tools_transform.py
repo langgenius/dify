@@ -9,51 +9,13 @@ from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
-from models.account import Account
 from models.tools import MCPToolProvider
-from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.provider_queries import MCPProviderRecord
+from services.tools.tools_transform_service import ToolTransformService
 
 
 @pytest.fixture
-def mock_user():
-    """Provides a real mapped account returned by the provider lookup."""
-    return Account(name="Test User", email="user@example.com")
-
-
-@pytest.fixture
-def mock_provider(mock_user, mocker: MockerFixture):
-    """Provides a mock MCPToolProvider with a loaded user."""
-    provider = MCPToolProvider(
-        name="Test Provider",
-        server_identifier="test-provider",
-        server_url="https://example.com",
-        server_url_hash="hash",
-        icon="icon",
-        tenant_id="tenant-id",
-        user_id="user-id",
-    )
-    mocker.patch.object(provider, "load_user", return_value=mock_user)
-    return provider
-
-
-@pytest.fixture
-def mock_provider_no_user(mocker: MockerFixture):
-    """Provides a mock MCPToolProvider with no user."""
-    provider = MCPToolProvider(
-        name="Test Provider",
-        server_identifier="test-provider",
-        server_url="https://example.com",
-        server_url_hash="hash",
-        icon="icon",
-        tenant_id="tenant-id",
-        user_id="user-id",
-    )
-    mocker.patch.object(provider, "load_user", return_value=None)
-    return provider
-
-
-@pytest.fixture
-def mock_provider_full(mock_user, mocker: MockerFixture):
+def mock_provider_full():
     """Provides a fully configured mock MCPToolProvider for detailed tests."""
     provider = MCPToolProvider(
         name="Test MCP Provider",
@@ -78,7 +40,6 @@ def mock_provider_full(mock_user, mocker: MockerFixture):
     mock_updated_at.timestamp.return_value = 1234567890
     provider.updated_at = mock_updated_at
 
-    mocker.patch.object(provider, "load_user", return_value=mock_user)
     return provider
 
 
@@ -109,7 +70,7 @@ def sample_mcp_tools():
 class TestMCPToolTransform:
     """Test cases for MCP tool transformation methods."""
 
-    def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider):
+    def test_mcp_tool_to_user_tool_with_none_description(self):
         """Test that mcp_tool_to_user_tool handles None description correctly."""
         # Create MCP tools with None description
         tools = [
@@ -129,7 +90,7 @@ class TestMCPToolTransform:
         ]
 
         # Call the method
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name="Test User")
 
         # Verify the result
         assert len(result) == 2
@@ -149,7 +110,7 @@ class TestMCPToolTransform:
         assert result[1].description.en_US == ""
         assert result[1].description.zh_Hans == ""
 
-    def test_mcp_tool_to_user_tool_with_description(self, mock_provider):
+    def test_mcp_tool_to_user_tool_with_description(self):
         """Test that mcp_tool_to_user_tool handles normal description correctly."""
         # Create MCP tools with description
         tools = [
@@ -161,7 +122,7 @@ class TestMCPToolTransform:
         ]
 
         # Call the method
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name="Test User")
 
         # Verify the result
         assert len(result) == 1
@@ -170,25 +131,25 @@ class TestMCPToolTransform:
         assert result[0].description.en_US == "This is a test tool that does something useful"
         assert result[0].description.zh_Hans == "This is a test tool that does something useful"
 
-    def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user):
+    def test_mcp_tool_to_user_tool_with_no_user(self):
         """Test that mcp_tool_to_user_tool handles None user correctly."""
         # Create MCP tool
         tools = [MCPTool(name="tool1", description="Test tool", inputSchema={"type": "object", "properties": {}})]
 
         # Call the method
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider_no_user, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name=None)
 
         # Verify the result
         assert len(result) == 1
         assert result[0].author == "Anonymous"
 
-    def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools):
+    def test_mcp_tool_to_user_tool_with_complex_schema(self, sample_mcp_tools):
         """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
         # Use complex tool from fixtures
         tools = [sample_mcp_tools["complex"]]
 
         # Call the method
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name="Test User")
 
         # Verify the result
         assert len(result) == 1
@@ -352,7 +313,9 @@ class TestMCPToolTransform:
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
+        result = ToolTransformService.mcp_provider_to_user_provider(
+            MCPProviderRecord(provider=mock_provider_full, author="Test User")
+        )
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
@@ -390,7 +353,9 @@ class TestMCPToolTransform:
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
+        result = ToolTransformService.mcp_provider_to_user_provider(
+            MCPProviderRecord(provider=mock_provider_full, author="Test User")
+        )
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
@@ -403,7 +368,7 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"
 
-    def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider):
+    def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self):
         """Tools where the server returned ``title: null`` should fall back to the tool name.
 
         Regression test for langgenius/dify#42453: Exa's MCP server returns
@@ -424,7 +389,7 @@ class TestMCPToolTransform:
             ),
         ]
 
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name="Test User")
 
         assert len(result) == 2
         # title is explicitly null -> must fall back to ``name``
@@ -436,7 +401,7 @@ class TestMCPToolTransform:
         assert result[1].label.en_US == "get_content"
         assert result[1].label.zh_Hans == "get_content"
 
-    def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider):
+    def test_mcp_tool_to_user_tool_uses_title_when_provided(self):
         """When the server provides a non-null title, it should be used for the label."""
         tools = [
             MCPTool(
@@ -447,7 +412,7 @@ class TestMCPToolTransform:
             )
         ]
 
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(tools, user_name="Test User")
 
         assert len(result) == 1
         assert result[0].name == "search_web"

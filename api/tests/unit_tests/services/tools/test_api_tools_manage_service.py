@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from services.tools.legacy_api_tools_manage_service import ApiToolManageService
+from services.tools.api_tools_manage_service import ApiToolManageService
 
 
 def test_get_api_tool_provider_remote_schema_uses_ssrf_proxy_get(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -23,7 +23,7 @@ def test_get_api_tool_provider_remote_schema_uses_ssrf_proxy_get(monkeypatch: py
     mock_get = Mock(return_value=Mock(status_code=200, text=schema))
     mock_parser = Mock()
 
-    monkeypatch.setattr("services.tools.legacy_api_tools_manage_service.ssrf_proxy.get", mock_get)
+    monkeypatch.setattr("services.tools.api_tools_manage_service.ssrf_proxy.get", mock_get)
     monkeypatch.setattr(ApiToolManageService, "parser_api_schema", mock_parser)
 
     result = ApiToolManageService.get_api_tool_provider_remote_schema("user-1", "tenant-1", url)

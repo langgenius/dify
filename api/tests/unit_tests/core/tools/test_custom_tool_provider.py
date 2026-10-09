@@ -1,127 +1,67 @@
-"""Tests for custom API tool providers with persisted provider lookup state."""
-
-from __future__ import annotations
-
-import json
-from dataclasses import dataclass
-from uuid import uuid4
+"""API provider construction consumes already loaded configuration."""
 
 import pytest
-from sqlalchemy import delete
-from sqlalchemy.orm import Session
 
-from core.tools.custom_tool import provider as provider_module
-from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderAuthType, ApiProviderSchemaType, ToolProviderType
-from models.tools import ApiToolProvider
+from core.tools.entities.tool_entities import ApiProviderAuthType, ToolProviderType
+from services.tools.api.contracts import ApiToolProviderRecord
+from services.tools.api.provider import ApiToolProviderController
 
 
-@dataclass(frozen=True)
-class _Database:
-    session: Session
-
-
-def _tool_bundle() -> ApiToolBundle:
-    return ApiToolBundle(
-        server_url="https://api.example.com/items",
-        method="GET",
-        summary="List items",
-        operation_id="list_items",
-        parameters=[],
-        author="author",
-        openapi={"parameters": []},
-    )
-
-
-def _db_provider() -> ApiToolProvider:
-    provider = ApiToolProvider(
+def provider_record() -> ApiToolProviderRecord:
+    return ApiToolProviderRecord(
+        schema_type="openapi",
+        schema="{}",
+        privacy_policy="",
+        custom_disclaimer="",
+        id="provider-id",
+        tenant_id="tenant-1",
         name="provider-a",
         icon="icon.svg",
-        schema="{}",
-        schema_type_str=ApiProviderSchemaType.OPENAPI,
-        user_id="",
-        tenant_id="tenant-1",
         description="desc",
-        tools_str=json.dumps([_tool_bundle().model_dump(mode="json")]),
-        credentials_str='{"auth_type":"none"}',
+        author="Alice",
+        credentials={"auth_type": "none"},
+        tools=[
+            ApiToolBundle(
+                server_url="https://api.example.com/items",
+                method="GET",
+                summary="List items",
+                operation_id="list_items",
+                parameters=[],
+                author="Alice",
+                openapi={"parameters": []},
+            )
+        ],
     )
-    provider.id = "provider-id"
-    return provider
 
 
-def _persist_provider(session: Session, *, tenant_id: str, name: str = "provider-a") -> ApiToolProvider:
-    bundle = _tool_bundle()
-    provider = ApiToolProvider(
-        name=name,
-        icon="icon.svg",
-        schema="{}",
-        schema_type_str=ApiProviderSchemaType.OPENAPI,
-        user_id=str(uuid4()),
-        tenant_id=tenant_id,
-        description="desc",
-        tools_str=json.dumps([bundle.model_dump(mode="json")]),
-        credentials_str='{"auth_type":"none"}',
-    )
-    session.add(provider)
-    session.commit()
-    return provider
-
-
-def test_api_tool_provider_from_db_and_parse_tool_bundle(sqlite_session: Session) -> None:
-    controller = ApiToolProviderController.from_db(
-        _db_provider(), ApiProviderAuthType.API_KEY_HEADER, session=sqlite_session
-    )
+@pytest.mark.parametrize(
+    ("auth_type", "credential"),
+    [
+        (ApiProviderAuthType.API_KEY_HEADER, "api_key_header"),
+        (ApiProviderAuthType.API_KEY_QUERY, "api_key_query_param"),
+        (ApiProviderAuthType.NONE, "auth_type"),
+    ],
+)
+def test_provider_constructs_auth_schema_and_tools_from_loaded_record(auth_type, credential):
+    provider = provider_record()
+    controller = ApiToolProviderController.from_provider(provider, auth_type, author=provider.author)
     assert controller.provider_type == ToolProviderType.API
-    assert any(c.name == "api_key_value" for c in controller.entity.credentials_schema)
-
-    tool = controller._parse_tool_bundle(_db_provider().tools[0])
+    assert controller.entity.identity.author == "Alice"
+    assert any(item.name == credential for item in controller.entity.credentials_schema)
+    tool = controller.get_tool("list_items")
     assert isinstance(tool, ApiTool)
-    assert tool.entity.identity.provider == "provider-id"
-
-
-def test_api_tool_provider_from_db_query_auth_and_none_auth(sqlite_session: Session) -> None:
-    query_controller = ApiToolProviderController.from_db(
-        _db_provider(), ApiProviderAuthType.API_KEY_QUERY, session=sqlite_session
-    )
-    assert any(c.name == "api_key_query_param" for c in query_controller.entity.credentials_schema)
-
-    none_controller = ApiToolProviderController.from_db(
-        _db_provider(), ApiProviderAuthType.NONE, session=sqlite_session
-    )
-    assert [c.name for c in none_controller.entity.credentials_schema] == ["auth_type"]
-
-
-def test_api_tool_provider_load_get_tools_and_get_tool(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=sqlite_session)
-    loaded = controller.load_bundled_tools(_db_provider().tools)
-    assert len(loaded) == 1
-
-    assert isinstance(controller.get_tool("list_items"), ApiTool)
-
+    assert tool.entity.identity.provider == provider.id
+    assert controller.get_tools(provider.tenant_id) == [tool]
     with pytest.raises(ValueError, match="not found"):
         controller.get_tool("missing")
 
-    # Return cached tools without querying database.
-    cached = controller.get_tools("tenant-1")
-    assert len(cached) == 1
 
-    # Force DB fetch branch.
-    controller.tools = []
-    tenant_id = str(uuid4())
-    provider_with_tools = _persist_provider(sqlite_session, tenant_id=tenant_id)
-    _persist_provider(sqlite_session, tenant_id=str(uuid4()))
-    controller.tenant_id = tenant_id
-    monkeypatch.setattr(provider_module, "db", _Database(session=sqlite_session))
-
-    tools = controller.get_tools(tenant_id)
-    assert len(tools) == 1
-    assert tools[0].entity.identity.provider == controller.provider_id
-
-    sqlite_session.execute(delete(ApiToolProvider).where(ApiToolProvider.id == provider_with_tools.id))
-    sqlite_session.commit()
-    controller.tools = []
-    assert controller.get_tools(tenant_id) == []
+def test_empty_tools_do_not_trigger_implicit_provider_lookup():
+    provider = provider_record()
+    provider.tools.clear()
+    controller = ApiToolProviderController.from_provider(provider, ApiProviderAuthType.NONE, author=provider.author)
+    assert controller.get_tools(provider.tenant_id) == []
+    with pytest.raises(ValueError, match="not found"):
+        controller.get_tool("list_items")

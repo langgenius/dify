@@ -5,13 +5,13 @@ import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.db.session_factory import session_factory
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -23,15 +23,15 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from services.tools.workflow.provider import WorkflowToolProviderController
+from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_account, make_app, make_workflow
 
 
@@ -42,15 +42,11 @@ def database_session(sqlite_engine: Engine) -> Iterator[Session]:
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
-    with (
-        patch.object(session_factory, "create_session", session_maker),
-        patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
-    ):
-        with session_maker() as session:
-            yield session
+    with session_maker() as session:
+        yield session
 
 
-def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderController:
+def _controller(provider_id: str = "provider-1", *, workflow_queries) -> WorkflowToolProviderController:
     entity = ToolProviderEntity(
         identity=ToolProviderIdentity(
             author="author",
@@ -61,7 +57,14 @@ def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderControll
         ),
         credentials_schema=[],
     )
-    return WorkflowToolProviderController(entity=entity, provider_id=provider_id)
+    return WorkflowToolProviderController(
+        draft_variable_saver=Mock(
+            return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        ),
+        entity=entity,
+        provider_id=provider_id,
+        queries=workflow_queries,
+    )
 
 
 def _app(*, tenant_id: str | None = None) -> App:
@@ -108,10 +111,15 @@ def _db_provider(
     )
 
 
-def _workflow_tool(name: str = "workflow_tool", *, tenant_id: str | None = None) -> WorkflowTool:
+def _workflow_tool(
+    name: str = "workflow_tool", *, tenant_id: str | None = None, workflow_runtime: WorkflowRuntime
+) -> WorkflowTool:
     app = _app(tenant_id=tenant_id)
     workflow = _workflow(app)
     return WorkflowTool(
+        draft_variable_saver=Mock(
+            return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        ),
         workflow_as_tool_id="provider-1",
         entity=ToolEntity(
             identity=ToolIdentity(
@@ -128,6 +136,8 @@ def _workflow_tool(name: str = "workflow_tool", *, tenant_id: str | None = None)
         workflow_entities={"app": app, "workflow": workflow},
         version="1",
         workflow_call_depth=0,
+        workflow_runtime=workflow_runtime,
+        queries=workflow_runtime.tools,
     )
 
 
@@ -143,7 +153,16 @@ def _persist_provider_graph(
     workflow = _workflow(app, account)
     db_provider = _db_provider(app, account, parameter_configuration=parameter_configuration)
 
-    session.add_all([account, db_provider])
+    tenant = Tenant(name="Tenant")
+    tenant.id = app.tenant_id
+    session.add_all(
+        [
+            account,
+            db_provider,
+            tenant,
+            TenantAccountJoin(account_id=account.id, tenant_id=app.tenant_id, role=TenantAccountRole.OWNER),
+        ]
+    )
     if include_app:
         session.add(app)
     if include_workflow:
@@ -152,7 +171,7 @@ def _persist_provider_graph(
     return db_provider, app, account, workflow
 
 
-def test_get_db_provider_tool_builds_entity(database_session: Session):
+def test_get_tools_builds_entity(database_session: Session, *, workflow_queries):
     db_provider, app, user, _ = _persist_provider_graph(
         database_session,
         parameter_configuration=json.dumps(
@@ -162,7 +181,7 @@ def test_get_db_provider_tool_builds_entity(database_session: Session):
             ]
         ),
     )
-    controller = _controller(db_provider.id)
+    controller = _controller(db_provider.id, workflow_queries=workflow_queries)
     variables = [
         VariableEntity(
             variable="country",
@@ -180,19 +199,19 @@ def test_get_db_provider_tool_builds_entity(database_session: Session):
 
     with (
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features",
+            "services.tools.workflow.provider.BaseAppConfigManager.convert_features",
             return_value=SimpleNamespace(file_upload=True),
         ),
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
+            "services.tools.workflow.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
             return_value=variables,
         ),
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
+            "services.tools.workflow.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
             return_value=outputs,
         ),
     ):
-        tool = controller._get_db_provider_tool(db_provider, app, session=database_session, user=user)
+        tool = controller.get_tools(db_provider.tenant_id)[0]
 
     assert tool.entity.identity.name == "workflow_tool"
     # "json" output is reserved for ToolInvokeMessage.VariableMessage and filtered out.
@@ -204,41 +223,47 @@ def test_get_db_provider_tool_builds_entity(database_session: Session):
     assert controller.provider_type == ToolProviderType.WORKFLOW
 
 
-def test_get_tool_returns_hit_or_none():
-    controller = _controller()
-    tool = _workflow_tool()
+def test_get_tool_returns_hit_or_none(*, workflow_runtime: WorkflowRuntime, workflow_queries):
+    controller = _controller(workflow_queries=workflow_queries)
+    tool = _workflow_tool(workflow_runtime=workflow_runtime)
     controller.tools = [tool]
 
     assert controller.get_tool("workflow_tool") is tool
     assert controller.get_tool("missing") is None
 
 
-def test_get_tools_returns_cached():
-    controller = _controller()
-    cached_tools = [_workflow_tool("wf-cached", tenant_id="tenant-1")]
+def test_get_tools_returns_cached(*, workflow_runtime: WorkflowRuntime, workflow_queries):
+    controller = _controller(workflow_queries=workflow_queries)
+    cached_tools = [_workflow_tool("wf-cached", tenant_id="tenant-1", workflow_runtime=workflow_runtime)]
     controller.tools = cached_tools
 
     assert controller.get_tools("tenant-1") == cached_tools
 
 
-def test_from_db_builds_controller(database_session: Session):
+def test_from_db_builds_controller(database_session: Session, *, workflow_queries):
     db_provider, app, user, workflow = _persist_provider_graph(database_session)
 
     with (
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features",
+            "services.tools.workflow.provider.BaseAppConfigManager.convert_features",
             return_value=SimpleNamespace(file_upload=False),
         ),
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
+            "services.tools.workflow.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
             return_value=[],
         ),
         patch(
-            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
+            "services.tools.workflow.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
             return_value=[],
         ),
     ):
-        built = WorkflowToolProviderController.from_db(db_provider)
+        built = WorkflowToolProviderController.from_db(
+            db_provider,
+            draft_variable_saver=Mock(
+                return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+            ),
+            queries=workflow_queries,
+        )
 
     assert isinstance(built, WorkflowToolProviderController)
     assert built.entity.identity.author == user.name
@@ -248,21 +273,21 @@ def test_from_db_builds_controller(database_session: Session):
     assert built.tools[0].workflow_entities["workflow"].id == workflow.id
 
 
-def test_get_tools_returns_empty_when_provider_missing(database_session: Session):
+def test_get_tools_returns_empty_when_provider_missing(database_session: Session, *, workflow_queries):
     db_provider, _, _, _ = _persist_provider_graph(database_session)
-    controller = _controller(db_provider.id)
+    controller = _controller(db_provider.id, workflow_queries=workflow_queries)
     controller.tools = None
 
     assert controller.get_tools(str(uuid.uuid4())) == []
 
 
-def test_get_tools_raises_when_app_missing(database_session: Session):
+def test_get_tools_raises_when_app_missing(database_session: Session, *, workflow_queries):
     db_provider, _, _, _ = _persist_provider_graph(
         database_session,
         include_app=False,
         include_workflow=False,
     )
-    controller = _controller(db_provider.id)
+    controller = _controller(db_provider.id, workflow_queries=workflow_queries)
     controller.tools = None
 
     with pytest.raises(ValueError, match="app not found"):

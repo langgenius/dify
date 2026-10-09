@@ -6,9 +6,10 @@ import builtins
 import importlib
 from collections.abc import Callable
 from contextlib import ExitStack, contextmanager
+from dataclasses import dataclass
 from inspect import unwrap
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock, patch
+from types import ModuleType
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
@@ -20,14 +21,22 @@ from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolPr
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter
 from enums import DeploymentEdition
+from extensions.application_services.tools import ToolServices, build_tool_services
 from models import Account, BuiltinToolProvider, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
 from repositories.credentials.query_repository import CredentialQueryRepository
+from services.credentials.query import CredentialQuery
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+@dataclass(frozen=True)
+class ProviderApplicationStub:
+    tools: ToolServices
+    credential_queries: CredentialQuery | CredentialQueryRepository
 
 
 _CONTROLLER_MODULE: ModuleType | None = None
@@ -42,7 +51,7 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], sqlite_session_factory):
+def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], workflow_application):
     """
     Import the controller with auth decorators neutralized only during import.
 
@@ -80,11 +89,10 @@ def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callabl
 
     login_module = importlib.import_module("libs.login")
     monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        module,
-        "application_services",
-        lambda: SimpleNamespace(credential_queries=CredentialQueryRepository(session_factory=sqlite_session_factory)),
+    registry = ProviderApplicationStub(
+        tools=workflow_application.tools, credential_queries=create_autospec(CredentialQuery, instance=True)
     )
+    monkeypatch.setattr(module, "application_services", lambda: registry)
     return module
 
 
@@ -141,8 +149,9 @@ def _bind_database_session(session: Session):
             patch("extensions.ext_database.db.session", database_session),
             patch(
                 "controllers.console.workspace.tool_providers.application_services",
-                return_value=SimpleNamespace(
-                    credential_queries=CredentialQueryRepository(session_factory=session_factory)
+                return_value=ProviderApplicationStub(
+                    tools=build_tool_services(session_factory),
+                    credential_queries=CredentialQueryRepository(session_factory=session_factory),
                 ),
             ),
         ):
@@ -158,7 +167,7 @@ def _mock_credential_encryption(controller_module: ModuleType):
     encrypter.mask_plugin_credentials.return_value = {"api_key": "[__HIDDEN__]"}
     with (
         patch(
-            "services.tools.legacy_builtin_tools_manage_service.ToolManager.get_builtin_provider",
+            "services.tools.builtin_tools_manage_service.ToolManager.get_builtin_provider",
             return_value=MagicMock(),
         ),
         patch.object(
@@ -341,7 +350,13 @@ def test_tool_provider_list_calls_service_with_query(
         response = controller_module.ToolProviderListApi().get()
 
     assert response == [expected_response]
-    service_mock.assert_called_once_with(user.id, "tenant-456", "builtin")
+    service_mock.assert_called_once_with(
+        user.id,
+        "tenant-456",
+        "builtin",
+        workflow_queries=controller_module.application_services().tools.workflow_queries,
+        tool_providers=controller_module.application_services().tools.tool_providers,
+    )
 
 
 def test_builtin_provider_add_passes_payload(
@@ -575,7 +590,9 @@ def test_api_provider_list_tools_get(app: Flask, controller_module, monkeypatch:
         resp = controller_module.ToolApiProviderListToolsApi().get()
 
     assert resp == [expected_response]
-    service_mock.assert_called_once_with(user.id, "tenant-11", "foo")
+    service_mock.assert_called_once_with(
+        user.id, "tenant-11", "foo", tool_providers=controller_module.application_services().tools.tool_providers
+    )
 
 
 def test_api_provider_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
@@ -589,7 +606,9 @@ def test_api_provider_get(app: Flask, controller_module, monkeypatch: pytest.Mon
         resp = controller_module.ToolApiProviderGetApi().get()
 
     assert resp == expected_response
-    service_mock.assert_called_once_with(user.id, "tenant-12", "foo")
+    service_mock.assert_called_once_with(
+        user.id, "tenant-12", "foo", tool_providers=controller_module.application_services().tools.tool_providers
+    )
 
 
 def test_builtin_provider_credentials_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
@@ -618,7 +637,7 @@ def test_workflow_provider_get_by_tool(app: Flask, controller_module, monkeypatc
     service_payload, expected_response = _workflow_detail_response(controller_module)
     tool_service = MagicMock(return_value=service_payload)
     monkeypatch.setattr(
-        controller_module.WorkflowToolManageService,
+        controller_module.application_services().tools.workflows,
         "get_workflow_tool_by_tool_id",
         tool_service,
     )
@@ -637,7 +656,7 @@ def test_workflow_provider_get_by_app(app: Flask, controller_module, monkeypatch
     service_payload, expected_response = _workflow_detail_response(controller_module)
     service_mock = MagicMock(return_value=service_payload)
     monkeypatch.setattr(
-        controller_module.WorkflowToolManageService,
+        controller_module.application_services().tools.workflows,
         "get_workflow_tool_by_app_id",
         service_mock,
     )
@@ -655,7 +674,9 @@ def test_workflow_provider_list_tools(app: Flask, controller_module, monkeypatch
     _set_current_account(monkeypatch, controller_module, user, "tenant-wf3")
     service_payload, expected_response = _tool_response(controller_module, "workflow-tool")
     service_mock = MagicMock(return_value=[service_payload])
-    monkeypatch.setattr(controller_module.WorkflowToolManageService, "list_single_workflow_tools", service_mock)
+    monkeypatch.setattr(
+        controller_module.application_services().tools.workflows, "list_single_workflow_tools", service_mock
+    )
 
     tool_id = "00000000-0000-0000-0000-000000000003"
     with app.test_request_context(f"/workflow/tools?workflow_tool_id={tool_id}"):
@@ -705,7 +726,7 @@ def test_workflow_tools_list(app: Flask, controller_module, monkeypatch: pytest.
 
     provider, expected_response = _provider_entity_response(controller_module, "wf", "workflow")
     monkeypatch.setattr(
-        controller_module.WorkflowToolManageService,
+        controller_module.application_services().tools.workflows,
         "list_tenant_workflow_tools",
         MagicMock(return_value=[provider]),
     )

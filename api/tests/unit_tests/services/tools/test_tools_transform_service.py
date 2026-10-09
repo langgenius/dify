@@ -1,18 +1,17 @@
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import patch
 
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
     ToolParameter,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
 )
-from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
-MODULE = "services.tools.legacy_tools_transform_service"
+MODULE = "services.tools.tools_transform_service"
 
 
 def _parameter(
@@ -176,14 +175,16 @@ class TestToolTransformService:
 class TestWorkflowProviderToUserProvider:
     """Test cases for ToolTransformService.workflow_provider_to_user_provider method"""
 
-    def test_workflow_provider_to_user_provider_with_workflow_app_id(self):
+    def test_workflow_provider_to_user_provider_with_workflow_app_id(self, workflow_queries):
         """Test that workflow_provider_to_user_provider correctly sets workflow_app_id."""
-        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+        from services.tools.workflow.provider import WorkflowToolProviderController
 
         workflow_app_id = "app_123"
         provider_id = "provider_123"
         controller = WorkflowToolProviderController(
             provider_id=provider_id,
+            queries=workflow_queries,
+            draft_variable_saver=None,
             entity=ToolProviderEntity(
                 # Retain legacy emoji mappings accepted by the API transformation.
                 identity=ToolProviderIdentity.model_construct(
@@ -217,13 +218,15 @@ class TestWorkflowProviderToUserProvider:
         assert result.plugin_unique_identifier is None
         assert result.tools == []
 
-    def test_workflow_provider_to_user_provider_without_workflow_app_id(self):
+    def test_workflow_provider_to_user_provider_without_workflow_app_id(self, workflow_queries):
         """Test that workflow_provider_to_user_provider works when workflow_app_id is not provided."""
-        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+        from services.tools.workflow.provider import WorkflowToolProviderController
 
         provider_id = "provider_123"
         controller = WorkflowToolProviderController(
             provider_id=provider_id,
+            queries=workflow_queries,
+            draft_variable_saver=None,
             entity=ToolProviderEntity(
                 # Retain legacy emoji mappings accepted by the API transformation.
                 identity=ToolProviderIdentity.model_construct(
@@ -249,13 +252,15 @@ class TestWorkflowProviderToUserProvider:
         assert result.workflow_app_id is None
         assert result.labels == ["label1"]
 
-    def test_workflow_provider_to_user_provider_workflow_app_id_none(self):
+    def test_workflow_provider_to_user_provider_workflow_app_id_none(self, workflow_queries):
         """Test that workflow_provider_to_user_provider handles None workflow_app_id explicitly."""
-        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+        from services.tools.workflow.provider import WorkflowToolProviderController
 
         provider_id = "provider_123"
         controller = WorkflowToolProviderController(
             provider_id=provider_id,
+            queries=workflow_queries,
+            draft_variable_saver=None,
             entity=ToolProviderEntity(
                 # Retain legacy emoji mappings accepted by the API transformation.
                 identity=ToolProviderIdentity.model_construct(
@@ -282,14 +287,16 @@ class TestWorkflowProviderToUserProvider:
         assert result.workflow_app_id is None
         assert result.labels == []
 
-    def test_workflow_provider_to_user_provider_preserves_other_fields(self):
+    def test_workflow_provider_to_user_provider_preserves_other_fields(self, workflow_queries):
         """Test that workflow_provider_to_user_provider preserves all other entity fields."""
-        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+        from services.tools.workflow.provider import WorkflowToolProviderController
 
         workflow_app_id = "app_456"
         provider_id = "provider_456"
         controller = WorkflowToolProviderController(
             provider_id=provider_id,
+            queries=workflow_queries,
+            draft_variable_saver=None,
             entity=ToolProviderEntity(
                 # Retain legacy emoji mappings accepted by the API transformation.
                 identity=ToolProviderIdentity.model_construct(
@@ -443,45 +450,3 @@ class TestConvertMcpSchemaToParameter:
     def test_missing_description_defaults_empty(self):
         schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
         assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
-
-
-class TestApiProviderToController:
-    def test_api_key_header_auth(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key_header"}
-        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(
-            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-        )
-
-    def test_api_key_query_auth(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key_query"}
-        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(
-            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY, session=ANY
-        )
-
-    def test_legacy_api_key_maps_to_header(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key"}
-        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(
-            db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-        )
-
-    def test_unknown_auth_defaults_to_none(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "something_else"}
-        with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(
-            db_provider=db_provider, auth_type=ApiProviderAuthType.NONE, session=ANY
-        )

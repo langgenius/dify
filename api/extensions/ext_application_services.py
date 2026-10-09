@@ -35,6 +35,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workflow import build_workflow_execution_dependencies, build_workflow_suggestions
 from extensions.application_services.workflow_variables import (
@@ -249,6 +250,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    tools: ToolServices
     workflow_runtime: AppGenerationRuntime
     workflow_variables: WorkflowVariableService
     console_workflow_variables: ConsoleWorkflowVariableService
@@ -507,6 +509,7 @@ def build_application_services(
     )
     workflow_variables = build_workflow_variable_service(database_client=database_client)
     return ApplicationServices(
+        tools=build_tool_services(database_client),
         workflow_runtime=build_workflow_execution_dependencies(database_client),
         workflow_variables=workflow_variables,
         console_workflow_variables=build_console_workflow_variables(
