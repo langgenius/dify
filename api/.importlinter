@@ -1343,3 +1343,20 @@ forbidden_modules =
     extensions.application_services
     extensions.ext_application_services
 allow_indirect_imports = True
+
+[importlinter:contract:workflow-node-repository-boundary]
+name = Workflow node factories and runtimes receive repositories through ports
+type = forbidden
+source_modules =
+    services.workflow.execution.adapters.node_factory
+    services.workflow.execution.adapters.node_runtime
+    services.workflow.execution.adapters.agent_runtime
+    services.workflow.execution.adapters.agent_v2.dify_tools_builder
+forbidden_modules =
+    repositories
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
