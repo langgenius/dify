@@ -1,8 +1,6 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { DuplicateAgentDialog } from '../duplicate-agent-dialog'
 
 const queryDataMock = vi.hoisted(() => vi.fn())
@@ -18,26 +16,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => ({
-  IconPickerDialog: function Picker({
-    value,
-    'aria-label': label,
-  }: {
-    value?: IconPickerInputValue
-    onConfirm: (value: IconPickerValue) => void
-    'aria-label'?: string
-  }) {
-    const [open, setOpen] = useState(false)
-    return (
-      <>
-        <button type="button" aria-label={label} onClick={() => setOpen(true)}>
-          {value?.type === 'emoji' ? `${value.icon}:${value.background}` : value?.type}
-        </button>
-        {open && <div></div>}
-      </>
-    )
-  },
-}))
+vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
 
 vi.mock('@/service/console', () => ({
   consoleQuery: {

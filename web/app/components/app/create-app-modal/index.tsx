@@ -15,7 +15,12 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -322,14 +327,15 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                     placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
-                <IconPickerDialog
-                  value={appIcon}
-                  size="xxl"
-                  iconClassName="rounded-2xl"
-                  onConfirm={(payload) => {
-                    setAppIcon(payload)
-                  }}
-                />
+                <IconPicker value={appIcon} onValueChange={setAppIcon}>
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                    className="shrink-0 cursor-pointer rounded-2xl"
+                  >
+                    <IconPickerIcon size="xxl" className="rounded-2xl" />
+                  </IconPickerTrigger>
+                  <IconPickerContent />
+                </IconPicker>
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">

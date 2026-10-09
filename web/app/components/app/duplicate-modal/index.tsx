@@ -11,7 +11,12 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -119,27 +124,29 @@ const DuplicateAppModal = ({
             }}
           >
             <div className="mb-9 system-sm-regular text-text-secondary">
-              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
-                <IconPickerDialog
-                  value={pickerValue}
-                  onConfirm={setSelectedIcon}
-                  size="large"
-                  className="col-start-1 row-start-2"
-                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
-                />
-                <Field name="name" className="contents">
-                  <FieldLabel className="col-span-2 row-start-1 system-md-medium">
+              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+                <Field name="name">
+                  <FieldLabel className="system-md-medium">
                     {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
                   </FieldLabel>
-                  <Input
-                    autoComplete="off"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="col-start-2 row-start-2 h-10"
-                    placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
-                  />
+                  <div className="flex items-center justify-between space-x-2">
+                    <IconPickerTrigger
+                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      className="shrink-0 cursor-pointer rounded-[10px]"
+                    >
+                      <IconPickerIcon size="large" />
+                    </IconPickerTrigger>
+                    <Input
+                      autoComplete="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-10"
+                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+                    />
+                  </div>
                 </Field>
-              </div>
+                <IconPickerContent />
+              </IconPicker>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
             <div className="flex flex-row-reverse">
@@ -151,7 +158,7 @@ const DuplicateAppModal = ({
               >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
-              <Button className="w-24" onClick={onHide}>
+              <Button type="button" className="w-24" onClick={onHide}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>

@@ -19,7 +19,12 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -228,7 +233,15 @@ const CreateAppModal = ({
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
               </label>
               <div className="flex items-center justify-between space-x-2">
-                <IconPickerDialog value={pickerValue} onConfirm={setSelectedIcon} size="large" />
+                <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                    className="shrink-0 cursor-pointer rounded-[10px]"
+                  >
+                    <IconPickerIcon size="large" />
+                  </IconPickerTrigger>
+                  <IconPickerContent />
+                </IconPicker>
                 <Input
                   id={nameInputId}
                   value={name}

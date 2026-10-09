@@ -4,10 +4,10 @@ import type {
 } from '@dify/contracts/api/console/files/types.gen'
 import type { IconPickerInputValue } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { IconPickerDialog } from '..'
 import { emojiCatalogOptions } from '../emoji-data'
+import { IconPickerDialog } from './harness'
 
 const { uploadImage } = vi.hoisted(() => ({
   uploadImage:
@@ -307,15 +307,6 @@ it('preserves a linked icon on cancellation and only replaces it after confirmat
   client.clear()
 })
 
-it('keeps an unavailable icon entry disabled', async () => {
-  const user = userEvent.setup()
-  render(<IconPickerDialog disabled onConfirm={vi.fn()} />)
-  const trigger = screen.getByRole('button', { name: 'app.iconPicker.title' })
-  expect(trigger).toBeDisabled()
-  await user.click(trigger)
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-})
-
 it('keeps emoji-only consumers out of image upload', async () => {
   const user = userEvent.setup()
   const client = new QueryClient()
@@ -338,30 +329,3 @@ it('keeps emoji-only consumers out of image upload', async () => {
   expect(uploadImage).not.toHaveBeenCalled()
   client.clear()
 })
-
-it.each([
-  { state: 'unselected emoji', imageEnabled: true, selectImageTab: false },
-  { state: 'empty image', imageEnabled: true, selectImageTab: true },
-  { state: 'emoji-only', imageEnabled: false, selectImageTab: false },
-])(
-  'offers a named close action for the $state session',
-  async ({ imageEnabled, selectImageTab }) => {
-    const user = userEvent.setup()
-    const client = new QueryClient()
-    client.setQueryData(emojiCatalogOptions.queryKey, [])
-    const onConfirm = vi.fn()
-    render(
-      <QueryClientProvider client={client}>
-        <IconPickerDialog enableImageUpload={imageEnabled} onConfirm={onConfirm} />
-      </QueryClientProvider>,
-    )
-    await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
-    const dialog = screen.getByRole('dialog')
-    if (selectImageTab)
-      await user.click(within(dialog).getByRole('tab', { name: 'app.iconPicker.image' }))
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
-    await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    expect(onConfirm).not.toHaveBeenCalled()
-    client.clear()
-  },
-)

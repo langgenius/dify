@@ -19,7 +19,12 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -163,7 +168,15 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <IconPickerDialog value={appIcon} onConfirm={setAppIcon} size="large" />
+              <IconPicker value={appIcon} onValueChange={setAppIcon}>
+                <IconPickerTrigger
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-[10px]"
+                >
+                  <IconPickerIcon size="large" />
+                </IconPickerTrigger>
+                <IconPickerContent />
+              </IconPicker>
               <Input
                 id={nameInputId}
                 value={name}

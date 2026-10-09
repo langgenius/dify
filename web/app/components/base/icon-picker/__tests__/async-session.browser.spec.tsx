@@ -2,8 +2,8 @@ import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { IconPickerDialog } from '..'
 import { emojiCatalogOptions } from '../emoji-data'
+import { IconPickerDialog } from './harness'
 
 const { cropImage, uploadImage } = vi.hoisted(() => ({
   cropImage: vi.fn<() => Promise<Blob>>(),

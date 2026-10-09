@@ -40,7 +40,12 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
@@ -439,7 +444,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
                     </Field>
-                    <IconPickerDialog
+                    <IconPicker
                       value={
                         appIcon ??
                         (appInfo.site.icon_type === 'emoji' && appInfo.site.icon
@@ -450,10 +455,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             }
                           : undefined)
                       }
-                      onConfirm={setAppIcon}
-                      size="xxl"
-                      className="mt-2"
-                    />
+                      onValueChange={setAppIcon}
+                    >
+                      <IconPickerTrigger
+                        aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                        className="mt-2 shrink-0 cursor-pointer rounded-2xl"
+                      >
+                        <IconPickerIcon size="xxl" />
+                      </IconPickerTrigger>
+                      <IconPickerContent />
+                    </IconPicker>
                   </div>
                   {/* description */}
                   <Field name="description">
@@ -796,7 +807,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </ScrollArea>
             {/* footer */}
             <div className="row-start-3 flex shrink-0 justify-end p-6 pt-5">
-              <Button className="mr-2" onClick={handleClose}>
+              <Button type="button" className="mr-2" onClick={handleClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button type="submit" variant="primary" loading={saveLoading}>

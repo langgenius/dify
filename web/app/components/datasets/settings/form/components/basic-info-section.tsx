@@ -2,11 +2,17 @@
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import PermissionSelector from '../../permission-selector'
 
 const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
@@ -56,10 +62,7 @@ const BasicInfoSection = ({
           </div>
         </div>
         <div className="flex min-w-0 grow items-center gap-x-2">
-          <IconPickerDialog
-            aria-label={t(($) => $['form.changeIcon'], { ns: 'datasetSettings' })}
-            size="small"
-            disabled={readonly}
+          <IconPicker
             value={
               iconInfo.icon_type === 'emoji'
                 ? {
@@ -69,8 +72,23 @@ const BasicInfoSection = ({
                   }
                 : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
             }
-            onConfirm={handleSelectAppIcon}
-          />
+            onValueChange={handleSelectAppIcon}
+          >
+            <IconPickerTrigger
+              disabled={readonly}
+              render={
+                <IconButton
+                  size="lg"
+                  aria-label={t(($) => $['form.changeIcon'], { ns: 'datasetSettings' })}
+                >
+                  <span aria-hidden="true">
+                    <IconPickerIcon size="small" />
+                  </span>
+                </IconButton>
+              }
+            />
+            <IconPickerContent />
+          </IconPicker>
           <Input
             aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}

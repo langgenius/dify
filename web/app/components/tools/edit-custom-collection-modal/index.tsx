@@ -21,7 +21,12 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
@@ -254,21 +259,30 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <span className="ml-1 text-red-500">*</span>
                         </label>
                         <div className="flex items-center justify-between gap-3">
-                          <IconPickerDialog
-                            aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                            size="large"
-                            enableImageUpload={false}
+                          <IconPicker
                             value={{
                               type: 'emoji',
                               icon: emoji.content,
                               background: emoji.background,
                             }}
-                            onConfirm={(value) => {
+                            onValueChange={(value) => {
                               if (value.type !== 'emoji') return
                               const { icon, background: icon_background } = value
                               setEmoji({ content: icon, background: icon_background })
                             }}
-                          />
+                          >
+                            <IconPickerTrigger
+                              render={
+                                <IconButton
+                                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                                  className="size-10 rounded-[10px] p-0"
+                                >
+                                  <IconPickerIcon size="large" />
+                                </IconButton>
+                              }
+                            />
+                            <IconPickerContent enableImageUpload={false} />
+                          </IconPicker>
                           <Input
                             id={providerNameInputId}
                             className="h-10 grow"

@@ -9,7 +9,12 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
@@ -116,13 +121,15 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
               placeholder={t(($) => $.knowledgeNameAndIconPlaceholder, { ns: 'datasetPipeline' })}
             />
           </Field>
-          <IconPickerDialog
-            aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
-            size="xxl"
-            showEditIcon
-            value={appIcon}
-            onConfirm={handleSelectAppIcon}
-          />
+          <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+            <IconPickerTrigger
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
+              className="group/edit-icon shrink-0 cursor-pointer rounded-2xl"
+            >
+              <IconPickerIcon size="xxl" showEditIcon />
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
         </div>
         <Field name="description">
           <FieldLabel>{t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}</FieldLabel>
@@ -136,7 +143,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       </div>
       {/* Actions */}
       <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
-        <Button variant="secondary" onClick={onClose}>
+        <Button type="button" variant="secondary" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button type="submit" variant="primary">

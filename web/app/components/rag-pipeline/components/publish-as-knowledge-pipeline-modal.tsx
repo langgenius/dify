@@ -9,7 +9,12 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {
@@ -98,10 +103,7 @@ const PublishAsKnowledgePipelineModal = ({
                   }
                 />
               </Field>
-              <IconPickerDialog
-                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}`}
-                size="xxl"
-                className="mt-2"
+              <IconPicker
                 value={
                   pipelineIcon.icon_type === 'emoji'
                     ? {
@@ -109,10 +111,22 @@ const PublishAsKnowledgePipelineModal = ({
                         icon: pipelineIcon.icon,
                         background: pipelineIcon.icon_background,
                       }
-                    : { type: 'image', fileId: pipelineIcon.icon, url: pipelineIcon.icon_url || '' }
+                    : {
+                        type: 'image',
+                        fileId: pipelineIcon.icon,
+                        url: pipelineIcon.icon_url || '',
+                      }
                 }
-                onConfirm={handleSelectIcon}
-              />
+                onValueChange={handleSelectIcon}
+              >
+                <IconPickerTrigger
+                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}`}
+                  className="mt-2 shrink-0 cursor-pointer rounded-2xl"
+                >
+                  <IconPickerIcon size="xxl" />
+                </IconPickerTrigger>
+                <IconPickerContent />
+              </IconPicker>
             </div>
             <Field name="description">
               <FieldLabel>
@@ -132,7 +146,9 @@ const PublishAsKnowledgePipelineModal = ({
             </Field>
           </div>
           <div className="flex items-center justify-end gap-2 px-6 py-5">
-            <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button type="button" onClick={onCancel}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
             <Button
               type="submit"
               disabled={!pipelineName?.trim() || confirmDisabled}

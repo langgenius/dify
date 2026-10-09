@@ -17,7 +17,12 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
@@ -154,11 +159,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 t(($) => $['feature.tools.modal.name.placeholder'], { ns: 'appDebug' }) || ''
               }
             />
-            <IconPickerDialog
-              aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-              size="large"
-              iconClassName="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
-              enableImageUpload={false}
+            <IconPicker
               value={
                 localeData.icon
                   ? {
@@ -168,12 +169,23 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                     }
                   : undefined
               }
-              onConfirm={(value) => {
+              onValueChange={(value) => {
                 if (value.type !== 'emoji') return
                 const { icon, background: icon_background } = value
                 handleValueChange({ icon, icon_background })
               }}
-            />
+            >
+              <IconPickerTrigger
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-lg"
+              >
+                <IconPickerIcon
+                  size="large"
+                  className="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
+                />
+              </IconPickerTrigger>
+              <IconPickerContent enableImageUpload={false} />
+            </IconPicker>
           </div>
         </div>
         <div className="py-2">

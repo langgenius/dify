@@ -5,7 +5,12 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 
 type AgentFormFieldsProps = {
   defaultValues: AgentFormValues
@@ -28,14 +33,12 @@ export function AgentFormFields({
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
       <div className="flex items-start gap-4">
-        <IconPickerDialog
-          value={icon}
-          onConfirm={onIconChange}
-          aria-label={iconAriaLabel}
-          size="xxl"
-          rounded
-          iconClassName="size-16"
-        />
+        <IconPicker value={icon} onValueChange={onIconChange}>
+          <IconPickerTrigger aria-label={iconAriaLabel} className="shrink-0 rounded-full">
+            <IconPickerIcon size="xxl" rounded className="size-16 cursor-pointer" />
+          </IconPickerTrigger>
+          <IconPickerContent />
+        </IconPicker>
         <div className="flex min-w-0 flex-1 flex-col items-start gap-3 pb-1 sm:flex-row">
           <Field
             name="name"

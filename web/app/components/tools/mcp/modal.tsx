@@ -6,13 +6,19 @@ import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -194,25 +200,34 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             />
           </div>
           <div className="pt-2">
-            <IconPickerDialog
-              aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
-              size="xxl"
-              showEditIcon
-              iconClassName="relative rounded-2xl"
-              innerIcon={
-                shouldUseMcpIconForAppIcon(
-                  state.appIcon.type,
-                  state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                ) ? (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                  />
-                ) : undefined
-              }
-              value={state.appIcon}
-              onConfirm={handleIconSelect}
-            />
+            <IconPicker value={state.appIcon} onValueChange={handleIconSelect}>
+              <IconPickerTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
+                    className="group/edit-icon size-14 rounded-2xl p-0"
+                  >
+                    <IconPickerIcon
+                      innerIcon={
+                        shouldUseMcpIconForAppIcon(
+                          state.appIcon.type,
+                          state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                        ) ? (
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
+                          />
+                        ) : undefined
+                      }
+                      size="xxl"
+                      className="relative rounded-2xl"
+                      showEditIcon
+                    />
+                  </IconButton>
+                }
+              />
+              <IconPickerContent />
+            </IconPicker>
           </div>
         </div>
 

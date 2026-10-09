@@ -9,7 +9,12 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
 
@@ -115,27 +120,28 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <span aria-hidden="true" className="i-ri-close-line size-4" />
             </IconButton>
           </div>
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 py-4">
-            <IconPickerDialog
-              className="col-start-1 row-start-2"
-              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-              size="medium"
-              showEditIcon
-              value={appIcon}
-              onConfirm={handleSelectAppIcon}
-            />
-            <Field name="name" className="contents">
-              <FieldLabel className="col-span-2 row-start-1 w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+          <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+            <Field name="name" className="gap-0 py-4">
+              <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
                 {t(($) => $['form.name'], { ns: 'datasetSettings' })}
               </FieldLabel>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="col-start-2 row-start-2 h-9 grow"
-                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
-              />
+              <div className="flex items-center gap-x-2">
+                <IconPickerTrigger
+                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                  className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+                >
+                  <IconPickerIcon size="medium" showEditIcon />
+                </IconPickerTrigger>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-9 grow"
+                  placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+                />
+              </div>
             </Field>
-          </div>
+            <IconPickerContent />
+          </IconPicker>
           <Field name="description" className="gap-0 py-4">
             <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
@@ -148,7 +154,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             />
           </Field>
           <div className="flex justify-end gap-2 pt-6">
-            <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button type="button" onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
             <Button type="submit" loading={loading} variant="primary">
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>

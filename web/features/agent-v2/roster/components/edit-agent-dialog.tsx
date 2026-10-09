@@ -103,7 +103,7 @@ function EditAgentFormSession({
           onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
-          <Button className="min-w-18" onClick={onCancel} disabled={pending}>
+          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button
