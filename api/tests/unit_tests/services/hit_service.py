@@ -179,6 +179,30 @@ class TestHitTestingServiceRetrieve:
             assert query_log.created_by == account.id
             assert json.loads(query_log.content) == [{"content_type": "text_query", "content": query}]
 
+    def test_dump_retrieval_records_signs_embedded_file_links(self):
+        segment = Mock(document_id="document-1", content="![image](/files/file-1/file-preview)")
+        retrieval_record = Mock()
+        retrieval_record.segment = segment
+        retrieval_record.model_dump.return_value = {"segment": {"sign_content": None}}
+        document = Mock(
+            id="document-1",
+            data_source_type="upload_file",
+            name="guide.md",
+            doc_type=None,
+            doc_metadata=None,
+        )
+        session = Mock()
+        session.scalars.return_value.all.return_value = [document]
+        signed_content = "![image](/files/file-1/file-preview?timestamp=1&nonce=n&sign=s)"
+
+        with patch(
+            "services.hit_testing_service.sign_segment_content", return_value=signed_content, create=True
+        ) as sign_content:
+            result = HitTestingService._dump_retrieval_records(session, [retrieval_record])
+
+        assert result[0]["segment"]["sign_content"] == signed_content
+        sign_content.assert_called_once_with(segment, session=session)
+
     def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session):
         """
         Test successful retrieval with custom retrieval model.
