@@ -486,6 +486,7 @@ export const lintConfig = {
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
     'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-app-store-imports': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
     'dify/require-i18n-namespace': 'error',

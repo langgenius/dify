@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Не вдалося згенерувати",
   "actionMsg.modifiedSuccessfully": "Успішно змінено",
   "actionMsg.modifiedUnsuccessfully": "Змінити не вдалося",
-  "actionMsg.noModification": "На даний момент жодних змін немає.",
   "actionMsg.payCancelled": "Платіж скасовано",
   "actionMsg.paySucceeded": "Платіж пройшов успішно",
   "agentStrategyPage.description": "Визначте, як ваш AI Agent міркує та ухвалює рішення — як вибирає інструменти, обробляє результати й автономно розв’язує задачі.",

@@ -28,6 +28,8 @@
   "menus.plugins": "集成",
   "menus.status": "beta",
   "menus.tools": "工具",
+  "settings.accessToken": "存取權杖",
+  "settings.accessTokenDescription": "建立僅可存取指定應用和知識庫的 Service API 權杖。",
   "settings.agentStrategy": "Agent 策略",
   "settings.billing": "賬單",
   "settings.customEndpoint": "自訂端點",
