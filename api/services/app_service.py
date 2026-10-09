@@ -47,7 +47,7 @@ from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service

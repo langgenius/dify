@@ -1179,3 +1179,46 @@ source_modules =
 forbidden_modules =
     services.agent
 allow_indirect_imports = True
+
+[importlinter:contract:workflow-definition-persistence-boundary]
+name = Workflow definition persistence does not delegate back to workflow orchestration
+type = forbidden
+source_modules =
+    repositories.workflow.definition_repository
+    repositories.workflow.draft_repository
+    repositories.workflow.pipeline_publication_repository
+forbidden_modules =
+    services.workflow_service
+    services.workflow.console_service
+    services.rag_pipeline.publication_service
+    services.rag_pipeline.publication_gateway
+    services.rag_pipeline.rag_pipeline
+    services.knowledge.dataset_service
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-persistence-boundary]
+name = Variable persistence does not own variable policy or file uploads
+type = forbidden
+source_modules =
+    repositories.workflow.draft_variable_repository
+forbidden_modules =
+    services.workflow.draft_variable_service
+    services.workflow.variable_service
+    services.file_service
+    services.variable_truncator
+    extensions.ext_storage
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-policy-boundary]
+name = Workflow variable merge policy is independent of persistence and transport
+type = forbidden
+source_modules =
+    services.workflow.variable_policy
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+    flask
+    controllers
+    extensions
+allow_indirect_imports = True
