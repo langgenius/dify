@@ -333,6 +333,7 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route("tools.list", "GET", "/workspaces/{workspace_id}/tools", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "tool_providers.describe",
         "GET",
@@ -1405,6 +1406,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tools.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
@@ -2161,6 +2163,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/plugin-tasks/{task_id}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/plugins:upgrade"): frozenset({"200", "422", "default"}),
     ("delete", "/workspaces/{workspace_id}/plugins/{plugin_id}"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/tools"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/tool-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(

@@ -15,7 +15,9 @@ from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
+from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
 from models.model import AppMode, IconType
@@ -1053,6 +1055,86 @@ class ToolCredentialUpdatePayload(BaseModel):
 
     credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
     name: str | None = Field(None, max_length=30)
+
+
+class ToolSource(StrEnum):
+    """Tool provider types a workflow tool node can call; values match the node's provider_type."""
+
+    BUILTIN = "builtin"
+    WORKFLOW = "workflow"
+    API = "api"
+    MCP = "mcp"
+
+
+class ToolListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the tool name or label, or the provider id or label")
+    provider_type: ToolSource | None = Field(None, description="Only tools of this provider type")
+    provider: str | None = Field(None, description="Only this provider's tools")
+
+
+class ToolInputValue(BaseModel):
+    type: ToolInputType = ToolInputType.CONSTANT
+    value: Any = None
+
+
+class ToolParameterRow(BaseModel):
+    name: str
+    label: str | None
+    type: str
+    form: str = Field(description="llm: goes in tool_parameters; form: goes in tool_configurations; schema: fixed")
+    required: bool
+    default: Any
+    options: list[str]
+    min: float | None
+    max: float | None
+    llm_description: str | None
+
+
+TOOL_NODE_VERSION: Final = "2"
+
+
+class ToolNodeTemplate(BaseModel):
+    """A tool node's data with every value as {type, value}."""
+
+    type: str = BuiltinNodeTypes.TOOL
+    title: str
+    provider_type: str
+    provider_id: str
+    provider_name: str
+    plugin_id: str | None
+    plugin_unique_identifier: str | None
+    tool_name: str
+    tool_label: str
+    tool_node_version: str = TOOL_NODE_VERSION
+    tool_parameters: dict[str, ToolInputValue]
+    tool_configurations: dict[str, ToolInputValue]
+
+
+class ToolRow(BaseModel):
+    provider: str
+    provider_type: str
+    provider_label: str | None
+    configured: bool = Field(
+        description=(
+            "Ready to use: needs no credential, or the workspace has one. MCP: authorize or refresh in the console"
+        )
+    )
+    name: str
+    label: str
+    description: str | None
+    parameters: list[ToolParameterRow]
+    node_data: ToolNodeTemplate = Field(
+        description=(
+            "Use as the tool node's data; fill every null value; pass upstream values as "
+            '{type: mixed, value: "{{#node.var#}}"} or {type: variable, value: [node, var]}'
+        )
+    )
+
+
+class ToolListResponse(PaginationEnvelope[ToolRow]):
+    pass
 
 
 class ModelListQuery(PageQuery):

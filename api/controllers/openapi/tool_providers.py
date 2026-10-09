@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from http import HTTPStatus
 from typing import Final
@@ -22,16 +22,30 @@ from controllers.openapi._models import (
     Hint,
     ToolCredentialCreatePayload,
     ToolCredentialUpdatePayload,
+    ToolInputValue,
+    ToolListQuery,
+    ToolListResponse,
+    ToolNodeTemplate,
+    ToolParameterRow,
     ToolProviderDetailResponse,
+    ToolRow,
+    ToolSource,
 )
+from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import admin_write, workspace_read
+from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.__base.tool import ToolParameter
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
+from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 _READ: Final = workspace_read()
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
@@ -104,6 +118,106 @@ def _write_response(ctx: Context, provider: str, credential_id: str) -> Credenti
     return CredentialWriteResponse(id=credential.id, name=credential.name, active=credential.is_default)
 
 
+def _mcp_providers(ctx: Context) -> list[ToolProviderApiEntity]:
+    with session_factory.create_session() as session:
+        return MCPToolManageService(session=session).list_providers(tenant_id=ctx.workspace.id, include_sensitive=False)
+
+
+_TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEntity]]]] = {
+    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id),
+    ToolSource.WORKFLOW: lambda ctx: WorkflowToolManageService.list_tenant_workflow_tools(
+        ctx.account.id, ctx.workspace.id
+    ),
+    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(ctx.workspace.id),
+    ToolSource.MCP: _mcp_providers,
+}
+
+
+def _inputs(parameters: Sequence[ToolParameter], form: ToolParameter.ToolParameterForm) -> dict[str, ToolInputValue]:
+    return {p.name: ToolInputValue(value=p.default) for p in parameters if p.form == form}
+
+
+def _parameter_row(parameter: ToolParameter, language: str | None) -> ToolParameterRow:
+    return ToolParameterRow(
+        name=parameter.name,
+        label=localized(parameter.label.model_dump(), language),
+        type=str(parameter.type),
+        form=str(parameter.form),
+        required=parameter.required,
+        default=parameter.default,
+        options=[option.value for option in parameter.options],
+        min=parameter.min,
+        max=parameter.max,
+        llm_description=parameter.llm_description,
+    )
+
+
+def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> ToolRow:
+    parameters = tool.parameters or []
+    label = localized(tool.label.model_dump(), language) or tool.name
+    return ToolRow(
+        provider=provider.id,
+        provider_type=str(provider.type),
+        provider_label=localized(provider.label.model_dump(), language),
+        configured=provider.is_team_authorization,
+        name=tool.name,
+        label=label,
+        description=localized(tool.description.model_dump(), language),
+        parameters=[_parameter_row(p, language) for p in parameters],
+        node_data=ToolNodeTemplate(
+            title=label,
+            provider_type=str(provider.type),
+            provider_id=provider.server_identifier or provider.id,
+            provider_name=provider.name,
+            plugin_id=provider.plugin_id or None,
+            plugin_unique_identifier=provider.plugin_unique_identifier or None,
+            tool_name=tool.name,
+            tool_label=label,
+            tool_parameters=_inputs(parameters, ToolParameter.ToolParameterForm.LLM),
+            tool_configurations=_inputs(parameters, ToolParameter.ToolParameterForm.FORM),
+        ),
+    )
+
+
+def tool_rows(
+    providers: Iterable[ToolProviderApiEntity], *, words: str, provider: str | None, language: str | None
+) -> list[ToolRow]:
+    rows = [tool_row(p, tool, language) for p in providers if provider is None or p.id == provider for tool in p.tools]
+    rows = [r for r in rows if matches(words, r.name, r.label, r.provider, r.provider_label)]
+    return sorted(rows, key=lambda r: (r.provider, r.name))
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/tools")
+class ToolsApi(Resource):
+    @endpoint(
+        op="get.tool",
+        kind=Kind.LIST,
+        summary="Tools a workflow can call here, each with a ready tool node data",
+        examples=(
+            Example(title="Find GitHub tools", input={"query": "github"}),
+            Example(title="Workflows published as tools", input={"provider_type": "workflow"}),
+        ),
+        requirements=_READ,
+        query=ToolListQuery,
+        returns=(HTTPStatus.OK, ToolListResponse, "Tools"),
+    )
+    def get(self, ctx: Context, workspace_id: str, *, query: ToolListQuery):
+        sources = [query.provider_type] if query.provider_type else list(ToolSource)
+        providers = [p for source in sources for p in _TOOL_SOURCES[source](ctx)]
+        rows = tool_rows(providers, words=query.query, provider=query.provider, language=ctx.account.interface_language)
+        page = ToolListResponse.page_of(rows, query=query)
+        unready = sorted({r.provider for r in page.data if not r.configured and r.provider_type == ToolSource.BUILTIN})
+        page.hints = [
+            Hint(
+                summary="Set up this provider to use its tools",
+                op=op_of(ToolProviderApi.get),
+                input={"workspace_id": ctx.workspace.id, "provider": provider},
+            )
+            for provider in unready
+        ]
+        return page
+
+
 @openapi_ns.route(_PROVIDER_PATH)
 class ToolProviderApi(Resource):
     @endpoint(
@@ -138,6 +252,13 @@ class ToolProviderApi(Resource):
             ]
             if api_key and form and not configured
             else []
+        )
+        hints.append(
+            Hint(
+                summary="List its tools",
+                op=op_of(ToolsApi.get),
+                input={"workspace_id": ctx.workspace.id, "provider": provider},
+            )
         )
         return ToolProviderDetailResponse(
             provider=provider,
