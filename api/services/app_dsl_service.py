@@ -12,7 +12,6 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -47,20 +46,21 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models import Account, App, AppMode
 from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
-from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
+from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
     AppDslExportData,
+    AppDslOverwriteStore,
     AppImportPackage,
     CheckDependenciesResult,
     DslImportWarning,
@@ -80,7 +80,15 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.workflow_draft_variable_service import WorkflowDraftVariableService
+from services.workflow.contracts import (
+    DraftImportResult,
+    DraftSyncCommand,
+    PreparedEnvironmentVariables,
+    WorkflowOwner,
+    WorkflowSnapshot,
+)
+from services.workflow.draft_service import WorkflowDraftService
+from services.workflow.environment_variable_service import prepare_environment_variables
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -127,8 +135,16 @@ class CheckDependenciesPendingData(BaseModel):
 class AppDslService:
     _warnings: list[DslImportWarning]
 
-    def __init__(self, session: Session):
+    def __init__(
+        self,
+        session: Session,
+        *,
+        drafts: WorkflowDraftService[WorkflowAgentBindingStore],
+        overwrites: AppDslOverwriteStore,
+    ):
         self._session = session
+        self._drafts = drafts
+        self._overwrites = overwrites
         self._warnings = []
 
     def import_app(
@@ -264,17 +280,24 @@ class AppDslService:
                 # Authorize overwrites in a separate read session before storage I/O.
                 # The normal import below reloads and rechecks the target after upload.
                 if app_id:
-                    with Session(self._session.get_bind()) as authorization_session:
-                        target = AppDslService(authorization_session)._load_app_for_overwrite(account, app_id)
-                        if target is None:
-                            raise ValueError("App not found")
-                        self._validate_workflow_overwrite(target, data)
+                    target = self._overwrites.snapshot(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        app_id=app_id,
+                        rbac_allowed=self._check_overwrite_access(account, app_id),
+                    )
+                    if target is None:
+                        raise ValueError("App not found")
+                    self._validate_workflow_overwrite(target.mode, data)
                 package.materialize_icons(data=data, tenant_id=tenant_id, account_id=account.id)
                 agents, self._warnings = package.materialize_agents(tenant_id=tenant_id, account_id=account.id)
                 if agents:
                     data["agent_packages"] = agents
                 content = yaml.safe_dump(data, allow_unicode=True)
 
+            environment = (
+                self._prepare_import_environment(data, account, app_id) if status != ImportStatus.PENDING else None
+            )
             # If app_id is provided, check if it exists
             app = None
             if app_id:
@@ -293,7 +316,7 @@ class AppDslService:
                         error="Only workflow or advanced chat apps can be overwritten",
                     )
 
-                self._validate_workflow_overwrite(app, data)
+                self._validate_workflow_overwrite(AppMode(app.mode), data)
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
@@ -355,10 +378,9 @@ class AppDslService:
                 dependencies=check_dependencies_pending_data,
                 import_app_id=import_app_id,
                 allow_premium_site_settings=allow_premium_site_settings,
+                environment=environment,
             )
 
-            draft_var_srv = WorkflowDraftVariableService(session=self._session)
-            draft_var_srv.delete_app_workflow_variables(app_id=app.id)
             result_status = self._status_with_warnings(status)
             return Import(
                 id=import_id,
@@ -429,6 +451,7 @@ class AppDslService:
                     raise ValueError("Current tenant is not set")
                 allow_premium_site_settings = FeatureService.can_import_premium_site_settings(tenant_id)
 
+            environment = self._prepare_import_environment(data, account, pending_data.app_id)
             app = None
             if pending_data.app_id:
                 app = self._load_app_for_overwrite(account, pending_data.app_id)
@@ -440,7 +463,7 @@ class AppDslService:
                     )
 
             if app is not None:
-                self._validate_workflow_overwrite(app, data)
+                self._validate_workflow_overwrite(AppMode(app.mode), data)
 
             # Create or update app
             app = self._create_or_update_app(
@@ -453,6 +476,7 @@ class AppDslService:
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
+                environment=environment,
             )
 
             # Delete import info from Redis
@@ -514,30 +538,25 @@ class AppDslService:
             CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
         )
 
-    def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
+    def _check_overwrite_access(self, account: Account, app_id: str) -> bool:
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
         if dify_config.RBAC_ENABLED and self._session.in_transaction():
             raise RuntimeError("App overwrite authorization requires a session without an active transaction")
-        rbac_allowed = not dify_config.RBAC_ENABLED or RBACService.CheckAccess.check(
+        return not dify_config.RBAC_ENABLED or RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
             scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
             resource_type=RBACResourceScope.APP,
             resource_id=app_id,
         )
-        app = self._session.scalar(
-            select(App)
-            .where(
-                App.id == app_id,
-                App.tenant_id == account.current_tenant_id,
-                App.status == "normal",
-            )
-            .execution_options(populate_existing=True)
+
+    def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
+        allowed = self._check_overwrite_access(account, app_id)
+        assert account.current_tenant_id is not None
+        return self._overwrites.load(
+            tenant_id=account.current_tenant_id, account_id=account.id, app_id=app_id, rbac_allowed=allowed
         )
-        if app is not None and not rbac_allowed and app.maintainer != account.id:
-            raise NoPermissionError("You do not have permission to overwrite this app")
-        return app
 
     def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
@@ -562,10 +581,10 @@ class AppDslService:
             raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
 
     @staticmethod
-    def _validate_workflow_overwrite(app: App, data: dict[str, Any]) -> None:
+    def _validate_workflow_overwrite(target_mode: AppMode, data: dict[str, Any]) -> None:
         """Apply editor compatibility checks to both YAML and package imports."""
         app_mode = data.get("app", {}).get("mode")
-        if app.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} or app_mode not in {
+        if target_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} or app_mode not in {
             AppMode.WORKFLOW,
             AppMode.ADVANCED_CHAT,
         }:
@@ -573,12 +592,45 @@ class AppDslService:
         # Package uploads cannot run the editor's YAML node checks before import.
         invalid_types = (
             {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
-            if app.mode == AppMode.ADVANCED_CHAT
+            if target_mode == AppMode.ADVANCED_CHAT
             else {BuiltinNodeTypes.ANSWER}
         )
         nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
         if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
             raise ValueError("Workflow contains node types incompatible with the target App")
+
+    def _prepare_import_environment(
+        self, data: dict[str, Any], account: Account, app_id: str | None
+    ) -> PreparedEnvironmentVariables | None:
+        """Prepare secrets before the import starts writing App, Workflow and Agent rows."""
+        if data.get("app", {}).get("mode") not in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+            return None
+        workflow_data = data.get("workflow")
+        if not isinstance(workflow_data, dict):
+            return None
+        tenant_id = account.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        source = None
+        if app_id is not None:
+            target = self._overwrites.snapshot(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                app_id=app_id,
+                rbac_allowed=self._check_overwrite_access(account, app_id),
+            )
+            if target is None:
+                raise ValueError("App not found")
+            self._validate_workflow_overwrite(target.mode, data)
+            source = target.workflow
+        return prepare_environment_variables(
+            tenant_id=tenant_id,
+            source=source,
+            variables=[
+                variable_factory.build_environment_variable_from_mapping(value)
+                for value in workflow_data.get("environment_variables", [])
+            ],
+        )
 
     def _create_or_update_app(
         self,
@@ -594,6 +646,7 @@ class AppDslService:
         dependencies: list[PluginDependency] | None = None,
         import_app_id: str | None = None,
         allow_premium_site_settings: bool = True,
+        environment: PreparedEnvironmentVariables | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -680,22 +733,6 @@ class AppDslService:
                 if not workflow_data or not isinstance(workflow_data, dict):
                     raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-                environment_variables_list = workflow_data.get("environment_variables", [])
-                environment_variables = [
-                    variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-                ]
-                conversation_variables_list = workflow_data.get("conversation_variables", [])
-                conversation_variables = [
-                    variable_factory.build_conversation_variable_from_mapping(obj)
-                    for obj in conversation_variables_list
-                ]
-
-                workflow_service = WorkflowService()
-                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
-                if current_draft_workflow:
-                    unique_hash = current_draft_workflow.unique_hash
-                else:
-                    unique_hash = None
                 graph = workflow_data.get("graph", {})
                 if not isinstance(graph, dict):
                     raise ValueError("Workflow graph must be a mapping")
@@ -717,37 +754,38 @@ class AppDslService:
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
-                graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
-                draft_workflow = workflow_service.sync_draft_workflow(
-                    app_model=app,
-                    graph=graph_for_sync,
-                    features=workflow_data.get("features", {}),
-                    unique_hash=unique_hash,
-                    account=account,
-                    environment_variables=environment_variables,
-                    conversation_variables=conversation_variables,
-                    session=self._session,
-                    commit=not raw_agent_packages,
-                    sync_agent_bindings=not raw_agent_packages,
-                )
-                if raw_agent_packages:
-                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
-                        workflow=draft_workflow,
+                agent_packages = dict(raw_agent_packages)
+                graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if agent_packages else graph
+
+                def materialize(workflow: WorkflowSnapshot) -> DraftImportResult:
+                    imported_graph, warnings, retired = AgentDslService(self._session).import_workflow_packages(
+                        workflow=workflow,
                         portable_graph=graph,
-                        raw_packages=raw_agent_packages,
+                        raw_packages=agent_packages,
                         account=account,
                     )
                     self._warnings.extend(warnings)
-                    WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                        session=self._session,
-                        draft_workflow=draft_workflow,
-                    )
-                    self._session.commit()
-                    WorkflowAgentRetirementService.retire_unowned(
-                        tenant_id=app.tenant_id,
-                        agent_ids=retirement_candidates,
-                        account_id=account.id,
-                    )
+                    return DraftImportResult(imported_graph, retired)
+
+                self._drafts.sync(
+                    RequestContext(str(uuid4()), None, account.id, app.tenant_id),
+                    WorkflowOwner(app.id),
+                    DraftSyncCommand(
+                        graph=graph_for_sync,
+                        features=workflow_data.get("features", {}),
+                        unique_hash=None,
+                        # DSL replaces the entire definition under the write lock.
+                        check_hash=False,
+                        is_collaborative=False,
+                        environment_upserts=None,
+                        environment_deletions=[],
+                        environment_variables=workflow_data.get("environment_variables", []),
+                        conversation_variables=workflow_data.get("conversation_variables", []),
+                        clear_debug_variables=True,
+                    ),
+                    materialize=materialize if raw_agent_packages else None,
+                    environment=environment,
+                )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")

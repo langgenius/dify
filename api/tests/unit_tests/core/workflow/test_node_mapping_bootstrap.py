@@ -101,16 +101,15 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> No
     env["PYTHONSAFEPATH"] = "1"
     script = textwrap.dedent(
         """
-        from core.app.apps import workflow_app_runner
-        from core.workflow import workflow_entry
+        from services.workflow.execution.adapters import graph as workflow_app_runner
+        from services.workflow.execution.adapters import workflow_entry
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-        from core.workflow.node_factory import (
+        from services.workflow.execution.adapters.node_factory import (
             DifyNodeFactory,
             NODE_TYPE_CLASSES_MAPPING,
             resolve_workflow_node_class,
         )
-        from core.workflow.nodes.agent import AgentNode
-        from core.workflow.nodes.agent_v2 import DifyAgentNode
+        from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
         from graphon.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline
@@ -118,7 +117,6 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> No
         _ = workflow_entry, workflow_app_runner, workflow_service, rag_pipeline
 
         expected = (
-            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
             KNOWLEDGE_INDEX_NODE_TYPE,
             BuiltinNodeTypes.DATASOURCE,
         )
@@ -128,6 +126,20 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> No
             resolved = DifyNodeFactory._resolve_node_class(node_type=node_type, node_version="1")
             assert resolved.__module__.startswith("core.workflow.nodes."), resolved.__module__
 
+        # Resolve through the production bootstrap before importing the moved
+        # classes; preloading them here would hide missing registration.
+        agent = DifyNodeFactory._resolve_node_class(node_type=BuiltinNodeTypes.AGENT, node_version="1")
+        webhook = DifyNodeFactory._resolve_node_class(node_type=TRIGGER_WEBHOOK_NODE_TYPE, node_version="1")
+        from services.workflow.execution.adapters.agent_node import AgentNode
+        from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
+        from services.workflow.execution.adapters.trigger_webhook import TriggerWebhookNode
+
+        from services.workflow.execution.adapters.knowledge_retrieval import KnowledgeRetrievalNode
+        assert DifyNodeFactory._resolve_node_class(
+            node_type=BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, node_version="1"
+        ) is KnowledgeRetrievalNode
+        assert agent is AgentNode
+        assert webhook is TriggerWebhookNode
         assert DifyNodeFactory._resolve_node_class(
             node_type=BuiltinNodeTypes.AGENT,
             node_version="2",

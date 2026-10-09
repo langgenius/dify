@@ -6,9 +6,9 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from constants.model_template import default_app_templates
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.agent import WorkflowAgentBindingType
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -26,14 +26,13 @@ from models.agent import (
     AgentSource,
     AgentStatus,
     AgentWorkspaceOwnerType,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, agent_soul_has_model
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.model import App, AppMode, Conversation, IconType, Message
 from models.workflow import Workflow
-from services.agent.agent_soul_state import agent_soul_has_model
+from repositories.agent.creation_repository import WorkflowAgentCreationRepository
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -470,33 +469,15 @@ class AgentRosterService:
         workspace Agent Roster until explicitly saved to roster.
         """
 
-        app_template = dict(default_app_templates[AppMode.AGENT]["app"])
-        app = App(**app_template)
-        app.name = name
-        app.description = description or ""
-        app.mode = AppMode.AGENT
-        normalized_icon_type = self._normalize_app_icon_type(icon_type)
-        app.icon_type = IconType(normalized_icon_type) if normalized_icon_type else IconType.EMOJI
-        app.icon = icon
-        app.icon_background = icon_background
-        app.tenant_id = tenant_id
-        app.enable_site = False
-        app.enable_api = False
-        app.api_rph = 0
-        app.api_rpm = 0
-        app.max_active_requests = None
-        app.created_by = account_id
-        app.maintainer = account_id
-        app.updated_by = account_id
-        self._session.add(app)
-        self._session.flush()
-
-        app_model_config = AppModelConfig(app_id=app.id, created_by=account_id, updated_by=account_id)
-        self._session.add(app_model_config)
-        self._session.flush()
-        app.app_model_config_id = app_model_config.id
-        self._session.flush()
-        return app
+        return WorkflowAgentCreationRepository(self._session).create_hidden_backing_app(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
 
     def _create_agent_app_debug_conversation(self, *, app_id: str, account_id: str) -> str:
         """Create one console debug conversation for an Agent App editor."""
@@ -1536,29 +1517,6 @@ class AgentRosterService:
             )
             or 0
         ) + 1
-
-    def _load_published_active_snapshot_agent_ids(self, *, tenant_id: str, agents: list[Agent]) -> set[str]:
-        predicates = [
-            and_(
-                AgentConfigRevision.agent_id == agent.id,
-                AgentConfigRevision.current_snapshot_id == agent.active_config_snapshot_id,
-                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
-            )
-            for agent in agents
-            if agent.active_config_snapshot_id
-        ]
-        if not predicates:
-            return set()
-
-        agent_ids = self._session.scalars(
-            select(AgentConfigRevision.agent_id)
-            .where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                or_(*predicates),
-            )
-            .distinct()
-        ).all()
-        return set(agent_ids)
 
     def _load_published_references_by_agent_id(
         self, *, tenant_id: str, agent_ids: list[str]

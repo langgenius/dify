@@ -6,24 +6,16 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
+from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import (
-    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
-    DefaultBlockConfigsResponse,
-    WorkflowPaginationResponse,
-    WorkflowPublishResponse,
-    WorkflowResponse,
-    WorkflowResponseSource,
-    WorkflowRestoreResponse,
-)
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.snippets.payloads import (
     PublishWorkflowPayload,
     SnippetDraftNodeRunPayload,
@@ -41,12 +33,23 @@ from controllers.console.wraps import (
     model_validate,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_user,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
+from enums.account import TenantAccountRole
+from extensions.application_services.snippets import build_snippet_service
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
+from fields.workflow_fields import (
+    DefaultBlockConfigsResponse,
+    WorkflowPaginationResponse,
+    WorkflowPublishResponse,
+    WorkflowResponse,
+    WorkflowRestoreResponse,
+)
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -60,13 +63,18 @@ from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
+from machinery.context import RequestContext
 from models import Account
 from models.snippet import CustomizedSnippet
-from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
+from services.workflow.contracts import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    DraftSyncCommand,
+    WorkflowOwner,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +82,7 @@ logger = logging.getLogger(__name__)
 
 
 def _snippet_service() -> SnippetService:
-    return SnippetService(session_factory.get_session_maker())
+    return build_snippet_service(session_factory.get_session_maker())
 
 
 class SnippetWorkflowResponse(WorkflowResponse):
@@ -148,7 +156,7 @@ def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         kwargs["snippet"] = snippet
 
@@ -175,19 +183,12 @@ class SnippetDraftWorkflowApi(Resource):
     def get(self, session: Session, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = _snippet_service()
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = snippet_service.get_draft_workflow_record(snippet=snippet)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        workflow.conversation_variables = []
-        response = SnippetWorkflowResponse.model_validate(
-            WorkflowResponseSource(workflow, session=session), from_attributes=True
-        ).model_dump(mode="json")
-        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=session,
-            draft_workflow=workflow,
-        )
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -199,26 +200,31 @@ class SnippetDraftWorkflowApi(Resource):
         console_ns.models[WorkflowRestoreResponse.__name__],
     )
     @console_ns.response(400, "Hash mismatch")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @get_snippet
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    @model_validate(SnippetDraftSyncPayload)
-    def post(self, req_data: SnippetDraftSyncPayload, current_user: Account, snippet: CustomizedSnippet):
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
+    def post(self, context: RequestContext, snippet_id: str):
         """Sync draft workflow for snippet."""
-
+        req_data = validate_request(SnippetDraftSyncPayload)
         try:
-            snippet_service = _snippet_service()
-            workflow = snippet_service.sync_draft_workflow(
-                snippet=snippet,
-                graph=req_data.graph,
-                unique_hash=req_data.hash,
-                account=current_user,
-                input_fields=req_data.input_fields,
+            workflow = application_services().workflow_drafts.sync(
+                context,
+                WorkflowOwner(str(snippet_id), "snippet"),
+                DraftSyncCommand(
+                    graph=req_data.graph,
+                    features={},
+                    unique_hash=req_data.hash,
+                    is_collaborative=False,
+                    environment_upserts=None,
+                    environment_deletions=[],
+                    environment_variables=[],
+                    conversation_variables=[],
+                    input_fields=req_data.input_fields,
+                ),
             )
+        except WorkflowNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except ValueError as e:
@@ -226,7 +232,7 @@ class SnippetDraftWorkflowApi(Resource):
 
         return {
             "result": "success",
-            "hash": workflow.unique_hash,
+            "hash": workflow.hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 
@@ -272,14 +278,12 @@ class SnippetPublishedWorkflowApi(Resource):
             return None
 
         snippet_service = _snippet_service()
-        workflow = snippet_service.get_published_workflow(snippet=snippet)
+        workflow = snippet_service.get_published_workflow_record(snippet=snippet)
 
         if not workflow:
             return None
 
-        response = SnippetWorkflowResponse.model_validate(
-            WorkflowResponseSource(workflow, session=session), from_attributes=True
-        ).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -291,26 +295,22 @@ class SnippetPublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @with_session
     @get_snippet
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    def post(self, session: Session, current_user: Account, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
         snippet_service = _snippet_service()
 
-        snippet = session.merge(snippet)
         try:
             workflow = snippet_service.publish_workflow(
-                session=session,
                 snippet=snippet,
                 account=current_user,
             )
             workflow_created_at = TimestampField().format(workflow.created_at)
+        except WorkflowHashNotEqualError as e:
+            raise DraftWorkflowNotSync() from e
         except ValueError as e:
-            # This domain validation remains a 400 response, so it cannot escape to
-            # the request-session decorator that normally owns rollback-on-error.
-            session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- translated validation response
             return {"message": str(e)}, 400
 
         return {
@@ -375,7 +375,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
 
         response = SnippetWorkflowPaginationResponse.model_validate(
             {
-                "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                "items": workflows,
                 "page": req_data.page,
                 "limit": req_data.limit,
                 "has_more": has_more,
@@ -395,33 +395,31 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @get_snippet
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    def post(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
+    def post(self, context: RequestContext, snippet_id: str, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
-        snippet_service = _snippet_service()
 
         try:
-            workflow = snippet_service.restore_published_workflow_to_draft(
-                snippet=snippet,
-                workflow_id=workflow_id,
-                account=current_user,
+            workflow = application_services().workflow_drafts.restore(
+                context,
+                WorkflowOwner(str(snippet_id), "snippet"),
+                workflow_id,
             )
+        except WorkflowHashNotEqualError as exc:
+            raise DraftWorkflowNotSync() from exc
         except IsDraftWorkflowError as exc:
-            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+            raise InvalidRequestError(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
-            raise NotFound(str(exc)) from exc
+            raise NotFoundError(str(exc)) from exc
         except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise InvalidRequestError(str(exc)) from exc
 
         return {
             "result": "success",
-            "hash": workflow.unique_hash,
+            "hash": workflow.hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 
@@ -467,11 +465,9 @@ class SnippetWorkflowByIdApi(Resource):
             data=update_data,
         )
         if not workflow:
-            raise NotFound("Workflow not found")
+            raise NotFoundError("Workflow not found")
 
-        response = SnippetWorkflowResponse.model_validate(
-            WorkflowResponseSource(workflow, session=session), from_attributes=True
-        ).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -481,29 +477,20 @@ class SnippetWorkflowByIdApi(Resource):
     @console_ns.response(204, "Workflow deleted successfully")
     @console_ns.response(400, "Workflow is in use")
     @console_ns.response(404, "Workflow not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_snippet
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    def delete(self, snippet: CustomizedSnippet, workflow_id: str):
-        """Delete a published snippet workflow version."""
-        snippet_service = _snippet_service()
-        with session_factory.get_session_maker().begin() as session:
-            try:
-                snippet_service.delete_workflow(
-                    session=session,
-                    snippet=snippet,
-                    workflow_id=workflow_id,
-                )
-            except WorkflowInUseError as e:
-                raise BadRequest(str(e))
-            except DraftWorkflowDeletionError as e:
-                raise BadRequest(str(e))
-            except ValueError as e:
-                raise NotFound(str(e))
-
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
+    def delete(self, context: RequestContext, snippet_id: str, workflow_id: str):
+        """Delete a version and retire its unowned Agents through the shared use case."""
+        try:
+            application_services().console_workflows.delete(
+                context, WorkflowOwner(str(snippet_id), "snippet"), str(workflow_id)
+            )
+        except (WorkflowInUseError, DraftWorkflowDeletionError) as error:
+            raise InvalidRequestError(str(error)) from error
+        except WorkflowNotFoundError as error:
+            raise NotFoundError(str(error)) from error
         return None, 204
 
 
@@ -564,7 +551,7 @@ class SnippetWorkflowRunDetailApi(Resource):
         workflow_run = snippet_service.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
 
         if not workflow_run:
-            raise NotFound("Workflow run not found")
+            raise NotFoundError("Workflow run not found")
 
         return WorkflowRunDetailResponse.model_validate(
             workflow_run_response_source(workflow_run, session=session), from_attributes=True
@@ -589,8 +576,7 @@ class SnippetWorkflowRunNodeExecutionsApi(Resource):
 
         snippet_service = _snippet_service()
         node_executions = snippet_service.get_snippet_workflow_run_node_executions(
-            snippet=snippet,
-            run_id=run_id,
+            snippet=snippet, run_id=run_id, tool_providers=application_services().tools.tool_providers
         )
 
         return WorkflowRunNodeExecutionListResponse.model_validate(
@@ -635,23 +621,25 @@ class SnippetDraftNodeRunApi(Resource):
         snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
-            raise NotFound("Draft workflow not found")
+            raise NotFoundError("Draft workflow not found")
 
         files = SnippetGenerateService.parse_files(draft_workflow, req_data.files)
 
-        workflow_node_execution = SnippetGenerateService.run_draft_node(
+        workflow_node_execution = application_services().snippet_generation.run_draft_node(
             snippet=snippet,
             node_id=node_id,
             user_inputs=user_inputs,
             account=current_user,
             query=req_data.query,
             files=files,
-            session_maker=session_factory.get_session_maker(),
         )
 
         with session_factory.create_session() as session:
             return WorkflowRunNodeExecutionResponse.model_validate(
-                node_execution_response_source(workflow_node_execution, session=session), from_attributes=True
+                node_execution_response_source(
+                    workflow_node_execution, session=session, tool_providers=application_services().tools.tool_providers
+                ),
+                from_attributes=True,
             ).model_dump(mode="json")
 
 
@@ -678,7 +666,7 @@ class SnippetDraftNodeLastRunApi(Resource):
         snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
-            raise NotFound("Draft workflow not found")
+            raise NotFoundError("Draft workflow not found")
 
         node_exec = snippet_service.get_snippet_node_last_run(
             snippet=snippet,
@@ -686,11 +674,14 @@ class SnippetDraftNodeLastRunApi(Resource):
             node_id=node_id,
         )
         if node_exec is None:
-            raise NotFound("Node last run not found")
+            raise NotFoundError("Node last run not found")
 
         with session_factory.create_session() as session:
             return WorkflowRunNodeExecutionResponse.model_validate(
-                node_execution_response_source(node_exec, session=session), from_attributes=True
+                node_execution_response_source(
+                    node_exec, session=session, tool_providers=application_services().tools.tool_providers
+                ),
+                from_attributes=True,
             ).model_dump(mode="json")
 
 
@@ -729,13 +720,12 @@ class SnippetDraftRunIterationNodeApi(Resource):
         args = req_data.model_dump(exclude_none=True)
 
         try:
-            response = SnippetGenerateService.generate_single_iteration(
+            response = application_services().snippet_generation.generate_single_iteration(
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
                 args=args,
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -780,13 +770,12 @@ class SnippetDraftRunLoopNodeApi(Resource):
         """
 
         try:
-            response = SnippetGenerateService.generate_single_loop(
+            response = application_services().snippet_generation.generate_single_loop(
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
-                args=req_data,
+                args=req_data.model_dump(),
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -824,13 +813,12 @@ class SnippetDraftWorkflowRunApi(Resource):
         args = req_data.model_dump(exclude_none=True)
 
         try:
-            response = SnippetGenerateService.generate(
+            response = application_services().snippet_generation.generate(
                 snippet=snippet,
                 user=current_user,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)

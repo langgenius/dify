@@ -19,7 +19,6 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
 
 import services.annotation_service as annotation_service_module
 from enums import DeploymentEdition
@@ -36,6 +35,7 @@ from models.model import (
     Message,
     MessageAnnotation,
 )
+from services.annotation.errors import AnnotationResourceNotFoundError
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
 from tests.unit_tests.config_override import config_overrides_context
@@ -221,7 +221,7 @@ class TestAppAnnotationServiceUpsert:
     def test_rejects_missing_or_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         _persist_app(sqlite_session, app_id="other-app", tenant_id=OTHER_TENANT_ID)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.up_insert_app_annotation_from_message(
                 {"answer": "hello", "question": "q"}, "other-app", sqlite_session
             )
@@ -239,7 +239,7 @@ class TestAppAnnotationServiceUpsert:
         other_app = _persist_app(sqlite_session, app_id="app-2")
         message = _persist_message(sqlite_session, other_app)
 
-        with pytest.raises(NotFound, match="Message"):
+        with pytest.raises(AnnotationResourceNotFoundError, match="Message"):
             AppAnnotationService.up_insert_app_annotation_from_message(
                 {"answer": "hello", "message_id": message.id}, app.id, sqlite_session
             )
@@ -374,7 +374,7 @@ class TestAppAnnotationServiceListAndExport:
     def test_list_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "", sqlite_session)
 
     def test_list_filters_orders_and_paginates(self, sqlite_session: Session, current_user: Account) -> None:
@@ -433,7 +433,7 @@ class TestAppAnnotationServiceDirectManipulation:
         self, sqlite_session: Session, current_user: Account
     ) -> None:
         other_app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.insert_app_annotation_directly(
                 {"answer": "hello", "question": "q"}, other_app.id, sqlite_session
             )
@@ -471,7 +471,7 @@ class TestAppAnnotationServiceDirectManipulation:
         other_app = _persist_app(sqlite_session, app_id="app-2")
         annotation = _persist_annotation(sqlite_session, other_app)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.update_app_annotation_directly(
                 {"answer": "a", "question": "q"}, _annotation_ref(app, annotation.id), sqlite_session
             )
@@ -512,7 +512,7 @@ class TestAppAnnotationServiceDirectManipulation:
         other_app = _persist_app(sqlite_session, app_id="app-2")
         annotation = _persist_annotation(sqlite_session, other_app)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.delete_app_annotation(_annotation_ref(app, annotation.id), sqlite_session)
 
         assert sqlite_session.get(MessageAnnotation, annotation.id) is not None
@@ -609,7 +609,7 @@ class TestAppAnnotationServiceBatchImport:
     def test_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.batch_import_app_annotations(app.id, _file(b"question,answer\nq,a\n"), sqlite_session)
 
     @pytest.mark.parametrize(
@@ -775,7 +775,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         other_app = _persist_app(sqlite_session, app_id="app-2")
         other_annotation = _persist_annotation(sqlite_session, other_app)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.get_annotation_hit_histories(
                 _annotation_ref(app, other_annotation.id), 1, 10, sqlite_session
             )
@@ -797,49 +797,10 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         assert total == 2
         assert [item.id for item in items] == [old.id]
 
-    def test_get_annotation_by_id_uses_real_identity_lookup(
-        self, sqlite_session: Session, current_user: Account
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        annotation = _persist_annotation(sqlite_session, app)
-
-        assert AppAnnotationService.get_annotation_by_id("missing", sqlite_session) is None
-        assert AppAnnotationService.get_annotation_by_id(annotation.id, sqlite_session) is annotation
-
-    def test_add_history_increments_count_and_flushes_row(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        annotation = _persist_annotation(sqlite_session, app)
-
-        AppAnnotationService.add_annotation_history(
-            annotation_id=annotation.id,
-            app_id=app.id,
-            annotation_question="q",
-            annotation_content="a",
-            query="user q",
-            user_id=current_user.id,
-            message_id="msg-1",
-            from_source="chat",
-            score=0.8,
-            session=sqlite_session,
-        )
-
-        sqlite_session.refresh(annotation)
-        assert annotation.hit_count == 1
-        history = sqlite_session.scalar(
-            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation.id)
-        )
-        assert history is not None
-        assert (history.question, history.annotation_question, history.annotation_content, history.score) == (
-            "user q",
-            "q",
-            "a",
-            0.8,
-        )
-
     def test_get_setting_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
 
     def test_get_setting_returns_disabled_without_row(self, sqlite_session: Session, current_user: Account) -> None:
@@ -884,7 +845,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         other_app = _persist_app(sqlite_session, app_id="app-2")
         other_setting = _persist_setting(sqlite_session, other_app)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.update_app_annotation_setting(
                 app.id, other_setting.id, {"score_threshold": 0.8}, sqlite_session
             )
@@ -960,7 +921,7 @@ class TestAppAnnotationServiceClearAll:
     def test_clear_all_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-        with pytest.raises(NotFound):
+        with pytest.raises(AnnotationResourceNotFoundError):
             AppAnnotationService.clear_all_annotations(app.id, sqlite_session)
 
         assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == 0

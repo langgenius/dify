@@ -17,10 +17,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
     from extensions.ext_application_services import ApplicationServices
+    from services.workflow.variable_contracts import WorkflowExecutionVariables
     from tests.unit_tests.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 # Getting the absolute path of the project's root directory
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
@@ -65,7 +67,6 @@ if TYPE_CHECKING:
     from services.tools.workflow_tools_manage_service import WorkflowToolManageService
     from services.workflow.console_variable_service import ConsoleWorkflowVariableService
     from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
-    from services.workflow.variable_service import WorkflowVariableService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -350,7 +351,11 @@ def account_application_services(
 
 
 @pytest.fixture
-def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+def app_services(
+    sqlite_session_factory: sessionmaker[Session],
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> AppServices:
     from unittest.mock import Mock
 
     from extensions.application_services.app import build_app_services
@@ -362,6 +367,8 @@ def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
         database_client=sqlite_session_factory,
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+        tool_providers=tool_providers,
+        workflow_queries=workflow_queries,
     )
 
 
@@ -395,7 +402,7 @@ def workflow_tools(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToo
 
 
 @pytest.fixture
-def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowVariableService:
+def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionVariables:
     from extensions.application_services.workflow_variables import build_workflow_variable_service
 
     return build_workflow_variable_service(database_client=sqlite_session_factory)

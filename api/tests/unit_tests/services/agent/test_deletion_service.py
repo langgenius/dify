@@ -9,6 +9,7 @@ from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.dml import Delete
 
+from enums.agent import WorkflowAgentBindingType
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -27,7 +28,6 @@ from models.agent import (
     AgentWorkspace,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig

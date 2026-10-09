@@ -6,8 +6,8 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.common.fields import TextFileResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -36,6 +36,7 @@ from controllers.console.wraps import (
 )
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency
+from extensions.application_services.snippets import build_snippet_dsl_service, build_snippet_service
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.snippet_fields import (
@@ -50,7 +51,7 @@ from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
 from services.entities.dsl_entities import DslImportWarning
-from services.snippet_dsl_service import ImportStatus, SnippetDslService
+from services.snippet_dsl_service import ImportStatus
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
@@ -77,8 +78,8 @@ class SnippetUseCountResponse(ResponseModel):
 
 def _snippet_service(session: Session | None = None) -> SnippetService:
     if session is not None:
-        return SnippetService(session=session)
-    return SnippetService(session_factory.get_session_maker())
+        return build_snippet_service(session=session)
+    return build_snippet_service(session_factory.get_session_maker())
 
 
 def _snippet_list_query_from_request() -> SnippetListQuery:
@@ -180,9 +181,6 @@ class CustomizedSnippetsApi(Resource):
             snippet_type = SnippetType.NODE
 
         try:
-            if req_data.graph is not None:
-                SnippetService.validate_snippet_graph_forbidden_nodes(req_data.graph)
-
             snippet_service = _snippet_service(session)
             snippet = snippet_service.create_snippet(
                 tenant_id=current_tenant_id,
@@ -191,6 +189,7 @@ class CustomizedSnippetsApi(Resource):
                 snippet_type=snippet_type,
                 icon_info=req_data.icon_info.model_dump() if req_data.icon_info else None,
                 input_fields=[f.model_dump() for f in req_data.input_fields] if req_data.input_fields else None,
+                graph=req_data.graph,
                 account=current_user,
             )
         except ValueError as e:
@@ -218,7 +217,7 @@ class CustomizedSnippetDetailApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
@@ -252,7 +251,7 @@ class CustomizedSnippetDetailApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         update_data = req_data.model_dump(exclude_unset=True)
 
@@ -275,8 +274,8 @@ class CustomizedSnippetDetailApi(Resource):
             # Raise rather than return: `with_session` commits on a normal return, so returning here
             # would persist whatever the update wrote before it rejected the payload. Raising routes
             # through the decorator's rollback. Status stays 400 and `message` is unchanged; the body
-            # picks up the standard error envelope, as on every other BadRequest in the console API.
-            raise BadRequest(str(e)) from e
+            # picks up the standard error envelope, as on every other InvalidRequestError in the console API.
+            raise InvalidRequestError(str(e)) from e
 
         return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
@@ -300,7 +299,7 @@ class CustomizedSnippetDetailApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         SnippetService.delete_snippet(
             session=session,
@@ -335,12 +334,12 @@ class CustomizedSnippetExportApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         # Get include_secret parameter
         query = SnippetExportQuery.model_validate(request.args.to_dict())
 
-        export_service = SnippetDslService(session)
+        export_service = build_snippet_dsl_service(session)
         try:
             result = export_service.export_snippet_dsl(
                 snippet=snippet,
@@ -348,7 +347,7 @@ class CustomizedSnippetExportApi(Resource):
                 workflow_id=query.workflow_id,
             )
         except ValueError as exc:
-            raise NotFound(str(exc)) from exc
+            raise NotFoundError(str(exc)) from exc
 
         # Set filename with .snippet extension
         filename = f"{snippet.name}.snippet"
@@ -382,7 +381,7 @@ class CustomizedSnippetImportApi(Resource):
     @model_validate(SnippetImportPayload)
     def post(self, req_data: SnippetImportPayload, session: Session, current_user: Account):
         """Import snippet from DSL."""
-        import_service = SnippetDslService(session)
+        import_service = build_snippet_dsl_service(session)
         result = import_service.import_snippet(
             account=current_user,
             import_mode=req_data.mode,
@@ -418,7 +417,7 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @with_session
     def post(self, session: Session, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        import_service = SnippetDslService(session)
+        import_service = build_snippet_dsl_service(session)
         result = import_service.confirm_import(import_id=import_id, account=current_user)
 
         if result.status == ImportStatus.FAILED:
@@ -453,9 +452,9 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
-        import_service = SnippetDslService(session)
+        import_service = build_snippet_dsl_service(session)
         result = import_service.check_dependencies(snippet=snippet)
 
         return result.model_dump(mode="json"), 200
@@ -483,7 +482,7 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
         )
 
         if not snippet:
-            raise NotFound("Snippet not found")
+            raise NotFoundError("Snippet not found")
 
         SnippetService.increment_use_count(session=session, snippet=snippet)
         session.flush()

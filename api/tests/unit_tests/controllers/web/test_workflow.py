@@ -118,3 +118,6 @@ class TestWorkflowTaskStopApi:
         assert result == {"result": "success"}
         mock_legacy.assert_called_once_with("task-1")
         mock_graph.assert_called_once_with("task-1")
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

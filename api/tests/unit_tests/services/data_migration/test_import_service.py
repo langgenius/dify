@@ -1,8 +1,6 @@
-from contextlib import nullcontext
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 import yaml
@@ -26,23 +24,31 @@ from services.data_migration.entities import (
     ResourceReportItem,
     ResourceType,
 )
-from services.data_migration.import_service import ImportRequest, ImportTargetResolver, MigrationImportService
+from services.data_migration.import_service import (
+    ImportRequest,
+    ImportTargetResolver,
+    MigrationImportService,
+    WorkflowPublisher,
+)
 from services.entities.dsl_entities import ImportStatus
 from tests.unit_tests.config_override import apply_config_overrides
 
 
 @dataclass(frozen=True)
 class Database:
-    """Typed database binding used by import code that still reads ``db.engine``."""
+    """Explicit SQLite binding shared by migration tests."""
 
     engine: Engine
     session: Session
 
 
+def _workflow_publisher() -> WorkflowPublisher:
+    return create_autospec(WorkflowPublisher, instance=True, spec_set=True)
+
+
 @pytest.fixture
-def database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Database:
+def database(sqlite_session: Session) -> Database:
     database = Database(engine=cast(Engine, sqlite_session.get_bind()), session=sqlite_session)
-    monkeypatch.setattr(import_service, "db", database)
     return database
 
 
@@ -236,7 +242,7 @@ def test_package_target_tenant_id_ignores_invalid_uuid(database: Database):
     assert database.session.query(Tenant).count() == 0
 
 
-def test_options_override_replaces_package_defaults(database: Database):
+def test_options_override_replaces_package_defaults(database: Database, *, workflow_tools):
     package = MigrationPackage.from_mapping(
         {
             "metadata": {
@@ -275,7 +281,12 @@ def test_options_override_replaces_package_defaults(database: Database):
 
     override = ImportOptions(create_app_api_token_on_import=False, conflict_strategy=ConflictStrategy.SKIP)
 
-    CapturingImportService(target_resolver=StubResolver()).import_package(
+    CapturingImportService(
+        app_dsl=Mock(),
+        workflows=_workflow_publisher(),
+        target_resolver=StubResolver(),
+        workflow_tools=workflow_tools,
+    ).import_package(
         ImportRequest(package=package, options_override=override),
         session=database.session,
     )
@@ -283,19 +294,24 @@ def test_options_override_replaces_package_defaults(database: Database):
     assert captured_options == [override]
 
 
-def test_only_preserve_id_strategy_reuses_source_app_id():
-    service = MigrationImportService()
+def test_only_preserve_id_strategy_reuses_source_app_id(*, workflow_tools):
+    service = MigrationImportService(app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools)
 
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.PRESERVE_ID)) is True
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.GENERATE_NEW_ID)) is False
 
 
-def test_find_existing_app_ignores_invalid_uuid(database: Database):
+def test_find_existing_app_ignores_invalid_uuid(database: Database, *, workflow_tools):
     _persist_app(database.session, app_id="app-other", tenant_id="tenant-2")
-    assert MigrationImportService()._find_existing_app("not-a-uuid", "tenant-1", session=database.session) is None
+    assert (
+        MigrationImportService(
+            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        )._find_existing_app("not-a-uuid", "tenant-1", session=database.session)
+        is None
+    )
 
 
-def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(database: Database):
+def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(database: Database, *, workflow_tools):
     provider = _persist_workflow_provider(database.session, provider_id="provider-1", app_id="app-id", name="tool-name")
     statements = []
 
@@ -304,9 +320,9 @@ def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(database: Dat
 
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
-        result = MigrationImportService()._find_existing_workflow_tool(
-            "tenant-1", "not-a-uuid", "tool-name", "app-id", session=database.session
-        )
+        result = MigrationImportService(
+            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        )._find_existing_workflow_tool("tenant-1", "not-a-uuid", "tool-name", "app-id", session=database.session)
     finally:
         event.remove(database.session, "do_orm_execute", capture_statement)
 
@@ -315,7 +331,7 @@ def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(database: Dat
     assert f"{WorkflowToolProvider.__tablename__}.id" not in where_clause
 
 
-def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database):
+def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database, *, workflow_tools):
     provider = _persist_mcp_provider(database.session, provider_id="provider-1")
     statements = []
 
@@ -324,9 +340,9 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database
 
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
-        result = MigrationImportService()._find_existing_mcp_tool(
-            "tenant-1", "my-test-mcp", "my-test-mcp", session=database.session
-        )
+        result = MigrationImportService(
+            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        )._find_existing_mcp_tool("tenant-1", "my-test-mcp", "my-test-mcp", session=database.session)
     finally:
         event.remove(database.session, "do_orm_execute", capture_statement)
 
@@ -337,22 +353,24 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database
 
 
 def test_workflow_app_import_closes_read_transaction_before_dsl_overwrite(
-    monkeypatch: pytest.MonkeyPatch, database: Database
+    monkeypatch: pytest.MonkeyPatch, database: Database, *, workflow_tools
 ):
     class StubAppDslService:
         def __init__(self, session):
+            assert session is database.session
             self.session = session
 
         def import_app(self, **kwargs):
             assert not self.session.in_transaction()
             return Import(id="import-id", status=ImportStatus.COMPLETED, app_id="imported-app-id")
 
-    monkeypatch.setattr(import_service, "AppDslService", StubAppDslService)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     existing_app = _persist_app(database.session, app_id="11111111-1111-4111-8111-111111111111")
     database.session.begin()
 
-    imported_app_id = MigrationImportService()._import_workflow_app(
+    imported_app_id = MigrationImportService(
+        app_dsl=StubAppDslService, workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_workflow_app(
         account=object(),
         workflow_data={"name": "main_chatflow"},
         dsl_content="app:\n  mode: workflow\n",
@@ -365,7 +383,7 @@ def test_workflow_app_import_closes_read_transaction_before_dsl_overwrite(
     assert imported_app_id == "imported-app-id"
 
 
-def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
+def test_rewrite_workflow_dsl_replaces_tool_provider_ids(*, workflow_tools):
     dsl_content = yaml.safe_dump(
         {
             "app": {"mode": "workflow"},
@@ -400,7 +418,9 @@ def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
         }
     )
 
-    rewritten = MigrationImportService()._rewrite_workflow_dsl_provider_ids(
+    rewritten = MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._rewrite_workflow_dsl_provider_ids(
         dsl_content,
         {
             "source-api-provider-id": "target-api-provider-id",
@@ -415,7 +435,7 @@ def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
     )
 
 
-def test_source_api_provider_ids_are_discovered_from_workflow_dsl():
+def test_source_api_provider_ids_are_discovered_from_workflow_dsl(*, workflow_tools):
     package = MigrationPackage.from_mapping(
         {
             "metadata": {"version": "1", "source_scope": "single"},
@@ -444,11 +464,13 @@ def test_source_api_provider_ids_are_discovered_from_workflow_dsl():
         }
     )
 
-    assert MigrationImportService()._source_api_provider_ids_by_name(package) == {"weather": {"source-api-provider-id"}}
+    assert MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._source_api_provider_ids_by_name(package) == {"weather": {"source-api-provider-id"}}
 
 
 def test_workflow_tool_import_publishes_referenced_app_before_create(
-    monkeypatch: pytest.MonkeyPatch, database: Database
+    monkeypatch: pytest.MonkeyPatch, database: Database, *, workflow_tools
 ):
     events = []
     _persist_tenant_account(database.session)
@@ -467,8 +489,10 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
             app_id=kwargs["workflow_app_id"],
         )
 
-    monkeypatch.setattr(import_service.WorkflowToolManageService, "create_workflow_tool", create_workflow_tool)
-    PublishingImportService()._import_workflow_tools(
+    monkeypatch.setattr(workflow_tools, "create_workflow_tool", create_workflow_tool)
+    PublishingImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -486,33 +510,29 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
     assert events == [("published", app_id), ("created", app_id)]
 
 
-def test_ensure_workflow_app_is_published_updates_current_workflow(
-    monkeypatch: pytest.MonkeyPatch,
-    database: Database,
-) -> None:
+def test_ensure_workflow_app_is_published_updates_current_workflow(database: Database, *, workflow_tools) -> None:
     _, account = _persist_tenant_account(database.session)
     app_id = "00000000-0000-0000-0000-000000000001"
     _persist_app(database.session, app_id=app_id)
-    publish = Mock(return_value=SimpleNamespace(id="published-workflow"))
-    monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=SimpleNamespace(publish_workflow=publish)))
-    monkeypatch.setattr(
-        import_service,
-        "sessionmaker",
-        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(database.session)),
-    )
-    MigrationImportService()._ensure_workflow_app_is_published(
+    publisher = create_autospec(WorkflowPublisher, instance=True, spec_set=True)
+    MigrationImportService(
+        app_dsl=Mock(), workflows=publisher, workflow_tools=workflow_tools
+    )._ensure_workflow_app_is_published(
         ImportTarget("tenant-1", "target", "account-1", "owner@example.com"),
         account,
         app_id,
         session=database.session,
     )
-
-    assert database.session.get(App, app_id).workflow_id == "published-workflow"
+    publisher.publish.assert_called_once()
+    context, published_app_id = publisher.publish.call_args.args
+    assert context.account_id == account.id
+    assert context.active_workspace_id == "tenant-1"
+    assert published_app_id == app_id
 
 
 @pytest.mark.parametrize("id_strategy", [IdStrategy.PRESERVE_ID, IdStrategy.GENERATE_NEW_ID])
 def test_workflow_tool_import_id_follows_id_strategy(
-    monkeypatch: pytest.MonkeyPatch, database: Database, id_strategy: IdStrategy
+    monkeypatch: pytest.MonkeyPatch, database: Database, id_strategy: IdStrategy, *, workflow_tools
 ):
     created_kwargs = []
     _persist_tenant_account(database.session)
@@ -536,8 +556,10 @@ def test_workflow_tool_import_id_follows_id_strategy(
             app_id=kwargs["workflow_app_id"],
         )
 
-    monkeypatch.setattr(import_service.WorkflowToolManageService, "create_workflow_tool", create_workflow_tool)
-    StrategyImportService()._import_workflow_tools(
+    monkeypatch.setattr(workflow_tools, "create_workflow_tool", create_workflow_tool)
+    StrategyImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -563,7 +585,7 @@ def test_workflow_tool_import_id_follows_id_strategy(
     ]
 
 
-def test_workflow_tool_skip_records_id_mapping(database: Database):
+def test_workflow_tool_skip_records_id_mapping(database: Database, *, workflow_tools):
     _persist_tenant_account(database.session)
     source_app_id = "00000000-0000-0000-0000-000000000031"
     target_app_id = "00000000-0000-0000-0000-000000000032"
@@ -578,7 +600,9 @@ def test_workflow_tool_skip_records_id_mapping(database: Database):
         def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             return None
 
-    SkipImportService()._import_workflow_tools(
+    SkipImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -600,7 +624,7 @@ def test_workflow_tool_skip_records_id_mapping(database: Database):
 
 @pytest.mark.parametrize("conflict_strategy", [ConflictStrategy.SKIP, ConflictStrategy.UPDATE])
 def test_api_tool_existing_provider_records_id_mapping(
-    monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy
+    monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy, *, workflow_tools
 ):
     target_provider = _persist_api_provider(database.session, provider_id="target-api-provider-id")
     _persist_api_provider(database.session, provider_id="other-tenant-provider-id", tenant_id="tenant-2")
@@ -613,7 +637,9 @@ def test_api_tool_existing_provider_records_id_mapping(
     )
     monkeypatch.setattr(import_service.ApiToolManageService, "update_api_tool_provider", lambda **kwargs: None)
 
-    MigrationImportService()._import_api_tools(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_api_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -644,7 +670,7 @@ def test_api_tool_existing_provider_records_id_mapping(
     )
 
 
-def test_api_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, database: Database):
+def test_api_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, database: Database, *, workflow_tools):
     id_mapping = {}
 
     monkeypatch.setattr(
@@ -656,7 +682,9 @@ def test_api_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
 
     monkeypatch.setattr(import_service.ApiToolManageService, "create_api_tool_provider", create_api_tool_provider)
 
-    MigrationImportService()._import_api_tools(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_api_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -680,7 +708,9 @@ def test_api_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
     assert id_mapping["source-api-provider-id"] == "target-api-provider-id"
 
 
-def test_mcp_tool_import_restores_exported_tool_list(monkeypatch: pytest.MonkeyPatch, database: Database):
+def test_mcp_tool_import_restores_exported_tool_list(
+    monkeypatch: pytest.MonkeyPatch, database: Database, *, workflow_tools
+):
     provider = _persist_mcp_provider(database.session, provider_id="target-provider-id")
     report_items = []
 
@@ -693,7 +723,9 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
-    MigrationImportService()._import_mcp_tools(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -729,7 +761,7 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.parametrize("conflict_strategy", [ConflictStrategy.SKIP, ConflictStrategy.UPDATE])
 def test_mcp_tool_existing_provider_records_id_mapping(
-    monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy
+    monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy, *, workflow_tools
 ):
     provider = _persist_mcp_provider(database.session, provider_id="target-mcp-provider-id")
     _persist_mcp_provider(
@@ -751,7 +783,9 @@ def test_mcp_tool_existing_provider_records_id_mapping(
 
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
-    MigrationImportService()._import_mcp_tools(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -787,7 +821,7 @@ def test_mcp_tool_existing_provider_records_id_mapping(
     ]
 
 
-def test_mcp_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, database: Database):
+def test_mcp_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, database: Database, *, workflow_tools):
     id_mapping = {}
 
     class StubMCPToolManageService:
@@ -805,7 +839,9 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
 
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
-    MigrationImportService()._import_mcp_tools(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -836,7 +872,9 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
 
 
-def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_workflow_context(database: Database):
+def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_workflow_context(
+    database: Database, *, workflow_tools
+):
     report_items = []
     package = MigrationPackage.from_mapping(
         {
@@ -875,7 +913,9 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
         }
     )
 
-    MigrationImportService()._preflight_dependency_only_mcp(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._preflight_dependency_only_mcp(
         package,
         ImportTarget(
             tenant_id="tenant-1",
@@ -899,7 +939,9 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
     ]
 
 
-def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid_id(database: Database):
+def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid_id(
+    database: Database, *, workflow_tools
+):
     provider = _persist_mcp_provider(database.session, provider_id="provider-1", server_identifier="my-test-mcp-server")
     statements = []
 
@@ -908,7 +950,9 @@ def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid
 
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
-        result = MigrationImportService()._find_dependency_only_mcp_provider(
+        result = MigrationImportService(
+            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        )._find_dependency_only_mcp_provider(
             "tenant-1",
             "my-test-mcp-server",
             "my-test-mcp",
@@ -922,7 +966,7 @@ def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid
     assert f"{MCPToolProvider.__tablename__}.id" not in where_clause
 
 
-def test_dependency_only_mcp_preflight_reports_available_target_provider(database: Database):
+def test_dependency_only_mcp_preflight_reports_available_target_provider(database: Database, *, workflow_tools):
     report_items = []
     package = MigrationPackage.from_mapping(
         {
@@ -943,7 +987,9 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(databas
         tenant_id="tenant-2",
     )
 
-    MigrationImportService()._preflight_dependency_only_mcp(
+    MigrationImportService(
+        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )._preflight_dependency_only_mcp(
         package,
         ImportTarget(
             tenant_id="tenant-1",
@@ -966,7 +1012,7 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(databas
     ]
 
 
-def test_import_package_imports_workflow_tool_provider_apps_before_consumers(database: Database):
+def test_import_package_imports_workflow_tool_provider_apps_before_consumers(database: Database, *, workflow_tools):
     events = []
 
     class StubResolver(ImportTargetResolver):
@@ -1041,9 +1087,12 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers(dat
         }
     )
 
-    OrderedImportService(target_resolver=StubResolver()).import_package(
-        ImportRequest(package=package), session=database.session
-    )
+    OrderedImportService(
+        app_dsl=Mock(),
+        workflows=_workflow_publisher(),
+        target_resolver=StubResolver(),
+        workflow_tools=workflow_tools,
+    ).import_package(ImportRequest(package=package), session=database.session)
 
     assert events == [
         ("api_tools", "imported"),

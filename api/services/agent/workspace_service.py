@@ -24,7 +24,6 @@ from core.agent.workspace import (
     WorkspaceOwnerScope,
 )
 from core.db.session_factory import session_factory
-from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.agent import (
     AgentConfigVersionKind,
@@ -209,43 +208,7 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_binding(cls, *, session: Session, tenant_id: str, binding_id: str) -> str | None:
-        binding = session.scalar(
-            select(AgentWorkspaceBinding)
-            .where(
-                AgentWorkspaceBinding.id == binding_id,
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-            .with_for_update()
-        )
-        if binding is None:
-            return None
-        workspace = session.scalar(
-            select(AgentWorkspace)
-            .where(
-                AgentWorkspace.id == binding.workspace_id,
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-            .with_for_update()
-        )
-        now = naive_utc_now()
-        binding.status = AgentWorkingResourceStatus.RETIRED
-        binding.retired_at = now
-        if workspace is not None:
-            other_binding = session.scalar(
-                select(AgentWorkspaceBinding.id).where(
-                    AgentWorkspaceBinding.tenant_id == tenant_id,
-                    AgentWorkspaceBinding.workspace_id == workspace.id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-                    AgentWorkspaceBinding.id != binding.id,
-                )
-            )
-            if other_binding is None:
-                workspace.status = AgentWorkingResourceStatus.RETIRED
-                workspace.active_guard = None
-                workspace.retired_at = now
-        return binding.id
+        return AgentWorkspaceRepository(session=session).retire_binding(tenant_id=tenant_id, binding_id=binding_id)
 
     @classmethod
     def retire_workspace(cls, *, session: Session, tenant_id: str, workspace_id: str) -> str | None:
@@ -255,25 +218,7 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_all_for_app(cls, *, session: Session, tenant_id: str, app_id: str) -> list[str]:
-        """Retire all ACTIVE Workspaces owned by an App in the caller's transaction."""
-
-        workspaces = session.scalars(
-            select(AgentWorkspace).where(
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.app_id == app_id,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        retired: list[str] = []
-        for workspace in workspaces:
-            workspace_id = cls.retire_workspace(
-                session=session,
-                tenant_id=tenant_id,
-                workspace_id=workspace.id,
-            )
-            if workspace_id is not None:
-                retired.append(workspace_id)
-        return retired
+        return AgentWorkspaceRepository(session=session).retire_all_for_app(tenant_id=tenant_id, app_id=app_id)
 
     @classmethod
     def retire_all_for_conversation(
@@ -427,14 +372,13 @@ class AgentWorkspaceService:
         agent_config_version_id: str,
         agent_config_version_kind: AgentConfigVersionKind,
     ) -> None:
-        if (
-            binding.base_home_snapshot_id != base_home_snapshot_id
-            or binding.agent_config_version_id != agent_config_version_id
-            or binding.agent_config_version_kind != agent_config_version_kind
-        ):
-            raise AgentWorkspaceBindingGenerationMismatchError(
-                "ACTIVE Binding belongs to a different Agent config/Home generation"
-            )
+        """Validate a legacy execution caller against the repository-owned generation policy."""
+        AgentWorkspaceRepository.validate_binding_generation(
+            binding,
+            base_home_snapshot_id=base_home_snapshot_id,
+            agent_config_version_id=agent_config_version_id,
+            agent_config_version_kind=agent_config_version_kind,
+        )
 
     @staticmethod
     def _client() -> Client:

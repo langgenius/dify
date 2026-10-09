@@ -7,12 +7,10 @@ from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.encrypt import PluginEncrypter
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
-from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
     RequestInvokeApp,
@@ -40,6 +38,8 @@ from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+from services.plugin.app_invocation import PluginAppBackwardsInvocation
+from services.tools.plugin_invocation import PluginToolBackwardsInvocation
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -240,12 +240,10 @@ class PluginInvokeToolApi(Resource):
             404: "Service not available",
         }
     )
-    @with_session
-    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
-                    session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
                     tool_type=ToolProviderType.value_of(payload.tool_type),
@@ -253,6 +251,8 @@ class PluginInvokeToolApi(Resource):
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
                     credential_id=payload.credential_id,
+                    workflow_runtime=application_services().workflow_runtime,
+                    draft_variable_saver=application_services().workflow_variables.saver_factory,
                 ),
             )
 
@@ -343,6 +343,7 @@ class PluginInvokeAppApi(Resource):
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            runtime=application_services().workflow_runtime,
             session=session,
             app_id=payload.app_id,
             user_id=user_model.id,

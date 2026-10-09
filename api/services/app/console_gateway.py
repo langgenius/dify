@@ -19,10 +19,11 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentIconType
 from models.model import AppMode
+from models.tool_runtime_contracts import WorkflowToolQueries
+from repositories.agent.home_snapshot_repository import AgentHomeSnapshotRepository
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
 from services.agent.errors import AgentNameConflictError
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -65,6 +66,7 @@ from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
+from services.tools.provider_queries import ToolProviders
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
@@ -367,8 +369,15 @@ class AppLifecycleGateway(AppLifecycle):
     the App transaction; notification and resource cleanup run after it closes.
     """
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        tool_providers: ToolProviders,
+        workflow_queries: WorkflowToolQueries,
+    ) -> None:
         self._session_factory = session_factory
+        self._responses = AppResponseGateway(tool_providers=tool_providers, workflow_queries=workflow_queries)
 
     @override
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
@@ -406,8 +415,8 @@ class AppLifecycleGateway(AppLifecycle):
                     session=session, tenant_id=context.active_workspace_id, binding_id=binding_id
                 )
             snapshots = (
-                AgentHomeSnapshotService.retire_all_for_agent(
-                    session=session, tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
+                AgentHomeSnapshotRepository(session).retire_all_for_agent(
+                    tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
                 )
                 if deleted.backing_agent_id is not None
                 else []
@@ -435,11 +444,11 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        AppService.notify_deleted_app(deleted, account_id=context.account_id, sessions=self._session_factory)
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:
         app = replace(
             app, deleted_tools=AppResponseGateway.find_deleted_tools(context.active_workspace_id, app.tool_references)
         )
-        return AppResponseGateway.mask_record(context, app) if mask_credentials else app
+        return self._responses.mask_record(context, app) if mask_credentials else app

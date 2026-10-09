@@ -55,7 +55,8 @@ from repositories.message_file_preview_repository import MessageFilePreviewQuery
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
+from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import audio_provider_gateway, recommended_app_catalog_gateway
@@ -147,7 +148,7 @@ from services.web_authentication_adapters import (
 from services.web_authentication_service import WebAuthenticationService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow.app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
@@ -268,6 +269,12 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.app_api_keys, AppApiKeyService)
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
+    assert services.snippet_generation._variables is services.workflow_variables
+    runtime_contexts = services.snippet_generation._runtime.contexts
+    assert isinstance(runtime_contexts, WorkflowRuntimeContextRepository)
+    assert runtime_contexts._sessions is sqlite_session_factory
+    assert services.knowledge.pipeline_generator._draft_variable_loader == services.workflow_variables.workflow_loader
+    assert services.knowledge.pipeline_generator._draft_variable_saver == services.workflow_variables.saver_factory
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert register_script.call_count == 3
 
@@ -574,7 +581,7 @@ def test_build_application_services_wires_workflow_app_log_boundary(
     )
 
     assert isinstance(services.workflow_app_logs, WorkflowAppLogQueryService)
-    assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogQueryRepository)
+    assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogRepository)
     assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
 
 

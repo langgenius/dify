@@ -31,6 +31,8 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    core.app.apps.advanced_chat.app_runner -> extensions.workflow_warm_shutdown
+    core.app.apps.workflow.app_runner -> extensions.workflow_warm_shutdown
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
@@ -61,7 +63,6 @@ ignore_imports =
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
-    core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
@@ -89,7 +90,6 @@ ignore_imports =
     core.workflow.node_runtime -> services.tools.legacy_builtin_tools_manage_service
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
-    core.workflow.nodes.agent.message_transformer -> services.tools.legacy_builtin_tools_manage_service
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services.tools.legacy_mcp_tools_manage_service
@@ -116,7 +116,6 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
-    services.app_generate_service -> controllers.console.app.workflow
 
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's

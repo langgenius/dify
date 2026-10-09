@@ -8,8 +8,9 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import NotFound as HttpNotFound
 
+from controllers.common.errors import AccessDeniedError, InternalServerError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
@@ -62,6 +63,7 @@ from controllers.console.app.message import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
@@ -321,6 +323,7 @@ def account_id() -> str:
     return "account-1"
 
 
+@pytest.mark.usefixtures("workflow_application")
 def test_agent_app_list_and_create_use_agent_route(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
@@ -600,6 +603,7 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
     assert create_params.agent_role == ""
 
 
+@pytest.mark.usefixtures("workflow_application")
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
@@ -1009,6 +1013,7 @@ def test_agent_api_status_resolves_backing_app(
     resolve_app.assert_called_once_with(unbound_session, tenant_id="tenant-1", agent_id=agent_id)
 
 
+@pytest.mark.usefixtures("workflow_application")
 def test_agent_app_update_allows_empty_role(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -1200,7 +1205,7 @@ def test_agent_version_restore_requires_cloud_paid_plan(
     api = AgentRosterVersionRestoreApi()
 
     if not allowed:
-        with pytest.raises(Forbidden, match="This feature requires a paid plan.") as exc_info:
+        with pytest.raises(AccessDeniedError, match="This feature requires a paid plan.") as exc_info:
             unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
         assert exc_info.value.code == 403
         restore.assert_not_called()
@@ -1415,6 +1420,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
+    monkeypatch.setattr(composer_controller, "application_services", lambda: Mock(workflow_variables=Mock()))
     app_model = _app_detail_obj(id="app-1")
     payload = {
         "variant": ComposerVariant.WORKFLOW.value,
@@ -1597,7 +1603,11 @@ def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
 
 
 def test_agent_composer_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    *,
+    workflow_application: ApplicationServices,
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     captured: dict[str, object] = {}
@@ -1826,7 +1836,11 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
 
 
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
+    workflow_application: ApplicationServices,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    unbound_session: Session,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     captured: dict[str, object] = {}
@@ -1866,6 +1880,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     generate_call = cast(dict[str, object], captured["generate"])
     assert generate_call["app_model"] is app_model
     assert generate_call["streaming"] is True
+    assert generate_call["variables"] is workflow_application.workflow_variables
     args = cast(dict[str, object], generate_call["args"])
     assert args["draft_type"] == "debug_build"
     assert args["response_mode"] == "streaming"
@@ -1928,6 +1943,7 @@ def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> No
     ],
 )
 def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
+    workflow_application: ApplicationServices,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     account_id: str,
@@ -1968,6 +1984,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
     assert captured["app_model"] is app_model
     assert captured["user"] is current_user
     assert captured["streaming"] is True
+    assert captured["variables"] is workflow_application.workflow_variables
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
     assert args["conversation_id"] == "00000000-0000-0000-0000-000000000001"
@@ -1979,7 +1996,11 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
 
 
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
+    workflow_application: ApplicationServices,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    unbound_session: Session,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     current_user = _account(account_id=account_id)
@@ -2017,6 +2038,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
 
     assert result == {"response": {"answer": "ok"}}
     assert captured["streaming"] is True
+    assert captured["variables"] is workflow_application.workflow_variables
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
     assert args["conversation_id"] == "debug-conversation-1"
@@ -2056,7 +2078,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
             **payload_extra,
         }
     ):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError):
             completion_controller._create_chat_message(
                 current_tenant_id="tenant-1",
                 current_user=_account(account_id=account_id),
@@ -2171,7 +2193,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
 @pytest.mark.parametrize(
     ("error", "expected"),
     [
-        (completion_controller.services.errors.conversation.ConversationNotExistsError(), NotFound),
+        (completion_controller.services.errors.conversation.ConversationNotExistsError(), NotFoundError),
         (
             completion_controller.services.errors.conversation.ConversationCompletedError(),
             completion_controller.ConversationCompletedError,
@@ -2195,6 +2217,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
     ],
 )
 def test_agent_chat_helper_maps_generation_errors(
+    workflow_application: ApplicationServices,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     error: Exception,
@@ -2202,12 +2225,15 @@ def test_agent_chat_helper_maps_generation_errors(
     unbound_session: Session,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", mode=AppMode.CHAT)
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", lambda **_: (_ for _ in ()).throw(error))
+    generate = Mock(side_effect=error)
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(
                 current_user=_account(), app_model=app_model, session=unbound_session
             )
+    generate.assert_called_once()
+    assert generate.call_args.kwargs["variables"] is workflow_application.workflow_variables
 
 
 def test_agent_chat_message_routes_resolve_app_from_agent_id(
@@ -2390,7 +2416,7 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(
         lambda **kwargs: (_ for _ in ()).throw(message_controller.ConversationNotExistsError()),
     )
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
-        with pytest.raises(NotFound):
+        with pytest.raises(HttpNotFound):
             message_controller._list_chat_messages(
                 args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
                 session=unbound_session,

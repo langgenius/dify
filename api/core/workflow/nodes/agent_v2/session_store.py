@@ -19,6 +19,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.workflow import WorkflowNodeExecutionModel
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.workspace_service import (
     AgentWorkspaceNotFoundError,
     AgentWorkspaceService,
@@ -223,7 +224,7 @@ class WorkflowAgentWorkspaceStore:
                 if resolved_binding is None or resolved_binding.agent_id != scope.agent_id:
                     raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
                 binding = resolved_binding
-                AgentWorkspaceService.validate_binding_generation(
+                AgentWorkspaceRepository.validate_binding_generation(
                     binding,
                     base_home_snapshot_id=home_snapshot_id,
                     agent_config_version_id=scope.agent_config_snapshot_id,
@@ -336,7 +337,7 @@ class WorkflowAgentWorkspaceStore:
                 agent_id=scope.agent_id,
             )
             if existing_binding is not None:
-                AgentWorkspaceService.validate_binding_generation(
+                AgentWorkspaceRepository.validate_binding_generation(
                     existing_binding,
                     base_home_snapshot_id=home_snapshot_id,
                     agent_config_version_id=scope.agent_config_snapshot_id,

@@ -6,6 +6,7 @@ CLI parsing and session lifecycle without fabricating the SQLAlchemy boundary.
 
 import json
 from pathlib import Path
+from unittest.mock import create_autospec
 
 from click.testing import CliRunner
 from sqlalchemy.engine import Engine
@@ -18,6 +19,7 @@ from commands.data_migration import (
     export_migration_data_template,
     import_migration_data,
 )
+from extensions import ext_application_services
 from services.data_migration.entities import (
     ConflictStrategy,
     ExportResult,
@@ -26,6 +28,7 @@ from services.data_migration.entities import (
     MigrationPackage,
     ReportContext,
 )
+from services.workflow.console_service import ConsoleWorkflowService
 
 
 def test_export_command_requires_input_and_output():
@@ -89,7 +92,9 @@ def test_export_template_command_requires_overwrite_for_existing_output(tmp_path
     assert "already exists" in result.output
 
 
-def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqlite_engine: Engine):
+def test_export_command_uses_cli_owned_session(
+    monkeypatch, tmp_path: Path, sqlite_engine: Engine, workflow_application
+):
     captured: dict[str, object] = {}
     input_file = tmp_path / "export-config.json"
     output_file = tmp_path / "migration-package.json"
@@ -97,6 +102,10 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
     package = MigrationPackage.from_mapping({"metadata": {"version": "1", "source_scope": "single"}})
 
     class FakeMigrationExportService:
+        def __init__(self, *, workflow_tools, tool_providers):
+            assert tool_providers is workflow_application.tools.tool_providers
+            assert workflow_tools is workflow_application.tools.workflows
+
         def export(self, selection, *, session):
             captured["session"] = session
             captured["selection"] = selection
@@ -126,7 +135,9 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
     assert captured["overwrite"] is False
 
 
-def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqlite_engine: Engine):
+def test_import_command_uses_cli_owned_session(
+    monkeypatch, tmp_path: Path, sqlite_engine: Engine, workflow_application
+):
     captured: dict[str, object] = {}
     input_file = tmp_path / "migration-package.json"
     input_file.write_text("{}")
@@ -141,7 +152,20 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
         }
     )
 
+    publisher = create_autospec(ConsoleWorkflowService, instance=True)
+    services = create_autospec(ext_application_services.ApplicationServices, instance=True)
+    services.console_workflows = publisher
+    services.tools = workflow_application.tools
+    monkeypatch.setattr(data_migration, "application_services", lambda: services)
+
     class FakeMigrationImportService:
+        def __init__(self, *, workflows, app_dsl, workflow_tools):
+            assert workflow_tools is services.tools.workflows
+            from extensions.application_services.workflow import build_app_dsl_service
+
+            assert workflows is publisher
+            assert app_dsl is build_app_dsl_service
+
         def import_package(self, request, *, session):
             captured["session"] = session
             captured["request"] = request

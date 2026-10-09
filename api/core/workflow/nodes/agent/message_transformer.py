@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -23,7 +23,6 @@ from graphon.node_events import (
 )
 from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
-from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
 from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
@@ -33,6 +32,14 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 class AgentMessageTransformer:
+    def __init__(
+        self,
+        provider_icons: Callable[
+            [str, str | None], tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]
+        ],
+    ) -> None:
+        self._provider_icons = provider_icons
+
     def transform(
         self,
         *,
@@ -46,8 +53,6 @@ class AgentMessageTransformer:
         node_id: str,
         node_execution_id: str,
     ) -> Generator[NodeEventBase, None, None]:
-        from core.plugin.impl.plugin import PluginInstaller
-
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
             user_id=user_id,
@@ -199,32 +204,7 @@ class AgentMessageTransformer:
                     icon = tool_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
-                        manager = PluginInstaller()
-                        plugins = manager.list_plugins(tenant_id)
-                        try:
-                            current_plugin = next(
-                                plugin
-                                for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
-                            )
-                            icon = current_plugin.declaration.icon
-                        except StopIteration:
-                            pass
-                        icon_dark = None
-                        try:
-                            builtin_tool = next(
-                                provider
-                                for provider in BuiltinToolManageService.list_builtin_tools(
-                                    user_id,
-                                    tenant_id,
-                                )
-                                if provider.name == dict_metadata["provider"]
-                            )
-                            icon = builtin_tool.icon
-                            icon_dark = builtin_tool.icon_dark
-                        except StopIteration:
-                            pass
-
+                        icon, icon_dark = self._provider_icons(dict_metadata["provider"], icon)
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata

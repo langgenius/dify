@@ -1,3 +1,5 @@
+from extensions.application_services.workflow import build_app_dsl_service
+
 """Policy and existing DSL adapters retain their domain-specific behavior."""
 
 from collections.abc import Callable, Generator, Iterator
@@ -366,7 +368,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
     gateway = AppTransferGateway(
         session_factory=factory,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),

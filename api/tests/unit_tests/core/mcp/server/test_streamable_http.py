@@ -50,20 +50,27 @@ class TestHandleMCPRequest:
 
         self.request = types.ClientRequest(root=types.PingRequest())
 
-    def test_handle_ping_request(self):
+    def test_handle_ping_request(self, *, mock_app_generate: Mock):
         """Test handling ping request"""
         # Setup ping request
         self.request.root = types.PingRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
         assert result.id == 123
 
-    def test_handle_initialize_request(self):
+    def test_handle_initialize_request(self, *, mock_app_generate: Mock):
         """Test handling initialize request"""
         # Setup initialize request
         self.request.root = types.InitializeRequest(
@@ -75,32 +82,54 @@ class TestHandleMCPRequest:
         )
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
         assert result.id == 123
 
-    def test_handle_list_tools_request(self):
+    def test_handle_list_tools_request(self, *, mock_app_generate: Mock):
         """Test handling list tools request"""
         # Setup list tools request
         self.request.root = types.ListToolsRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
         assert result.id == 123
 
-    def test_handle_list_tools_request_threads_protocol_version(self):
+    def test_handle_list_tools_request_threads_protocol_version(self, *, mock_app_generate: Mock):
         """The negotiated version reaches handle_list_tools through the dispatcher."""
         self.request.root = types.ListToolsRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            "2025-06-18",
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -108,19 +137,26 @@ class TestHandleMCPRequest:
         assert tool["outputSchema"] == {"type": "object"}
         assert tool["title"] == "test_app"
 
-    def test_handle_list_tools_request_legacy_serialization_unchanged(self):
+    def test_handle_list_tools_request_legacy_serialization_unchanged(self, *, mock_app_generate: Mock):
         """A 2024-11-05 tools/list response serializes without any 2025-06-18 fields."""
         self.request.root = types.ListToolsRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            "2024-11-05",
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         tool = result.result["tools"][0]
         assert set(tool) == {"name", "description", "inputSchema"}
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request(self, mock_app_generate):
         """Test handling call tool request"""
         # Setup call tool request
@@ -135,7 +171,14 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = mock_response
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -145,7 +188,6 @@ class TestHandleMCPRequest:
         # Verify AppGenerateService was called
         mock_app_generate.generate.assert_called_once()
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
         call_request = types.CallToolRequest(
             params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
@@ -161,13 +203,13 @@ class TestHandleMCPRequest:
             self.mcp_server,
             self.end_user,
             123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_REQUEST
         assert result.error.data == {"code": "trigger_workflow_service_mode_unavailable"}
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):
         """The negotiated version reaches handle_call_tool through the dispatcher."""
         call_request = types.CallToolRequest(
@@ -178,13 +220,20 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            "2025-06-18",
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.result["structuredContent"] == {"answer": "test answer"}
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_legacy_serialization_unchanged(self, mock_app_generate):
         """A 2024-11-05 tools/call response serializes without structuredContent."""
         call_request = types.CallToolRequest(
@@ -195,21 +244,36 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            "2024-11-05",
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert "structuredContent" not in result.result
         assert result.result["content"][0]["text"] == "test answer"
 
-    def test_handle_unknown_request_type(self):
+    def test_handle_unknown_request_type(self, *, mock_app_generate: Mock):
         """Test handling unknown request type"""
 
         # A valid request type with no application-side handler.
         self.request.root = types.ListResourcesRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+            generate=mock_app_generate.generate,
         )
 
         assert isinstance(result, types.JSONRPCError)
@@ -217,18 +281,27 @@ class TestHandleMCPRequest:
         assert result.id == 123
         assert result.error.code == types.METHOD_NOT_FOUND
 
-    def test_handle_value_error(self):
+    def test_handle_value_error(self, *, mock_app_generate: Mock):
         """Test handling ValueError"""
         # Setup request that will cause ValueError
         self.request.root = types.CallToolRequest(params=types.CallToolRequestParams(name="test_app", arguments={}))
 
         # Don't provide end_user to cause ValueError
-        result = handle_mcp_request(Mock(), self.app, self.request, self.user_input_form, self.mcp_server, None, 123)
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            None,
+            123,
+            generate=mock_app_generate.generate,
+        )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_PARAMS
 
-    def test_handle_generic_exception(self):
+    def test_handle_generic_exception(self, *, mock_app_generate: Mock):
         """Test handling generic exception"""
         # Setup request that will cause generic exception
         self.request.root = types.PingRequest()
@@ -236,7 +309,14 @@ class TestHandleMCPRequest:
         # Inject the handler failure while preserving normal request dispatch.
         with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
             result = handle_mcp_request(
-                Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+                Mock(),
+                self.app,
+                self.request,
+                self.user_input_form,
+                self.mcp_server,
+                self.end_user,
+                123,
+                generate=mock_app_generate.generate,
             )
 
         assert isinstance(result, types.JSONRPCError)
@@ -323,7 +403,6 @@ class TestIndividualHandlers:
         assert tool.outputSchema is None
         assert tool.title is None
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool(self, mock_app_generate):
         """Test call tool handler"""
         app = App(
@@ -342,7 +421,7 @@ class TestIndividualHandlers:
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        result = handle_call_tool(Mock(), app, request, user_input_form, end_user)
+        result = handle_call_tool(Mock(), app, request, user_input_form, end_user, generate=mock_app_generate.generate)
 
         assert isinstance(result, types.CallToolResult)
         assert len(result.content) == 1
@@ -351,7 +430,6 @@ class TestIndividualHandlers:
         assert hasattr(text_content, "text")
         assert text_content.text == "test answer"
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_structured_output_modern_client(self, mock_app_generate):
         """structuredContent is attached alongside TextContent for >= 2025-06-18."""
         app = App(
@@ -365,12 +443,13 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2025-06-18")
+        result = handle_call_tool(
+            Mock(), app, request, [], EndUser(), "2025-06-18", generate=mock_app_generate.generate
+        )
 
         assert result.structuredContent == {"answer": "test answer"}
         assert result.content[0].text == "test answer"
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_no_structured_output_legacy_client(self, mock_app_generate):
         """structuredContent is omitted for 2024-11-05 clients."""
         app = App(
@@ -384,19 +463,21 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2024-11-05")
+        result = handle_call_tool(
+            Mock(), app, request, [], EndUser(), "2024-11-05", generate=mock_app_generate.generate
+        )
 
         assert result.structuredContent is None
         assert result.content[0].text == "test answer"
 
-    def test_handle_call_tool_no_end_user(self):
+    def test_handle_call_tool_no_end_user(self, *, mock_app_generate: Mock):
         """Test call tool handler without end user"""
         app = App()
         request = types.ClientRequest(root=types.CallToolRequest(params=types.CallToolRequestParams(name="test_app")))
         user_input_form: list[VariableEntity] = []
 
         with pytest.raises(ValueError, match="End user not found"):
-            handle_call_tool(Mock(), app, request, user_input_form, None)
+            handle_call_tool(Mock(), app, request, user_input_form, None, generate=mock_app_generate.generate)
 
 
 class TestUtilityFunctions:
@@ -833,3 +914,8 @@ class TestNegotiateProtocolVersion:
     def test_unsupported_header_returns_none(self):
         """An explicit but unsupported header signals an error (None)."""
         assert negotiate_protocol_version("1999-01-01", False) is None
+
+
+@pytest.fixture
+def mock_app_generate() -> Mock:
+    return Mock()

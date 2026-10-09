@@ -7,10 +7,10 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
 from controllers.common.fields import ChatBlockingResponse, CompletionBlockingResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -35,7 +35,6 @@ from controllers.service_api.schema import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -44,10 +43,12 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
+from services.app.generation.errors import AgentAppNotPublishedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
@@ -63,7 +64,7 @@ def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None
     if app_mode != AppMode.AGENT:
         return response_mode == "streaming"
     if response_mode == "blocking":
-        raise BadRequest("Agent App only supports streaming response mode.")
+        raise InvalidRequestError("Agent App only supports streaming response mode.")
     return True
 
 
@@ -244,6 +245,8 @@ class CompletionApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -255,7 +258,7 @@ class CompletionApi(Resource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -422,6 +425,8 @@ class ChatApi(Resource):
                 )
 
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -433,13 +438,13 @@ class ChatApi(Resource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:
-            raise NotFound(str(ex))
+            raise NotFoundError(str(ex))
         except IsDraftWorkflowError as ex:
-            raise BadRequest(str(ex))
+            raise InvalidRequestError(str(ex))
         except WorkflowIdFormatError as ex:
-            raise BadRequest(str(ex))
+            raise InvalidRequestError(str(ex))
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:

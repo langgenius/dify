@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
-from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
@@ -27,6 +26,8 @@ from models.provider import TenantDefaultModel
 from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.errors import AgentAccessNotReadyError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_service import AgentRosterService
@@ -63,6 +64,7 @@ from services.entities.dsl_entities import (
     ImportStatus,
 )
 from services.model_provider.service import ModelProviderService
+from services.tools.tool_manager import ToolManager
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -473,6 +475,9 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
     monkeypatch: pytest.MonkeyPatch,
     provider_name: str | None,
     expected_model: tuple[str, str, str] | None,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -508,7 +513,9 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
         )
 
     context = RequestContext("request", None, account.id, tenant.id)
-    app = AppLifecycleGateway(session_factory=factory).create(
+    app = AppLifecycleGateway(
+        session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+    ).create(
         context,
         CreateAppParams(name="Agent", mode=AppMode.AGENT.value),
         AppCreationSettings({"enable_site": False, "enable_api": False}, None),
@@ -532,7 +539,12 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
 @pytest.mark.parametrize("failure", [None, "persist", "external"])
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.AGENT])
 def test_lifecycle_runs_after_atomic_creation_and_session_close(
-    sqlite_engine: Engine, failure: str | None, mode: AppMode
+    sqlite_engine: Engine,
+    failure: str | None,
+    mode: AppMode,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -620,7 +632,9 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleProbe(session_factory=factory),
+        lifecycle=LifecycleProbe(
+            tool_providers=tool_providers, session_factory=factory, workflow_queries=workflow_queries
+        ),
     )
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
@@ -653,7 +667,12 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
         event.remove(sqlite_engine, "checkin", checkin)
 
 
-def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: Engine) -> None:
+def test_app_deletion_failure_rolls_back_backing_agent_changes(
+    sqlite_engine: Engine,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
         account = Account(name="Creator", email=f"{uuid4()}@example.com")
@@ -668,7 +687,9 @@ def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: En
             ]
         )
     context = RequestContext("request", None, account.id, tenant.id)
-    gateway = AppLifecycleGateway(session_factory=factory)
+    gateway = AppLifecycleGateway(
+        session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+    )
     app = gateway.create(
         context,
         CreateAppParams(name="Agent", mode="agent"),
@@ -696,7 +717,13 @@ def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: En
 @pytest.mark.parametrize("operation", ["get", "update", "create", "copy"])
 @pytest.mark.parametrize("remote_fails", [False, True])
 def test_detail_tool_enrichment_releases_database_before_plugin_io(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, operation: str, remote_fails: bool
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    remote_fails: bool,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     missing_api = str(uuid4())
@@ -813,7 +840,9 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
         transfers=CopyTransfer(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleGateway(session_factory=factory),
+        lifecycle=LifecycleGateway(
+            tool_providers=tool_providers, session_factory=factory, workflow_queries=workflow_queries
+        ),
     )
     monkeypatch.setattr(ToolManager, "get_hardcoded_provider", hardcoded)
     monkeypatch.setattr(PluginInstaller, "check_tools_existence", check_plugins)
@@ -860,7 +889,14 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 
 @pytest.mark.parametrize("operation", ["rename", "icon", "site"])
 @pytest.mark.parametrize("commit_fails", [False, True])
-def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operation: str, commit_fails: bool) -> None:
+def test_app_mutations_publish_only_after_commit(
+    sqlite_engine: Engine,
+    operation: str,
+    commit_fails: bool,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
     with factory.begin() as session:
@@ -881,7 +917,9 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+        ),
     )
     signals: list[str] = []
     checked_out: set[object] = set()
@@ -946,7 +984,13 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
 
 
 @pytest.mark.parametrize("surface", ["site", "api"])
-def test_unpublished_agent_cannot_enable_access_through_console_service(sqlite_engine: Engine, surface: str) -> None:
+def test_unpublished_agent_cannot_enable_access_through_console_service(
+    sqlite_engine: Engine,
+    surface: str,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
     with factory.begin() as session:
@@ -972,7 +1016,9 @@ def test_unpublished_agent_cannot_enable_access_through_console_service(sqlite_e
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+        ),
     )
     signals: list[object] = []
 

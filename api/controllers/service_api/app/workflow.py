@@ -9,10 +9,10 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from configs import dify_config
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
+from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
 from controllers.common.fields import SimpleResultResponse, WorkflowBlockingResponse
 from controllers.common.schema import (
     query_params_from_model,
@@ -280,7 +280,7 @@ class WorkflowRunDetailApi(Resource):
             run_id=workflow_run_id,
         )
         if not workflow_run:
-            raise NotFound("Workflow run not found.")
+            raise NotFoundError("Workflow run not found.")
         return dump_response(WorkflowRunResponse, workflow_run)
 
 
@@ -362,6 +362,8 @@ class WorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -494,6 +496,8 @@ class WorkflowRunByIdApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                variables=application_services().workflow_variables,
+                runtime=application_services().workflow_runtime,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -507,11 +511,11 @@ class WorkflowRunByIdApi(Resource):
         except TriggerWorkflowServiceModeUnavailableServiceError:
             raise TriggerWorkflowServiceModeUnavailableError()
         except WorkflowNotFoundError as ex:
-            raise NotFound(str(ex))
+            raise NotFoundError(str(ex))
         except IsDraftWorkflowError as ex:
-            raise BadRequest(str(ex))
+            raise InvalidRequestError(str(ex))
         except WorkflowIdFormatError as ex:
-            raise BadRequest(str(ex))
+            raise InvalidRequestError(str(ex))
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

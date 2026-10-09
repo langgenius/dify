@@ -1,15 +1,16 @@
 from collections.abc import Iterator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import uuid4
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
-from sqlalchemy import event, inspect
+from flask import Flask
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
-from sqlalchemy.sql import Executable
+from sqlalchemy.sql import ClauseElement, Executable
 
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from enums.agent import WorkflowAgentBindingType
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
     Agent,
@@ -25,13 +26,142 @@ from models.agent import (
     AgentWorkspace,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
+from models.agent_runtime_contracts import WorkflowAgentBindingError
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from services.agent.workspace_service import AgentWorkspaceService
+
+
+@pytest.fixture
+def binding_resolver(sqlite_session_factory: sessionmaker[Session]) -> WorkflowAgentBindingResolver:
+    return WorkflowAgentBindingResolver(sqlite_session_factory)
+
+
+@pytest.mark.parametrize("explicit_worker", [False, True])
+def test_node_binding_resolution_uses_injected_database_through_nested_factories(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, binding_resolver: WorkflowAgentBindingResolver, explicit_worker: bool
+) -> None:
+    from clients.agent_backend import AgentBackendRunClient
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+    from enums import DeploymentEdition
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import RedisClientWrapper
+    from graphon.runtime import GraphRuntimeState, VariablePool
+    from models.base import TypeBase
+    from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
+    from services.workflow.execution.adapters.node_factory import DifyGraphInitContext, DifyNodeFactory
+
+    # The normal unit-test factory remains bound to its empty database. The
+    # configured application/worker uses a second database with these bindings.
+    engine = create_engine("sqlite://")
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(
+        "clients.agent_backend.factory.create_agent_backend_run_client",
+        Mock(return_value=create_autospec(AgentBackendRunClient, instance=True, spec_set=True)),
+    )
+    try:
+        TypeBase.metadata.create_all(
+            engine, tables=[TypeBase.metadata.tables[model.__tablename__] for model in RESOLVER_MODELS]
+        )
+        ids = _resolve_ids()
+        with sessions.begin() as session:
+            agent = _agent(tenant_id=ids["tenant_id"])
+            session.add(agent)
+            session.flush()
+            snapshot = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+            session.add(snapshot)
+            session.flush()
+            session.add(
+                _binding(
+                    ids=ids,
+                    agent_id=agent.id,
+                    snapshot_id=snapshot.id,
+                    binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+                )
+            )
+        with pytest.raises(WorkflowAgentBindingError, match="not found"):
+            binding_resolver.resolve(**ids)
+
+        services = build_application_services(
+            database_client=sessions,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=create_autospec(RedisClientWrapper, instance=True, spec_set=True),
+        )
+        resolver = WorkflowAgentBindingResolver(sessions) if explicit_worker else services.workflow_agent_bindings
+        monkeypatch.delitem(app.extensions, "application_services", raising=False)
+        context = DifyGraphInitContext(
+            workflow_id=ids["workflow_id"],
+            graph_config={"nodes": [], "edges": []},
+            call_depth=0,
+            run_context=build_dify_run_context(
+                tenant_id=ids["tenant_id"],
+                app_id=ids["app_id"],
+                user_id="account",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+        )
+        with app.app_context():
+            factory = DifyNodeFactory.from_graph_init_context(
+                graph_init_context=context,
+                graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+                agent_binding_resolver=resolver,
+                workflow_runtime=services.workflow_runtime,
+            )
+            nested = factory.with_runtime_state(GraphRuntimeState(variable_pool=VariablePool(), start_at=0))
+            for owner in (factory, nested):
+                node = owner.create_node(
+                    {"id": ids["node_id"], "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}
+                )
+                assert isinstance(node, DifyAgentNode)
+                bundle = node._binding_resolver.resolve(**ids)
+                assert bundle.snapshot.id == snapshot.id
+                assert inspect(bundle.snapshot).detached
+
+            # Single-node debugging must reach the same injected database,
+            # without consulting an installed Flask application container.
+            from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+            from tests.unit_tests.model_factories import make_workflow
+
+            node_config = {
+                "id": ids["node_id"],
+                "data": {"type": "agent", "version": "2", "title": "Agent", "agent_node_kind": "dify_agent"},
+            }
+            workflow = make_workflow(
+                tenant_id=ids["tenant_id"],
+                app_id=ids["app_id"],
+                workflow_id=ids["workflow_id"],
+                graph={"nodes": [node_config], "edges": []},
+            )
+            monkeypatch.setattr(WorkflowEntry, "_run_node_with_layers", Mock())
+            node, _ = WorkflowEntry.single_step_run(
+                workflow=workflow,
+                node_id=ids["node_id"],
+                user_id="account",
+                user_inputs={},
+                variable_pool=VariablePool(),
+                agent_binding_resolver=resolver,
+                workflow_runtime=services.workflow_runtime,
+            )
+            assert isinstance(node, DifyAgentNode)
+            assert node._binding_resolver.resolve(**ids).snapshot.id == snapshot.id
+            with pytest.raises(ValueError, match="injected binding resolver"):
+                WorkflowEntry.single_step_run(
+                    workflow=workflow,
+                    node_id=ids["node_id"],
+                    user_id="account",
+                    user_inputs={},
+                    variable_pool=VariablePool(),
+                    workflow_runtime=services.workflow_runtime,
+                )
+    finally:
+        engine.dispose()
+
 
 RESOLVER_MODELS = (WorkflowAgentNodeBinding, Agent, AgentConfigSnapshot, AgentConfigRevision)
 CHATFLOW_MODELS = (
@@ -82,6 +212,7 @@ def _conversation_participant(
 @pytest.mark.parametrize("sqlite_session", [CHATFLOW_MODELS], indirect=True)
 @pytest.mark.parametrize("binding_type", [WorkflowAgentBindingType.ROSTER_AGENT, WorkflowAgentBindingType.INLINE_AGENT])
 def test_chatflow_keeps_participant_config_and_home_after_agent_update(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     binding_type: WorkflowAgentBindingType,
@@ -105,7 +236,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     sqlite_session.flush()
     participant = _conversation_participant(sqlite_session, ids=ids, binding=binding, snapshot=original)
     sqlite_session.commit()
-    resolver = WorkflowAgentBindingResolver()
+    resolver = binding_resolver
     assert resolver.resolve(**ids).snapshot.id == original.id
 
     published = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
@@ -177,6 +308,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
 @pytest.mark.parametrize("mismatch", ["tenant", "app", "conversation", "node", "agent", "retired"])
 @pytest.mark.parametrize("sqlite_session", [CHATFLOW_MODELS], indirect=True)
 def test_chatflow_pin_is_scoped_to_active_conversation_node_participant(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
     mismatch: str,
 ) -> None:
@@ -212,12 +344,13 @@ def test_chatflow_pin_is_scoped_to_active_conversation_node_participant(
             participant.status = AgentWorkingResourceStatus.RETIRED
     sqlite_session.commit()
 
-    assert WorkflowAgentBindingResolver().resolve(**ids).snapshot.id == current.id
+    assert binding_resolver.resolve(**ids).snapshot.id == current.id
 
 
 @pytest.mark.parametrize("version_kind", [AgentConfigVersionKind.DRAFT, AgentConfigVersionKind.SNAPSHOT])
 @pytest.mark.parametrize("sqlite_session", [CHATFLOW_MODELS], indirect=True)
 def test_chatflow_never_falls_back_from_invalid_pinned_generation(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
     version_kind: AgentConfigVersionKind,
 ) -> None:
@@ -240,7 +373,7 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     sqlite_session.commit()
 
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids)
+        binding_resolver.resolve(**ids)
     expected = (
         "agent_binding_generation_invalid"
         if version_kind == AgentConfigVersionKind.DRAFT
@@ -346,6 +479,7 @@ def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[li
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_returns_detached_binding_bundle(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -363,7 +497,7 @@ def test_binding_resolver_returns_detached_binding_bundle(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    bundle = WorkflowAgentBindingResolver().resolve(**ids)
+    bundle = binding_resolver.resolve(**ids)
 
     assert bundle.binding.id == binding.id
     assert bundle.agent.id == agent.id
@@ -375,6 +509,7 @@ def test_binding_resolver_returns_detached_binding_bundle(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_active_snapshot_for_roster_agent(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -397,7 +532,7 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    bundle = WorkflowAgentBindingResolver().resolve(**ids)
+    bundle = binding_resolver.resolve(**ids)
 
     assert bundle.snapshot.id == active_snapshot.id
 
@@ -411,6 +546,7 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
 )
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
     orm_statements: list[Executable],
     binding_type: WorkflowAgentBindingType,
@@ -437,19 +573,24 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    bundle = WorkflowAgentBindingResolver().resolve(
+    bundle = binding_resolver.resolve(
         **ids,
         binding_id=binding.id,
         snapshot_id=pinned_snapshot.id,
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in orm_statements[0].compile().params.values()
-    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
+    first_statement = orm_statements[0]
+    last_statement = orm_statements[-1]
+    assert isinstance(first_statement, ClauseElement)
+    assert isinstance(last_statement, ClauseElement)
+    assert binding.id in first_statement.compile().params.values()
+    assert pinned_snapshot.id in last_statement.compile().params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_does_not_fallback_from_an_explicit_empty_snapshot(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -473,7 +614,7 @@ def test_binding_resolver_does_not_fallback_from_an_explicit_empty_snapshot(
     sqlite_session.add(binding)
     sqlite_session.commit()
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids, binding_id=binding.id, snapshot_id="")
+        binding_resolver.resolve(**ids, binding_id=binding.id, snapshot_id="")
 
     assert exc_info.value.error_code == "agent_config_snapshot_not_found"
 
@@ -483,11 +624,12 @@ def test_binding_resolver_does_not_fallback_from_an_explicit_empty_snapshot(
     [("binding-1", None), (None, "snapshot-1")],
 )
 def test_binding_resolver_rejects_half_pinned_generation(
+    binding_resolver: WorkflowAgentBindingResolver,
     binding_id: str | None,
     snapshot_id: str | None,
 ) -> None:
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(
+        binding_resolver.resolve(
             **_resolve_ids(),
             binding_id=binding_id,
             snapshot_id=snapshot_id,
@@ -498,6 +640,7 @@ def test_binding_resolver_rejects_half_pinned_generation(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_rejects_unpublished_roster_agent(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -521,7 +664,7 @@ def test_binding_resolver_rejects_unpublished_roster_agent(
     sqlite_session.add(binding)
     sqlite_session.commit()
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids)
+        binding_resolver.resolve(**ids)
 
     assert exc_info.value.error_code == "agent_not_available"
     assert "not been published" in str(exc_info.value)
@@ -529,6 +672,7 @@ def test_binding_resolver_rejects_unpublished_roster_agent(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -565,7 +709,7 @@ def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot
     )
     sqlite_session.commit()
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids)
+        binding_resolver.resolve(**ids)
     assert exc_info.value.error_code == "agent_not_available"
 
     sqlite_session.add(
@@ -579,21 +723,24 @@ def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot
     )
     sqlite_session.commit()
 
-    bundle = WorkflowAgentBindingResolver().resolve(**ids)
+    bundle = binding_resolver.resolve(**ids)
 
     assert bundle.agent.id == agent.id
     assert bundle.snapshot.id == snapshot.id
 
 
-def test_binding_resolver_raises_when_binding_missing() -> None:
+def test_binding_resolver_raises_when_binding_missing(
+    binding_resolver: WorkflowAgentBindingResolver,
+) -> None:
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**_resolve_ids())
+        binding_resolver.resolve(**_resolve_ids())
 
     assert exc_info.value.error_code == "agent_binding_not_found"
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_raises_when_agent_archived(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -609,13 +756,14 @@ def test_binding_resolver_raises_when_agent_archived(
     sqlite_session.add(binding)
     sqlite_session.commit()
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids)
+        binding_resolver.resolve(**ids)
 
     assert exc_info.value.error_code == "agent_not_available"
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_raises_when_snapshot_missing(
+    binding_resolver: WorkflowAgentBindingResolver,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -631,6 +779,6 @@ def test_binding_resolver_raises_when_snapshot_missing(
     sqlite_session.add(binding)
     sqlite_session.commit()
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
-        WorkflowAgentBindingResolver().resolve(**ids)
+        binding_resolver.resolve(**ids)
 
     assert exc_info.value.error_code == "agent_config_snapshot_not_found"

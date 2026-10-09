@@ -8,12 +8,13 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
-from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
+from services.app.generation.runtime import AppGenerationRuntime
+from services.plugin.app_invocation import PluginAppBackwardsInvocation
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
 
@@ -122,7 +123,7 @@ class TestPluginAppBackwardsInvocation:
         self.session_factory = sqlite_session_factory
         self.sqlite_engine = sqlite_engine
         self.end_users = _EndUserProvisioner()
-        mocker.patch("core.plugin.backwards_invocation.app.create_session", side_effect=sqlite_session_factory)
+        mocker.patch("services.plugin.app_invocation.create_session", side_effect=sqlite_session_factory)
 
     def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
         variable = {"type": "text-input", "variable": "foo", "label": "Foo", "required": False}
@@ -133,7 +134,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
         mapper = mocker.patch(
-            "core.plugin.backwards_invocation.app.get_parameters_from_feature_dict",
+            "services.plugin.app_invocation.get_parameters_from_feature_dict",
             return_value={"mapped": True},
         )
 
@@ -148,7 +149,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app_model_config_dict", return_value=model_config_dict)
         mocker.patch(
-            "core.plugin.backwards_invocation.app.get_parameters_from_feature_dict",
+            "services.plugin.app_invocation.get_parameters_from_feature_dict",
             return_value={"mapped": True},
         )
 
@@ -166,7 +167,9 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.COMPLETION, "invoke_completion_app"),
         ],
     )
-    def test_invoke_app_routes_by_mode(self, mocker: MockerFixture, mode, route_method):
+    def test_invoke_app_routes_by_mode(
+        self, mocker: MockerFixture, mode, route_method, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=mode)
         user = _end_user()
         workflow = _workflow()
@@ -186,12 +189,15 @@ class TestPluginAppBackwardsInvocation:
             files=[],
             session=self.session,
             end_users=self.end_users,
+            runtime=workflow_runtime,
         )
 
         assert result == {"routed": True}
         assert route.call_count == 1
 
-    def test_invoke_app_uses_end_user_when_user_id_missing(self, mocker: MockerFixture):
+    def test_invoke_app_uses_end_user_when_user_id_missing(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=AppMode.WORKFLOW)
         end_user = _end_user()
         workflow = _workflow()
@@ -211,6 +217,7 @@ class TestPluginAppBackwardsInvocation:
             files=[],
             session=self.session,
             end_users=self.end_users,
+            runtime=workflow_runtime,
         )
 
         assert result == {"ok": True}
@@ -218,7 +225,9 @@ class TestPluginAppBackwardsInvocation:
         assert route.call_args.args[1] is workflow
         assert route.call_args.args[2] is end_user
 
-    def test_invoke_app_missing_query_for_chat_raises(self, mocker: MockerFixture):
+    def test_invoke_app_missing_query_for_chat_raises(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=_app(mode=AppMode.CHAT))
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=_end_user())
 
@@ -234,9 +243,10 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
                 session=self.session,
                 end_users=self.end_users,
+                runtime=workflow_runtime,
             )
 
-    def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
+    def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime):
         mocker.patch.object(
             PluginAppBackwardsInvocation,
             "_get_app",
@@ -256,18 +266,27 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
                 session=self.session,
                 end_users=self.end_users,
+                runtime=workflow_runtime,
             )
 
     @pytest.mark.parametrize(
         ("mode", "generator_path"),
         [
-            (AppMode.AGENT_CHAT, "core.plugin.backwards_invocation.app.AgentChatAppGenerator.generate"),
-            (AppMode.CHAT, "core.plugin.backwards_invocation.app.ChatAppGenerator.generate"),
+            (AppMode.AGENT_CHAT, "services.plugin.app_invocation.AgentChatAppGenerator.generate"),
+            (AppMode.CHAT, "services.plugin.app_invocation.ChatAppGenerator.generate"),
         ],
     )
-    def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode, generator_path):
+    def test_invoke_chat_app_agent_and_chat(
+        self, mocker: MockerFixture, mode, generator_path, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=mode)
-        spy = mocker.patch(generator_path, return_value={"result": "ok"})
+        agent_generator = None
+        if mode is AppMode.AGENT_CHAT:
+            agent_generator = mocker.patch("services.plugin.app_invocation.AgentChatAppGenerator")
+            spy = agent_generator.return_value.generate
+            spy.return_value = {"result": "ok"}
+        else:
+            spy = mocker.patch(generator_path, return_value={"result": "ok"})
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
             app=app,
@@ -278,12 +297,17 @@ class TestPluginAppBackwardsInvocation:
             inputs={"k": "v"},
             files=[],
             session=self.session,
+            runtime=workflow_runtime,
         )
 
         assert result == {"result": "ok"}
         assert spy.call_count == 1
+        if agent_generator is not None:
+            assert agent_generator.call_args.kwargs["tool_invoker"] is workflow_runtime.agent_tool_invoker
 
-    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(self, mocker: MockerFixture):
+    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         workflow = _workflow()
         workflow.created_by = "owner-id"
 
@@ -291,11 +315,11 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
 
         mocker.patch(
-            "core.plugin.backwards_invocation.app.db",
+            "services.plugin.app_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.AdvancedChatAppGenerator.generate",
+            "services.plugin.app_invocation.AdvancedChatAppGenerator.generate",
             return_value={"result": "ok"},
         )
         session = self.session
@@ -309,16 +333,19 @@ class TestPluginAppBackwardsInvocation:
             inputs={"k": "v"},
             files=[],
             session=session,
+            runtime=workflow_runtime,
         )
 
         assert result == {"result": "ok"}
         call_kwargs = generator_spy.call_args.kwargs
-        assert call_kwargs["session"] is session
+        assert "session" not in call_kwargs
         pause_state_config = call_kwargs.get("pause_state_config")
         assert isinstance(pause_state_config, PauseStateLayerConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
-    def test_invoke_chat_app_advanced_chat_without_workflow_raises(self, mocker: MockerFixture):
+    def test_invoke_chat_app_advanced_chat_without_workflow_raises(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=AppMode.ADVANCED_CHAT)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
@@ -331,9 +358,10 @@ class TestPluginAppBackwardsInvocation:
                 inputs={},
                 files=[],
                 session=self.session,
+                runtime=workflow_runtime,
             )
 
-    def test_invoke_chat_app_unexpected_mode_raises(self):
+    def test_invoke_chat_app_unexpected_mode_raises(self, *, workflow_runtime: AppGenerationRuntime):
         app = _app(mode=cast(AppMode, "invalid"))
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
@@ -345,20 +373,23 @@ class TestPluginAppBackwardsInvocation:
                 inputs={},
                 files=[],
                 session=self.session,
+                runtime=workflow_runtime,
             )
 
-    def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture):
+    def test_invoke_workflow_app_injects_pause_state_config(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         workflow = _workflow()
         workflow.created_by = "owner-id"
 
         app = _app(mode=AppMode.WORKFLOW)
 
         mocker.patch(
-            "core.plugin.backwards_invocation.app.db",
+            "services.plugin.app_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.WorkflowAppGenerator.generate",
+            "services.plugin.app_invocation.WorkflowAppGenerator.generate",
             return_value={"result": "ok"},
         )
 
@@ -369,6 +400,7 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"k": "v"},
             files=[],
+            runtime=workflow_runtime,
         )
 
         assert result == {"result": "ok"}
@@ -377,7 +409,9 @@ class TestPluginAppBackwardsInvocation:
         assert isinstance(pause_state_config, PauseStateLayerConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
-    def test_invoke_app_workflow_without_workflow_raises(self, mocker: MockerFixture):
+    def test_invoke_app_workflow_without_workflow_raises(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=AppMode.WORKFLOW)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=_end_user())
@@ -394,15 +428,24 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
                 session=self.session,
                 end_users=self.end_users,
+                runtime=workflow_runtime,
             )
 
-    def test_invoke_completion_app(self, mocker: MockerFixture):
-        spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.CompletionAppGenerator.generate", return_value={"ok": 1}
-        )
+    def test_invoke_completion_app(self, workflow_runtime, mocker: MockerFixture, app_records, annotation_replies):
+        spy = mocker.patch("services.plugin.app_invocation.CompletionAppGenerator.generate", return_value={"ok": 1})
         app = _app(mode=AppMode.COMPLETION)
 
-        result = PluginAppBackwardsInvocation.invoke_completion_app(app, _end_user(), False, {"x": 1}, [], self.session)
+        result = PluginAppBackwardsInvocation.invoke_completion_app(
+            app,
+            _end_user(),
+            False,
+            {"x": 1},
+            [],
+            self.session,
+            records=app_records,
+            annotations=annotation_replies,
+            retrieval=workflow_runtime.retrieval,
+        )
 
         assert result == {"ok": 1}
         assert spy.call_count == 1
@@ -523,7 +566,9 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid", app)
 
-    def test_invoke_app_creates_end_user_for_unknown_external_user_id(self, mocker: MockerFixture):
+    def test_invoke_app_creates_end_user_for_unknown_external_user_id(
+        self, mocker: MockerFixture, *, workflow_runtime: AppGenerationRuntime
+    ):
         app = _app(mode=AppMode.WORKFLOW)
         end_user = _end_user(session_id="wecom-sender-1")
         workflow = _workflow()
@@ -544,6 +589,7 @@ class TestPluginAppBackwardsInvocation:
             files=[],
             session=self.session,
             end_users=self.end_users,
+            runtime=workflow_runtime,
         )
 
         assert result == {"ok": True}
@@ -610,7 +656,7 @@ class TestPluginAppBackwardsInvocation:
         self.session.add(app_model_config)
         self.session.commit()
         load_annotation_reply_config = mocker.patch(
-            "core.plugin.backwards_invocation.app.load_annotation_reply_config",
+            "services.plugin.app_invocation.load_annotation_reply_config",
             return_value=annotation_reply,
         )
         app = _app(app_model_config_id="config-1")

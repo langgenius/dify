@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from flask import current_app
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
@@ -17,6 +18,7 @@ from services.installed_app_message_adapters import InstalledAppMessageRuntime, 
 from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
 from services.webapp_access_query_service import WebAppAccessQueryService
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +48,7 @@ def build_installed_app_services(
     webapp_access: WebAppAccessQueryService,
     get_workspace_role: WorkspaceRoleLookup,
     webapp_auth_enabled: bool,
+    variables: WorkflowExecutionVariables,
 ) -> InstalledAppServices:
     installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     access = InstalledAppAccessService(
@@ -64,7 +67,11 @@ def build_installed_app_services(
         ),
         generation=InstalledAppGenerationService(
             usage=installed_apps,
-            runtime=AppGenerateServiceRuntime(session_factory=database_client),
+            runtime=AppGenerateServiceRuntime(
+                session_factory=database_client,
+                variables=variables,
+                runtime=build_workflow_execution_dependencies(database_client),
+            ),
         ),
         conversations=InstalledAppConversationService(
             conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),

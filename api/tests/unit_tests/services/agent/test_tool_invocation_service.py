@@ -5,16 +5,21 @@ from dataclasses import replace
 from unittest.mock import create_autospec, patch
 
 import pytest
+from sqlalchemy import Connection, Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.tools.plugin_tool.tool import PluginTool
 from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models.enums import AppStatus
 from models.model import App, AppMode
@@ -23,6 +28,7 @@ from services.agent.tool_invocation_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
+from services.tools.tool_manager import ToolManager
 from services.workflow.execution.ports import WorkflowRuntime, WorkflowToolInvoker
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
@@ -106,6 +112,69 @@ def _service(
             runtime=runtime,
         ),
     )
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+@pytest.mark.parametrize("fail_during_stream", [False, True])
+def test_app_lookup_releases_connection_before_tool_setup_and_stream_consumption(
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    workflow_runtime: WorkflowRuntime,
+    monkeypatch: pytest.MonkeyPatch,
+    fail_during_stream: bool,
+) -> None:
+    _persist_app(sqlite_session)
+    active: set[Connection] = set()
+    begin, finish = active.add, active.discard
+    event.listen(sqlite_engine, "begin", begin)
+    event.listen(sqlite_engine, "commit", finish)
+    event.listen(sqlite_engine, "rollback", finish)
+    tool = PluginTool(
+        entity=ToolEntity(
+            identity=ToolIdentity(
+                author="author", name="search", provider="provider", label=I18nObject(en_US="Search")
+            ),
+            parameters=[],
+        ),
+        runtime=ToolRuntime(tenant_id=TENANT_ID, invoke_from=InvokeFrom.SERVICE_API, runtime_parameters={}),
+        tenant_id=TENANT_ID,
+        icon="icon.svg",
+        plugin_unique_identifier="plugin-id",
+    )
+    calls = []
+
+    def resolve_runtime(**_kwargs: object) -> Tool:
+        assert not active
+        calls.append("setup")
+        return tool
+
+    class PluginTransport:
+        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage, None, None]:
+            assert not active
+            assert kwargs["tenant_id"] == TENANT_ID
+            assert kwargs["app_id"] == APP_ID
+            calls.append("stream")
+            yield tool.create_text_message("ok")
+            assert not active
+            if fail_during_stream:
+                raise ToolInvokeError("stream interrupted")
+
+    monkeypatch.setattr(ToolManager, "get_agent_tool_runtime", resolve_runtime)
+    monkeypatch.setattr("core.tools.plugin_tool.tool.PluginToolManager", PluginTransport)
+    try:
+        service = _service(sqlite_session, workflow_runtime)
+        if fail_during_stream:
+            with pytest.raises(AgentToolInnerServiceError) as raised:
+                service.invoke(_request())
+            assert raised.value.error_code == "agent_tool_invoke_failed"
+        else:
+            assert service.invoke(_request()).observation == "ok"
+        assert calls == ["setup", "stream"]
+        assert not active
+    finally:
+        event.remove(sqlite_engine, "begin", begin)
+        event.remove(sqlite_engine, "commit", finish)
+        event.remove(sqlite_engine, "rollback", finish)
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)

@@ -292,10 +292,10 @@ class TestFrontendBackendIntegration(unittest.TestCase):
             assert local_time.minute == 30
             assert local_time.second == 0
 
-    def test_schedule_service_integration(self):
-        """Test integration with ScheduleService patterns."""
+    def test_schedule_policy_integration(self):
+        """Test visual scheduling policy output against the scheduler."""
         from core.workflow.nodes.trigger_schedule.entities import VisualConfig
-        from services.trigger.schedule_service import ScheduleService
+        from services.trigger.schedule_policy import visual_to_cron
 
         # Test enhanced syntax through visual config conversion
         visual_configs = [
@@ -315,7 +315,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
 
         for test_case in visual_configs:
             with self.subTest(frequency=test_case["frequency"]):
-                cron_expr = ScheduleService.visual_to_cron(test_case["frequency"], test_case["config"])
+                cron_expr = visual_to_cron(test_case["frequency"], test_case["config"])
                 assert cron_expr == test_case["expected_cron"]
 
                 # Verify the generated cron expression is valid

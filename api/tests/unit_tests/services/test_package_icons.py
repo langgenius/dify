@@ -167,9 +167,9 @@ def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPat
 
 
 def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
-    from models.agent_config_entities import AgentSoulConfig
+    from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
     from models.model import App
-    from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
+    from services.agent.dsl_entities import AgentPackage, make_agent_app_dsl
     from services.agent.roster_package_exporter import RosterAgentPackageExporter
     from services.agent.roster_package_reader import RosterAgentPackageReader
     from services.entities.site_dsl import SiteDsl

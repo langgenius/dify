@@ -6,17 +6,14 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
-from core.db.session_factory import get_session_maker, session_factory
+from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from enums import DeploymentEdition
-from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
-from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.resource_scope import DatasetRef
@@ -119,20 +116,15 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     session.commit()
 
                     if runtime_mode == "rag_pipeline":
+                        from extensions.ext_application_services import application_services
+
                         with session_factory.create_session() as rag_session:
                             rag_pipeline_service = RagPipelineService(rag_session)
                             rag_pipeline_service.retry_error_document(
                                 dataset,
                                 document,
                                 user,
-                                generator=PipelineGenerator(
-                                    documents=SQLAlchemyDocumentRepository(
-                                        session_factory=session_factory.get_session_maker()
-                                    ),
-                                    datasource_providers=build_data_source_credentials(
-                                        database_client=get_session_maker()
-                                    ).providers,
-                                ),
+                                generator=application_services().knowledge.pipeline_generator,
                             )
                     else:
                         indexing_service = build_document_indexing_service(

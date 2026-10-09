@@ -7,13 +7,14 @@ from flask import request
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import (
+    AccessDeniedError,
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
+    NotFoundError,
     TooManyFilesError,
 )
 from controllers.common.fields import WorkflowBlockingResponse
@@ -29,7 +30,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
 from controllers.service_api.wraps import DatasetApiResource
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from extensions.ext_application_services import application_services
@@ -40,6 +40,7 @@ from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
+from services.app.generation.response import convert_to_event_stream
 from services.errors.file import UnsupportedFileTypeError
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -178,7 +179,7 @@ class DatasourcePluginsApi(DatasetApiResource):
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFoundError("Dataset not found.")
 
         query = query_params_from_request(DatasourcePluginsQuery)
 
@@ -229,7 +230,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFoundError("Dataset not found.")
 
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService(db.session())
@@ -243,8 +244,8 @@ class DatasourceNodeRunApi(DatasetApiResource):
         )
         # response-contract:ignore compact_generate_response
         return helper.compact_generate_response(
-            PipelineGenerator.convert_to_event_stream(
-                rag_pipeline_service.run_datasource_workflow_node(
+            convert_to_event_stream(
+                application_services().knowledge.pipeline_execution.run_datasource_workflow_node(
                     pipeline=pipeline,
                     node_id=node_id,
                     user_inputs=datasource_node_run_api_entity.inputs,
@@ -275,7 +276,7 @@ class PipelineRunApi(DatasetApiResource):
                 "`documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON "
                 "object for blocking mode."
             ),
-            403: "`forbidden` : Forbidden.",
+            403: "`forbidden` : AccessDeniedError.",
             404: "`not_found` : Dataset not found.",
             500: "`pipeline_run_error` : Pipeline execution failed.",
         },
@@ -305,19 +306,18 @@ class PipelineRunApi(DatasetApiResource):
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = session.scalar(stmt)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFoundError("Dataset not found.")
 
         payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})
 
         if not isinstance(current_user, Account):
-            raise Forbidden()
+            raise AccessDeniedError()
 
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
                 generator=application_services().knowledge.pipeline_generator,
-                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=payload.model_dump(),

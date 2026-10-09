@@ -4,20 +4,26 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
+from extensions.ext_redis import RedisClientWrapper
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.annotation_reply import AnnotationReplies
 from models.human_input_contracts import HumanInputFormFactory
+from models.model import Message
 from models.tool_runtime_contracts import WorkflowToolQueries
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
-from services.agent.chat.ports import AgentDatasetTools
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.agent_config import AgentAppConfigurations
+from services.app.generation.ports import MessageFileWriter
 from services.human_input.ports import HumanInputFormReader
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.tools.provider_queries import ToolProviders
@@ -32,6 +38,7 @@ from services.workflow.execution.ports import (
     WorkflowExecutionLogs,
     WorkflowToolInvoker,
 )
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 
 class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
@@ -67,6 +74,47 @@ class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
             )
 
 
+class _SessionBoundAgentToolInvoker(AgentToolInvoker):
+    """Own one short-lived Session for each eager Agent tool invocation."""
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self._sessions = sessions
+
+    @override
+    def __call__(
+        self,
+        tool: Tool,
+        tool_parameters: str | dict[str, Any],
+        user_id: str,
+        tenant_id: str,
+        message: Message,
+        invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        *,
+        records: MessageFileWriter,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        with self._sessions() as session:
+            return ToolEngine.agent_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=tool_parameters,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                message=message,
+                invoke_from=invoke_from,
+                agent_tool_callback=agent_tool_callback,
+                trace_manager=trace_manager,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+                records=records,
+            )
+
+
 @dataclass(frozen=True)
 class WorkflowExecutionDependencies:
     history: ConversationHistory
@@ -77,6 +125,7 @@ class WorkflowExecutionDependencies:
     tools: WorkflowToolQueries
     tool_providers: ToolProviders
     tool_invoker: WorkflowToolInvoker
+    agent_tool_invoker: AgentToolInvoker
     agent_bindings: WorkflowAgentRuntimeBindings
     chat_records: ChatflowRecords
     annotation_replies: AnnotationReplies
@@ -137,6 +186,7 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
         tools=WorkflowToolRepository(database_client),
         tool_providers=ToolProviderRepository(database_client),
         tool_invoker=_SessionBoundWorkflowToolInvoker(database_client),
+        agent_tool_invoker=_SessionBoundAgentToolInvoker(database_client),
         agent_bindings=WorkflowAgentBindingResolver(database_client),
         chat_records=records,
         annotation_replies=build_annotation_replies(database_client),
@@ -152,6 +202,149 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository, session_factory=database_client
         ),
     )
+
+
+if TYPE_CHECKING:
+    from services.agent.workflow_contracts import WorkflowAgentBindingStore
+    from services.app_dsl_service import AppDslService
+    from services.workflow.console_service import ConsoleWorkflowService
+    from services.workflow.definition_gateway import (
+        WorkflowDefinitionGateway,
+        WorkflowDefinitionReader,
+        WorkflowDraftReader,
+    )
+    from services.workflow.draft_service import DraftDefinitions, DraftLifecycle, WorkflowDraftService
+    from services.workflow_service import WorkflowService
+
+
+def build_console_workflow_service(
+    *, database_client: sessionmaker[Session], redis: RedisClientWrapper, variables: WorkflowExecutionVariables
+) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
+    from core.app.file_access import DatabaseFileAccessController
+    from core.helper.encrypter import decrypt_token
+    from graphon.graph_engine.manager import GraphEngineManager
+    from repositories.app.console_repository import ConsoleAppRepository
+    from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
+    from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
+    from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+    from repositories.workflow.draft_repository import WorkflowDraftRepository
+    from repositories.workflow.node_execution_repository import WorkflowNodeExecutionRepository
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+    from services.app.console_gateway import EnterpriseConsoleAppAccess
+    from services.app_generate_service import AppGenerateService
+    from services.app_service import AppService
+    from services.workflow.access_gateway import WorkflowAccessGateway
+    from services.workflow.console_service import ConsoleWorkflowService
+    from services.workflow.conversion_service import WorkflowConversionService
+    from services.workflow.runtime_gateway import WorkflowRuntimeGateway
+    from services.workflow.workflow_converter import WorkflowConverter
+    from services.workflow_service import WorkflowService
+
+    workflows = WorkflowService(
+        session_maker=database_client, runtime=build_workflow_execution_dependencies(database_client)
+    )
+
+    definitions = WorkflowDefinitionRepository(session_factory=database_client)
+    drafts = WorkflowDraftRepository(database_client)
+    lifecycle = build_workflow_definition_gateway(database_client, definitions, workflows, drafts=drafts)
+    apps = ConsoleAppRepository(session_factory=database_client)
+    return ConsoleWorkflowService(
+        conversion=WorkflowConversionService(
+            apps,
+            converter=WorkflowConverter(),
+            decrypt_token=decrypt_token,
+            notify_created=AppService.notify_created_app,
+        ),
+        agent_services=WorkflowAgentPublishService,
+        definitions=definitions,
+        drafts=build_workflow_draft_service(drafts, lifecycle, database_client),
+        lifecycle=lifecycle,
+        runtime=WorkflowRuntimeGateway(
+            runtime=build_workflow_execution_dependencies(database_client),
+            variables=variables,
+            session_factory=database_client,
+            workflows=workflows,
+            definitions=definitions,
+            reservations=WorkflowDebugReservationRepository(database_client),
+            executions=WorkflowNodeExecutionRepository(database_client),
+            generator=AppGenerateService,
+            graph_engine=GraphEngineManager(redis),
+            file_access=DatabaseFileAccessController(),
+        ),
+        apps=apps,
+        presence=WorkflowCollaborationRepository(redis=redis),
+        access=WorkflowAccessGateway(
+            session_factory=database_client, apps=EnterpriseConsoleAppAccess(session_factory=database_client)
+        ),
+    )
+
+
+def build_app_dsl_service(session: Session) -> AppDslService:
+    from repositories.app.dsl_repository import AppDslOverwriteRepository
+    from services.app_dsl_service import AppDslService
+
+    sessions = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    return AppDslService(
+        session,
+        drafts=build_workflow_drafts(sessions, import_session=session),
+        overwrites=AppDslOverwriteRepository(sessions=sessions, import_session=session),
+    )
+
+
+def build_workflow_definition_gateway(
+    database_client: sessionmaker[Session],
+    definitions: WorkflowDefinitionReader,
+    workflows: WorkflowService,
+    *,
+    drafts: WorkflowDraftReader,
+) -> WorkflowDefinitionGateway:
+    from repositories.credentials.query_repository import CredentialQueryRepository
+    from services.agent.workflow_resources_gateway import WorkflowAgentSkillReader
+    from services.skill_management_service import SkillManagementService
+    from services.workflow.definition_gateway import WorkflowDefinitionGateway
+
+    return WorkflowDefinitionGateway(
+        session_factory=database_client,
+        definitions=definitions,
+        drafts=drafts,
+        workflows=workflows,
+        credentials=CredentialQueryRepository(session_factory=database_client),
+        skills=WorkflowAgentSkillReader(SkillManagementService(session_maker=database_client)),
+    )
+
+
+def build_workflow_draft_service(
+    definitions: DraftDefinitions[WorkflowAgentBindingStore], lifecycle: DraftLifecycle, sessions: sessionmaker[Session]
+) -> WorkflowDraftService[WorkflowAgentBindingStore]:
+    from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
+    from services.agent.retirement_service import WorkflowAgentRetirementService
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+    from services.workflow.draft_service import WorkflowDraftService
+
+    return WorkflowDraftService(
+        agent_services=WorkflowAgentPublishService,
+        definitions=definitions,
+        lifecycle=lifecycle,
+        retirement=WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sessions)),
+    )
+
+
+def build_workflow_drafts(
+    database_client: sessionmaker[Session], *, import_session: Session | None = None
+) -> WorkflowDraftService[WorkflowAgentBindingStore]:
+    from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+    from repositories.workflow.draft_repository import WorkflowDraftRepository
+    from services.workflow_service import WorkflowService
+
+    definitions = WorkflowDefinitionRepository(session_factory=database_client, import_session=import_session)
+    drafts = WorkflowDraftRepository(database_client, import_session=import_session)
+    lifecycle = build_workflow_definition_gateway(
+        database_client,
+        definitions,
+        WorkflowService(database_client, runtime=build_workflow_execution_dependencies(database_client)),
+        drafts=drafts,
+    )
+    return build_workflow_draft_service(drafts, lifecycle, database_client)
 
 
 def build_workflow_suggestions(database_client: sessionmaker[Session]):

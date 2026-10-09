@@ -1,22 +1,18 @@
 import json
 import logging
 import mimetypes
-import secrets
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NotRequired, Protocol, TypedDict
 
 import orjson
 from flask import request
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     WebhookBodyParameter,
@@ -25,7 +21,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from enums import QuotaType
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
@@ -34,10 +29,13 @@ from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.workflow_repository import WorkflowTriggerRepository
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
+from services.trigger.errors import WebhookBodyTooLargeError
+from services.trigger.workflow_policy import webhook_node_ids
 from services.workflow.entities import WebhookTriggerData
 from services.workflow_service import WorkflowService
 
@@ -82,9 +80,6 @@ class WebhookEndUserProvisioner(Protocol):
 
 class WebhookService:
     """Service for handling webhook operations."""
-
-    __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
-    MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
 
     @staticmethod
     def _sanitize_key(key: str) -> str:
@@ -291,7 +286,7 @@ class WebhookService:
         """Validate request content length against maximum allowed size."""
         content_length = request.content_length
         if content_length and content_length > dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE:
-            raise RequestEntityTooLarge(
+            raise WebhookBodyTooLargeError(
                 f"Webhook request too large: {content_length} bytes exceeds maximum allowed size "
                 f"of {dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE} bytes"
             )
@@ -901,115 +896,16 @@ class WebhookService:
         return response_data, status_code
 
     @classmethod
-    def sync_webhook_relationships(cls, app: App, workflow: Workflow, *, remove_stale: bool = True):
-        """
-        Sync webhook relationships in DB.
-
-        1. Check if the workflow has any webhook trigger nodes
-        2. Fetch the nodes from DB, see if there were any webhook records already
-        3. Diff the nodes and the webhook records, creating missing records and optionally deleting stale records
-
-        Draft workflow synchronization preserves stale records so undo can restore a
-        webhook node without changing its URL. Published workflow synchronization
-        removes stale records after the deletion becomes effective.
-
-        Approach:
-        Frequent DB operations may cause performance issues, using Redis to cache it instead.
-        If any record exists, cache it.
-
-        Limits:
-        - Maximum 5 webhook nodes per workflow
-        """
-
-        class Cache(BaseModel):
-            """
-            Cache model for webhook nodes
-            """
-
-            record_id: str
-            node_id: str
-            webhook_id: str
-
-        nodes_id_in_graph = [node_id for node_id, _ in workflow.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)]
-
-        # Check webhook node limit
-        if len(nodes_id_in_graph) > cls.MAX_WEBHOOK_NODES_PER_WORKFLOW:
-            raise ValueError(
-                f"Workflow exceeds maximum webhook node limit. "
-                f"Found {len(nodes_id_in_graph)} webhook nodes, maximum allowed is {cls.MAX_WEBHOOK_NODES_PER_WORKFLOW}"
-            )
-
-        not_found_in_cache: list[str] = []
-        for node_id in nodes_id_in_graph:
-            # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
-                not_found_in_cache.append(node_id)
-                continue
-
-        lock_key = f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock"
-        lock = redis_client.lock(lock_key, timeout=10)
-        lock_acquired = False
-
-        try:
-            # acquire the lock with blocking and timeout
-            lock_acquired = lock.acquire(blocking=True, blocking_timeout=10)
-            if not lock_acquired:
-                logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
-                raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
-
-            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                # fetch the non-cached nodes from DB
-                all_records = session.scalars(
-                    select(WorkflowWebhookTrigger).where(
-                        WorkflowWebhookTrigger.app_id == app.id,
-                        WorkflowWebhookTrigger.tenant_id == app.tenant_id,
-                    )
-                ).all()
-
-                nodes_id_in_db = {node.node_id: node for node in all_records}
-
-                # get the nodes not found both in cache and DB
-                nodes_not_found = [node_id for node_id in not_found_in_cache if node_id not in nodes_id_in_db]
-
-                # create new webhook records
-                for node_id in nodes_not_found:
-                    webhook_record = WorkflowWebhookTrigger(
-                        app_id=app.id,
-                        tenant_id=app.tenant_id,
-                        node_id=node_id,
-                        webhook_id=cls.generate_webhook_id(),
-                        created_by=app.created_by,
-                    )
-                    session.add(webhook_record)
-                    session.flush()
-                    cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
-                    redis_client.set(
-                        f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
-                    )
-
-                if remove_stale:
-                    # Delete relationships only when reconciling an effective published workflow.
-                    for node_id in nodes_id_in_db:
-                        if node_id not in nodes_id_in_graph:
-                            session.delete(nodes_id_in_db[node_id])
-                            redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-        except Exception:
-            logger.exception("Failed to sync webhook relationships for app %s", app.id)
-            raise
-        finally:
-            # release the lock only if it was acquired
-            if lock_acquired:
-                try:
-                    lock.release()
-                except Exception:
-                    logger.exception("Failed to release lock for webhook sync, app %s", app.id)
-
-    @classmethod
-    def generate_webhook_id(cls) -> str:
-        """
-        Generate unique 24-character webhook ID
-
-        Deduplication is not needed, DB already has unique constraint on webhook_id.
-        """
-        # Generate 24-character random string
-        return secrets.token_urlsafe(18)[:24]  # token_urlsafe gives base64url, take first 24 chars
+    def sync_webhook_relationships(
+        cls,
+        app: App,
+        workflow: Workflow,
+        *,
+        remove_stale: bool = True,
+        session_factory: sessionmaker[Session] | None = None,
+    ) -> None:
+        """Allocate draft URLs with the same row lock and persistence used by publication."""
+        node_ids = webhook_node_ids(workflow.graph_dict.get("nodes", []))
+        with (session_factory or sessionmaker(db.engine)).begin() as session:
+            WorkflowTriggerRepository.lock_app(session, app)
+            WorkflowTriggerRepository.sync_webhooks(session, app, node_ids, remove_stale=remove_stale)

@@ -101,8 +101,7 @@ def test_mcp_tool_usage_extraction_helpers():
     assert derived.total_tokens == 0
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_session: Session):
+def test_mcp_tool_invoke_handles_content_types_and_structured_output(unbound_session: Session):
     tool = _build_mcp_tool()
     img_data = base64.b64encode(b"img").decode()
     blob_data = base64.b64encode(b"blob").decode()
@@ -128,7 +127,7 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_sess
     )
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"a": 1}))
+        messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"a": 1}))
 
     types = [m.type for m in messages]
     assert ToolInvokeMessage.MessageType.JSON in types
@@ -138,8 +137,7 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_sess
     assert tool.latest_usage.total_tokens == 5
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session: Session):
+def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(unbound_session: Session):
     tool = _build_mcp_tool()
     # Use model_construct to bypass pydantic validation and force unsupported resource path.
     bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
@@ -147,7 +145,7 @@ def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
         with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-            list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+            list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={}))
 
 
 def test_mcp_tool_handle_none_parameter_filters_empty_values():
@@ -284,7 +282,7 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
             _meta=None,
         )
         with patch.object(tool, "_inject_forwarded_identity") as inject:
-            with patch("services.tools.legacy_mcp_tools_manage_service.MCPToolManageService"):
+            with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
                 with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
                     with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
                         # Should not raise; should not call enterprise.

@@ -41,6 +41,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from libs.login import login_required
@@ -81,7 +82,7 @@ register_response_schema_models(
 
 def _service() -> NodeOutputInspectorService:
     """One-line factory so tests can monkeypatch a stub if needed."""
-    return NodeOutputInspectorService()
+    return NodeOutputInspectorService(binding_resolver=application_services().workflow_agent_bindings)
 
 
 def _serve_snapshot(app_model: App, run_id: UUID) -> dict:

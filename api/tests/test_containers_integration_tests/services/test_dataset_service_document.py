@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
@@ -17,7 +16,10 @@ from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from repositories.knowledge.document_repository import next_document_position
 from services.errors.base import NoPermissionError
+from services.errors.dataset import DatasetNotFoundError
+from services.errors.document import DocumentAccessDeniedError, DocumentNotFoundError, DocumentSourceNotFoundError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.resource_scope import DatasetRef
 
@@ -239,7 +241,7 @@ def test_get_upload_file_id_for_upload_file_document_rejects_invalid_source_type
         data_source_info={"url": "https://example.com"},
     )
 
-    with pytest.raises(NotFound, match="invalid source"):
+    with pytest.raises(DocumentSourceNotFoundError, match="invalid source"):
         DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="invalid source",
@@ -257,7 +259,7 @@ def test_get_upload_file_id_for_upload_file_document_rejects_missing_upload_file
         data_source_info={},
     )
 
-    with pytest.raises(NotFound, match="missing file"):
+    with pytest.raises(DocumentSourceNotFoundError, match="missing file"):
         DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="invalid source",
@@ -293,7 +295,7 @@ def test_get_upload_file_for_upload_file_document_raises_when_file_service_retur
     )
 
     with patch("services.knowledge.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
-        with pytest.raises(NotFound, match="Uploaded file not found"):
+        with pytest.raises(DocumentSourceNotFoundError, match="Uploaded file not found"):
             DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
 
 
@@ -320,7 +322,7 @@ def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_doc
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
-    with pytest.raises(NotFound, match="Document not found"):
+    with pytest.raises(DocumentNotFoundError, match="Document not found"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[str(uuid4())],
@@ -345,7 +347,7 @@ def test_get_upload_files_by_document_id_for_zip_download_hides_cross_tenant_doc
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    with pytest.raises(NotFound, match="Document not found"):
+    with pytest.raises(DocumentNotFoundError, match="Document not found"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[document.id],
@@ -364,7 +366,7 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload
         data_source_info={"upload_file_id": str(uuid4())},
     )
 
-    with pytest.raises(NotFound, match="Only uploaded-file documents can be downloaded as ZIP"):
+    with pytest.raises(DocumentSourceNotFoundError, match="Only uploaded-file documents can be downloaded as ZIP"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[document.id],
@@ -416,7 +418,7 @@ def test_prepare_document_batch_download_zip_raises_not_found_for_missing_datase
     current_user_mock, flask_app_with_containers, db_session_with_containers: Session
 ):
     with flask_app_with_containers.app_context():
-        with pytest.raises(NotFound, match="Dataset not found"):
+        with pytest.raises(DatasetNotFoundError, match="Dataset not found"):
             DocumentService.prepare_document_batch_download_zip(
                 dataset_id=str(uuid4()),
                 document_ids=[str(uuid4())],
@@ -440,7 +442,7 @@ def test_prepare_document_batch_download_zip_translates_permission_error_to_forb
         "services.knowledge.dataset_service.DatasetService.check_dataset_permission",
         side_effect=NoPermissionError("denied"),
     ):
-        with pytest.raises(Forbidden, match="denied"):
+        with pytest.raises(DocumentAccessDeniedError, match="denied"):
             DocumentService.prepare_document_batch_download_zip(
                 dataset_id=dataset.id,
                 document_ids=[],
@@ -692,10 +694,10 @@ def test_get_documents_position_returns_next_position_when_documents_exist(db_se
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     DocumentServiceIntegrationFactory.create_document(db_session_with_containers, dataset=dataset, position=3)
 
-    assert DocumentService.get_documents_position(dataset.id, session=db_session_with_containers) == 4
+    assert next_document_position(dataset.id, session=db_session_with_containers) == 4
 
 
 def test_get_documents_position_defaults_to_one_when_dataset_is_empty(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
-    assert DocumentService.get_documents_position(dataset.id, session=db_session_with_containers) == 1
+    assert next_document_position(dataset.id, session=db_session_with_containers) == 1

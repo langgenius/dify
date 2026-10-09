@@ -444,7 +444,7 @@ def test_get_detail_returns_read_only_detached_values_before_mode_and_tool_enric
         )
 
 
-def test_get_detail_resolves_only_configured_api_providers_owned_by_app_tenant(
+def test_get_detail_resolves_only_configured_tool_providers_owned_by_app_tenant(
     sqlite_session_factory: sessionmaker[Session], preview_ref: AppPreviewRef, detail_config: AppModelConfig
 ) -> None:
     owner_provider, viewer_provider, unconfigured_provider = [

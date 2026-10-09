@@ -3,17 +3,12 @@ import uuid
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowType
@@ -31,9 +26,15 @@ from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_contracts import HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -291,7 +292,10 @@ class TestHumanInputResumeNodeExecutionIntegration:
             user_id=self.account.id,
         )
         form_repository = HumanInputFormRepositoryImpl(
-            tenant_id=self.tenant.id, app_id=self.app.id, workflow_execution_id=execution_id
+            tenant_id=self.tenant.id,
+            app_id=self.app.id,
+            workflow_execution_id=execution_id,
+            sessions=sessionmaker(bind=self.session.get_bind()),
         )
         paused_graph = _build_graph(
             runtime_state,

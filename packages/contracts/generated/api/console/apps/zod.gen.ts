@@ -7508,9 +7508,9 @@ export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 })
 
 /**
- * Success
+ * Workflow deleted successfully
  */
-export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.void()
 
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

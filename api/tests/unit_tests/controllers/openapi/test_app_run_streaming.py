@@ -13,8 +13,8 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import UnprocessableEntity
 
+from controllers.common.errors import UnprocessableEntityError
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
@@ -153,7 +153,7 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        with pytest.raises(UnprocessableEntity, match="app_mode_mismatch"):
+        with pytest.raises(UnprocessableEntityError, match="app_mode_mismatch"):
             api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
     generate_mock.assert_not_called()
 
@@ -222,3 +222,6 @@ def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         assert list(response.response) == [end]
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

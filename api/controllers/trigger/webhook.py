@@ -2,14 +2,15 @@ import logging
 import time
 
 from flask import jsonify, request
-from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
+from controllers.common.errors import NotFoundError, RequestBodyTooLargeError
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
 from enums import QuotaType
 from extensions.ext_application_services import application_services
 from services.errors.app import QuotaExceededError
+from services.trigger.errors import WebhookBodyTooLargeError
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 
 logger = logging.getLogger(__name__)
@@ -90,12 +91,9 @@ def handle_webhook(webhook_id: str):
             }
         ), 429
     except ValueError as error:
-        raise NotFound(str(error))
-    except RequestEntityTooLarge:
-        raise
-    except Exception as e:
-        logger.exception("Webhook processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+        raise NotFoundError(str(error)) from error
+    except WebhookBodyTooLargeError as error:
+        raise RequestBodyTooLargeError(str(error)) from error
 
 
 @bp.route("/webhook-debug/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
@@ -161,9 +159,6 @@ def handle_webhook_debug(webhook_id: str):
         return jsonify(response_data), status_code
 
     except ValueError as e:
-        raise NotFound(str(e))
-    except RequestEntityTooLarge:
-        raise
-    except Exception as e:
-        logger.exception("Webhook debug processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": "An internal error has occurred."}), 500
+        raise NotFoundError(str(e)) from e
+    except WebhookBodyTooLargeError as error:
+        raise RequestBodyTooLargeError(str(error)) from error

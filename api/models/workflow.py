@@ -23,7 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -47,7 +46,6 @@ from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
     WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File
@@ -1108,37 +1106,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         # cases where metadata is absent.
         return json.loads(self.execution_metadata) if self.execution_metadata else {}
 
-    @property
-    def extras(self) -> dict[str, Any]:
-        from core.tools.tool_manager import ToolManager
-        from core.trigger.trigger_manager import TriggerManager
-
-        extras: dict[str, Any] = {}
-        execution_metadata = self.execution_metadata_dict
-        if execution_metadata:
-            if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
-                tool_info: dict[str, Any] = execution_metadata["tool_info"]
-                extras["icon"] = ToolManager.get_tool_icon(
-                    tenant_id=self.tenant_id,
-                    provider_type=tool_info["provider_type"],
-                    provider_id=tool_info["provider_id"],
-                )
-            elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
-                datasource_info = execution_metadata["datasource_info"]
-                extras["icon"] = datasource_info.get("icon")
-            elif (
-                self.node_type == TRIGGER_PLUGIN_NODE_TYPE
-                and WorkflowNodeExecutionMetadataKey.TRIGGER_INFO in execution_metadata
-            ):
-                trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
-                provider_id = trigger_info.get("provider_id")
-                if provider_id:
-                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                        tenant_id=self.tenant_id,
-                        provider_id=provider_id,
-                    )
-        return extras
-
     def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> "WorkflowNodeExecutionOffload | None":
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
@@ -1169,13 +1136,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         offload = self._get_offload_by_type(ExecutionOffLoadType.INPUTS)
         if offload is None:
             return self.inputs_dict
-
-        return self._load_full_content(session, offload.file_id, storage)
-
-    def load_full_outputs(self, session: orm.Session, storage: Storage) -> Mapping[str, Any] | None:
-        offload: WorkflowNodeExecutionOffload | None = self._get_offload_by_type(ExecutionOffLoadType.OUTPUTS)
-        if offload is None:
-            return self.outputs_dict
 
         return self._load_full_content(session, offload.file_id, storage)
 

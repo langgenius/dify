@@ -16,7 +16,6 @@ import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -32,6 +31,7 @@ from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialAp
 from models.account import AccountStatus
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
+from services.app.generation.errors import AgentAppNotPublishedError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError

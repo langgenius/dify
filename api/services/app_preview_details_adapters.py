@@ -1,3 +1,6 @@
+from models.tool_runtime_contracts import WorkflowToolQueries
+from services.tools.provider_queries import ToolProviders
+
 """Enrich detached app and workflow previews through legacy tool and key providers.
 
 The injected queries close their database sessions before this adapter calls tool,
@@ -10,10 +13,8 @@ from collections.abc import Sequence
 from dataclasses import replace
 from typing import cast, override
 
-from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.tool_manager import ToolManager
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.llm_environment_variable import dump_environment_variable
 from models.model import AppMode
@@ -27,10 +28,16 @@ from services.app_preview_details_service import (
     AppPreviewWorkflow,
 )
 from services.app_preview_query_service import AppPreviewRef
+from services.tools.agent_configuration import mask_agent_tool_parameters
+from services.tools.tool_manager import ToolManager
 
 
 class AppPreviewDetailsRuntime(AppPreviewDetails):
-    def __init__(self, *, details: AppPreviewDetailsQuery) -> None:
+    def __init__(
+        self, *, details: AppPreviewDetailsQuery, tool_providers: ToolProviders, workflow_queries: WorkflowToolQueries
+    ) -> None:
+        self._tool_providers = tool_providers
+        self._workflow_queries = workflow_queries
         self._details: AppPreviewDetailsQuery = details
 
     @override
@@ -49,6 +56,8 @@ class AppPreviewDetailsRuntime(AppPreviewDetails):
             configuration = {
                 **configuration,
                 "agent_mode": mask_agent_tool_parameters(
+                    tool_providers=self._tool_providers,
+                    workflow_queries=self._workflow_queries,
                     agent_mode=agent_mode,
                     app_id=app.app_id,
                     tenant_id=active_workspace_id,

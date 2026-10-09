@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from events.app_event import app_was_created
-from services.app_creation_records import create_installed_app_record
+from repositories.app.creation_records import create_installed_app_record
 
 
 @app_was_created.connect

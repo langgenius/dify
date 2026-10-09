@@ -7592,9 +7592,7 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse =

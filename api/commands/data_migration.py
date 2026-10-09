@@ -12,6 +12,7 @@ import yaml
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Tenant
 from models.model import App
@@ -109,7 +110,10 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         raw_config = _load_json_object(input_file, "Export config")
         selection = ExportConfigParser().parse(raw_config)
         with session_factory.create_session() as session:
-            result = MigrationExportService().export(selection, session=session)
+            result = MigrationExportService(
+                workflow_tools=application_services().tools.workflows,
+                tool_providers=application_services().tools.tool_providers,
+            ).export(selection, session=session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
@@ -157,7 +161,13 @@ def import_migration_data(
         assert input_file is not None
         package = MigrationPackageService().load_package(input_file)
         with session_factory.create_session() as session:
-            result = MigrationImportService().import_package(
+            from extensions.application_services.workflow import build_app_dsl_service
+
+            result = MigrationImportService(
+                workflow_tools=application_services().tools.workflows,
+                workflows=application_services().console_workflows,
+                app_dsl=build_app_dsl_service,
+            ).import_package(
                 ImportRequest(
                     package=package,
                     cli_target_tenant=target_tenant,
@@ -256,7 +266,10 @@ def migration_data_wizard() -> None:
             output_file=output_file,
         )
         with session_factory.create_session() as session:
-            result = MigrationExportService().export(selection, session=session)
+            result = MigrationExportService(
+                workflow_tools=application_services().tools.workflows,
+                tool_providers=application_services().tools.tool_providers,
+            ).export(selection, session=session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _print_wizard_step("Report")

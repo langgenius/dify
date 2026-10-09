@@ -235,6 +235,16 @@ def _assert_error(response: TestResponse, status: int, code: str) -> Mapping[str
     return body
 
 
+def test_multipart_body_limit_is_handled_before_service_error_translation(harness: _Harness) -> None:
+    harness.app.config["MAX_CONTENT_LENGTH"] = 8
+
+    response = harness.post(_ASR)
+
+    _assert_error(response, 413, "request_entity_too_large")
+    assert harness.runtime.calls == []
+    assert harness.usage() is None
+
+
 def test_asr_upload_keeps_transcript_and_owner_tenant(harness: _Harness) -> None:
     response = harness.post(_ASR)
 

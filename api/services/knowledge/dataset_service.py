@@ -14,7 +14,6 @@ import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import ColumnElement, case, delete, exists, func, select, tuple_, update
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -40,7 +39,6 @@ from models.dataset import (
     ChildChunk,
     Dataset,
     DatasetAutoDisableLog,
-    DatasetCollectionBinding,
     DatasetPermission,
     DatasetPermissionEnum,
     DatasetProcessRule,
@@ -63,20 +61,31 @@ from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from repositories.knowledge import dataset_api_key_bindings
-from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_doc_form,
+    get_latest_dataset_process_rule,
+)
+from repositories.knowledge.dataset_read_repository import get_datasets_by_ids as load_datasets_by_ids
+from repositories.knowledge.document_repository import next_document_position
 from repositories.knowledge.segment_repository import query_child_chunks
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.feature_entities import FeatureModel
 from services.entities.knowledge_entities.rag_pipeline_entities import (
-    KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.dataset import DatasetNameDuplicateError
-from services.errors.document import DocumentIndexingError
+from services.errors.dataset import DatasetNameDuplicateError, DatasetNotFoundError
+from services.errors.document import (
+    DocumentAccessDeniedError,
+    DocumentIndexingError,
+    DocumentNotFoundError,
+    DocumentSourceNotFoundError,
+)
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -99,12 +108,10 @@ from services.knowledge.segments.application import (
     SegmentMutationService,
     validate_segment_values,
 )
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
-from tasks.deal_dataset_index_update_task import deal_dataset_index_update_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
@@ -277,21 +284,14 @@ class DatasetService:
         # Check if ids is not empty to avoid WHERE false condition
         if not ids:
             return [], 0
-        stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
-
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
-            requested_dataset_ids = set(ids)
-            accessible_dataset_ids = [
-                dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
-            ]
-            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
-                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
-            stmt = stmt.where(accessible_filter)
-
-        datasets = paginate_query(stmt, session=session, page=1, per_page=len(ids), max_per_page=len(ids))
-
-        return datasets.items, datasets.total
+        datasets = load_datasets_by_ids(
+            tenant_id,
+            ids,
+            session=session,
+            accessible_dataset_ids=accessible_dataset_ids if dify_config.RBAC_ENABLED else None,
+            maintainer_id=user.id if include_own_datasets and user else None,
+        )
+        return datasets, len(datasets)
 
     @staticmethod
     def create_empty_dataset(
@@ -755,9 +755,8 @@ class DatasetService:
             return
 
         try:
-            rag_pipeline_service = RagPipelineService(session)
-            published_workflow = rag_pipeline_service.get_published_workflow(pipeline)
-            draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline)
+            published_workflow = WorkflowDefinitionStore.get_published_workflow(pipeline, session=session)
+            draft_workflow = WorkflowDefinitionStore.get_draft_workflow(pipeline, session=session)
 
             # update knowledge nodes
             def update_knowledge_nodes(workflow_graph: str) -> str:
@@ -883,7 +882,7 @@ class DatasetService:
             embedding_model_name = embedding_model.model_name
             filtered_data["embedding_model"] = embedding_model_name
             filtered_data["embedding_model_provider"] = embedding_model.provider
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+            dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
                 embedding_model.provider,
                 embedding_model_name,
                 session,
@@ -1022,7 +1021,7 @@ class DatasetService:
         embedding_model_name = embedding_model.model_name
         filtered_data["embedding_model"] = embedding_model_name
         filtered_data["embedding_model_provider"] = embedding_model.provider
-        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+        dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             embedding_model.provider,
             embedding_model_name,
             session,
@@ -1076,170 +1075,6 @@ class DatasetService:
             return True
 
         return False
-
-    @staticmethod
-    def update_rag_pipeline_dataset_settings(
-        dataset: Dataset,
-        knowledge_configuration: KnowledgeConfiguration,
-        has_published: bool = False,
-        *,
-        session: Session,
-    ):
-        if not current_user or not current_user.current_tenant_id:
-            raise ValueError("Current user or current tenant not found")
-        dataset = session.merge(dataset)
-        if not has_published:
-            dataset.chunk_structure = knowledge_configuration.chunk_structure
-            dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-            if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
-                embedding_model = model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,  # ignore type error
-                    provider=knowledge_configuration.embedding_model_provider or "",
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=knowledge_configuration.embedding_model or "",
-                )
-                is_multimodal = DatasetService.check_is_multimodal_model(
-                    current_user.current_tenant_id,
-                    knowledge_configuration.embedding_model_provider,
-                    knowledge_configuration.embedding_model,
-                )
-                dataset.is_multimodal = is_multimodal
-                embedding_model_name = embedding_model.model_name
-                dataset.embedding_model = embedding_model_name
-                dataset.embedding_model_provider = embedding_model.provider
-                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                    embedding_model.provider,
-                    embedding_model_name,
-                    session,
-                )
-                dataset.collection_binding_id = dataset_collection_binding.id
-            elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
-                dataset.keyword_number = knowledge_configuration.keyword_number
-            else:
-                raise ValueError("Invalid index method")
-            dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
-            # Update summary_index_setting if provided
-            if knowledge_configuration.summary_index_setting is not None:
-                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
-            session.add(dataset)
-        else:
-            if dataset.chunk_structure and dataset.chunk_structure != knowledge_configuration.chunk_structure:
-                raise ValueError("Chunk structure is not allowed to be updated.")
-            action = None
-            if dataset.indexing_technique != knowledge_configuration.indexing_technique:
-                # if update indexing_technique
-                if knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
-                    raise ValueError("Knowledge base indexing technique is not allowed to be updated to economy.")
-                elif knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                    action = "add"
-                    # get embedding model setting
-                    try:
-                        model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
-                            provider=knowledge_configuration.embedding_model_provider,
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=knowledge_configuration.embedding_model,
-                        )
-                        embedding_model_name = embedding_model.model_name
-                        dataset.embedding_model = embedding_model_name
-                        dataset.embedding_model_provider = embedding_model.provider
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider,
-                            embedding_model_name,
-                            session,
-                        )
-                        is_multimodal = DatasetService.check_is_multimodal_model(
-                            current_user.current_tenant_id,
-                            knowledge_configuration.embedding_model_provider,
-                            knowledge_configuration.embedding_model,
-                        )
-                        dataset.is_multimodal = is_multimodal
-                        dataset.collection_binding_id = dataset_collection_binding.id
-                        dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-                    except LLMBadRequestError:
-                        raise ValueError(
-                            "No Embedding Model available. Please configure a valid provider "
-                            "in the Settings -> Model Provider."
-                        )
-                    except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
-            else:
-                # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
-                # Skip embedding model checks if not provided in the update request
-                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                    skip_embedding_update = False
-                    try:
-                        # Handle existing model provider
-                        plugin_model_provider = dataset.embedding_model_provider
-                        plugin_model_provider_str = None
-                        if plugin_model_provider:
-                            plugin_model_provider_str = str(ModelProviderID(plugin_model_provider))
-
-                        # Handle new model provider from request
-                        new_plugin_model_provider = knowledge_configuration.embedding_model_provider
-                        new_plugin_model_provider_str = None
-                        if new_plugin_model_provider:
-                            new_plugin_model_provider_str = str(ModelProviderID(new_plugin_model_provider))
-
-                        # Only update embedding model if both values are provided and different from current
-                        if (
-                            plugin_model_provider_str != new_plugin_model_provider_str
-                            or knowledge_configuration.embedding_model != dataset.embedding_model
-                        ):
-                            action = "update"
-                            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
-                            embedding_model = None
-                            try:
-                                embedding_model = model_manager.get_model_instance(
-                                    tenant_id=current_user.current_tenant_id,
-                                    provider=knowledge_configuration.embedding_model_provider,
-                                    model_type=ModelType.TEXT_EMBEDDING,
-                                    model=knowledge_configuration.embedding_model,
-                                )
-                            except ProviderTokenNotInitError:
-                                # If we can't get the embedding model, skip updating it
-                                # and keep the existing settings if available
-                                # Skip the rest of the embedding model update
-                                skip_embedding_update = True
-                            if not skip_embedding_update:
-                                if embedding_model:
-                                    embedding_model_name = embedding_model.model_name
-                                    dataset.embedding_model = embedding_model_name
-                                    dataset.embedding_model_provider = embedding_model.provider
-                                    dataset_collection_binding = (
-                                        DatasetCollectionBindingService.get_dataset_collection_binding(
-                                            embedding_model.provider,
-                                            embedding_model_name,
-                                            session,
-                                        )
-                                    )
-                                    dataset.collection_binding_id = dataset_collection_binding.id
-                                    is_multimodal = DatasetService.check_is_multimodal_model(
-                                        current_user.current_tenant_id,
-                                        knowledge_configuration.embedding_model_provider,
-                                        knowledge_configuration.embedding_model,
-                                    )
-                                    dataset.is_multimodal = is_multimodal
-                    except LLMBadRequestError:
-                        raise ValueError(
-                            "No Embedding Model available. Please configure a valid provider "
-                            "in the Settings -> Model Provider."
-                        )
-                    except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
-                elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
-                    if dataset.keyword_number != knowledge_configuration.keyword_number:
-                        dataset.keyword_number = knowledge_configuration.keyword_number
-            dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
-            # Update summary_index_setting if provided
-            if knowledge_configuration.summary_index_setting is not None:
-                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
-            session.add(dataset)
-            session.commit()
-            if action:
-                deal_dataset_index_update_task.delay(dataset.id, action)
 
     @staticmethod
     def delete_dataset(dataset_id, user, session: Session):
@@ -1443,6 +1278,11 @@ class DocumentService:
         ),
     }
     DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION = ".zip"
+
+    @staticmethod
+    def get_documents_position(dataset_id: str, session: Session) -> int:
+        """Return the next document position for legacy pipeline execution callers."""
+        return next_document_position(dataset_id, session)
 
     @classmethod
     def normalize_display_status(cls, status: str | None) -> str | None:
@@ -1704,11 +1544,11 @@ class DocumentService:
         """
         dataset = DatasetService.get_dataset(dataset_id, session)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise DatasetNotFoundError("Dataset not found.")
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise DocumentAccessDeniedError(str(e)) from e
 
         upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset_id,
@@ -1738,12 +1578,12 @@ class DocumentService:
         Normalize and validate `Document -> UploadFile` linkage for download flows.
         """
         if document.data_source_type != DataSourceType.UPLOAD_FILE:
-            raise NotFound(invalid_source_message)
+            raise DocumentSourceNotFoundError(invalid_source_message)
 
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
         upload_file_id: str | None = data_source_info.get("upload_file_id")
         if not upload_file_id:
-            raise NotFound(missing_file_message)
+            raise DocumentSourceNotFoundError(missing_file_message)
 
         return str(upload_file_id)
 
@@ -1760,7 +1600,7 @@ class DocumentService:
         upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id], session=session)
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
-            raise NotFound("Uploaded file not found.")
+            raise DocumentSourceNotFoundError("Uploaded file not found.")
         return upload_file
 
     @staticmethod
@@ -1783,7 +1623,7 @@ class DocumentService:
 
         missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
         if missing_document_ids:
-            raise NotFound("Document not found.")
+            raise DocumentNotFoundError("Document not found.")
 
         upload_file_ids: list[str] = []
         upload_file_ids_by_document_id: dict[str, str] = {}
@@ -1799,7 +1639,7 @@ class DocumentService:
         upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids, session=session)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
-            raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+            raise DocumentSourceNotFoundError("Only uploaded-file documents can be downloaded as ZIP.")
 
         return {
             document_id: upload_files_by_id[upload_file_id]
@@ -2124,16 +1964,6 @@ class DocumentService:
         sync_website_document_indexing_task.delay(dataset.id, document.id)
 
     @staticmethod
-    def get_documents_position(dataset_id, session: Session):
-        document = session.scalar(
-            select(Document).where(Document.dataset_id == dataset_id).order_by(Document.position.desc()).limit(1)
-        )
-        if document:
-            return document.position + 1
-        else:
-            return 1
-
-    @staticmethod
     def save_document_with_dataset_id(
         dataset: Dataset,
         knowledge_config: KnowledgeConfig,
@@ -2271,7 +2101,7 @@ class DocumentService:
                 dataset_embedding_model_provider = knowledge_config.embedding_model_provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
-                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
                     dataset_embedding_model_provider, dataset_embedding_model, session
                 )
                 dataset.collection_binding_id = dataset_collection_binding.id
@@ -2349,7 +2179,7 @@ class DocumentService:
                         session.add(dataset_process_rule)
                         session.flush()
             assert dataset_process_rule
-            position = DocumentService.get_documents_position(dataset.id, session)
+            position = next_document_position(dataset.id, session)
             document_ids = []
             duplicate_document_ids = []
             removed_notion_ids: list[str] = []
@@ -2595,7 +2425,7 @@ class DocumentService:
     #                 dataset_embedding_model_provider = embedding_model.provider
     #             dataset.embedding_model = dataset_embedding_model
     #             dataset.embedding_model_provider = dataset_embedding_model_provider
-    #             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+    #             dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
     #                 dataset_embedding_model_provider, dataset_embedding_model
     #             )
     #             dataset.collection_binding_id = dataset_collection_binding.id
@@ -2648,7 +2478,7 @@ class DocumentService:
     #                 session.commit()
     #         lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
     #         with redis_client.lock(lock_name, timeout=600):
-    #             position = DocumentService.get_documents_position(dataset.id)
+    #             position = next_document_position(dataset.id)
     #             document_ids = []
     #             duplicate_document_ids = []
     #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
@@ -2935,7 +2765,7 @@ class DocumentService:
 
         document = DocumentService.get_document(dataset.id, document_data.original_document_id, session=session)
         if document is None:
-            raise NotFound("Document not found")
+            raise DocumentNotFoundError("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
         # save process rule
@@ -3107,7 +2937,7 @@ class DocumentService:
         if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             assert knowledge_config.embedding_model_provider
             assert knowledge_config.embedding_model
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+            dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
                 knowledge_config.embedding_model_provider,
                 knowledge_config.embedding_model,
                 session,
@@ -3845,51 +3675,6 @@ class SegmentService:
             query = query.where(DocumentSegment.enabled == enabled)
 
         return session.scalars(query).all()
-
-
-class DatasetCollectionBindingService:
-    @classmethod
-    def get_dataset_collection_binding(
-        cls, provider_name: str, model_name: str, session: Session, collection_type: str = "dataset"
-    ) -> DatasetCollectionBinding:
-        dataset_collection_binding = session.scalar(
-            select(DatasetCollectionBinding)
-            .where(
-                DatasetCollectionBinding.provider_name == provider_name,
-                DatasetCollectionBinding.model_name == model_name,
-                DatasetCollectionBinding.type == collection_type,
-            )
-            .order_by(DatasetCollectionBinding.created_at)
-            .limit(1)
-        )
-
-        if not dataset_collection_binding:
-            dataset_collection_binding = DatasetCollectionBinding(
-                provider_name=provider_name,
-                model_name=model_name,
-                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                type=collection_type,
-            )
-            session.add(dataset_collection_binding)
-            session.flush()
-        return dataset_collection_binding
-
-    @classmethod
-    def get_dataset_collection_binding_by_id_and_type(
-        cls, collection_binding_id: str, session: Session, collection_type: str = "dataset"
-    ) -> DatasetCollectionBinding:
-        dataset_collection_binding = session.scalar(
-            select(DatasetCollectionBinding)
-            .where(
-                DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
-            )
-            .order_by(DatasetCollectionBinding.created_at)
-            .limit(1)
-        )
-        if not dataset_collection_binding:
-            raise ValueError("Dataset collection binding not found")
-
-        return dataset_collection_binding
 
 
 class DatasetPermissionService:

@@ -1,15 +1,18 @@
 """Composition root for dataset-controller application services."""
 
 from dataclasses import dataclass
+from functools import partial
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
+from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.application_services.retrieval import build_dataset_retrieval
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from libs.helper import generate_text_hash
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
@@ -17,6 +20,8 @@ from repositories.knowledge.metadata_repository import SQLAlchemyMetadataReposit
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+from repositories.workflow.pipeline_publication_repository import PipelinePublicationRepository
 from services.api_token_service import ApiTokenCache
 from services.app.query_service import AppQueryService
 from services.data_source.credential_gateway import (
@@ -53,7 +58,12 @@ from services.knowledge.segments.adapters import (
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
+from services.rag_pipeline.execution_service import RagPipelineExecutionService
+from services.rag_pipeline.publication_gateway import PipelineIndexUpdateGateway, PipelinePublicationModelGateway
+from services.rag_pipeline.publication_service import PipelinePublicationService
 from services.tag_application_service import TagTargetQuery
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
@@ -72,6 +82,8 @@ class KnowledgeServices:
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
     pipeline_generator: PipelineGenerator
+    pipeline_execution: RagPipelineExecutionService
+    pipeline_publication: PipelinePublicationService
 
 
 def build_dataset_api_key_service(
@@ -97,6 +109,7 @@ def build_knowledge_services(
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
     app_queries: AppQueryService,
+    variables: WorkflowExecutionVariables,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -148,7 +161,28 @@ def build_knowledge_services(
             operations=SQLAlchemyDocumentOperations(session_factory=database_client),
             metadata_schema=DocumentService.DOCUMENT_METADATA_SCHEMA,
         ),
-        pipeline_generator=PipelineGenerator(documents=documents, datasource_providers=providers),
+        pipeline_generator=PipelineGenerator(
+            runtime=build_workflow_execution_dependencies(database_client),
+            documents=documents,
+            datasource_providers=providers,
+            draft_variable_loader=variables.workflow_loader,
+            draft_variable_saver=variables.saver_factory,
+        ),
+        pipeline_publication=PipelinePublicationService(
+            PipelinePublicationRepository(database_client),
+            PipelinePublicationModelGateway(),
+            PipelineIndexUpdateGateway(),
+        ),
+        pipeline_execution=RagPipelineExecutionService(
+            runtime=build_workflow_execution_dependencies(database_client),
+            workflows=WorkflowDefinitionRepository(session_factory=database_client),
+            variables=variables,
+            executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(database_client),
+            writer_factory=partial(
+                DifyCoreRepositoryFactory.create_workflow_node_execution_repository, session_factory=database_client
+            ),
+            documents=documents,
+        ),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,
             documents=documents,

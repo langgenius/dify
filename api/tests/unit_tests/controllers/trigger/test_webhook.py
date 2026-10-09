@@ -1,9 +1,12 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import NotFound, RequestEntityTooLarge
+from flask import Flask
+from werkzeug.exceptions import RequestEntityTooLarge
 
 import controllers.trigger.webhook as module
+from controllers.common.errors import NotFoundError
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
@@ -55,6 +58,42 @@ def _webhook_trigger() -> WorkflowWebhookTrigger:
 
 def _workflow() -> Workflow:
     return make_workflow(workflow_id="workflow-1")
+
+
+@pytest.mark.parametrize("path", ["webhook", "webhook-debug"])
+def test_webhook_body_limit_remains_http_413(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], path: str
+) -> None:
+    app = Flask(__name__)
+    config_overrides(WEBHOOK_REQUEST_BODY_MAX_SIZE=8)
+    monkeypatch.setattr(
+        module.WebhookService,
+        "get_webhook_trigger_and_workflow",
+        lambda *_args, **_kwargs: (_webhook_trigger(), _workflow(), {}),
+    )
+    app.register_blueprint(module.bp)
+    response = app.test_client().post(f"/triggers/{path}/wh-1", data="long request body")
+    assert response.status_code == 413
+    assert b"Webhook request too large" in response.data
+
+
+@pytest.mark.parametrize("path", ["webhook", "webhook-debug"])
+def test_framework_body_limit_is_not_translated_to_internal_error(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], path: str
+) -> None:
+    app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 8
+    config_overrides(WEBHOOK_REQUEST_BODY_MAX_SIZE=1024)
+    monkeypatch.setattr(
+        module.WebhookService,
+        "get_webhook_trigger_and_workflow",
+        lambda *_args, **_kwargs: (_webhook_trigger(), _workflow(), {}),
+    )
+    app.register_blueprint(module.bp)
+
+    response = app.test_client().post(f"/triggers/{path}/wh-1", json={"message": "request too large"})
+
+    assert response.status_code == 413
 
 
 class TestPrepareWebhookExecution:
@@ -171,7 +210,7 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_value_error_not_found(self, mock_get):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError):
             module.handle_webhook("wh-1")
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
@@ -181,10 +220,12 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=Exception("boom"))
     def test_internal_error(self, mock_get):
-        response, status = module.handle_webhook("wh-1")
+        app = Flask(__name__)
+        app.register_blueprint(module.bp)
+        response = app.test_client().post("/triggers/webhook/wh-1")
 
-        assert status == 500
-        assert response["error"] == "Internal server error"
+        assert response.status_code == 500
+        assert response.json == {"error": "Internal server error", "message": "boom"}
 
 
 class TestHandleWebhookDebug:
@@ -249,7 +290,7 @@ class TestHandleWebhookDebug:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_debug_not_found(self, mock_get):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError):
             module.handle_webhook_debug("wh-1")
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
@@ -259,7 +300,9 @@ class TestHandleWebhookDebug:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=Exception("boom"))
     def test_debug_internal_error(self, mock_get):
-        response, status = module.handle_webhook_debug("wh-1")
+        app = Flask(__name__)
+        app.register_blueprint(module.bp)
+        response = app.test_client().post("/triggers/webhook-debug/wh-1")
 
-        assert status == 500
-        assert response["error"] == "Internal server error"
+        assert response.status_code == 500
+        assert response.json == {"error": "Internal server error", "message": "An internal error has occurred."}

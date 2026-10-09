@@ -13,8 +13,10 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest as HttpBadRequest
+from werkzeug.exceptions import NotFound as HttpNotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.console.app import (
     annotation as annotation_module,
 )
@@ -195,7 +197,7 @@ class TestCompletionEndpoints:
         with (
             Session(sqlite_engine) as session,
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-            pytest.raises(NotFound),
+            pytest.raises(NotFoundError),
         ):
             method(
                 api,
@@ -440,7 +442,7 @@ class TestSiteEndpoints:
 
         with (
             patch.object(site_module, "application_services", return_value=services),
-            pytest.raises(NotFound),
+            pytest.raises(HttpNotFound),
         ):
             method(api, context, app_id=uuid.UUID(APP_ID))
 
@@ -761,7 +763,7 @@ class TestWorkflowStatisticEndpoints:
             MagicMock(side_effect=ValueError("invalid range")),
         )
 
-        with pytest.raises(BadRequest, match="invalid range"):
+        with pytest.raises(HttpBadRequest, match="invalid range"):
             workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
 
     @staticmethod
@@ -847,3 +849,6 @@ class TestPayloadIntegration:
         ]
         assert len(payloads) == 3
         assert all(p is not None for p in payloads)
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

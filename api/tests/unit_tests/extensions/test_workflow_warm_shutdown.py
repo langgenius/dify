@@ -3,10 +3,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.apps.workflow.active_workflow_tasks import reset_active_workflow_tasks
-from core.app.apps.workflow.command_channels import CelerySignalCommandChannel
 from extensions import workflow_warm_shutdown
 from graphon.graph_engine.entities.commands import AbortCommand
+from services.workflow.execution.adapters.workflow.active_workflow_tasks import reset_active_workflow_tasks
+from services.workflow.execution.adapters.workflow.command_channels import CelerySignalCommandChannel
 
 
 @pytest.fixture(autouse=True)

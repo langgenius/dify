@@ -19,7 +19,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 from testcontainers.core.wait_strategies import LogMessageWaitStrategy
@@ -28,6 +28,7 @@ from testcontainers.redis import RedisContainer
 
 from app_factory import create_app
 from extensions.ext_database import db
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -592,3 +593,12 @@ def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
         patch("core.helper.ssrf_proxy.head", side_effect=lambda url, **kw: _fake_request("HEAD", url, **kw)),
     ):
         yield
+
+
+@pytest.fixture
+def workflow_variables(db_session_with_containers: Session) -> WorkflowExecutionVariables:
+    from extensions.application_services.workflow_variables import build_workflow_variable_service
+
+    return build_workflow_variable_service(
+        database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    )

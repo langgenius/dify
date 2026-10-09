@@ -13,12 +13,13 @@ import logging
 
 from celery import shared_task
 
-from core.app.apps.agent_app.app_generator import AgentAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models.account import Account
 from models.human_input import HumanInputForm
 from models.model import App, Conversation, EndUser
+from services.app.generation.adapters.agent_app import AgentAppGenerator
 from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE
 
 logger = logging.getLogger(__name__)
@@ -46,14 +47,23 @@ def resume_agent_app_execution(*, conversation_id: str, form_id: str) -> None:
         logger.warning("Agent App resume: no user resolvable for conversation %s", conversation_id)
         return
 
+    invoke_from = _resolve_invoke_from(conversation)
+    db.session.expunge_all()
+    db.session.close()
     try:
-        AgentAppGenerator().resume_after_form_submission(
+        AgentAppGenerator(
+            forms=application_services().workflow_runtime.human_forms,
+            agent_configs=application_services().workflow_runtime.agent_configs,
+            tool_providers=application_services().tools.tool_providers,
+            workflow_queries=application_services().tools.workflow_queries,
+            records=application_services().workflow_runtime.chat_records,
+            annotations=application_services().workflow_runtime.annotation_replies,
+        ).resume_after_form_submission(
             app_model=app_model,
             user=user,
             conversation_id=conversation_id,
             form_id=form_id,
-            invoke_from=_resolve_invoke_from(conversation),
-            session=db.session(),
+            invoke_from=invoke_from,
         )
     except Exception:
         logger.exception("Agent App resume failed for conversation %s form %s", conversation_id, form_id)

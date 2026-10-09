@@ -14,7 +14,11 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 import services
 from configs import dify_config
 from controllers.common.audio_response import audio_binary_response
-from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.errors import (
+    AuthenticationRequiredError,
+    InternalServerError,
+    NotFoundError,
+)
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
@@ -64,7 +68,6 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -92,6 +95,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.agent.errors import AgentVersionNotFoundError
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
     AppPreviewOwnerUnavailableError,
@@ -534,7 +538,7 @@ class TrialAppWorkflowRunApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.app_model_config.AppModelConfigBrokenError as error:
             raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
@@ -603,7 +607,7 @@ class TrialChatApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -674,7 +678,7 @@ class TrialMessageSuggestedQuestionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except SuggestedQuestionsActorNotFoundError as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except MessageNotExistsError:
             raise NotFoundError("Message not found")
         except ConversationNotExistsError:
@@ -819,7 +823,7 @@ class TrialCompletionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -902,7 +906,7 @@ class AppApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise UnauthorizedError("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except AppPreviewSiteUnavailableError as error:
             raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 

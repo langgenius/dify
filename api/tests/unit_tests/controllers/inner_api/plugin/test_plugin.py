@@ -8,11 +8,12 @@ handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api.plugin import plugin as plugin_module
 from controllers.inner_api.plugin.plugin import (
@@ -33,8 +34,17 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTTSApi,
     PluginUploadFileRequestApi,
 )
+from core.app.apps import base_app_queue_manager
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.plugin.entities.request import RequestInvokeTool
 from core.workflow.file_reference import build_file_reference
+from extensions.ext_application_services import ApplicationServices
 from models import Account, Tenant
+from models.account import TenantAccountJoin, TenantAccountRole
+from models.model import App, AppMode
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow, WorkflowType
+from services.workflow.execution.adapters.workflow import app_generator as generator_module
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_tenant
 
@@ -71,6 +81,93 @@ def _extract_raw_post(cls):
             pass
 
     return bottom
+
+
+def test_plugin_invokes_persisted_workflow_tool_through_composed_runtime(
+    app: Flask,
+    sqlite_session: Session,
+    workflow_application: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant, user = _tenant(), _user()
+    application = App(
+        id="nested-app",
+        tenant_id=tenant.id,
+        name="Nested",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=True,
+        max_active_requests=None,
+    )
+    workflow = Workflow.new(
+        tenant_id=tenant.id,
+        app_id=application.id,
+        type=WorkflowType.WORKFLOW.value,
+        version="1",
+        graph=json.dumps(
+            {"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
+        ),
+        features="{}",
+        created_by=user.id,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    provider = WorkflowToolProvider(
+        name="nested",
+        label="Nested",
+        icon="icon.svg",
+        app_id=application.id,
+        version="1",
+        user_id=user.id,
+        tenant_id=tenant.id,
+        description="",
+        parameter_configuration="[]",
+    )
+    sqlite_session.add_all(
+        [
+            tenant,
+            user,
+            application,
+            workflow,
+            provider,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=user.id, role=TenantAccountRole.OWNER),
+        ]
+    )
+    sqlite_session.commit()
+    sqlite_session.close()
+    # Any fallback to the global database instead of the composed repositories must fail.
+    monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
+    monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
+    trace_queue_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
+    monkeypatch.setattr(generator_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
+    monkeypatch.setattr(generator_module.WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
+    handled = []
+
+    def handle_response(self, **_kwargs):
+        assert self._runtime is workflow_application.workflow_runtime
+        handled.append("workflow response")
+        return {"data": {"outputs": {"result": "nested result"}}}
+
+    monkeypatch.setattr(generator_module.WorkflowAppGenerator, "_handle_response", handle_response)
+    monkeypatch.setattr(
+        generator_module.WorkflowAppGenerateResponseConverter, "convert", lambda *, response, **_kwargs: response
+    )
+    with app.test_request_context():
+        response = _extract_raw_post(PluginInvokeToolApi)(
+            PluginInvokeToolApi(),
+            user_model=user,
+            tenant_model=tenant,
+            payload=RequestInvokeTool(
+                tool_type="workflow", provider=provider.id, tool=provider.name, tool_parameters={}
+            ),
+        )
+        messages = [json.loads(frame[14:]) for frame in response.response]
+    assert handled == ["workflow response"]
+    assert messages
+    assert all(message["error"] == "" for message in messages)
+    assert any("nested result" in json.dumps(message["data"]) for message in messages)
 
 
 class TestPluginInvokeLLMApi:

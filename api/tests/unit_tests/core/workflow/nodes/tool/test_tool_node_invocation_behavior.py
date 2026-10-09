@@ -6,8 +6,6 @@ from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
@@ -15,10 +13,13 @@ from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def init_tool_node(config: dict[str, object]) -> ToolNode:
+def init_tool_node(config: dict[str, object], *, workflow_runtime: WorkflowRuntime) -> ToolNode:
     graph_config = {
         "edges": [
             {
@@ -67,14 +68,15 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
-        runtime=DifyToolNodeRuntime(init_params.run_context),
+        runtime=DifyToolNodeRuntime(init_params.run_context, workflow_runtime=workflow_runtime),
     )
     node.bind_execution_id(str(uuid.uuid4()))
     return node
 
 
-def test_tool_variable_invoke() -> None:
+def test_tool_variable_invoke(workflow_runtime: WorkflowRuntime) -> None:
     node = init_tool_node(
+        workflow_runtime=workflow_runtime,
         config={
             "id": "1",
             "data": {
@@ -89,7 +91,7 @@ def test_tool_variable_invoke() -> None:
                 "tool_configurations": {},
                 "tool_parameters": {},
             },
-        }
+        },
     )
 
     with patch.object(
@@ -108,8 +110,9 @@ def test_tool_variable_invoke() -> None:
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke() -> None:
+def test_tool_mixed_invoke(workflow_runtime: WorkflowRuntime) -> None:
     node = init_tool_node(
+        workflow_runtime=workflow_runtime,
         config={
             "id": "1",
             "data": {
@@ -126,7 +129,7 @@ def test_tool_mixed_invoke() -> None:
                 },
                 "tool_parameters": {},
             },
-        }
+        },
     )
 
     with patch.object(

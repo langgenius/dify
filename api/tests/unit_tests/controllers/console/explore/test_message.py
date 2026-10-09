@@ -32,6 +32,7 @@ from models.model import AppModelConfig, Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
@@ -822,6 +823,7 @@ def test_generation_failures_keep_provider_errors_and_context(
     [
         ("more-like-this", MessageNotExistsError(), 404, "message_not_found"),
         ("more-like-this", MoreLikeThisDisabledError(), 403, "app_more_like_this_disabled"),
+        ("more-like-this", AppModelConfigBrokenError(), 400, "app_unavailable"),
         ("more-like-this", ValueError("Bad runtime arguments"), 400, "invalid_param"),
         ("suggested-questions", MessageNotExistsError(), 404, "message_not_found"),
         ("suggested-questions", ConversationNotExistsError(), 404, "conversation_not_found"),

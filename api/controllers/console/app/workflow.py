@@ -1,30 +1,22 @@
 import json
 import logging
-from collections.abc import Sequence
-from datetime import datetime
-from typing import Any, Literal, NotRequired, Self, TypedDict
+from typing import Any, Literal, Self
+from uuid import UUID
 
-from flask import abort, request
+from flask import request
 from flask_restx import Resource
-from pydantic import (
-    AliasChoices,
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    ValidationError,
-    field_validator,
-    model_validator,
-)
-from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
+from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator, model_validator
 
-import services
-from configs import dify_config
+import services.errors.conversation
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import (
+    InternalServerError,
+    InvalidArgumentError,
+    InvalidRequestError,
+    NotFoundError,
+    UnsupportedMediaTypeError,
+)
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
-from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_model,
@@ -32,97 +24,45 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import (
-    ConversationCompletedError,
-    DraftWorkflowNotExist,
-    DraftWorkflowNotSync,
-)
-from controllers.console.app.permission_keys import get_app_permission_keys
-from controllers.console.app.wraps import get_app_model, with_session
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotSync
+from controllers.console.app.workflow_admission import console_workflow_admission
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
-from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
-from core.plugin.impl.exc import PluginInvokeError
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.trigger.debug.event_selectors import (
-    TriggerDebugEvent,
-    TriggerDebugEventPoller,
-    create_event_poller,
-    select_trigger_debug_events,
-)
-from core.workflow.llm_environment_variable import (
-    LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
-    LLMEnvironmentVariable,
-)
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from factories import file_factory, variable_factory
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
-from fields.member_fields import SimpleAccount
-from fields.workflow_run_fields import (
-    WorkflowRunNodeExecutionResponse,
-    node_execution_response_source,
+from fields.workflow_fields import (
+    DefaultBlockConfigResponse,
+    DefaultBlockConfigsResponse,
+    PipelineVariableResponse,
+    WorkflowEnvironmentVariableResponse,
+    WorkflowPaginationResponse,
+    WorkflowPublishResponse,
+    WorkflowResponse,
+    WorkflowRestoreResponse,
 )
-from graphon.enums import NodeType
-from graphon.file import File
-from graphon.file import helpers as file_helpers
-from graphon.graph_engine.manager import GraphEngineManager
+from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
 from libs import helper
-from libs.datetime_utils import naive_utc_now
-from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
-from libs.login import login_required
-from models import Account, App
+from libs.helper import TimestampField, dump_response, uuid_value
+from machinery.context import RequestContext
 from models.model import AppMode
-from models.workflow import Workflow
-from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
-from services.app.access import resolve_app_access_filter
-from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
-from services.workflow_ref_service import WorkflowRefService
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from services.workflow_variable_reference_validator import (
-    format_variable_reference_errors,
-    validate_variable_references,
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow.contracts import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    DraftSyncCommand,
+    WorkflowOwner,
+    WorkflowTriggerError,
 )
 
 logger = logging.getLogger(__name__)
-
-_file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
 
-RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
-MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
-WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
-ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
-
-
-class EnvironmentVariableResponseDict(TypedDict):
-    value_type: str
-    id: NotRequired[str]
-    name: NotRequired[str]
-    value: NotRequired[Any]
-    description: NotRequired[str | None]
+from services.errors.llm import InvokeRateLimitError
 
 
 class SyncEnvironmentVariablePatchPayload(BaseModel):
@@ -285,108 +225,6 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
-class PipelineVariableResponse(ResponseModel):
-    label: str
-    variable: str
-    type: str
-    belong_to_node_id: str
-    max_length: int | None = None
-    required: bool
-    unit: str | None = None
-    default_value: Any = Field(default=None)
-    options: list[str] | None = None
-    placeholder: str | None = None
-    tooltips: str | None = None
-    allowed_file_types: list[str] | None = None
-    allowed_file_extensions: list[str] | None = Field(
-        default=None, validation_alias=AliasChoices("allowed_file_extensions", "allow_file_extension")
-    )
-    allowed_file_upload_methods: list[str] | None = Field(
-        default=None, validation_alias=AliasChoices("allowed_file_upload_methods", "allow_file_upload_methods")
-    )
-
-
-class WorkflowEnvironmentVariableResponse(ResponseModel):
-    value_type: str
-    id: str
-    name: str
-    value: Any
-    description: str
-
-
-class WorkflowResponse(ResponseModel):
-    id: str
-    graph: dict[str, Any] = Field(
-        validation_alias=AliasChoices("graph_dict", "graph"),
-    )
-    features: dict[str, Any] = Field(
-        validation_alias=AliasChoices("features_dict", "features"),
-    )
-    hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
-    version: str
-    # NULL for drafts and for versions published before numbering was introduced; those
-    # render as "Untitled Version" instead of `#N`. Never 0, so clients must test for null.
-    version_number: int | None = None
-    marked_name: str
-    marked_comment: str
-    created_by: SimpleAccount | None = Field(
-        default=None, validation_alias=AliasChoices("created_by_account", "created_by")
-    )
-    created_at: int
-    updated_by: SimpleAccount | None = Field(
-        default=None, validation_alias=AliasChoices("updated_by_account", "updated_by")
-    )
-    updated_at: int
-    tool_published: bool
-    environment_variables: list[WorkflowEnvironmentVariableResponse]
-    conversation_variables: list[WorkflowConversationVariableResponse]
-    rag_pipeline_variables: list[PipelineVariableResponse]
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
-        timestamp = to_timestamp(value)
-        if timestamp is None:
-            raise ValueError("timestamp is required")
-        return timestamp
-
-    @field_validator("environment_variables", mode="before")
-    @classmethod
-    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
-        if value is None:
-            return []
-
-        return [_serialize_environment_variable(item) for item in value]
-
-
-class WorkflowResponseSource:
-    def __init__(self, workflow: Workflow, *, session: Session) -> None:
-        self._workflow = workflow
-        self._session = session
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
-
-    @property
-    def created_by_account(self) -> Account | None:
-        return self._workflow.get_created_by_account(session=self._session)
-
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self._workflow.get_updated_by_account(session=self._session)
-
-    @property
-    def tool_published(self) -> bool:
-        return self._workflow.get_tool_published(session=self._session)
-
-
-class WorkflowPaginationResponse(ResponseModel):
-    items: list[WorkflowResponse]
-    page: int
-    limit: int
-    has_more: bool
-
-
 class WorkflowOnlineUser(ResponseModel):
     user_id: str
     username: str
@@ -402,33 +240,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
     data: list[WorkflowOnlineUsersByApp]
 
 
-class WorkflowPublishResponse(ResponseModel):
-    result: str
-    created_at: int
-    warning: str | None = Field(
-        default=None,
-        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
-    )
-
-
 class SyncDraftWorkflowResponse(ResponseModel):
     result: str
     hash: str
     updated_at: int
-
-
-class WorkflowRestoreResponse(ResponseModel):
-    result: str
-    hash: str
-    updated_at: int
-
-
-class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]]
-
-
-class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
 
 
 class HumanInputFormPreviewResponse(ResponseModel):
@@ -487,7 +302,11 @@ register_schema_models(
     DraftWorkflowTriggerRunPayload,
     DraftWorkflowTriggerRunAllPayload,
 )
+
+
 register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
+
+
 register_response_schema_models(
     console_ns,
     WorkflowConversationVariableResponse,
@@ -512,71 +331,6 @@ register_response_schema_models(
 )
 
 
-# TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
-# at the controller level rather than in the workflow logic. This would improve separation
-# of concerns and make the code more maintainable.
-def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:
-    files = files or []
-
-    file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-    file_objs: Sequence[File] = []
-    if file_extra_config is None:
-        return file_objs
-    file_objs = file_factory.build_from_mappings(
-        mappings=files,
-        tenant_id=workflow.tenant_id,
-        config=file_extra_config,
-        access_controller=_file_access_controller,
-    )
-    return file_objs
-
-
-def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDict | Any:
-    match value:
-        case LLMEnvironmentVariable():
-            return {
-                "id": value.id,
-                "name": value.name,
-                "value": value.value,
-                "value_type": LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
-                "description": value.description,
-            }
-
-        case SecretVariable():
-            return {
-                "id": value.id,
-                "name": value.name,
-                "value": encrypter.full_mask_token(),
-                "value_type": value.value_type.value,
-                "description": value.description,
-            }
-
-        case VariableBase():
-            return {
-                "id": value.id,
-                "name": value.name,
-                "value": value.value,
-                "value_type": str(value.value_type.exposed_type()),
-                "description": value.description,
-            }
-
-        case dict():
-            value_type_str = value.get("value_type")
-            if not isinstance(value_type_str, str):
-                raise TypeError(
-                    f"unexpected type for value_type field, value={value_type_str}, type={type(value_type_str)}"
-                )
-            if value_type_str == LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE:
-                return value
-            value_type = SegmentType(value_type_str).exposed_type()
-            if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
-                raise ValueError(f"Unsupported environment variable value type: {value_type}")
-            return value
-
-        case _:
-            return value
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
     @console_ns.doc("get_draft_workflow")
@@ -588,41 +342,12 @@ class DraftWorkflowApi(Resource):
         console_ns.models[WorkflowResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, session: Session, app_model: App):
-        """
-        Get draft workflow
-        """
-        # fetch draft workflow by app_model
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
-
-        if not workflow:
-            raise DraftWorkflowNotExist()
-
-        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
-
-        # Return workflow with response-only Agent node job projection so the
-        # front-end can treat draft graph node data as the editing source.
-        response = WorkflowResponse.model_validate(
-            WorkflowResponseSource(workflow, session=session), from_attributes=True
-        ).model_dump(mode="json")
-        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=session,
-            draft_workflow=workflow,
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
+    def get(self, request_context: RequestContext, app_id: UUID):
+        return dump_response(
+            WorkflowResponse, application_services().console_workflows.draft(request_context, str(app_id))
         )
-        return response
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @console_ns.doc("sync_draft_workflow")
     @console_ns.doc(description="Sync draft workflow configuration")
     @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
@@ -633,15 +358,9 @@ class DraftWorkflowApi(Resource):
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def post(self, current_user: Account, app_model: App):
-        """
-        Sync draft workflow
-        """
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
+    def post(self, request_context: RequestContext, app_id: UUID):
         content_type = request.headers.get("Content-Type", "")
-
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
@@ -653,51 +372,32 @@ class DraftWorkflowApi(Resource):
             except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
-            abort(415)
-        workflow_service = WorkflowService()
-
+            raise UnsupportedMediaTypeError()
+        patch = args_model.environment_variable_patch
         try:
-            environment_variable_patch = args_model.environment_variable_patch
-            environment_variable_upserts: list[VariableBase] | None = None
-            deleted_environment_variable_ids: list[str] = []
-            if environment_variable_patch is not None:
-                environment_variable_upsert_mappings = Workflow.normalize_environment_variable_mappings(
-                    environment_variable_patch.environment_variables,
-                )
-                environment_variable_upserts = [
-                    variable_factory.build_environment_variable_from_mapping(obj)
-                    for obj in environment_variable_upsert_mappings
-                ]
-                deleted_environment_variable_ids = environment_variable_patch.deleted_environment_variable_ids
-            conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj)
-                for obj in args_model.conversation_variables
-            ]
-            workflow = workflow_service.sync_draft_workflow(
-                app_model=app_model,
-                graph=args_model.graph,
-                features=args_model.features,
-                unique_hash=args_model.hash,
-                account=current_user,
-                environment_variables=[],
-                conversation_variables=conversation_variables,
-                session=db.session(),
-                environment_variable_upserts=environment_variable_upserts,
-                deleted_environment_variable_ids=deleted_environment_variable_ids,
-                preserve_environment_variables=True,
-                graph_only=args_model.is_collaborative,
+            result = application_services().console_workflows.sync(
+                request_context,
+                str(app_id),
+                DraftSyncCommand(
+                    graph=args_model.graph,
+                    features=args_model.features,
+                    unique_hash=args_model.hash,
+                    is_collaborative=args_model.is_collaborative,
+                    environment_upserts=patch.environment_variables if patch is not None else None,
+                    environment_deletions=patch.deleted_environment_variable_ids if patch is not None else [],
+                    conversation_variables=args_model.conversation_variables,
+                ),
             )
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
-        except VariableError as e:
-            raise InvalidArgumentError(description=str(e))
-
+        except WorkflowHashNotEqualError as error:
+            raise DraftWorkflowNotSync() from error
+        except VariableError as error:
+            raise InvalidArgumentError(description=str(error)) from error
         return dump_response(
             SyncDraftWorkflowResponse,
             {
                 "result": "success",
-                "hash": workflow.unique_hash,
-                "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+                "hash": result.hash,
+                "updated_at": TimestampField().format(result.updated_at),
             },
         )
 
@@ -711,47 +411,27 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @console_ns.response(200, "Workflow run started successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @with_current_user
-    @edit_permission_required
-    @with_session
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(AdvancedChatWorkflowRunPayload)
-    def post(self, payload: AdvancedChatWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
-        """
-        Run draft workflow
-        """
+    def post(self, payload: AdvancedChatWorkflowRunPayload, request_context: RequestContext, app_id: UUID):
         args = payload.model_dump(exclude_none=True)
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
-
         try:
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.DEBUGGER,
-                streaming=True,
-            )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
-        except ValueError as e:
-            raise e
-        except Exception:
+            result = application_services().console_workflows.generate(request_context, str(app_id), args)
+            return helper.compact_generate_response(result)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except services.errors.conversation.ConversationCompletedError as error:
+            raise ConversationCompletedError() from error
+        except InvokeRateLimitError as error:
+            raise InvokeRateLimitHttpError(error.description) from error
+        except ValueError:
+            raise
+        except Exception as error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -767,40 +447,23 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(IterationNodeRunPayload)
-    def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Run draft workflow iteration node
-        """
-        args = payload.model_dump(exclude_none=True)
-
+    def post(self, payload: IterationNodeRunPayload, request_context: RequestContext, app_id: UUID, node_id: str):
         try:
-            response = AppGenerateService.generate_single_iteration(
-                app_model=app_model,
-                user=current_user,
-                node_id=node_id,
-                args=args,
-                session=db.session(),
-                streaming=True,
+            result = application_services().console_workflows.iteration(
+                request_context, str(app_id), node_id, payload.inputs
             )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
+            return helper.compact_generate_response(result)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except services.errors.conversation.ConversationCompletedError as error:
+            raise ConversationCompletedError() from error
+        except ValueError:
+            raise
+        except Exception as error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -816,40 +479,23 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(IterationNodeRunPayload)
-    def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Run draft workflow iteration node
-        """
-        args = payload.model_dump(exclude_none=True)
-
+    def post(self, payload: IterationNodeRunPayload, request_context: RequestContext, app_id: UUID, node_id: str):
         try:
-            response = AppGenerateService.generate_single_iteration(
-                app_model=app_model,
-                user=current_user,
-                node_id=node_id,
-                args=args,
-                session=db.session(),
-                streaming=True,
+            result = application_services().console_workflows.iteration(
+                request_context, str(app_id), node_id, payload.inputs
             )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
+            return helper.compact_generate_response(result)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except services.errors.conversation.ConversationCompletedError as error:
+            raise ConversationCompletedError() from error
+        except ValueError:
+            raise
+        except Exception as error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -861,39 +507,23 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @console_ns.response(200, "Loop node run started successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(LoopNodeRunPayload)
-    def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Run draft workflow loop node
-        """
-
+    def post(self, payload: LoopNodeRunPayload, request_context: RequestContext, app_id: UUID, node_id: str):
         try:
-            response = AppGenerateService.generate_single_loop(
-                app_model=app_model,
-                user=current_user,
-                node_id=node_id,
-                args=args,
-                session=db.session(),
-                streaming=True,
+            result = application_services().console_workflows.loop(
+                request_context, str(app_id), node_id, payload.inputs
             )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
+            return helper.compact_generate_response(result)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except services.errors.conversation.ConversationCompletedError as error:
+            raise ConversationCompletedError() from error
+        except ValueError:
+            raise
+        except Exception as error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -909,39 +539,23 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(LoopNodeRunPayload)
-    def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Run draft workflow loop node
-        """
-
+    def post(self, payload: LoopNodeRunPayload, request_context: RequestContext, app_id: UUID, node_id: str):
         try:
-            response = AppGenerateService.generate_single_loop(
-                app_model=app_model,
-                user=current_user,
-                node_id=node_id,
-                args=args,
-                session=db.session(),
-                streaming=True,
+            result = application_services().console_workflows.loop(
+                request_context, str(app_id), node_id, payload.inputs
             )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except ValueError as e:
-            raise e
-        except Exception:
+            return helper.compact_generate_response(result)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except services.errors.conversation.ConversationCompletedError as error:
+            raise ConversationCompletedError() from error
+        except ValueError:
+            raise
+        except Exception as error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from error
 
 
 class HumanInputFormPreviewPayload(BaseModel):
@@ -986,29 +600,12 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
     @console_ns.response(200, "Human input form preview", console_ns.models[HumanInputFormPreviewResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(HumanInputFormPreviewPayload)
-    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Preview human input form content and placeholders
-        """
-        inputs = args.inputs
-
-        workflow_service = WorkflowService()
-        preview = workflow_service.get_human_input_form_preview(
-            app_model=app_model,
-            account=current_user,
-            node_id=node_id,
-            inputs=inputs,
-            session=db.session(),
+    def post(self, args: HumanInputFormPreviewPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        return jsonable_encoder(
+            application_services().human_input_debug.preview_form(request_context, str(app_id), node_id, args.inputs)
         )
-        return jsonable_encoder(preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -1022,29 +619,19 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
         "Human input form submission result",
         console_ns.models[HumanInputFormSubmitResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Submit human input form preview
-        """
-        workflow_service = WorkflowService()
-        result = workflow_service.submit_human_input_form_preview(
-            app_model=app_model,
-            account=current_user,
-            node_id=node_id,
-            form_inputs=args.form_inputs,
-            inputs=args.inputs,
-            action=args.action,
-            session=db.session(),
+    def post(self, args: HumanInputFormSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        return jsonable_encoder(
+            application_services().human_input_debug.submit_form(
+                request_context,
+                str(app_id),
+                node_id,
+                inputs=args.inputs,
+                form_inputs=args.form_inputs,
+                action=args.action,
+            )
         )
-        return jsonable_encoder(result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
@@ -1054,29 +641,12 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
     @console_ns.response(200, "Human input form preview", console_ns.models[HumanInputFormPreviewResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT, modes=(AppMode.WORKFLOW,))
     @model_validate(HumanInputFormPreviewPayload)
-    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Preview human input form content and placeholders
-        """
-        inputs = args.inputs
-
-        workflow_service = WorkflowService()
-        preview = workflow_service.get_human_input_form_preview(
-            app_model=app_model,
-            account=current_user,
-            node_id=node_id,
-            inputs=inputs,
-            session=db.session(),
+    def post(self, args: HumanInputFormPreviewPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        return jsonable_encoder(
+            application_services().human_input_debug.preview_form(request_context, str(app_id), node_id, args.inputs)
         )
-        return jsonable_encoder(preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -1090,29 +660,19 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
         "Human input form submission result",
         console_ns.models[HumanInputFormSubmitResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Submit human input form preview
-        """
-        workflow_service = WorkflowService()
-        result = workflow_service.submit_human_input_form_preview(
-            app_model=app_model,
-            account=current_user,
-            node_id=node_id,
-            form_inputs=args.form_inputs,
-            inputs=args.inputs,
-            action=args.action,
-            session=db.session(),
+    def post(self, args: HumanInputFormSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        return jsonable_encoder(
+            application_services().human_input_debug.submit_form(
+                request_context,
+                str(app_id),
+                node_id,
+                inputs=args.inputs,
+                form_inputs=args.form_inputs,
+                action=args.action,
+            )
         )
-        return jsonable_encoder(result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
@@ -1122,28 +682,17 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
     @console_ns.response(200, "Human input delivery test result", console_ns.models[EmptyObjectResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN)
     @model_validate(HumanInputDeliveryTestPayload)
-    def post(self, args: HumanInputDeliveryTestPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Test human input delivery
-        """
-        workflow_service = WorkflowService()
-        workflow_service.test_human_input_delivery(
-            app_model=app_model,
-            account=current_user,
-            node_id=node_id,
-            delivery_method_id=args.delivery_method_id,
+    def post(self, args: HumanInputDeliveryTestPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        application_services().human_input_debug.test_delivery(
+            request_context,
+            str(app_id),
+            node_id,
             inputs=args.inputs,
-            session=db.session(),
+            delivery_method_id=args.delivery_method_id,
         )
-        return jsonable_encoder({})
+        return {}
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
@@ -1158,38 +707,18 @@ class DraftWorkflowRunApi(Resource):
         console_ns.models[GeneratedAppResponse.__name__],
     )
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @with_current_user
-    @edit_permission_required
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW])
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(DraftWorkflowRunPayload)
-    def post(self, payload: DraftWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
-        """
-        Run draft workflow
-        """
+    def post(self, payload: DraftWorkflowRunPayload, request_context: RequestContext, app_id: UUID):
         args = payload.model_dump(exclude_none=True)
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
-
         try:
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.DEBUGGER,
-                streaming=True,
-            )
-
-            return helper.compact_generate_response(response)
-        except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            result = application_services().console_workflows.generate(request_context, str(app_id), args)
+            return helper.compact_generate_response(result)
+        except InvokeRateLimitError as error:
+            raise InvokeRateLimitHttpError(error.description) from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -1200,23 +729,9 @@ class WorkflowTaskStopApi(Resource):
     @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Task not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App, task_id: str):
-        """
-        Stop workflow task
-        """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
-
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN)
+    def post(self, request_context: RequestContext, app_id: UUID, task_id: str):
+        application_services().console_workflows.stop(task_id)
         return {"result": "success"}
 
 
@@ -1233,60 +748,18 @@ class DraftWorkflowNodeRunApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN)
     @model_validate(DraftWorkflowNodeRunPayload)
-    def post(self, payload: DraftWorkflowNodeRunPayload, current_user: Account, app_model: App, node_id: str):
-        """
-        Run draft workflow node
-        """
-        args = payload.model_dump(exclude_none=True)
-
-        user_inputs = payload.inputs
-        if user_inputs is None:
-            raise ValueError("missing inputs")
-
-        workflow_srv = WorkflowService()
-        # fetch draft workflow by app_model
-        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model, session=db.session())
-        if not draft_workflow:
-            raise ValueError("Workflow not initialized")
-        files = _parse_file(draft_workflow, args.get("files"))
-        workflow_service = WorkflowService()
-
-        workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model,
-            draft_workflow=draft_workflow,
-            node_id=node_id,
-            user_inputs=user_inputs,
-            account=current_user,
-            query=args.get("query", ""),
-            files=files,
+    def post(self, payload: DraftWorkflowNodeRunPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+        return dump_response(
+            WorkflowRunNodeExecutionResponse,
+            application_services().console_workflows.run_node(
+                request_context,
+                str(app_id),
+                node_id,
+                payload.model_dump(exclude_none=True),
+            ),
         )
-
-        return WorkflowRunNodeExecutionResponse.model_validate(
-            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
-        ).model_dump(mode="json")
-
-
-def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
-    """Return a non-blocking publish warning. A checker failure must not fail publish."""
-    if not graph_text:
-        return None
-    try:
-        graph = json.loads(graph_text)
-        if not isinstance(graph, dict):
-            return None
-        issues = validate_variable_references(graph)
-        return format_variable_reference_errors(issues) if issues else None
-    except Exception:
-        logger.warning("Skipped advisory variable reference check", exc_info=True)
-        return None
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -1299,66 +772,25 @@ class PublishedWorkflowApi(Resource):
         "Published workflow retrieved successfully, or null if not found",
         console_ns.models[WorkflowResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        """
-        Get published workflow
-        """
-        # fetch published workflow by app_model
-        workflow_service = WorkflowService()
-        session = db.session()
-        workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
-
-        # return workflow, if not found, return None
-        if workflow is None:
-            return None
-
-        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
+    def get(self, request_context: RequestContext, app_id: UUID):
+        result = application_services().console_workflows.published(request_context, str(app_id))
+        return dump_response(WorkflowResponse, result) if result is not None else None
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
+    @console_workflow_admission(permission=RBACPermission.APP_RELEASE_AND_VERSION)
     @model_validate(PublishWorkflowPayload)
-    def post(self, args: PublishWorkflowPayload, current_user: Account, app_model: App):
-        """
-        Publish workflow
-        """
-
-        workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
-
-            # Update app_model within the same session to ensure atomicity
-            app_model_in_session = session.get(App, app_model.id)
-            if app_model_in_session:
-                app_model_in_session.workflow_id = workflow.id
-                app_model_in_session.updated_by = current_user.id
-                app_model_in_session.updated_at = naive_utc_now()
-
-            workflow_created_at = TimestampField().format(workflow.created_at)
-            graph_text = workflow.graph
-
-        warning = _advisory_variable_reference_warning(graph_text)
+    def post(self, args: PublishWorkflowPayload, request_context: RequestContext, app_id: UUID):
+        publication, warning = application_services().console_workflows.publish(
+            request_context,
+            str(app_id),
+            marked_name=args.marked_name or "",
+            marked_comment=args.marked_comment or "",
+        )
         payload: dict[str, object] = {
             "result": "success",
-            "created_at": workflow_created_at,
+            "created_at": TimestampField().format(publication.created_at),
         }
         if warning:
             payload["warning"] = warning
@@ -1375,19 +807,9 @@ class DefaultBlockConfigsApi(Resource):
         "Default block configurations retrieved successfully",
         console_ns.models[DefaultBlockConfigsResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        """
-        Get default block config
-        """
-        # Get default block configs
-        workflow_service = WorkflowService()
-        return workflow_service.get_default_block_configs()
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
+    def get(self, request_context: RequestContext, app_id: UUID):
+        return application_services().console_workflows.default_blocks()
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
@@ -1402,28 +824,16 @@ class DefaultBlockConfigApi(Resource):
     )
     @console_ns.response(404, "Block type not found")
     @console_ns.doc(params=query_params_from_model(DefaultBlockConfigQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
     @model_validate(DefaultBlockConfigQuery)
-    def get(self, args: DefaultBlockConfigQuery, app_model: App, block_type: str):
-        """
-        Get default block config
-        """
-
+    def get(self, args: DefaultBlockConfigQuery, request_context: RequestContext, app_id: UUID, block_type: str):
         filters = None
         if args.q:
             try:
                 filters = json.loads(args.q)
-            except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
-
-        # Get default block configs
-        workflow_service = WorkflowService()
-        return workflow_service.get_default_block_config(node_type=block_type, filters=filters)
+            except json.JSONDecodeError as error:
+                raise ValueError("Invalid filters") from error
+        return application_services().console_workflows.default_block(block_type, filters)
 
 
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
@@ -1439,40 +849,16 @@ class ConvertToWorkflowApi(Resource):
     )
     @console_ns.response(400, "Application cannot be converted")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
-    @with_current_user
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_EDIT, modes=(AppMode.CHAT, AppMode.COMPLETION))
     @model_validate(ConvertToWorkflowPayload)
-    def post(self, payload: ConvertToWorkflowPayload, current_tenant_id: str, current_user: Account, app_model: App):
-        """
-        Convert basic mode of chatbot app to workflow mode
-        Convert expert mode of chatbot app to workflow mode
-        Convert Completion App to Workflow App
-        """
-        args = payload.model_dump(exclude_none=True)
-
-        # convert to workflow mode
-        workflow_service = WorkflowService()
-        new_app_model = workflow_service.convert_to_workflow(
-            app_model=app_model, account=current_user, args=args, session=db.session()
+    def post(self, payload: ConvertToWorkflowPayload, request_context: RequestContext, app_id: UUID):
+        return application_services().console_workflows.convert(
+            request_context, str(app_id), payload.model_dump(exclude_none=True)
         )
-
-        # return app id
-        return {
-            "new_app_id": new_app_model.id,
-            "permission_keys": get_app_permission_keys(str(current_tenant_id), current_user.id, str(new_app_model.id)),
-        }
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/features")
 class WorkflowFeaturesApi(Resource):
-    """Update draft workflow features."""
-
     @console_ns.expect(console_ns.models[WorkflowFeaturesPayload.__name__])
     @console_ns.doc("update_workflow_features")
     @console_ns.doc(description="Update draft workflow features")
@@ -1482,22 +868,14 @@ class WorkflowFeaturesApi(Resource):
         "Workflow features updated successfully",
         console_ns.models[SimpleResultResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
     @model_validate(WorkflowFeaturesPayload)
-    def post(self, args: WorkflowFeaturesPayload, current_user: Account, app_model: App):
-        features = args.features.model_dump(mode="json", exclude_unset=True)
-
-        workflow_service = WorkflowService()
-        workflow_service.update_draft_workflow_features(
-            app_model=app_model, features=features, account=current_user, session=db.session()
+    def post(self, args: WorkflowFeaturesPayload, request_context: RequestContext, app_id: UUID):
+        application_services().console_workflows.update_features(
+            request_context,
+            str(app_id),
+            args.features.model_dump(mode="json", exclude_unset=True),
         )
-
         return {"result": "success"}
 
 
@@ -1512,46 +890,20 @@ class PublishedAllWorkflowApi(Resource):
         "Published workflows retrieved successfully",
         console_ns.models[WorkflowPaginationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_current_user
-    @edit_permission_required
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT)
     @model_validate(WorkflowListQuery)
-    def get(self, args: WorkflowListQuery, session: Session, current_user: Account, app_model: App):
-        """
-        Get published workflows
-        """
-
-        page = args.page
-        limit = args.limit
-        user_id = args.user_id
-        named_only = args.named_only
-
-        if user_id:
-            if user_id != current_user.id:
-                raise Forbidden()
-
-        workflow_service = WorkflowService()
-        workflows, has_more = workflow_service.get_all_published_workflow(
-            session=session,
-            app_model=app_model,
-            page=page,
-            limit=limit,
-            user_id=user_id,
-            named_only=named_only,
+    def get(self, args: WorkflowListQuery, request_context: RequestContext, app_id: UUID):
+        items, has_more = application_services().console_workflows.versions(
+            request_context,
+            str(app_id),
+            page=args.page,
+            limit=args.limit,
+            user_id=args.user_id,
+            named_only=args.named_only,
         )
-        return WorkflowPaginationResponse.model_validate(
-            {
-                "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
-                "page": page,
-                "limit": limit,
-                "has_more": has_more,
-            }
-        ).model_dump(mode="json")
+        return dump_response(
+            WorkflowPaginationResponse, {"items": items, "page": args.page, "limit": args.limit, "has_more": has_more}
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
@@ -1562,35 +914,17 @@ class DraftWorkflowRestoreApi(Resource):
     @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
-    def post(self, current_user: Account, app_model: App, workflow_id: str):
-        workflow_service = WorkflowService()
-
+    @console_workflow_admission(permission=RBACPermission.APP_RELEASE_AND_VERSION)
+    def post(self, request_context: RequestContext, app_id: UUID, workflow_id: str):
         try:
-            workflow = workflow_service.restore_published_workflow_to_draft(
-                app_model=app_model,
-                workflow_id=workflow_id,
-                account=current_user,
-                session=db.session(),
-            )
-        except IsDraftWorkflowError as exc:
-            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
-        except WorkflowNotFoundError as exc:
-            raise NotFound(str(exc)) from exc
-        except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
-
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+            result = application_services().console_workflows.restore(request_context, str(app_id), workflow_id)
+        except IsDraftWorkflowError as error:
+            raise InvalidRequestError(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from error
+        except WorkflowNotFoundError as error:
+            raise NotFoundError(str(error)) from error
+        except ValueError as error:
+            raise InvalidRequestError(str(error)) from error
+        return {"result": "success", "hash": result.hash, "updated_at": TimestampField().format(result.updated_at)}
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
@@ -1602,82 +936,24 @@ class WorkflowByIdApi(Resource):
     @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
     @console_ns.response(404, "Workflow not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @console_workflow_admission(permission=RBACPermission.APP_EDIT)
     @model_validate(WorkflowUpdatePayload)
-    def patch(self, args: WorkflowUpdatePayload, current_user: Account, app_model: App, workflow_id: str):
-        """
-        Update workflow attributes
-        """
-
-        # Prepare update data
-        update_data = {}
-        if args.marked_name is not None:
-            update_data["marked_name"] = args.marked_name
-        if args.marked_comment is not None:
-            update_data["marked_comment"] = args.marked_comment
-
-        if not update_data:
+    def patch(self, args: WorkflowUpdatePayload, request_context: RequestContext, app_id: UUID, workflow_id: str):
+        changes = args.model_dump(exclude_none=True)
+        if not changes:
             return {"message": "No valid fields to update"}, 400
-
-        workflow_service = WorkflowService()
-        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
-
-        # Create a session and manage the transaction
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            workflow = workflow_service.update_workflow(
-                session=session,
-                account_id=current_user.id,
-                data=update_data,
-                workflow_ref=workflow_ref,
-            )
-
-            if not workflow:
-                raise NotFound("Workflow not found")
-
-            response = dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
-
-        return response
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @console_ns.response(204, "Workflow deleted successfully")
-    def delete(self, current_user: Account, app_model: App, workflow_id: str):
-        """
-        Delete workflow
-        """
-        workflow_service = WorkflowService()
-        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
-
-        # Create a session and manage the transaction
-        with sessionmaker(db.engine).begin() as session:
-            try:
-                retirement_candidates = workflow_service.delete_workflow(
-                    session=session,
-                    workflow_ref=workflow_ref,
-                )
-            except WorkflowInUseError as e:
-                abort(400, description=str(e))
-            except DraftWorkflowDeletionError as e:
-                abort(400, description=str(e))
-            except ValueError as e:
-                raise NotFound(str(e))
-
-        WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app_model.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=current_user.id,
+        return dump_response(
+            WorkflowResponse,
+            application_services().console_workflows.update(request_context, str(app_id), workflow_id, changes),
         )
+
+    @console_ns.response(204, "Workflow deleted successfully")
+    @console_workflow_admission(permission=RBACPermission.APP_EDIT)
+    def delete(self, request_context: RequestContext, app_id: UUID, workflow_id: str):
+        try:
+            application_services().console_workflows.delete(request_context, WorkflowOwner(str(app_id)), workflow_id)
+        except (WorkflowInUseError, DraftWorkflowDeletionError) as error:
+            raise InvalidRequestError(str(error))
         return None, 204
 
 
@@ -1693,35 +969,16 @@ class DraftWorkflowNodeLastRunApi(Resource):
     )
     @console_ns.response(404, "Node last run not found")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, node_id: str):
-        srv = WorkflowService()
-        workflow = srv.get_draft_workflow(app_model, session=db.session())
-        if not workflow:
-            raise NotFound("Workflow not found")
-        node_exec = srv.get_node_last_run(
-            app_model=app_model,
-            workflow=workflow,
-            node_id=node_id,
+    @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT, require_editor=False)
+    def get(self, request_context: RequestContext, app_id: UUID, node_id: str):
+        return dump_response(
+            WorkflowRunNodeExecutionResponse,
+            application_services().console_workflows.last_run(request_context, str(app_id), node_id),
         )
-        if node_exec is None:
-            raise NotFound("last run not found")
-        return WorkflowRunNodeExecutionResponse.model_validate(
-            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
-        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
 class DraftWorkflowTriggerRunApi(Resource):
-    """
-    Full workflow debug - Polling API for trigger events
-    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
-    """
-
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -1733,64 +990,27 @@ class DraftWorkflowTriggerRunApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @with_current_user
-    @edit_permission_required
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW])
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(DraftWorkflowTriggerRunPayload)
-    def post(self, args: DraftWorkflowTriggerRunPayload, session: Session, current_user: Account, app_model: App):
-        """
-        Poll for trigger events and execute full workflow when event arrives
-        """
-        node_id = args.node_id
-        workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
-        if not draft_workflow:
-            raise ValueError("Workflow not found")
-
-        poller: TriggerDebugEventPoller = create_event_poller(
-            draft_workflow=draft_workflow,
-            tenant_id=app_model.tenant_id,
-            user_id=current_user.id,
-            app_id=app_model.id,
-            node_id=node_id,
-        )
-        event: TriggerDebugEvent | None = None
+    def post(self, args: DraftWorkflowTriggerRunPayload, request_context: RequestContext, app_id: UUID):
         try:
-            event = poller.poll()
-            if not event:
-                return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
-            return helper.compact_generate_response(
-                AppGenerateService.generate(
-                    session=session,
-                    app_model=app_model,
-                    user=current_user,
-                    args=event.workflow_args,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                    streaming=True,
-                    root_node_id=node_id,
-                )
+            result = application_services().console_workflows.trigger(
+                request_context, str(app_id), [args.node_id], single_node=False, select_all=False
             )
-        except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
-        except PluginInvokeError as e:
-            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
-        except Exception as e:
-            logger.exception("Error polling trigger debug event")
-            raise e
+        except WorkflowTriggerError as error:
+            payload = {"status": "error"}
+            if error.message is not None:
+                payload["error"] = error.message
+            return payload, 400
+        except InvokeRateLimitError as error:
+            raise InvokeRateLimitHttpError(error.description) from error
+        if result is None:
+            return {"status": "waiting", "retry_in": LISTENING_RETRY_IN}
+        return helper.compact_generate_response(result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run")
 class DraftWorkflowTriggerNodeApi(Resource):
-    """
-    Single node debug - Polling API for trigger events
-    Path: /apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run
-    """
-
     @console_ns.doc("poll_draft_workflow_trigger_node")
     @console_ns.doc(description="Poll for trigger events and execute single node when event arrives")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -1801,80 +1021,26 @@ class DraftWorkflowTriggerNodeApi(Resource):
     )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @get_app_model(mode=[AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
-        """
-        Poll for trigger events and execute single node when event arrives
-        """
-
-        workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
-        if not draft_workflow:
-            raise ValueError("Workflow not found")
-
-        node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
-        if not node_config:
-            raise ValueError("Node data not found for node %s", node_id)
-        node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
-        event: TriggerDebugEvent | None = None
-        # for schedule trigger, when run single node, just execute directly
-        if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
-            event = TriggerDebugEvent(
-                workflow_args={},
-                node_id=node_id,
-            )
-        # for other trigger types, poll for the event
-        else:
-            try:
-                poller: TriggerDebugEventPoller = create_event_poller(
-                    draft_workflow=draft_workflow,
-                    tenant_id=app_model.tenant_id,
-                    user_id=current_user.id,
-                    app_id=app_model.id,
-                    node_id=node_id,
-                )
-                event = poller.poll()
-            except PluginInvokeError as e:
-                return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
-            except Exception as e:
-                logger.exception("Error polling trigger debug event")
-                raise e
-        if not event:
-            return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
-
-        raw_files = event.workflow_args.get("files")
-        files = _parse_file(draft_workflow, raw_files if isinstance(raw_files, list) else None)
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
+    def post(self, request_context: RequestContext, app_id: UUID, node_id: str):
         try:
-            node_execution = workflow_service.run_draft_workflow_node(
-                app_model=app_model,
-                draft_workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=event.workflow_args.get("inputs") or {},
-                account=current_user,
-                query="",
-                files=files,
+            result = application_services().console_workflows.trigger(
+                request_context, str(app_id), [node_id], single_node=True, select_all=False
             )
-            return jsonable_encoder(node_execution)
-        except Exception as e:
-            logger.exception("Error running draft workflow trigger node")
-            return jsonable_encoder(
-                {"status": "error", "error": "An unexpected error occurred while running the node."}
-            ), 400
+        except WorkflowTriggerError as error:
+            payload = {"status": "error"}
+            if error.message is not None:
+                payload["error"] = error.message
+            return payload, 400
+        except InvokeRateLimitError as error:
+            raise InvokeRateLimitHttpError(error.description) from error
+        if result is None:
+            return {"status": "waiting", "retry_in": LISTENING_RETRY_IN}
+        return jsonable_encoder(result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
 class DraftWorkflowTriggerRunAllApi(Resource):
-    """
-    Full workflow debug - Polling API for trigger events
-    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run-all
-    """
-
     @console_ns.doc("draft_workflow_trigger_run_all")
     @console_ns.doc(description="Full workflow debug when the start node is a trigger")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -1882,61 +1048,23 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @console_ns.response(200, "Workflow executed successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW])
+    @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
     @model_validate(DraftWorkflowTriggerRunAllPayload)
-    def post(self, args: DraftWorkflowTriggerRunAllPayload, session: Session, current_user: Account, app_model: App):
-        """
-        Full workflow debug when the start node is a trigger
-        """
-
-        node_ids = args.node_ids
-        workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
-        if not draft_workflow:
-            raise ValueError("Workflow not found")
-
+    def post(self, args: DraftWorkflowTriggerRunAllPayload, request_context: RequestContext, app_id: UUID):
         try:
-            trigger_debug_event: TriggerDebugEvent | None = select_trigger_debug_events(
-                draft_workflow=draft_workflow,
-                app_model=app_model,
-                user_id=current_user.id,
-                node_ids=node_ids,
+            result = application_services().console_workflows.trigger(
+                request_context, str(app_id), args.node_ids, single_node=False, select_all=True
             )
-        except PluginInvokeError as e:
-            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
-        except Exception as e:
-            logger.exception("Error polling trigger debug event")
-            raise e
-        if trigger_debug_event is None:
-            return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
-
-        try:
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=trigger_debug_event.workflow_args,
-                invoke_from=InvokeFrom.DEBUGGER,
-                streaming=True,
-                root_node_id=trigger_debug_event.node_id,
-            )
-            return helper.compact_generate_response(response)
-        except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
-        except Exception:
-            logger.exception("Error running draft workflow trigger run-all")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                }
-            ), 400
+        except WorkflowTriggerError as error:
+            payload = {"status": "error"}
+            if error.message is not None:
+                payload["error"] = error.message
+            return payload, 400
+        except InvokeRateLimitError as error:
+            raise InvokeRateLimitHttpError(error.description) from error
+        if result is None:
+            return {"status": "waiting", "retry_in": LISTENING_RETRY_IN}
+        return helper.compact_generate_response(result)
 
 
 @console_ns.route("/apps/workflows/online-users")
@@ -1949,85 +1077,11 @@ class WorkflowOnlineUsersApi(Resource):
     )
     @console_ns.doc("get_workflow_online_users")
     @console_ns.doc(description="Get workflow online users")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission()
     @model_validate(WorkflowOnlineUsersPayload)
-    def post(self, args: WorkflowOnlineUsersPayload, current_tenant_id: str, current_user: Account):
-        app_ids = args.app_ids
-        if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS:
-            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS} app_ids are allowed per request.")
-
-        if not app_ids:
-            return {"data": []}
-
-        access_filter = None
-        workflow_service = WorkflowService()
-        with session_factory.create_session() as session:
-            if dify_config.RBAC_ENABLED:
-                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
-            app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
-
-        accessible_app_ids = set(app_maintainers)
-        if access_filter is not None:
-            accessible_app_ids = {
-                app_id
-                for app_id, maintainer in app_maintainers.items()
-                if access_filter.is_app_accessible(app_id, maintainer, current_user.id)
-            }
-        ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
-
-        users_json_by_app_id: dict[str, Any] = {}
-        for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
-            app_id_batch = ordered_accessible_app_ids[
-                start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
-            ]
-            pipe = redis_client.pipeline(transaction=False)
-            for app_id in app_id_batch:
-                pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
-
-            users_json_batch = pipe.execute()
-            for app_id, users_json in zip(app_id_batch, users_json_batch):
-                users_json_by_app_id[app_id] = users_json
-
-        results = []
-        for app_id in ordered_accessible_app_ids:
-            users_json = users_json_by_app_id.get(app_id, {})
-
-            users = []
-            for _, user_info_json in users_json.items():
-                try:
-                    user_info = json.loads(user_info_json)
-                except Exception:
-                    continue
-
-                if not isinstance(user_info, dict):
-                    continue
-
-                user_id = user_info.get("user_id")
-                username = user_info.get("username")
-                if not isinstance(user_id, str) or not isinstance(username, str):
-                    continue
-
-                avatar = user_info.get("avatar")
-                if avatar is not None and not isinstance(avatar, str):
-                    avatar = None
-
-                if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
-                    try:
-                        avatar = file_helpers.get_signed_file_url(avatar)
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to sign workflow online user avatar; using original value. "
-                            "app_id=%s avatar=%s error=%s",
-                            app_id,
-                            avatar,
-                            exc,
-                        )
-
-                users.append({"user_id": user_id, "username": username, "avatar": avatar})
-            results.append({"app_id": app_id, "users": users})
-
-        return WorkflowOnlineUsersResponse.model_validate({"data": results}).model_dump(mode="json")
+    def post(self, args: WorkflowOnlineUsersPayload, request_context: RequestContext):
+        try:
+            data = application_services().console_workflows.online_users(request_context, args.app_ids)
+        except ValueError as error:
+            raise InvalidRequestError(str(error)) from error
+        return dump_response(WorkflowOnlineUsersResponse, {"data": data})

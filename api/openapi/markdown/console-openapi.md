@@ -1730,8 +1730,6 @@ Get advanced chat workflow run list
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
-**Preview human input form content and placeholders**
-
 Get human input form preview for advanced chat workflow
 
 #### Parameters
@@ -1754,8 +1752,6 @@ Get human input form preview for advanced chat workflow
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
-**Submit human input form preview**
-
 Submit human input form preview for advanced chat workflow
 
 #### Parameters
@@ -1778,8 +1774,6 @@ Submit human input form preview for advanced chat workflow
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
-**Run draft workflow iteration node**
-
 Run draft workflow iteration node for advanced chat
 
 #### Parameters
@@ -1804,8 +1798,6 @@ Run draft workflow iteration node for advanced chat
 | 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
-**Run draft workflow loop node**
-
 Run draft workflow loop node for advanced chat
 
 #### Parameters
@@ -1830,8 +1822,6 @@ Run draft workflow loop node for advanced chat
 | 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
-**Run draft workflow**
-
 Run draft workflow for advanced chat application
 
 #### Parameters
@@ -2650,11 +2640,7 @@ Get conversation variables for an application
 | 200 | Conversation variables retrieved successfully | **application/json**: [PaginatedConversationVariableResponse](#paginatedconversationvariableresponse)<br> |
 
 ### [POST] /apps/{app_id}/convert-to-workflow
-**Convert basic mode of chatbot app to workflow mode**
-
 Convert application to workflow mode
-Convert expert mode of chatbot app to workflow mode
-Convert Completion App to Workflow App
 
 #### Parameters
 
@@ -3443,8 +3429,6 @@ Get workflow application execution logs
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
-**Stop workflow task**
-
 Stop running workflow task
 
 #### Parameters
@@ -3809,8 +3793,6 @@ Get workflow daily token cost statistics
 | 200 | Daily token cost statistics retrieved successfully | **application/json**: [WorkflowDailyTokenCostStatisticResponse](#workflowdailytokencoststatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows
-**Get published workflows**
-
 Get all published workflows for an application
 
 #### Parameters
@@ -3830,8 +3812,6 @@ Get all published workflows for an application
 | 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
-**Get default block config**
-
 Get default block configurations for workflow
 
 #### Parameters
@@ -3847,8 +3827,6 @@ Get default block configurations for workflow
 | 200 | Default block configurations retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
-**Get default block config**
-
 Get default block configuration by type
 
 #### Parameters
@@ -3867,8 +3845,6 @@ Get default block configuration by type
 | 404 | Block type not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft
-**Get draft workflow**
-
 Get draft workflow for an application
 
 #### Parameters
@@ -3885,8 +3861,6 @@ Get draft workflow for an application
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft
-**Sync draft workflow**
-
 Sync draft workflow configuration
 
 #### Parameters
@@ -4007,8 +3981,6 @@ Update draft workflow features
 | 200 | Workflow features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test
-**Test human input delivery**
-
 Test human input delivery for workflow
 
 #### Parameters
@@ -4031,8 +4003,6 @@ Test human input delivery for workflow
 | 200 | Human input delivery test result | **application/json**: [EmptyObjectResponse](#emptyobjectresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
-**Preview human input form content and placeholders**
-
 Get human input form preview for workflow
 
 #### Parameters
@@ -4055,8 +4025,6 @@ Get human input form preview for workflow
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
-**Submit human input form preview**
-
 Submit human input form preview for workflow
 
 #### Parameters
@@ -4079,7 +4047,7 @@ Submit human input form preview for workflow
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
-**Run draft workflow iteration node**
+Run draft workflow iteration node
 
 #### Parameters
 
@@ -4103,7 +4071,7 @@ Submit human input form preview for workflow
 | 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
-**Run draft workflow loop node**
+Run draft workflow loop node
 
 #### Parameters
 
@@ -4274,7 +4242,7 @@ Get last run result for draft workflow node
 | 404 | Node last run not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/run
-**Run draft workflow node**
+Run draft workflow node
 
 #### Parameters
 
@@ -4298,7 +4266,7 @@ Get last run result for draft workflow node
 | 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
-**Poll for trigger events and execute single node when event arrives**
+Poll for trigger events and execute single node when event arrives
 
 #### Parameters
 
@@ -4348,7 +4316,7 @@ Get variables for a specific node
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
-**Run draft workflow**
+Run draft workflow
 
 #### Parameters
 
@@ -4456,7 +4424,7 @@ Get system variables for workflow
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
-**Poll for trigger events and execute full workflow when event arrives**
+Poll for trigger events and execute full workflow when event arrives
 
 #### Parameters
 
@@ -4479,7 +4447,7 @@ Get system variables for workflow
 | 500 | Internal server error |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run-all
-**Full workflow debug when the start node is a trigger**
+Full workflow debug when the start node is a trigger
 
 #### Parameters
 
@@ -4611,8 +4579,6 @@ Reset a workflow variable to its default value
 | 404 | Variable not found |  |
 
 ### [GET] /apps/{app_id}/workflows/publish
-**Get published workflow**
-
 Get published workflow for an application
 
 #### Parameters
@@ -4628,8 +4594,6 @@ Get published workflow for an application
 | 200 | Published workflow retrieved successfully, or null if not found | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/publish
-**Publish workflow**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -4736,8 +4700,6 @@ Full value for one declared output of a published run.
 | 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/{workflow_id}
-**Delete workflow**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -4749,11 +4711,9 @@ Full value for one declared output of a published run.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Workflow deleted successfully |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
-**Update workflow attributes**
-
 Update workflow by ID
 
 #### Parameters
@@ -7805,11 +7765,17 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowSyncPayload](#draftworkflowsyncpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8152,7 +8118,7 @@ Update account-level Step-by-step Tour state
 | 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/publish
-**Publish workflow**
+**Publish a prepared Pipeline and its dataset settings atomically**
 
 #### Parameters
 
@@ -8264,8 +8230,6 @@ Update account-level Step-by-step Tour state
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
-**Delete a published workflow version that is not currently active on the pipeline**
-
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -9058,7 +9022,9 @@ Reset a draft workflow variable to its default value (snippet scope)
 | 400 | No draft workflow found |  |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/{workflow_id}
-**Delete a published snippet workflow version**
+**Delete a version and retire its unowned Agents through the shared use case**
+
+Delete a published snippet workflow version
 
 #### Parameters
 

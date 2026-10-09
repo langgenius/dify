@@ -17,6 +17,9 @@ from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
 from libs.helper import to_timestamp
+from models.workflow import WorkflowNodeExecutionModel
+from services.tools.provider_queries import ToolProviderIcons
+from services.workflow.node_execution_extras import node_execution_extras
 
 
 class WorkflowRunForLogResponse(ResponseModel):
@@ -212,6 +215,16 @@ def workflow_run_pagination_response_source(pagination: Any, *, session: Session
 class WorkflowNodeExecutionResponseSource(SessionResponseSource[Any]):
     """Expose session-backed node-execution accessors during response validation."""
 
+    def __init__(self, source: Any, *, session: Session, tool_providers: ToolProviderIcons):
+        super().__init__(source, session=session)
+        self._tool_providers = tool_providers
+
+    @property
+    def extras(self) -> Any:
+        if isinstance(self._source, WorkflowNodeExecutionModel):
+            return node_execution_extras(self._source, tool_providers=self._tool_providers)
+        return self._source.extras
+
     @property
     def created_by_account(self) -> Any:
         return self._source.created_by_account(self._session)
@@ -221,8 +234,10 @@ class WorkflowNodeExecutionResponseSource(SessionResponseSource[Any]):
         return self._source.created_by_end_user(self._session)
 
 
-def node_execution_response_source(node_execution: Any, *, session: Session) -> WorkflowNodeExecutionResponseSource:
-    return WorkflowNodeExecutionResponseSource(node_execution, session=session)
+def node_execution_response_source(
+    node_execution: Any, *, session: Session, tool_providers: ToolProviderIcons
+) -> WorkflowNodeExecutionResponseSource:
+    return WorkflowNodeExecutionResponseSource(node_execution, session=session, tool_providers=tool_providers)
 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):

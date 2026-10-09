@@ -20,10 +20,10 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
+from services.app.generation.errors import AgentAppNotPublishedError
 from tests.unit_tests.model_factories import make_app, make_end_user
 
 
@@ -201,3 +201,6 @@ class TestChatStopApi:
 
         assert status == 200
         assert result == {"result": "success"}
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

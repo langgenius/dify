@@ -877,7 +877,7 @@ export const restore = {
 }
 
 /**
- * Delete a published snippet workflow version
+ * Delete a version and retire its unowned Agents through the shared use case
  *
  * Delete a published snippet workflow version
  */
@@ -889,7 +889,7 @@ export const delete4 = oc
     operationId: 'deleteSnippetsBySnippetIdWorkflowsByWorkflowId',
     path: '/snippets/{snippet_id}/workflows/{workflow_id}',
     successStatus: 204,
-    summary: 'Delete a published snippet workflow version',
+    summary: 'Delete a version and retire its unowned Agents through the shared use case',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath }))

@@ -1,10 +1,9 @@
-from contextlib import nullcontext
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from enums.agent import WorkflowAgentBindingType
 from models.agent import (
     Agent,
     AgentConfigVersionKind,
@@ -17,37 +16,25 @@ from models.agent import (
     AgentWorkspace,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
-from services.agent.workspace_service import AgentWorkspaceService
+from repositories.agent.retirement_repository import AgentRetirement, WorkflowAgentRetirementRepository
+from services.agent.retirement_service import WorkflowAgentRetirementService
 
 
-def test_retire_unowned_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
+def test_retire_unowned_failure_propagates() -> None:
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
     error = RuntimeError("retirement failed")
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: context,
-    )
-    monkeypatch.setattr(
-        WorkflowAgentRetirementService,
-        "archive_unowned",
-        MagicMock(side_effect=error),
-    )
-
+    repository.retire.side_effect = error
     with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(repository).retire_unowned(
             tenant_id="tenant-1",
             agent_ids=["agent-1"],
             account_id="account-1",
         )
-
     assert exc_info.value is error
 
 
@@ -81,6 +68,7 @@ def _workflow_only_agent(*, backing_app_id: str | None = None) -> Agent:
 def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     workflow_version: str,
     pointer_to_owner: bool,
     mismatched_key: str | None,
@@ -132,18 +120,15 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     )
     sqlite_session.add_all([agent, app, workflow, binding])
     sqlite_session.commit()
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
     celery_delay = MagicMock()
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", celery_delay)
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[agent.id],
         account_id="account-1",
     )
 
+    sqlite_session.expire_all()
     stored_agent = sqlite_session.get(Agent, agent.id)
     assert stored_agent is not None
     assert stored_agent.status is expected_status
@@ -161,6 +146,7 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
 def test_retire_unowned_archives_orphan_and_retires_resources(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     agent = _workflow_only_agent(backing_app_id="hidden-app-1")
     hidden_app = App(
@@ -204,24 +190,23 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     )
     sqlite_session.add_all([agent, hidden_app, home, workspace, binding])
     sqlite_session.commit()
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
+    hidden_app_id = hidden_app.id
+    monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
     cleanup_app = MagicMock()
     enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
+    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
+        "services.agent.retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[agent.id],
         account_id="account-1",
     )
 
+    sqlite_session.expire_all()
     stored_agent = sqlite_session.get(Agent, agent.id)
     stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
     stored_workspace = sqlite_session.get(AgentWorkspace, workspace.id)
@@ -230,12 +215,12 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     assert stored_binding is not None
     assert stored_workspace is not None
     assert stored_home is not None
-    assert sqlite_session.get(App, hidden_app.id) is None
+    assert sqlite_session.get(App, hidden_app_id) is None
     assert stored_agent.status is AgentStatus.ARCHIVED
     assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
     assert stored_workspace.status is AgentWorkingResourceStatus.RETIRED
     assert stored_home.status is AgentWorkingResourceStatus.RETIRED
-    cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=hidden_app.id)
+    cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=hidden_app_id)
     enqueue_collection.assert_called_once_with(
         tenant_id="tenant-1",
         workspace_ids=[workspace.id],
@@ -246,44 +231,21 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
 
 
 def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalars.side_effect = [
-        SimpleNamespace(
-            all=MagicMock(
-                return_value=[
-                    SimpleNamespace(backing_app_id="hidden-app-1"),
-                    SimpleNamespace(backing_app_id="hidden-app-2"),
-                ]
-            )
-        ),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-    ]
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: context,
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
+    repository.retire.return_value = AgentRetirement(
+        ["agent-1", "agent-2"], ["hidden-app-1", "hidden-app-2"], [], [], []
     )
-    monkeypatch.setattr(
-        WorkflowAgentRetirementService,
-        "archive_unowned",
-        MagicMock(return_value=["agent-1", "agent-2"]),
-    )
-    monkeypatch.setattr(AgentWorkspaceService, "retire_all_for_app", MagicMock(return_value=[]))
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=[]))
     error = RuntimeError("broker unavailable")
     cleanup_app = MagicMock(side_effect=[None, error])
-    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
+    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     enqueue_collection = MagicMock()
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
+        "services.agent.retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
     with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(repository).retire_unowned(
             tenant_id="tenant-1",
             agent_ids=["agent-1", "agent-2"],
             account_id="account-1",
@@ -292,103 +254,3 @@ def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: py
     assert exc_info.value is error
     assert [call.kwargs["app_id"] for call in cleanup_app.call_args_list] == ["hidden-app-1", "hidden-app-2"]
     enqueue_collection.assert_not_called()
-
-
-def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_collector_payload(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-) -> None:
-    agent = _workflow_only_agent(backing_app_id="hidden-app-1")
-    hidden_app = App(
-        id="hidden-app-1",
-        tenant_id="tenant-1",
-        name="Inline Agent runtime",
-        mode=AppMode.AGENT,
-        status=AppStatus.NORMAL,
-        enable_site=False,
-        enable_api=False,
-    )
-    home = AgentHomeSnapshot(
-        id="home-1",
-        tenant_id="tenant-1",
-        agent_id=agent.id,
-        snapshot_ref="home-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-    )
-    workspace = AgentWorkspace(
-        id="workspace-1",
-        tenant_id="tenant-1",
-        app_id=hidden_app.id,
-        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
-        owner_id="conversation-1",
-        owner_scope_key="root",
-        backend_workspace_ref="workspace-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-    )
-    binding = AgentWorkspaceBinding(
-        id="binding-1",
-        tenant_id="tenant-1",
-        app_id=hidden_app.id,
-        workspace_id=workspace.id,
-        agent_id=agent.id,
-        base_home_snapshot_id=home.id,
-        agent_config_version_id="config-1",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        backend_binding_ref="binding-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-    )
-    sqlite_session.add_all([agent, hidden_app, home, workspace, binding])
-    sqlite_session.commit()
-    agent_id = agent.id
-    hidden_app_id = hidden_app.id
-    home_id = home.id
-    workspace_id = workspace.id
-    binding_id = binding.id
-    error = RuntimeError("broker unavailable")
-    cleanup_app = MagicMock(side_effect=[error, None])
-    enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
-        enqueue_collection,
-    )
-
-    with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
-            tenant_id="tenant-1",
-            agent_ids=[agent_id],
-            account_id="account-1",
-        )
-
-    assert exc_info.value is error
-    sqlite_session.expire_all()
-    stored_agent = sqlite_session.get(Agent, agent_id)
-    stored_workspace = sqlite_session.get(AgentWorkspace, workspace_id)
-    stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding_id)
-    stored_home = sqlite_session.get(AgentHomeSnapshot, home_id)
-    assert stored_agent is not None
-    assert stored_workspace is not None
-    assert stored_binding is not None
-    assert stored_home is not None
-    assert stored_agent.status is AgentStatus.ARCHIVED
-    assert sqlite_session.get(App, hidden_app_id) is None
-    assert stored_workspace.status is AgentWorkingResourceStatus.RETIRED
-    assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
-    assert stored_home.status is AgentWorkingResourceStatus.RETIRED
-    enqueue_collection.assert_not_called()
-
-    WorkflowAgentRetirementService.retire_unowned(
-        tenant_id="tenant-1",
-        agent_ids=[agent_id],
-        account_id="account-1",
-    )
-
-    assert cleanup_app.call_count == 2
-    enqueue_collection.assert_called_once_with(
-        tenant_id="tenant-1",
-        workspace_ids=[workspace_id],
-        binding_ids=[binding_id],
-        home_snapshot_ids=[home_id],
-        purge_agent_ids=[agent_id],
-    )

@@ -12,11 +12,15 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from extensions.application_services.workflow import build_app_dsl_service
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+from machinery.context import RequestContext
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
+from services.workflow.contracts import DraftSyncCommand, WorkflowOwner
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.unit_tests.core.model_fixtures import make_model_instance
@@ -223,47 +227,6 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_is_workflow_exist_true(self, db_session_with_containers: Session):
-        """
-        Test workflow existence check when a draft workflow exists.
-
-        This test verifies that the service correctly identifies when a draft workflow
-        exists for an application, which is important for workflow management operations.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-
-        workflow_service = WorkflowService()
-
-        # Act
-        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
-
-        # Assert
-        assert result is True
-
-    def test_is_workflow_exist_false(self, db_session_with_containers: Session):
-        """
-        Test workflow existence check when no draft workflow exists.
-
-        This test ensures that the service correctly identifies when no draft workflow
-        exists for an application, which is the initial state for new apps.
-        """
-        # Arrange
-        fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
-        # Don't create any workflow
-
-        workflow_service = WorkflowService()
-
-        # Act
-        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
-
-        # Assert
-        assert result is False
-
     def test_get_draft_workflow_success(self, db_session_with_containers: Session):
         """
         Test successful retrieval of a draft workflow.
@@ -464,7 +427,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act - First page
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
             app_model=app,
             page=1,
@@ -477,7 +440,7 @@ class TestWorkflowService:
         assert has_more is True
 
         # Act - Second page
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
             app_model=app,
             page=2,
@@ -520,7 +483,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act - Filter by account1
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=account1.id
         )
 
@@ -562,7 +525,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act - Filter named only
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None, named_only=True
         )
 
@@ -581,7 +544,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
         )
 
@@ -607,7 +570,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
         )
 
@@ -647,7 +610,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act - Filter by account1 + named_only
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
             app_model=app,
             page=1,
@@ -676,7 +639,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act - Filter by a user that has no workflows
-        result_workflows, has_more = workflow_service.get_all_published_workflow(
+        result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
             app_model=app,
             page=1,
@@ -717,18 +680,22 @@ class TestWorkflowService:
         environment_variables = []
         conversation_variables = []
 
-        workflow_service = WorkflowService()
+        drafts = build_app_dsl_service(db_session_with_containers)._drafts
 
         # Act
-        result = workflow_service.sync_draft_workflow(
-            app_model=app,
-            graph=graph,
-            features=features,
-            unique_hash=unique_hash,
-            account=account,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            session=db_session_with_containers,
+        result = drafts.sync(
+            RequestContext("test", None, account.id, app.tenant_id),
+            WorkflowOwner(app.id),
+            DraftSyncCommand(
+                graph=graph,
+                features=features,
+                unique_hash=unique_hash,
+                is_collaborative=False,
+                environment_upserts=None,
+                environment_deletions=[],
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
+            ),
         )
 
         # Assert
@@ -736,7 +703,7 @@ class TestWorkflowService:
         assert result.version == Workflow.VERSION_DRAFT
         assert result.app_id == app.id
         assert result.tenant_id == app.tenant_id
-        assert result.unique_hash is not None  # Should have a hash generated
+        assert result.hash is not None  # Should have a hash generated
         assert result.graph == json.dumps(graph)
         assert result.features == json.dumps(features)
         assert result.created_by == account.id
@@ -782,18 +749,22 @@ class TestWorkflowService:
         environment_variables = []
         conversation_variables = []
 
-        workflow_service = WorkflowService()
+        drafts = build_app_dsl_service(db_session_with_containers)._drafts
 
         # Act
-        result = workflow_service.sync_draft_workflow(
-            app_model=app,
-            graph=new_graph,
-            features=new_features,
-            unique_hash=original_hash,  # Use original hash to allow update
-            account=account,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            session=db_session_with_containers,
+        result = drafts.sync(
+            RequestContext("test", None, account.id, app.tenant_id),
+            WorkflowOwner(app.id),
+            DraftSyncCommand(
+                graph=new_graph,
+                features=new_features,
+                unique_hash=original_hash,  # Use original hash to allow update
+                is_collaborative=False,
+                environment_upserts=None,
+                environment_deletions=[],
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
+            ),
         )
 
         # Assert
@@ -801,7 +772,7 @@ class TestWorkflowService:
         assert result.id == existing_workflow.id  # Same workflow updated
         assert result.version == Workflow.VERSION_DRAFT
         # Hash should be updated to reflect new content
-        assert result.unique_hash != original_hash  # Hash should change after update
+        assert result.hash != original_hash  # Hash should change after update
         assert result.graph == json.dumps(new_graph)
         assert result.features == json.dumps(new_features)
         assert result.updated_by == account.id
@@ -840,176 +811,26 @@ class TestWorkflowService:
         environment_variables = []
         conversation_variables = []
 
-        workflow_service = WorkflowService()
+        drafts = build_app_dsl_service(db_session_with_containers)._drafts
 
         # Act & Assert
         from services.errors.app import WorkflowHashNotEqualError
 
         with pytest.raises(WorkflowHashNotEqualError):
-            workflow_service.sync_draft_workflow(
-                app_model=app,
-                graph=new_graph,
-                features=new_features,
-                unique_hash=mismatched_hash,
-                account=account,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-                session=db_session_with_containers,
+            drafts.sync(
+                RequestContext("test", None, account.id, app.tenant_id),
+                WorkflowOwner(app.id),
+                DraftSyncCommand(
+                    graph=new_graph,
+                    features=new_features,
+                    unique_hash=mismatched_hash,
+                    is_collaborative=False,
+                    environment_upserts=None,
+                    environment_deletions=[],
+                    environment_variables=environment_variables,
+                    conversation_variables=conversation_variables,
+                ),
             )
-
-    def test_publish_workflow_success(self, db_session_with_containers: Session):
-        """
-        Test successful workflow publishing.
-
-        This test verifies that the service can correctly publish a draft
-        workflow, creating a new published version with proper versioning
-        and status management.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-
-        # Create draft workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-        workflow.version = Workflow.VERSION_DRAFT
-
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-
-        # Act - Mock current_user context and pass session
-        from unittest.mock import patch
-
-        with patch("flask_login.utils._get_user", return_value=account, autospec=True):
-            result = workflow_service.publish_workflow(
-                session=db_session_with_containers, app_model=app, account=account
-            )
-
-        # Assert
-        assert result is not None
-        assert result.version != Workflow.VERSION_DRAFT
-        # Version should be a timestamp format like '2025-08-22 00:10:24.722051'
-        assert isinstance(result.version, str)
-        assert len(result.version) > 10  # Should be a reasonable timestamp length
-        assert result.created_by == account.id
-
-    def test_publish_workflow_no_draft_error(self, db_session_with_containers: Session):
-        """
-        Test error when publishing workflow without draft.
-
-        This test ensures that the service correctly prevents publishing
-        when no draft workflow exists, maintaining workflow state consistency.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-
-        # Don't create any workflow - app should have no draft
-
-        workflow_service = WorkflowService()
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="No valid workflow found"):
-            workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
-
-    def test_publish_workflow_already_published_error(self, db_session_with_containers: Session):
-        """
-        Test error when publishing already published workflow.
-
-        This test ensures that the service correctly prevents re-publishing
-        of already published workflows, maintaining version control integrity.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-
-        # Create already published workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-        workflow.version = "2024.01.01.001"  # Already published
-
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="No valid workflow found"):
-            workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
-
-    def test_restore_published_workflow_to_draft_does_not_persist_normalized_source_features(
-        self, db_session_with_containers: Session
-    ):
-        """Restore copies legacy feature JSON into draft without rewriting the source row."""
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.ADVANCED_CHAT
-
-        legacy_features = {
-            "file_upload": {
-                "image": {
-                    "enabled": True,
-                    "number_limits": 6,
-                    "transfer_methods": ["remote_url", "local_file"],
-                }
-            },
-            "opening_statement": "",
-            "retriever_resource": {"enabled": True},
-            "sensitive_word_avoidance": {"enabled": False},
-            "speech_to_text": {"enabled": False},
-            "suggested_questions": [],
-            "suggested_questions_after_answer": {"enabled": False},
-            "text_to_speech": {"enabled": False, "language": "", "voice": ""},
-        }
-        published_workflow = Workflow(
-            id=fake.uuid4(),
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            type=WorkflowType.WORKFLOW,
-            version="2026.03.19.001",
-            graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps(legacy_features),
-            created_by=account.id,
-            updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-        )
-        draft_workflow = Workflow(
-            id=fake.uuid4(),
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            type=WorkflowType.WORKFLOW,
-            version=Workflow.VERSION_DRAFT,
-            graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps({}),
-            created_by=account.id,
-            updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-        )
-        db_session_with_containers.add(published_workflow)
-        db_session_with_containers.add(draft_workflow)
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-
-        restored_workflow = workflow_service.restore_published_workflow_to_draft(
-            app_model=app, workflow_id=published_workflow.id, account=account, session=db_session_with_containers
-        )
-
-        db_session_with_containers.expire_all()
-        refreshed_published_workflow = (
-            db_session_with_containers.query(Workflow).filter_by(id=published_workflow.id).first()
-        )
-        refreshed_draft_workflow = db_session_with_containers.query(Workflow).filter_by(id=draft_workflow.id).first()
-
-        assert restored_workflow.id == draft_workflow.id
-        assert refreshed_published_workflow is not None
-        assert refreshed_draft_workflow is not None
-        assert refreshed_published_workflow.serialized_features == json.dumps(legacy_features)
-        assert refreshed_draft_workflow.serialized_features == json.dumps(legacy_features)
 
     def test_get_default_block_configs(self, db_session_with_containers: Session):
         """
@@ -1094,156 +915,6 @@ class TestWorkflowService:
         # Assert
         # Result might be None if filters don't match, but should not raise error
         assert result is None or isinstance(result, dict)
-
-    def test_convert_to_workflow_chat_mode_success(self, db_session_with_containers: Session):
-        """
-        Test successful conversion from chat mode app to workflow mode.
-
-        This test verifies that the service can correctly convert a chatbot
-        application to workflow mode, which is essential for app mode migration.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-
-        # Create chat mode app
-        app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.CHAT
-
-        # Create app model config (required for conversion)
-        from models.model import AppModelConfig
-
-        app_model_config = AppModelConfig(
-            app_id=app.id,
-            provider="openai",
-            model_id="gpt-3.5-turbo",
-            # Set the model field directly - this is what model_dict property returns
-            model=json.dumps(
-                {
-                    "provider": "openai",
-                    "name": "gpt-3.5-turbo",
-                    "completion_params": {"max_tokens": 1000, "temperature": 0.7},
-                }
-            ),
-            # Set pre_prompt for PromptTemplateConfigManager
-            pre_prompt="You are a helpful assistant.",
-            created_by=account.id,
-            updated_by=account.id,
-        )
-        app_model_config.id = fake.uuid4()
-
-        db_session_with_containers.add(app_model_config)
-        app.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-        conversion_args = {
-            "name": "Converted Workflow App",
-            "icon_type": "emoji",
-            "icon": "🚀",
-            "icon_background": "#FF5733",
-        }
-
-        # Act
-        result = workflow_service.convert_to_workflow(
-            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
-        )
-
-        # Assert
-        assert result is not None
-        assert result.mode == AppMode.ADVANCED_CHAT  # CHAT mode converts to ADVANCED_CHAT, not WORKFLOW
-        assert result.name == conversion_args["name"]
-        assert result.icon == conversion_args["icon"]
-        assert result.icon_type == conversion_args["icon_type"]
-        assert result.icon_background == conversion_args["icon_background"]
-
-    def test_convert_to_workflow_completion_mode_success(self, db_session_with_containers: Session):
-        """
-        Test successful conversion from completion mode app to workflow mode.
-
-        This test verifies that the service can correctly convert a completion
-        application to workflow mode, supporting different app type migrations.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-
-        # Create completion mode app
-        app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.COMPLETION
-
-        # Create app model config (required for conversion)
-        from models.model import AppModelConfig
-
-        app_model_config = AppModelConfig(
-            app_id=app.id,
-            provider="openai",
-            model_id="gpt-3.5-turbo",
-            # Set the model field directly - this is what model_dict property returns
-            model=json.dumps(
-                {
-                    "provider": "openai",
-                    "name": "gpt-3.5-turbo",
-                    "completion_params": {"max_tokens": 1000, "temperature": 0.7},
-                }
-            ),
-            # Set pre_prompt for PromptTemplateConfigManager
-            pre_prompt="Complete the following text:",
-            created_by=account.id,
-            updated_by=account.id,
-        )
-        app_model_config.id = fake.uuid4()
-
-        db_session_with_containers.add(app_model_config)
-        app.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-        conversion_args = {
-            "name": "Converted Workflow App",
-            "icon_type": "emoji",
-            "icon": "🚀",
-            "icon_background": "#FF5733",
-        }
-
-        # Act
-        result = workflow_service.convert_to_workflow(
-            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
-        )
-
-        # Assert
-        assert result is not None
-        assert result.mode == AppMode.WORKFLOW
-        assert result.name == conversion_args["name"]
-        assert result.icon == conversion_args["icon"]
-        assert result.icon_type == conversion_args["icon_type"]
-        assert result.icon_background == conversion_args["icon_background"]
-
-    def test_convert_to_workflow_unsupported_mode_error(self, db_session_with_containers: Session):
-        """
-        Test error when attempting to convert unsupported app mode.
-
-        This test ensures that the service correctly prevents conversion
-        of apps that are not in supported modes for workflow conversion.
-        """
-        # Arrange
-        fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-
-        # Create workflow mode app (already in workflow mode)
-        app = self._create_test_app(db_session_with_containers, fake)
-        app.mode = AppMode.WORKFLOW
-
-        db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
-        conversion_args = {"name": "Test"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Current App mode: workflow is not supported convert to workflow"):
-            workflow_service.convert_to_workflow(
-                app_model=app, account=account, args=conversion_args, session=db_session_with_containers
-            )
 
     def test_validate_features_structure_advanced_chat(self, db_session_with_containers: Session):
         """
@@ -1339,7 +1010,7 @@ class TestWorkflowService:
         update_data = {"marked_name": "Updated Workflow Name", "marked_comment": "Updated workflow comment"}
 
         # Act
-        result = workflow_service.update_workflow(
+        result = WorkflowDefinitionStore.update_workflow(
             session=db_session_with_containers,
             account_id=account.id,
             data=update_data,
@@ -1369,7 +1040,7 @@ class TestWorkflowService:
         update_data = {"marked_name": "Test"}
 
         # Act
-        result = workflow_service.update_workflow(
+        result = WorkflowDefinitionStore.update_workflow(
             session=db_session_with_containers,
             account_id=account.id,
             data=update_data,
@@ -1403,7 +1074,7 @@ class TestWorkflowService:
         }
 
         # Act
-        result = workflow_service.update_workflow(
+        result = WorkflowDefinitionStore.update_workflow(
             session=db_session_with_containers,
             account_id=account.id,
             data=update_data,
@@ -1436,10 +1107,8 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act
-        result = workflow_service.delete_workflow(
+        result = WorkflowDefinitionStore.delete_workflow(
             session=db_session_with_containers,
             workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
@@ -1469,13 +1138,11 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act & Assert
         from services.errors.workflow_service import DraftWorkflowDeletionError
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
-            workflow_service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
@@ -1501,13 +1168,11 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act & Assert
         from services.errors.workflow_service import WorkflowInUseError
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
-            workflow_service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
@@ -1524,11 +1189,9 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         non_existent_workflow_id = fake.uuid4()
 
-        workflow_service = WorkflowService()
-
         # Act & Assert
         with pytest.raises(ValueError, match=f"Workflow with ID {non_existent_workflow_id} not found"):
-            workflow_service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(
                     tenant_id=app.tenant_id,
@@ -1569,7 +1232,7 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.workflow.node_factory import DifyNodeFactory
+        from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(

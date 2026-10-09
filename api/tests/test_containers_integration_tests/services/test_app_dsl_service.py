@@ -4,7 +4,7 @@ import base64
 import json
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -19,6 +19,8 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from enums.agent import WorkflowAgentBindingType
+from extensions.application_services.workflow import build_app_dsl_service
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
@@ -31,16 +33,15 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from repositories.app.creation_records import create_site_record
 from services import app_dsl_service
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
 from services.agent.dsl_service import AgentDslService
-from services.app_creation_records import create_site_record
 from services.app_dsl_service import (
     CHECK_DEPENDENCIES_REDIS_KEY_PREFIX,
     CURRENT_DSL_VERSION,
@@ -55,7 +56,9 @@ from services.app_dsl_service import (
 )
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import AppDslOverwriteStore
 from services.errors.app import WorkflowNotFoundError
+from services.workflow.draft_service import WorkflowDraftService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -119,6 +122,7 @@ class TestAppDslService:
         """Mock setup for external service dependencies."""
         with (
             patch("services.app_dsl_service.WorkflowService") as mock_workflow_service,
+            patch("extensions.application_services.workflow.build_workflow_draft_service") as mock_drafts,
             patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
             patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
@@ -126,7 +130,7 @@ class TestAppDslService:
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
-            mock_workflow_service.return_value.sync_draft_workflow.return_value = MagicMock()
+            mock_drafts.return_value.sync.return_value = None
             mock_dependencies_service.generate_latest_dependencies.return_value = []
             mock_dependencies_service.get_leaked_dependencies.return_value = []
             mock_dependencies_service.generate_dependencies.return_value = []
@@ -144,6 +148,7 @@ class TestAppDslService:
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
             yield {
                 "workflow_service": mock_workflow_service,
+                "drafts": mock_drafts,
                 "dependencies_service": mock_dependencies_service,
                 "app_was_created": mock_app_was_created,
                 "model_manager": mock_model_manager,
@@ -233,7 +238,7 @@ class TestAppDslService:
     # ── Import: Validation ────────────────────────────────────────────
 
     def test_import_app_invalid_import_mode_raises_value_error(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid import_mode"):
             service.import_app(
                 account=_account(),
@@ -242,7 +247,7 @@ class TestAppDslService:
             )
 
     def test_import_app_missing_yaml_content(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -252,7 +257,7 @@ class TestAppDslService:
         assert "yaml_content is required" in result.error
 
     def test_import_app_missing_yaml_url(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -262,7 +267,7 @@ class TestAppDslService:
         assert "yaml_url is required" in result.error
 
     def test_import_app_yaml_not_mapping_returns_failed(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -272,7 +277,7 @@ class TestAppDslService:
         assert "content must be a mapping" in result.error
 
     def test_import_app_version_not_str_returns_failed(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         yaml_content = _yaml_dump({"version": 1, "kind": "app", "app": {"name": "x", "mode": "workflow"}})
         result = service.import_app(
             account=_account(),
@@ -283,7 +288,7 @@ class TestAppDslService:
         assert "Invalid version type" in result.error
 
     def test_import_app_missing_app_data_returns_failed(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -300,7 +305,7 @@ class TestAppDslService:
 
         monkeypatch.setattr(app_dsl_service.yaml, "safe_load", bad_safe_load)
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -318,7 +323,7 @@ class TestAppDslService:
             lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("oops")),
         )
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -338,7 +343,7 @@ class TestAppDslService:
             lambda _method, _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -355,7 +360,7 @@ class TestAppDslService:
         response.raise_for_status.return_value = None
         monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -372,7 +377,7 @@ class TestAppDslService:
         response.raise_for_status.return_value = None
         monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -399,7 +404,7 @@ class TestAppDslService:
 
         monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -430,7 +435,7 @@ class TestAppDslService:
 
         monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_URL,
@@ -443,7 +448,7 @@ class TestAppDslService:
     # ── Import: App ID checks ────────────────────────────────────────
 
     def test_import_app_app_id_not_found_returns_failed(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -459,7 +464,7 @@ class TestAppDslService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         assert app.mode == "chat"
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=account,
             import_mode=ImportMode.YAML_CONTENT,
@@ -467,12 +472,12 @@ class TestAppDslService:
             app_id=app.id,
         )
         assert result.status == ImportStatus.FAILED
-        assert "Only workflow or advanced chat apps" in result.error
+        assert result.error == "Only workflow or advanced chat DSLs can overwrite workflow Apps"
 
     # ── Import: Flow ──────────────────────────────────────────────────
 
     def test_import_app_pending_stores_import_info_in_redis(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
@@ -508,7 +513,7 @@ class TestAppDslService:
             }
         ]
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=account,
             import_mode=ImportMode.YAML_CONTENT,
@@ -557,13 +562,6 @@ class TestAppDslService:
             lambda *_args, **_kwargs: created_app,
         )
 
-        draft_var_service = MagicMock()
-        monkeypatch.setattr(
-            app_dsl_service,
-            "WorkflowDraftVariableService",
-            lambda *args, **kwargs: draft_var_service,
-        )
-
         data: dict = {
             "version": "0.1.5",
             "kind": "app",
@@ -574,19 +572,18 @@ class TestAppDslService:
         else:
             data["model_config"] = {"model": {"provider": "openai"}}
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.import_app(
             account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_yaml_dump(data),
         )
         assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
-        draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id=created_app.id)
 
     # ── Confirm Import ────────────────────────────────────────────────
 
     def test_confirm_import_expired_returns_failed(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.confirm_import(import_id=str(uuid4()), account=_account())
         assert result.status == ImportStatus.FAILED
         assert "expired" in result.error
@@ -622,7 +619,7 @@ class TestAppDslService:
             lambda *_args, **_kwargs: created_app,
         )
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.COMPLETED
         assert result.app_id == created_app.id
@@ -633,7 +630,7 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, "123")
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.FAILED
         assert "validation error" in result.error
@@ -643,14 +640,14 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, "not-valid-json")
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.FAILED
 
     # ── Check Dependencies ────────────────────────────────────────────
 
     def test_check_dependencies_returns_empty_when_no_redis_data(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         app_model = _app_record()
         result = service.check_dependencies(app_model=app_model)
         assert result.leaked_dependencies == []
@@ -681,7 +678,7 @@ class TestAppDslService:
             lambda *, tenant_id, dependencies: [dep],
         )
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         result = service.check_dependencies(app_model=_app_record(id=app_id))
         assert len(result.leaked_dependencies) == 1
 
@@ -697,14 +694,14 @@ class TestAppDslService:
             mock_dependencies_json,
         )
 
-        dsl_service = AppDslService(db_session_with_containers)
+        dsl_service = build_app_dsl_service(db_session_with_containers)
         result = dsl_service.check_dependencies(app_model=app)
         assert result.leaked_dependencies == []
 
     # ── Create/Update App ─────────────────────────────────────────────
 
     def test_create_or_update_app_missing_mode_raises(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="loss app mode"):
             service._create_or_update_app(app=None, data={"app": {}}, account=_account())
 
@@ -714,19 +711,7 @@ class TestAppDslService:
         fixed_now = object()
         monkeypatch.setattr(app_dsl_service, "naive_utc_now", lambda: fixed_now)
 
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-        monkeypatch.setattr(
-            app_dsl_service.variable_factory,
-            "build_environment_variable_from_mapping",
-            lambda _m: SimpleNamespace(kind="env"),
-        )
-        monkeypatch.setattr(
-            app_dsl_service.variable_factory,
-            "build_conversation_variable_from_mapping",
-            lambda _m: SimpleNamespace(kind="conv"),
-        )
+        drafts = create_autospec(WorkflowDraftService, instance=True, spec_set=True)
 
         app = _app_record(
             mode=AppMode.WORKFLOW,
@@ -738,7 +723,11 @@ class TestAppDslService:
             updated_by=None,
             updated_at=None,
         )
-        service = AppDslService(db_session_with_containers)
+        service = AppDslService(
+            db_session_with_containers,
+            drafts=drafts,
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+        )
         updated = service._create_or_update_app(
             app=app,
             data={
@@ -762,10 +751,19 @@ class TestAppDslService:
         assert app.icon_background == "#222222"
         assert app.updated_at is fixed_now
 
+        drafts.sync.assert_called_once()
+        context, owner, command = drafts.sync.call_args.args
+        assert context.account_id == _DEFAULT_ACCOUNT_ID
+        assert context.active_workspace_id == app.tenant_id
+        assert owner.id == app.id
+        assert command.graph == {"nodes": []}
+        assert command.check_hash is False
+        assert command.clear_debug_variables is True
+
     def test_create_or_update_app_new_app_requires_tenant(self, db_session_with_containers: Session):
         account = _account()
         account._current_tenant = None
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
                 app=None,
@@ -781,7 +779,7 @@ class TestAppDslService:
         mock_wf_svc = mock_external_service_dependencies["workflow_service"]
         mock_wf_svc.return_value.get_draft_workflow.return_value = MagicMock(unique_hash="uh")
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         deps = [
             app_dsl_service.PluginDependency.model_validate(
                 {
@@ -805,13 +803,13 @@ class TestAppDslService:
 
         assert app.tenant_id == account.current_tenant_id
         mock_external_service_dependencies["app_was_created"].send.assert_called_once()
-        mock_wf_svc.return_value.sync_draft_workflow.assert_called_once()
+        mock_external_service_dependencies["drafts"].return_value.sync.assert_called_once()
 
         stored = redis_client.get(f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}")
         assert stored is not None
 
     def test_create_or_update_app_workflow_missing_workflow_data_raises(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
                 app=_app_record(mode=AppMode.WORKFLOW),
@@ -820,7 +818,7 @@ class TestAppDslService:
             )
 
     def test_create_or_update_app_chat_requires_model_config(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
                 app=_app_record(mode=AppMode.CHAT),
@@ -835,7 +833,7 @@ class TestAppDslService:
         app.app_model_config_id = None
         db_session_with_containers.commit()
 
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with patch("services.app_dsl_service.app_model_config_was_updated") as signal:
             service._create_or_update_app(
                 app=app,
@@ -851,7 +849,7 @@ class TestAppDslService:
         assert signal.send.call_args.kwargs["session"] is db_session_with_containers
 
     def test_create_or_update_app_invalid_mode_raises(self, db_session_with_containers: Session):
-        service = AppDslService(db_session_with_containers)
+        service = build_app_dsl_service(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
                 app=_app_record(mode=AppMode.RAG_PIPELINE),
@@ -1202,7 +1200,7 @@ class TestAppDslService:
         mock_external_service_dependencies["app_was_created"].send.side_effect = (
             lambda app, *, account, session, **_kwargs: create_site_record(app=app, account=account, session=session)
         )
-        result = AppDslService(db_session_with_containers).import_app(
+        result = build_app_dsl_service(db_session_with_containers).import_app(
             account=account,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=yaml_content,

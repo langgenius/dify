@@ -4,15 +4,17 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tests.unit_tests.config_override import config_overrides_context
+
+pytestmark = pytest.mark.usefixtures("workflow_application")
 
 
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)

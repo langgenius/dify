@@ -2,12 +2,13 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ToolProviderType
 from models import Account, Tenant
 from models.tools import MCPToolProvider
-from services.tools.legacy_mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
+from repositories.tools.provider_repository import ToolProviderRepository
+from services.tools.mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
 
 
 class TestMCPToolManageService:
@@ -17,8 +18,8 @@ class TestMCPToolManageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tools.legacy_mcp_tools_manage_service.encrypter") as mock_encrypter,
-            patch("services.tools.legacy_mcp_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
+            patch("services.tools.mcp_tools_manage_service.encrypter") as mock_encrypter,
+            patch("services.tools.mcp_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
         ):
             # Setup default mock returns
             from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -378,9 +379,7 @@ class TestMCPToolManageService:
         )
 
         # Assert: Verify the expected outcomes
-        assert result is not None
-        assert result.name == "Test MCP Provider"
-        assert result.type == ToolProviderType.MCP
+        assert isinstance(result, str)
 
         # Verify database state
 
@@ -391,6 +390,8 @@ class TestMCPToolManageService:
         )
 
         assert created_provider is not None
+        assert result == created_provider.id
+        assert created_provider.name == "Test MCP Provider"
         assert created_provider.server_identifier == "test_identifier_123"
         assert created_provider.timeout == 30.0
         assert created_provider.sse_read_timeout == 300.0
@@ -401,7 +402,7 @@ class TestMCPToolManageService:
         mock_external_service_dependencies["encrypter"].encrypt_token.assert_called_once_with(
             tenant.id, "https://example.com/mcp"
         )
-        mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_called_once()
+        mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_not_called()
 
     def test_create_mcp_provider_duplicate_name(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -638,8 +639,10 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result = MCPToolManageService.list_providers(tenant_id=tenant.id, tool_providers=tool_providers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -676,8 +679,10 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result = MCPToolManageService.list_providers(tenant_id=tenant.id, tool_providers=tool_providers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -749,9 +754,11 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test for both tenants
 
-        service = MCPToolManageService(db_session_with_containers)
-        result1 = service.list_providers(tenant_id=tenant1.id)
-        result2 = service.list_providers(tenant_id=tenant2.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result1 = MCPToolManageService.list_providers(tenant_id=tenant1.id, tool_providers=tool_providers)
+        result2 = MCPToolManageService.list_providers(tenant_id=tenant2.id, tool_providers=tool_providers)
 
         # Assert: Verify tenant isolation
         assert len(result1) == 1
@@ -804,7 +811,7 @@ class TestMCPToolManageService:
                 )(),
             ]
 
-            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 # Setup mock client
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
                 mock_client_instance.list_tools.return_value = mock_tools
@@ -866,7 +873,7 @@ class TestMCPToolManageService:
             mock_decrypt.return_value = "https://example.com/mcp"
 
             # Mock MCPClient to raise authentication error
-            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 from core.mcp.error import MCPAuthError
 
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
@@ -918,7 +925,7 @@ class TestMCPToolManageService:
             mock_decrypt.return_value = "https://example.com/mcp"
 
             # Mock MCPClient to raise connection error
-            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 from core.mcp.error import MCPError
 
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value

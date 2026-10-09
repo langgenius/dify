@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -30,15 +29,9 @@ from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
 )
-from core.tools.tool_engine import ToolEngine
-from models.model import AppMode, Message, MessageFile
-
-
-class _DatabaseBinding:
-    engine: Engine
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
+from models.model import App, AppMode, Conversation, Message, MessageFile
+from services.tools.tool_engine import ToolEngine
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 def _message() -> Message:
@@ -86,7 +79,7 @@ class _DummyTool(Tool):
 
     def _invoke(
         self,
-        session: Any,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -248,21 +241,34 @@ def test_convert_tool_response_deduplicates_only_matching_json():
     assert ToolEngine.tool_response_to_str(messages) == text + "result" + text + '{"c": 3}{"c": 3}'
 
 
-@pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
-def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session):
+@pytest.mark.parametrize("sqlite_session", [(App, Conversation, Message, MessageFile)], indirect=True)
+def test_create_message_files_and_invoke_generator(sqlite_session: Session, *, app_records):
     binaries = [
         ToolInvokeMessageBinary(mimetype="image/png", url="https://example.com/abc.png"),
         ToolInvokeMessageBinary(mimetype="audio/wav", url="https://example.com/def.wav"),
     ]
     agent_message = _message()
-    with patch("core.tools.tool_engine.db", _DatabaseBinding(sqlite_engine)):
-        ids = ToolEngine._create_message_files(
-            tool_messages=binaries,
-            agent_message=agent_message,
-            invoke_from=InvokeFrom.DEBUGGER,
-            user_id=str(uuid4()),
-        )
-
+    sqlite_session.add_all(
+        [
+            make_app(app_id=agent_message.app_id, tenant_id="tenant-1"),
+            make_conversation(
+                conversation_id=agent_message.conversation_id,
+                app_id=agent_message.app_id,
+                inputs={},
+                from_source="console",
+            ),
+            agent_message,
+        ]
+    )
+    sqlite_session.commit()
+    ids = ToolEngine._create_message_files(
+        records=app_records,
+        tenant_id="tenant-1",
+        tool_messages=binaries,
+        agent_message=agent_message,
+        invoke_from=InvokeFrom.DEBUGGER,
+        user_id=str(uuid4()),
+    )
     message_files = list(sqlite_session.scalars(select(MessageFile).order_by(MessageFile.created_at)).all())
     assert ids == [message_file.id for message_file in message_files]
     assert len(message_files) == 2
@@ -275,13 +281,12 @@ def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite
     assert invoked[-1].error is None
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
+def test_generic_invoke_success_and_error_paths(unbound_session: Session):
     tool = _build_tool()
     callback = DifyWorkflowCallbackHandler()
     response = list(
         ToolEngine.generic_invoke(
-            session=sqlite_session,
+            session=unbound_session,
             tool=tool,
             tool_parameters={"x": 1},
             user_id="u1",
@@ -299,7 +304,7 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
-                session=sqlite_session,
+                session=unbound_session,
                 tool=tool,
                 tool_parameters={"x": 1},
                 user_id="u1",
@@ -309,8 +314,7 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
         )
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_success(sqlite_session: Session):
+def test_agent_invoke_success(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -318,13 +322,14 @@ def test_agent_invoke_success(sqlite_session: Session):
 
     with patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])):
         with patch(
-            "core.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            "services.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
             side_effect=lambda messages, **kwargs: messages,
         ):
             with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
                 with patch.object(ToolEngine, "_create_message_files", return_value=[]):
                     result_text, message_files, result_meta = ToolEngine.agent_invoke(
-                        session=sqlite_session,
+                        session=unbound_session,
+                        records=app_records,
                         tool=tool,
                         tool_parameters="hello",
                         user_id="u1",
@@ -339,15 +344,15 @@ def test_agent_invoke_success(sqlite_session: Session):
     assert result_meta.error is None
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_param_validation_error(sqlite_session: Session):
+def test_agent_invoke_param_validation_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
         error_text, files, error_meta = ToolEngine.agent_invoke(
-            session=sqlite_session,
+            session=unbound_session,
+            records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",
@@ -362,8 +367,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
     assert error_meta.error
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_engine_meta_error(sqlite_session: Session):
+def test_agent_invoke_engine_meta_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -371,7 +375,8 @@ def test_agent_invoke_engine_meta_error(sqlite_session: Session):
 
     with patch.object(ToolEngine, "_invoke", side_effect=engine_error):
         error_text, files, error_meta = ToolEngine.agent_invoke(
-            session=sqlite_session,
+            session=unbound_session,
+            records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",
@@ -408,15 +413,15 @@ def test_convert_tool_response_excludes_variable_messages():
     assert "variable_name" not in result
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
+def test_agent_invoke_tool_invoke_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
         error_text, files, _ = ToolEngine.agent_invoke(
-            session=sqlite_session,
+            session=unbound_session,
+            records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",

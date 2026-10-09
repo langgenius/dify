@@ -11,7 +11,6 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -373,56 +372,6 @@ class TestAppModelValidation:
         # Act / Assert: an unbound session would raise if the guard were dropped
         with Session(expire_on_commit=False) as unbound_session:
             assert app.workflow_with_session(session=unbound_session) is None
-
-    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):
-        """Plugin-backed built-in tools are checked through core PluginService."""
-        # Arrange
-        app = App(
-            tenant_id="tenant-1",
-            name="Test App",
-            mode=AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-            created_by=str(uuid4()),
-        )
-        sqlite_session.add(app)
-        sqlite_session.flush()
-        app_model_config = AppModelConfig(
-            app_id=app.id,
-            agent_mode=json.dumps(
-                {
-                    "enabled": True,
-                    "strategy": "function_call",
-                    "tools": [
-                        {
-                            "provider_type": "builtin",
-                            "provider_id": "langgenius/openai/openai",
-                            "tool_name": "chat",
-                            "tool_parameters": {},
-                        }
-                    ],
-                    "prompt": None,
-                }
-            ),
-        )
-        sqlite_session.add(app_model_config)
-        sqlite_session.flush()
-        app.app_model_config_id = app_model_config.id
-        sqlite_session.flush()
-
-        # Act
-        with (
-            patch("core.tools.tool_manager.ToolManager.get_hardcoded_provider", side_effect=Exception),
-            patch("core.plugin.plugin_service.PluginService.check_tools_existence", return_value=[False]) as exists,
-        ):
-            result = app.deleted_tools_with_session(session=sqlite_session)
-
-        # Assert
-        assert result == [{"type": "builtin", "tool_name": "chat", "provider_id": "langgenius/openai/openai"}]
-        exists.assert_called_once()
-        assert exists.call_args.args[0] == "tenant-1"
-        assert [str(provider_id) for provider_id in exists.call_args.args[1]] == ["langgenius/openai/openai"]
 
 
 class TestAppModelConfig:

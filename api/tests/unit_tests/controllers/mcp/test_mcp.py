@@ -696,7 +696,7 @@ class TestMCPProtocolVersionNegotiationApi:
         tool = response.get_json()["result"]["tools"][0]
         assert set(tool) == {"name", "description", "inputSchema"}
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    @patch("controllers.mcp.mcp.AppGenerateService")
     def test_tools_call_json_includes_structured_content_for_modern_client(self, mock_app_generate, app):
         """A 2025-06-18 client receives structuredContent alongside the text content."""
         api = self._make_api()
@@ -713,7 +713,7 @@ class TestMCPProtocolVersionNegotiationApi:
         assert result["structuredContent"] == {"answer": "test answer"}
         assert result["content"][0]["text"] == "test answer"
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    @patch("controllers.mcp.mcp.AppGenerateService")
     def test_tools_call_json_omits_structured_content_for_legacy_client(self, mock_app_generate, app):
         """A 2024-11-05 client receives the pre-upgrade tools/call JSON without structuredContent."""
         api = self._make_api()
@@ -729,3 +729,6 @@ class TestMCPProtocolVersionNegotiationApi:
         result = response.get_json()["result"]
         assert "structuredContent" not in result
         assert result["content"][0]["text"] == "test answer"
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

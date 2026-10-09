@@ -4,7 +4,6 @@ import json
 from unittest.mock import patch
 
 import httpx
-import pytest
 from sqlalchemy.orm import Session
 
 import core.plugin.impl.base as plugin_client_module
@@ -43,8 +42,7 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
     )
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
+def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session):
     tool = _build_plugin_tool(has_runtime_parameters=False)
     requests: list[httpx.Request] = []
 
@@ -63,7 +61,7 @@ def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
                 return_value={"converted": 1},
             ),
         ):
-            messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
+            messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     assert len(requests) == 1

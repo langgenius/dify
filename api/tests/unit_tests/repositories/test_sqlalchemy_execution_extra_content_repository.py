@@ -10,7 +10,11 @@ from enums.human_input import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import HumanInputForm
-from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
+from models.human_input_entities import (
+    FormDefinition,
+    ParagraphInputConfig,
+    UserActionConfig,
+)
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 
 

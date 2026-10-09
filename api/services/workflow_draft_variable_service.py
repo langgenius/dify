@@ -43,7 +43,7 @@ from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
-from models.enums import ConversationFromSource, DraftVariableType
+from models.enums import ConversationFromSource, DraftVariableType, ExecutionOffLoadType
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
@@ -400,8 +400,11 @@ class WorkflowDraftVariableService:
             logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
-        node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
-        if node_exec is None:
+        node_exec = self._api_node_execution_repo.get_execution_by_id(
+            variable.node_execution_id,
+            tenant_id=workflow.tenant_id,
+        )
+        if node_exec is None or node_exec.app_id != workflow.app_id:
             logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
                 variable.id,
@@ -412,7 +415,21 @@ class WorkflowDraftVariableService:
             self._session.flush()
             return None
 
-        outputs_dict = node_exec.load_full_outputs(self._session, storage) or {}
+        output_offload = next(
+            (item for item in node_exec.offload_data if item.type_ == ExecutionOffLoadType.OUTPUTS),
+            None,
+        )
+        if output_offload is None:
+            outputs_dict = node_exec.outputs_dict or {}
+        else:
+            if (
+                output_offload.tenant_id != node_exec.tenant_id
+                or output_offload.app_id != node_exec.app_id
+                or output_offload.file is None
+                or output_offload.file.tenant_id != node_exec.tenant_id
+            ):
+                raise VariableResetError(f"Execution output file not found, execution_id={node_exec.id}")
+            outputs_dict = json.loads(storage.load(output_offload.file.key)) or {}
         # a sentinel value used to check the absent of the output variable key.
         absent = object()
 

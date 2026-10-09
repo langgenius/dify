@@ -26,6 +26,7 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
 )
 from core.workflow.llm_node import DifyLLMNode
+from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
     PluginAgentStrategyResolver,
@@ -54,7 +55,6 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.human_input_entities import HumanInputNodeData as DifyHumanInputNodeData
-from services.workflow.execution.adapters.agent_message_transformer import AgentMessageTransformer
 from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
@@ -120,7 +120,24 @@ def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] 
 def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
-    _import_node_package("core.workflow.nodes")
+    _import_node_package(
+        "core.workflow.nodes",
+        excluded_modules=frozenset(
+            {
+                "core.workflow.nodes.agent.agent_node",
+                "core.workflow.nodes.agent.runtime_support",
+                "core.workflow.nodes.agent_v2.agent_node",
+                "core.workflow.nodes.agent_v2.binding_resolver",
+                "core.workflow.nodes.agent_v2.dify_tools_builder",
+                "core.workflow.nodes.agent_v2.runtime_request_builder",
+                "core.workflow.nodes.agent_v2.validators",
+                "core.workflow.nodes.human_input.boundary",
+                "core.workflow.nodes.human_input.callback",
+                "core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node",
+                "core.workflow.nodes.trigger_webhook.node",
+            }
+        ),
+    )
     for module_name in (
         "services.workflow.execution.adapters.agent_node",
         "services.workflow.execution.adapters.knowledge_retrieval",

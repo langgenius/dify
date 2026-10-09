@@ -1,249 +1,102 @@
-from __future__ import annotations
+"""Human input transport delegates parsed payloads to application services."""
 
-from dataclasses import dataclass
-from unittest.mock import ANY, MagicMock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import UnprocessableEntity
+from pydantic import ValidationError
 
-from controllers.console import wraps as console_wraps
-from controllers.console.app import workflow as workflow_module
-from controllers.console.app import wraps as app_wraps
-from enums import DeploymentEdition
-from libs import login as login_lib
-from models import App, Tenant
-from models.account import Account, AccountStatus, TenantAccountRole
-from models.model import AppMode, IconType
-from tests.unit_tests.config_override import apply_config_overrides
-
-
-def _make_account() -> Account:
-    account = Account(name="tester", email="tester@example.com")
-    account.status = AccountStatus.ACTIVE
-    account.role = TenantAccountRole.OWNER
-    account.id = "account-123"  # type: ignore[assignment]
-    tenant = Tenant(name="Test tenant")
-    tenant.id = "tenant-123"
-    account._current_tenant = tenant
-    account._get_current_object = lambda: account  # type: ignore[attr-defined]
-    return account
+from controllers.console.app import workflow as controller
+from extensions.ext_application_services import ApplicationServices
+from services.human_input.debug_service import HumanInputDebugService
+from tests.unit_tests.controllers.console.app.test_workflow import (
+    APP_ID,
+    CONTEXT,
+    invoke,
+)
 
 
-def _make_app(mode: AppMode) -> App:
-    return App(
-        id="app-123",
-        tenant_id="tenant-123",
-        name="Human input app",
-        description="",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
-
-
-def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app_model: App) -> None:
-    # Skip setup and auth guardrails
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        LOGIN_DISABLED=True,
-        INIT_PASSWORD="",
-    )
-    monkeypatch.setattr(login_lib, "current_user", account)
-    monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-
-    # Avoid hitting the database when resolving the app model
-    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
-
-
-@dataclass
-class PreviewCase:
-    resource_cls: type
-    path: str
-    mode: AppMode
+@pytest.fixture(name="workflows")
+def debug_use_cases(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    service = create_autospec(HumanInputDebugService, instance=True)
+    dependencies = create_autospec(ApplicationServices, instance=True)
+    dependencies.human_input_debug = service
+    monkeypatch.setattr(controller, "application_services", lambda: dependencies)
+    return service
 
 
 @pytest.mark.parametrize(
-    "case",
-    [
-        PreviewCase(
-            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormPreviewApi,
-            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-42/form/preview",
-            mode=AppMode.ADVANCED_CHAT,
-        ),
-        PreviewCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputFormPreviewApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-42/form/preview",
-            mode=AppMode.WORKFLOW,
-        ),
-    ],
+    "resource", [controller.AdvancedChatDraftHumanInputFormPreviewApi, controller.WorkflowDraftHumanInputFormPreviewApi]
 )
-def test_human_input_preview_delegates_to_service(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, case: PreviewCase
+def test_preview_forwards_inputs(
+    app: Flask,
+    workflows: Mock,
+    resource: type[
+        controller.AdvancedChatDraftHumanInputFormPreviewApi | controller.WorkflowDraftHumanInputFormPreviewApi
+    ],
 ) -> None:
-    account = _make_account()
-    app_model = _make_app(case.mode)
-    _patch_console_guards(monkeypatch, account, app_model)
-
-    preview_payload = {
-        "form_id": "node-42",
-        "form_content": "<div>example</div>",
-        "inputs": [{"name": "topic"}],
-        "actions": [{"id": "continue"}],
-    }
-    service_instance = MagicMock()
-    service_instance.get_human_input_form_preview.return_value = preview_payload
-    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
-
-    with app.test_request_context(case.path, method="POST", json={"inputs": {"topic": "tech"}}):
-        response = case.resource_cls().post(app_id=app_model.id, node_id="node-42")
-
-    assert response == preview_payload
-    service_instance.get_human_input_form_preview.assert_called_once_with(
-        app_model=app_model,
-        account=account,
-        node_id="node-42",
-        inputs={"topic": "tech"},
-        session=ANY,
-    )
-
-
-@dataclass
-class SubmitCase:
-    resource_cls: type
-    path: str
-    mode: AppMode
+    payload = {"form_id": "human", "form_content": "Hello"}
+    workflows.preview_form.return_value = payload
+    args = controller.HumanInputFormPreviewPayload(inputs={"topic": "tech"})
+    with app.test_request_context(method="POST"):
+        assert invoke(resource, resource.post, args, node_id="human") == payload
+    workflows.preview_form.assert_called_once_with(CONTEXT, str(APP_ID), "human", {"topic": "tech"})
 
 
 @pytest.mark.parametrize(
-    "case",
-    [
-        SubmitCase(
-            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormRunApi,
-            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-99/form/run",
-            mode=AppMode.ADVANCED_CHAT,
-        ),
-        SubmitCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputFormRunApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-99/form/run",
-            mode=AppMode.WORKFLOW,
-        ),
-    ],
+    "resource", [controller.AdvancedChatDraftHumanInputFormRunApi, controller.WorkflowDraftHumanInputFormRunApi]
 )
-def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.MonkeyPatch, case: SubmitCase) -> None:
-    account = _make_account()
-    app_model = _make_app(case.mode)
-    _patch_console_guards(monkeypatch, account, app_model)
-
-    result_payload = {"node_id": "node-99", "outputs": {"__rendered_content": "<p>done</p>"}, "action": "approve"}
-    service_instance = MagicMock()
-    service_instance.submit_human_input_form_preview.return_value = result_payload
-    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
-
-    with app.test_request_context(
-        case.path,
-        method="POST",
-        json={"form_inputs": {"answer": "42"}, "inputs": {"#node-1.result#": "LLM output"}, "action": "approve"},
-    ):
-        response = case.resource_cls().post(app_id=app_model.id, node_id="node-99")
-
-    assert response == result_payload
-    service_instance.submit_human_input_form_preview.assert_called_once_with(
-        app_model=app_model,
-        account=account,
-        node_id="node-99",
+def test_submission_forwards_form_and_upstream_inputs(
+    app: Flask,
+    workflows: Mock,
+    resource: type[controller.AdvancedChatDraftHumanInputFormRunApi | controller.WorkflowDraftHumanInputFormRunApi],
+) -> None:
+    outputs = {"answer": "42", "__action_id": "approve"}
+    workflows.submit_form.return_value = outputs
+    args = controller.HumanInputFormSubmitPayload(
+        form_inputs={"answer": "42"}, inputs={"#upstream.output#": "text"}, action="approve"
+    )
+    with app.test_request_context(method="POST"):
+        assert invoke(resource, resource.post, args, node_id="human") == outputs
+    workflows.submit_form.assert_called_once_with(
+        CONTEXT,
+        str(APP_ID),
+        "human",
         form_inputs={"answer": "42"},
-        inputs={"#node-1.result#": "LLM output"},
+        inputs={"#upstream.output#": "text"},
         action="approve",
-        session=ANY,
     )
 
 
-@dataclass
-class DeliveryTestCase:
-    resource_cls: type
-    path: str
-    mode: AppMode
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        DeliveryTestCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputDeliveryTestApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-7/delivery-test",
-            mode=AppMode.ADVANCED_CHAT,
-        ),
-        DeliveryTestCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputDeliveryTestApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-7/delivery-test",
-            mode=AppMode.WORKFLOW,
-        ),
-    ],
-)
-def test_human_input_delivery_test_calls_service(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, case: DeliveryTestCase
-) -> None:
-    account = _make_account()
-    app_model = _make_app(case.mode)
-    _patch_console_guards(monkeypatch, account, app_model)
-
-    service_instance = MagicMock()
-    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
-
-    with app.test_request_context(
-        case.path,
-        method="POST",
-        json={"delivery_method_id": "delivery-123"},
-    ):
-        response = case.resource_cls().post(app_id=app_model.id, node_id="node-7")
-
-    assert response == {}
-    service_instance.test_human_input_delivery.assert_called_once_with(
-        app_model=app_model,
-        account=account,
-        node_id="node-7",
-        delivery_method_id="delivery-123",
-        inputs={},
-        session=ANY,
+def test_delivery_forwards_default_inputs(app: Flask, workflows: Mock) -> None:
+    args = controller.HumanInputDeliveryTestPayload(delivery_method_id="email")
+    with app.test_request_context(method="POST"):
+        assert (
+            invoke(
+                controller.WorkflowDraftHumanInputDeliveryTestApi,
+                controller.WorkflowDraftHumanInputDeliveryTestApi.post,
+                args,
+                node_id="human",
+            )
+            == {}
+        )
+    workflows.test_delivery.assert_called_once_with(
+        CONTEXT, str(APP_ID), "human", inputs={}, delivery_method_id="email"
     )
 
 
-def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    account = _make_account()
-    app_model = _make_app(AppMode.ADVANCED_CHAT)
-    _patch_console_guards(monkeypatch, account, app_model)
-
-    service_instance = MagicMock()
-    service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
-    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
-
-    with app.test_request_context(
-        "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
-        method="POST",
-        json={"delivery_method_id": "bad"},
-    ):
-        with pytest.raises(ValueError):
-            workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+def test_delivery_preserves_domain_error(app: Flask, workflows: Mock) -> None:
+    workflows.test_delivery.side_effect = ValueError("bad delivery method")
+    args = controller.HumanInputDeliveryTestPayload(delivery_method_id="bad")
+    with app.test_request_context(method="POST"), pytest.raises(ValueError, match="bad delivery method"):
+        invoke(
+            controller.WorkflowDraftHumanInputDeliveryTestApi,
+            controller.WorkflowDraftHumanInputDeliveryTestApi.post,
+            args,
+            node_id="human",
+        )
 
 
-def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    account = _make_account()
-    app_model = _make_app(AppMode.ADVANCED_CHAT)
-    _patch_console_guards(monkeypatch, account, app_model)
-
-    with app.test_request_context(
-        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
-        method="POST",
-        json={"inputs": ["not-a-dict"]},
-    ):
-        with pytest.raises(UnprocessableEntity):
-            workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+def test_preview_rejects_non_mapping_inputs() -> None:
+    with pytest.raises(ValidationError):
+        controller.HumanInputFormPreviewPayload.model_validate({"inputs": ["not-a-dict"]})

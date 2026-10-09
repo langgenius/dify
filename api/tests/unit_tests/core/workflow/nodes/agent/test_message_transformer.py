@@ -34,7 +34,7 @@ def _message_stream(messages: list[ToolInvokeMessage]) -> Generator[ToolInvokeMe
 
 def _run_transform(messages: list[ToolInvokeMessage]) -> tuple[str, ArrayFileSegment]:
     events = list(
-        AgentMessageTransformer().transform(
+        AgentMessageTransformer(lambda _name, default: (default, None)).transform(
             messages=_message_stream(messages),
             tool_info={},
             parameters_for_log={},
@@ -54,7 +54,7 @@ def _run_transform(messages: list[ToolInvokeMessage]) -> tuple[str, ArrayFileSeg
 
 def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> None:
     messages = _message_stream([])
-    transformer = AgentMessageTransformer()
+    transformer = AgentMessageTransformer(lambda _name, default: (default, None))
 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=iter(())) as transform:
         result = list(
@@ -240,7 +240,7 @@ def test_transform_closes_think_tag_when_tool_log_interrupts() -> None:
 
 def test_transform_streams_close_tag_before_post_tool_text() -> None:
     events = list(
-        AgentMessageTransformer().transform(
+        AgentMessageTransformer(lambda _name, default: (default, None)).transform(
             messages=_message_stream(
                 [
                     _text("<think>need to search"),

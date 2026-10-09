@@ -77,6 +77,27 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
 /**
+ * DraftWorkflowSyncPayload
+ */
+export const zDraftWorkflowSyncPayload = z.object({
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  features: z.record(z.string(), z.unknown()).nullish(),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string().nullish(),
+  rag_pipeline_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+})
+
+/**
+ * RagPipelineWorkflowSyncResponse
+ */
+export const zRagPipelineWorkflowSyncResponse = z.object({
+  hash: z.string(),
+  result: z.string(),
+  updated_at: z.int(),
+})
+
+/**
  * DatasourceNodeRunPayload
  */
 export const zDatasourceNodeRunPayload = z.object({
@@ -162,15 +183,6 @@ export const zPublishedWorkflowRunPayload = z.object({
   original_document_id: z.string().nullish(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('streaming'),
   start_node_id: z.string(),
-})
-
-/**
- * RagPipelineWorkflowSyncResponse
- */
-export const zRagPipelineWorkflowSyncResponse = z.object({
-  hash: z.string(),
-  result: z.string(),
-  updated_at: z.int(),
 })
 
 /**
@@ -1177,6 +1189,8 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftResponse = zWorkflowResponse
 
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftBody = zDraftWorkflowSyncPayload
+
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
   pipeline_id: z.uuid(),
 })
@@ -1184,7 +1198,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = zRagPipelineWorkflowSyncResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody =
   zDatasourceNodeRunPayload

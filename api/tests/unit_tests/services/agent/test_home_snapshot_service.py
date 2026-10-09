@@ -23,6 +23,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.errors import (
     AgentBuildSandboxNotFoundError,
     AgentHomeSnapshotCreateFailedError,
@@ -404,7 +405,7 @@ def _apply_with_client_error(monkeypatch: pytest.MonkeyPatch, error: Exception) 
     client.create_home_snapshot_from_binding_sync.side_effect = error
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceRepository, "validate_binding_generation", MagicMock())
 
     AgentHomeSnapshotService.create_for_build_apply(session=session, build_draft=_build_draft())
 
