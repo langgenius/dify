@@ -139,6 +139,216 @@ Machine-readable catalog of every op on this surface
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/app-info/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AgentAppInfo](#agentappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppInfoPatch](#agentappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AgentAppInfo](#agentappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppInfoPatch](#appinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppInfoPatch](#appinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/chat:run
 #### Parameters
 
@@ -195,6 +405,28 @@ Machine-readable catalog of every op on this surface
 | 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatNodeRunPayload](#advancedchatnoderunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node execution | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/draft/advanced-chat:run
 #### Parameters
 
@@ -213,6 +445,28 @@ Machine-readable catalog of every op on this surface
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/workflow/nodes/{node_id}:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node execution | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -418,6 +672,216 @@ Upload a file to use as an input variable when running the app
 | 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/service-api/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/tasks/{task_id}/events
 #### Parameters
 
@@ -484,6 +948,510 @@ Upload a file to use as an input variable when running the app
 | 200 | Restored into the draft | **application/json**: [RestoreResponse](#restoreresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/webapp-access/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AdvancedChatWebApp](#advancedchatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatWebAppPatch](#advancedchatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AdvancedChatWebApp](#advancedchatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/advanced-chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AgentWebApp](#agentwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AgentWebApp](#agentwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/agent-chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/agent:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WebApp](#webapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppPatch](#webapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WebApp](#webapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/completion:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WorkflowWebApp](#workflowwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowWebAppPatch](#workflowwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WorkflowWebApp](#workflowwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/workflow:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
@@ -524,6 +1492,28 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /node-types
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node types | **application/json**: [NodeTypeListResponse](#nodetypelistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /node-types/{node_type}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
@@ -655,6 +1645,46 @@ Upload a file to use as an input variable when running the app
 | 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/access-subjects
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | query | Search only inside this group | No | string |
+| keyword | query | Name or email to search for | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Members and groups | **application/json**: [AccessSubjectListResponse](#accesssubjectlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAppPayload](#createapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Created | **application/json**: [CreatedAppResponse](#createdappresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/apps/imports
 #### Parameters
 
@@ -692,6 +1722,27 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAppPayload](#createapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Created | **application/json**: [CreatedAppResponse](#createdappresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/members
@@ -786,6 +1837,34 @@ Upload a file to use as an input variable when running the app
 ---
 ### Schemas
 
+#### AccessSubjectListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### AccessSubjectQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| group_id | string | Search only inside this group | No |
+| keyword | string | Name or email to search for | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### AccessSubjectRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | Yes |
+| member_count | integer |  | No |
+| name | string |  | No |
+| type | string |  | Yes |
+
 #### AccountPayload
 
 | Name | Type | Description | Required |
@@ -805,6 +1884,13 @@ Upload a file to use as an input variable when running the app
 | subject_type | [SubjectType](#subjecttype) |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### AdvancedChatNodeRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
+| query | string | The user message the node sees as sys.query | No |
+
 #### AdvancedChatRunPayload
 
 A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version.
@@ -819,6 +1905,108 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | query | string | User message | Yes |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### AdvancedChatWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AdvancedChatWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string | Chat colour, e.g. #1C64F2 | No |
+| chat_color_theme_inverted | boolean | Invert the chat colours | No |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| input_placeholder | string | Placeholder of the chat input | No |
+| privacy_policy | string | Privacy policy URL | No |
+| show_workflow_steps | boolean | Show each node step to users | No |
+| title | string | Page title | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### AgentAppInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+| role | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AgentAppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
+| role | string | The agent's role; empty string clears it | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### AgentServiceApi
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
+| api_rph | integer |  | No |
+| api_rpm | integer |  | No |
+| base_url | string |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### AgentWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
 
 #### AppDescribeInfo
 
@@ -911,6 +2099,17 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | mode | string |  | Yes |
 | name | string |  | Yes |
 
+#### AppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
+
 #### AppListQuery
 
 mode is a closed enum of listable app types.
@@ -952,6 +2151,41 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
+#### AppSettingsInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+
+#### ChatAppInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### ChatAppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
 #### ChatRunPayload
 
 | Name | Type | Description | Required |
@@ -963,6 +2197,47 @@ mode is a closed enum of listable app types.
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### ChatWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### ChatWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string | Chat colour, e.g. #1C64F2 | No |
+| chat_color_theme_inverted | boolean | Invert the chat colours | No |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| input_placeholder | string | Placeholder of the chat input | No |
+| privacy_policy | string | Privacy policy URL | No |
+| title | string | Page title | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
 
 #### CheckDependenciesResult
 
@@ -979,6 +2254,24 @@ mode is a closed enum of listable app types.
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### CreateAppPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | App description | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| name | string | App name | Yes |
+
+#### CreatedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
 
 #### DeploymentEdition
 
@@ -1311,6 +2604,34 @@ Strict (extra='forbid').
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
 
+#### NodeRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
+
+#### NodeTypeDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_config | object |  | Yes |
+| schema | object |  | Yes |
+| type | string |  | Yes |
+| version | string |  | Yes |
+
+#### NodeTypeListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [NodeTypeRow](#nodetyperow) ] |  | Yes |
+
+#### NodeTypeRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string |  | Yes |
+| version | string |  | Yes |
+
 #### OpenApiErrorCode
 
 | Name | Type | Description | Required |
@@ -1426,6 +2747,19 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | version | string |  | Yes |
+
+#### ServiceApi
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_url | string |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### ServiceApiPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Turn the app's Service API on or off | Yes |
 
 #### SessionListQuery
 
@@ -1550,9 +2884,71 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | created_by | string |  | No |
+| current | boolean |  | No |
 | id | string |  | Yes |
 | marked_comment | string |  | Yes |
 | marked_name | string |  | Yes |
+
+#### WebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+
+#### WebAppAccess
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | Yes |
+| subjects | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
+
+#### WebAppAccessMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebAppAccessMode | string |  |  |
+
+#### WebAppAccessPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | [WebAppAccessMode](#webappaccessmode) | public, private, private_all or sso_verified | Yes |
+| subjects | [ object ] | For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject | No |
+
+#### WebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| privacy_policy | string | Privacy policy URL | No |
+| title | string | Page title | No |
+
+#### WebAppToken
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| url | string |  | No |
 
 #### WorkflowRunData
 
@@ -1649,6 +3045,41 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### WorkflowWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| url | string |  | No |
+
+#### WorkflowWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| privacy_policy | string | Privacy policy URL | No |
+| show_workflow_steps | boolean | Show each node step to users | No |
+| title | string | Page title | No |
 
 #### WorkspaceDetailResponse
 

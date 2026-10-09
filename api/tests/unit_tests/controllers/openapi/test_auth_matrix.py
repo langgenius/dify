@@ -76,16 +76,20 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._errors import WebAppAccessRequiresEE
 from controllers.openapi.auth import subjects
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
+    CheckAppMode,
+    CheckAppQuota,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWebAppAuthEnterprise,
     CheckWorkspaceInvitationQuota,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
@@ -98,7 +102,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
@@ -362,6 +366,364 @@ ROUTES: tuple[Route, ...] = (
         "DELETE",
         "/apps/{app_id}/env/{env_id}",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route("node_types.list", "GET", "/node-types", frozenset({Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE})),
+    Route(
+        "node_types.describe",
+        "GET",
+        "/node-types/{node_type}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_create.workflow", "POST", "/workspaces/{workspace_id}/apps/workflow", frozenset({Trait.ACCOUNT_PRIMARY})
+    ),
+    Route(
+        "app_create.advanced_chat",
+        "POST",
+        "/workspaces/{workspace_id}/apps/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "app_workflow.node_run.workflow",
+        "POST",
+        "/apps/{app_id}/draft/workflow/nodes/{node_id}:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_workflow.node_run.advanced_chat",
+        "POST",
+        "/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.workflow",
+        "GET",
+        "/apps/{app_id}/app-info/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.workflow",
+        "PATCH",
+        "/apps/{app_id}/app-info/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.workflow",
+        "GET",
+        "/apps/{app_id}/service-api/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.workflow",
+        "PATCH",
+        "/apps/{app_id}/service-api/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.advanced_chat",
+        "GET",
+        "/apps/{app_id}/app-info/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.advanced_chat",
+        "PATCH",
+        "/apps/{app_id}/app-info/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.advanced_chat",
+        "GET",
+        "/apps/{app_id}/service-api/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.advanced_chat",
+        "PATCH",
+        "/apps/{app_id}/service-api/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.chat",
+        "GET",
+        "/apps/{app_id}/app-info/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.chat",
+        "PATCH",
+        "/apps/{app_id}/app-info/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.chat",
+        "GET",
+        "/apps/{app_id}/service-api/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.chat",
+        "PATCH",
+        "/apps/{app_id}/service-api/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.agent_chat",
+        "GET",
+        "/apps/{app_id}/app-info/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.agent_chat",
+        "PATCH",
+        "/apps/{app_id}/app-info/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.agent_chat",
+        "GET",
+        "/apps/{app_id}/service-api/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.agent_chat",
+        "PATCH",
+        "/apps/{app_id}/service-api/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.completion",
+        "GET",
+        "/apps/{app_id}/app-info/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.completion",
+        "PATCH",
+        "/apps/{app_id}/app-info/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.completion",
+        "GET",
+        "/apps/{app_id}/service-api/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.completion",
+        "PATCH",
+        "/apps/{app_id}/service-api/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.describe.agent",
+        "GET",
+        "/apps/{app_id}/app-info/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_info.set.agent",
+        "PATCH",
+        "/apps/{app_id}/app-info/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.describe.agent",
+        "GET",
+        "/apps/{app_id}/service-api/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "service_api.set.agent",
+        "PATCH",
+        "/apps/{app_id}/service-api/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.workflow",
+        "GET",
+        "/apps/{app_id}/webapp/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.workflow",
+        "PATCH",
+        "/apps/{app_id}/webapp/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.workflow",
+        "POST",
+        "/apps/{app_id}/webapp/workflow:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.workflow",
+        "GET",
+        "/apps/{app_id}/webapp-access/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.workflow",
+        "PUT",
+        "/apps/{app_id}/webapp-access/workflow",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.advanced_chat",
+        "GET",
+        "/apps/{app_id}/webapp/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.advanced_chat",
+        "PATCH",
+        "/apps/{app_id}/webapp/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.advanced_chat",
+        "POST",
+        "/apps/{app_id}/webapp/advanced-chat:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.advanced_chat",
+        "GET",
+        "/apps/{app_id}/webapp-access/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.advanced_chat",
+        "PUT",
+        "/apps/{app_id}/webapp-access/advanced-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.chat",
+        "GET",
+        "/apps/{app_id}/webapp/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.chat",
+        "PATCH",
+        "/apps/{app_id}/webapp/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.chat",
+        "POST",
+        "/apps/{app_id}/webapp/chat:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.chat",
+        "GET",
+        "/apps/{app_id}/webapp-access/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.chat",
+        "PUT",
+        "/apps/{app_id}/webapp-access/chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.agent_chat",
+        "GET",
+        "/apps/{app_id}/webapp/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.agent_chat",
+        "PATCH",
+        "/apps/{app_id}/webapp/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.agent_chat",
+        "POST",
+        "/apps/{app_id}/webapp/agent-chat:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.agent_chat",
+        "GET",
+        "/apps/{app_id}/webapp-access/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.agent_chat",
+        "PUT",
+        "/apps/{app_id}/webapp-access/agent-chat",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.completion",
+        "GET",
+        "/apps/{app_id}/webapp/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.completion",
+        "PATCH",
+        "/apps/{app_id}/webapp/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.completion",
+        "POST",
+        "/apps/{app_id}/webapp/completion:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.completion",
+        "GET",
+        "/apps/{app_id}/webapp-access/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.completion",
+        "PUT",
+        "/apps/{app_id}/webapp-access/completion",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.describe.agent",
+        "GET",
+        "/apps/{app_id}/webapp/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.set.agent",
+        "PATCH",
+        "/apps/{app_id}/webapp/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp.reset.agent",
+        "POST",
+        "/apps/{app_id}/webapp/agent:reset",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.describe.agent",
+        "GET",
+        "/apps/{app_id}/webapp-access/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "webapp_access.set.agent",
+        "PUT",
+        "/apps/{app_id}/webapp-access/agent",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "access_subject.list",
+        "GET",
+        "/workspaces/{workspace_id}/access-subjects",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "app_run.stop",
@@ -644,6 +1006,35 @@ _ACCOUNT_EDITOR_APP: dict[Case, Expect] = {
     Case.RBAC_ON_LOW_ROLE: ADMIT,
 }
 
+_ACCOUNT_READER_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_READER_APP, Case.APP_API_DISABLED: ADMIT}
+_ACCOUNT_EDITOR_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_EDITOR_APP, Case.APP_API_DISABLED: ADMIT}
+
+DENY_NEEDS_WEBAPP_EE = Expect(403, WebAppAccessRequiresEE.description)
+
+_WEBAPP_ACCESS_EDITOR: dict[Case, Expect] = {
+    **_ACCOUNT_EDITOR_SETTINGS,
+    Case.MEMBER: DENY_NEEDS_WEBAPP_EE,
+    Case.APP_API_DISABLED: DENY_NEEDS_WEBAPP_EE,
+    Case.FOREIGN_WORKSPACE_QUERY: DENY_NEEDS_WEBAPP_EE,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_NEEDS_WEBAPP_EE,
+    Case.RBAC_ON_LOW_ROLE: DENY_NEEDS_WEBAPP_EE,
+}
+
+_ACCESS_SUBJECT_EDITOR: dict[Case, Expect] = {
+    **_ACCOUNT_MEMBER_NO_ROLE,
+    Case.MEMBER: DENY_NEEDS_WEBAPP_EE,
+    Case.LOW_ROLE: DENY_ROLE,
+    Case.RBAC_ON_LOW_ROLE: DENY_NEEDS_WEBAPP_EE,
+    Case.RBAC_ON_DENIED: DENY_NEEDS_WEBAPP_EE,
+}
+
+
+_ANY_BEARER: dict[Case, Expect] = {
+    **{case: ADMIT for case in Case if CASE_REQUIRES[case] <= {Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE}},
+    Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+}
+"""A route with no requirements admits every case that carries a valid bearer. The one
+exception is the router's own answer: an external-SSO bearer is refused outside enterprise."""
 
 MATRIX: dict[str, dict[Case, Expect]] = {
     "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
@@ -655,6 +1046,18 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "node_types.list": dict(_ANY_BEARER),
+    "app_workflow.node_run.workflow": dict(_ACCOUNT_EDITOR_APP),
+    "app_info.describe.workflow": dict(_ACCOUNT_READER_SETTINGS),
+    "app_info.set.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "service_api.describe.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "service_api.set.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "webapp.describe.workflow": dict(_ACCOUNT_READER_SETTINGS),
+    "webapp.set.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "webapp.reset.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "webapp_access.describe.workflow": dict(_WEBAPP_ACCESS_EDITOR),
+    "access_subject.list": dict(_ACCESS_SUBJECT_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
@@ -810,6 +1213,15 @@ _REQ_DRAFT_RUN = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckWorkspaceRole(_EDITOR_UP),
 )
+_REQ_NODE_TYPES: tuple[Requirement, ...] = ()
+_REQ_APP_CREATE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace())),
+    CheckWorkspaceRole(_EDITOR_UP),
+    CheckAppQuota(),
+)
 _REQ_FILES = (
     CheckSubject(allowed=_ACCOUNT_OR_EXTERNAL),
     CheckAppApiEnabled(),
@@ -827,6 +1239,24 @@ _REQ_EXTERNAL_DESCRIBE = (
     CheckScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
     CheckAppAccess(),
 )
+
+
+def _settings_req(
+    mode: AppMode,
+    perm: RBACPermission,
+    locator: PlainApp | AgentBehindApp,
+    scope: Scope,
+    roles: frozenset[TenantAccountRole] | None,
+) -> tuple[Requirement, ...]:
+    base: tuple[Requirement, ...] = (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckAppMode(mode),
+        CheckScope(scope),
+        CheckRBACPermission(RBACCheck(perm, locator)),
+    )
+    return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
+
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "describe.account": _REQ_ACCOUNT_FULL,
@@ -861,6 +1291,205 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_workflow.env.list": _REQ_VERSION_READ,
     "app_workflow.env.set": _REQ_ENV_WRITE,
     "app_workflow.env.delete": _REQ_ENV_WRITE,
+    "node_types.list": _REQ_NODE_TYPES,
+    "node_types.describe": _REQ_NODE_TYPES,
+    "app_create.workflow": _REQ_APP_CREATE,
+    "app_create.advanced_chat": _REQ_APP_CREATE,
+    "app_workflow.node_run.workflow": (*_REQ_DRAFT_RUN, CheckAppMode(AppMode.WORKFLOW)),
+    "app_workflow.node_run.advanced_chat": (*_REQ_DRAFT_RUN, CheckAppMode(AppMode.ADVANCED_CHAT)),
+    "app_info.describe.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_EDIT, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "app_info.describe.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_EDIT, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "app_info.describe.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_EDIT, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "app_info.describe.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_EDIT, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "app_info.describe.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_EDIT, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "app_info.describe.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_PREVIEW, AgentBehindApp(), Scope.APPS_READ, None
+    ),
+    "app_info.set.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_EDIT, AgentBehindApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "service_api.describe.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp(), Scope.APPS_READ, _EDITOR_UP
+    ),
+    "service_api.set.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp.describe.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.workflow": _settings_req(
+        AppMode.WORKFLOW, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.workflow": (
+        *_settings_req(AppMode.WORKFLOW, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.APPS_READ, _EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.workflow": (
+        *_settings_req(
+            AppMode.WORKFLOW, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp.describe.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.advanced_chat": _settings_req(
+        AppMode.ADVANCED_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.advanced_chat": (
+        *_settings_req(
+            AppMode.ADVANCED_CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.APPS_READ, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.advanced_chat": (
+        *_settings_req(
+            AppMode.ADVANCED_CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp.describe.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.chat": _settings_req(
+        AppMode.CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.chat": (
+        *_settings_req(AppMode.CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.APPS_READ, _EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.chat": (
+        *_settings_req(AppMode.CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp.describe.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.agent_chat": _settings_req(
+        AppMode.AGENT_CHAT, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.agent_chat": (
+        *_settings_req(AppMode.AGENT_CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.APPS_READ, _EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.agent_chat": (
+        *_settings_req(
+            AppMode.AGENT_CHAT, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp.describe.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.completion": _settings_req(
+        AppMode.COMPLETION, RBACPermission.APP_RELEASE_AND_VERSION, PlainApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.completion": (
+        *_settings_req(AppMode.COMPLETION, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.APPS_READ, _EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.completion": (
+        *_settings_req(
+            AppMode.COMPLETION, RBACPermission.APP_ACCESS_CONFIG, PlainApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp.describe.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp(), Scope.APPS_READ, None
+    ),
+    "webapp.set.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+    ),
+    "webapp.reset.agent": _settings_req(
+        AppMode.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp(), Scope.WORKSPACE_WRITE, _OWNER_ADMIN
+    ),
+    "webapp_access.describe.agent": (
+        *_settings_req(
+            AppMode.AGENT, RBACPermission.AGENT_ACCESS_CONFIG, AgentBehindApp(), Scope.APPS_READ, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "webapp_access.set.agent": (
+        *_settings_req(
+            AppMode.AGENT, RBACPermission.AGENT_ACCESS_CONFIG, AgentBehindApp(), Scope.WORKSPACE_WRITE, _EDITOR_UP
+        ),
+        CheckWebAppAuthEnterprise(),
+    ),
+    "access_subject.list": (
+        *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+        CheckWorkspaceRole(_EDITOR_UP),
+        CheckWebAppAuthEnterprise(),
+    ),
     "app_run.stop": _REQ_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
@@ -1151,6 +1780,8 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "run_id": str(uuid.uuid4()),
         "version_id": str(uuid.uuid4()),
         "env_id": str(uuid.uuid4()),
+        "node_type": "llm",
+        "node_id": "node-1",
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -1327,6 +1958,11 @@ def _(requirement: CheckSubject) -> object:
 
 
 @_config.register
+def _(requirement: CheckAppMode) -> object:
+    return requirement.modes
+
+
+@_config.register
 def _(requirement: CheckScope) -> object:
     return requirement.scope
 
@@ -1379,6 +2015,30 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/account/sessions/{session_id}"): frozenset({"200", "default"}),
     ("get", "/apps"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/workflow"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/workflow"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/advanced-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/advanced-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/advanced-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/advanced-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/agent-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/agent-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/agent-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/agent-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/completion"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/completion"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/completion"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/completion"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/app-info/agent"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/app-info/agent"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/service-api/agent"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/service-api/agent"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
@@ -1409,6 +2069,12 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/oauth/device/deny"): frozenset({"200"}),
     ("get", "/oauth/device/lookup"): frozenset({"200"}),
     ("post", "/oauth/device/token"): frozenset({"200"}),
+    ("get", "/node-types"): frozenset({"200", "default"}),
+    ("get", "/node-types/{node_type}"): frozenset({"200", "default"}),
+    ("post", "/apps/{app_id}/draft/workflow/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/apps/workflow"): frozenset({"201", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/apps/advanced-chat"): frozenset({"201", "422", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),
@@ -1420,6 +2086,37 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/workspaces/{workspace_id}/members/{member_id}"): frozenset({"200", "default"}),
     ("patch", "/workspaces/{workspace_id}/members/{member_id}"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}:switch"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp/workflow"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/workflow"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/workflow:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/workflow"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/workflow"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/webapp/advanced-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/advanced-chat"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/advanced-chat:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/advanced-chat"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/advanced-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/webapp/chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/chat"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/chat:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/chat"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/webapp/agent-chat"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/agent-chat"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/agent-chat:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/agent-chat"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/agent-chat"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/webapp/completion"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/completion"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/completion:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/completion"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/completion"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/webapp/agent"): frozenset({"200", "default"}),
+    ("patch", "/apps/{app_id}/webapp/agent"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/webapp/agent:reset"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/webapp-access/agent"): frozenset({"200", "default"}),
+    ("put", "/apps/{app_id}/webapp-access/agent"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/access-subjects"): frozenset({"200", "422", "default"}),
 }
 
 _HTTP_METHODS = frozenset({"get", "post", "put", "patch", "delete", "head", "options", "trace"})

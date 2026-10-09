@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from http import HTTPStatus
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
 from flask_restx import Resource
@@ -19,6 +19,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import (
     DraftNotFound,
+    NodeNotFound,
     OpenApiError,
     RunNotFound,
     SecretMaskNotSecret,
@@ -27,11 +28,13 @@ from controllers.openapi._errors import (
     VersionNotRestorable,
 )
 from controllers.openapi._models import (
+    AdvancedChatNodeRunPayload,
     EnvVariableListResponse,
     EnvVariableRow,
     EnvVariableSetPayload,
     EnvVariableValueType,
     Hint,
+    NodeRunPayload,
     PublishPayload,
     PublishResponse,
     RestoreResponse,
@@ -41,9 +44,9 @@ from controllers.openapi._models import (
     VersionListResponse,
     VersionRow,
 )
-from controllers.openapi.app_run import require_mode
+from controllers.openapi.app_run import _DRAFT_RUN_GUARDS, require_mode
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import account_app_guards
+from controllers.openapi.auth.requirements import CheckAppMode, account_app_guards
 from core.helper import encrypter
 from core.logging.context import get_request_id, get_trace_id
 from core.workflow.llm_environment_variable import environment_variable_value_type
@@ -53,9 +56,12 @@ from factories import variable_factory
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    node_execution_response_source,
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
+from graphon.enums import BuiltinNodeTypes
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.helper import to_timestamp
@@ -248,7 +254,10 @@ class AppVersionListApi(Resource):
             page=query.page,
             limit=query.limit,
             has_more=has_more,
-            data=[VersionRow.model_validate(workflow) for workflow in workflows],
+            data=[
+                VersionRow.model_validate(workflow).model_copy(update={"current": workflow.id == ctx.app.workflow_id})
+                for workflow in workflows
+            ],
         )
         if has_more:
             next_input = {"app_id": ctx.app.id, **query.model_dump(), "page": query.page + 1}
@@ -389,3 +398,70 @@ class AppEnvItemApi(Resource):
         require_mode(ctx.app, *GRAPH_MODES)
         _patch_env(ctx, upserts=[], deletions=[env_id])
         return SimpleResultResponse(result="success")
+
+
+_CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION})
+
+
+def run_draft_node(
+    ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str
+) -> WorkflowRunNodeExecutionResponse:
+    workflow_service = WorkflowService()
+    draft = workflow_service.get_draft_workflow(app_model=ctx.app, session=ctx.session)
+    if draft is None:
+        raise DraftNotFound()
+    node = next((node for node in draft.graph_dict.get("nodes", []) if node.get("id") == node_id), None)
+    if node is None:
+        raise NodeNotFound()
+    if node.get("data", {}).get("type") in _CONTAINER_NODE_TYPES:
+        raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
+    try:
+        execution = workflow_service.run_draft_workflow_node(
+            app_model=ctx.app,
+            draft_workflow=draft,
+            node_id=node_id,
+            user_inputs=inputs,
+            account=ctx.account,
+            query=query,
+        )
+    except ValueError as exc:
+        raise BadRequest(str(exc)) from exc
+    return WorkflowRunNodeExecutionResponse.model_validate(
+        node_execution_response_source(execution, session=ctx.session), from_attributes=True
+    )
+
+
+@openapi_ns.route("/apps/<string:app_id>/draft/workflow/nodes/<string:node_id>:run")
+class WorkflowDraftNodeRunApi(Resource):
+    @endpoint(
+        op="test.node.workflow",
+        kind=Kind.OBJECT,
+        summary="Test one node of a workflow draft, reusing what the last draft run saved",
+        examples=(
+            Example(title="Test a node", input={"app_id": "<app_id>", "node_id": "<node_id>"}),
+            Example(
+                title="Test a node with an upstream value overridden",
+                input={"app_id": "<app_id>", "node_id": "<node_id>", "inputs": {"#llm.text#": "Hello"}},
+            ),
+        ),
+        requirements=(*_DRAFT_RUN_GUARDS, CheckAppMode(AppMode.WORKFLOW)),
+        body=NodeRunPayload,
+        returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
+    )
+    def post(self, ctx: Context, app_id: str, node_id: str, *, body: NodeRunPayload):
+        return run_draft_node(ctx, node_id, inputs=body.inputs, query="")
+
+
+@openapi_ns.route("/apps/<string:app_id>/draft/advanced-chat/nodes/<string:node_id>:run")
+class AdvancedChatDraftNodeRunApi(Resource):
+    @endpoint(
+        op="test.node.advanced_chat",
+        kind=Kind.OBJECT,
+        summary="Test one node of an advanced-chat draft, reusing what the last draft run saved",
+        examples=(Example(title="Test a node", input={"app_id": "<app_id>", "node_id": "<node_id>", "query": "Hi"}),),
+        requirements=(*_DRAFT_RUN_GUARDS, CheckAppMode(AppMode.ADVANCED_CHAT)),
+        body=AdvancedChatNodeRunPayload,
+        returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
+    )
+    def post(self, ctx: Context, app_id: str, node_id: str, *, body: AdvancedChatNodeRunPayload):
+        return run_draft_node(ctx, node_id, inputs=body.inputs, query=body.query)

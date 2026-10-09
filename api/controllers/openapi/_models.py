@@ -8,14 +8,15 @@ from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._upload import UploadPart, UploadParts
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
-from models.model import AppMode
+from models.model import AppMode, IconType
 from services.app_dsl_service import Import
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -608,6 +609,7 @@ class VersionRow(BaseModel):
     marked_comment: str
     created_by: str | None = None
     created_at: int
+    current: bool = False
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -664,3 +666,220 @@ class RestoreResponse(BaseModel):
         description="Hash of the restored draft's graph, features, environment variables and conversation "
         "variables; pass it to a DSL import as draft_hash"
     )
+
+
+class NodeTypeRow(BaseModel):
+    type: str
+    version: str
+
+
+class NodeTypeListResponse(BaseModel):
+    data: list[NodeTypeRow]
+
+
+class NodeTypeDetailResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: str
+    version: str
+    schema_: dict[str, Any] = Field(alias="schema", serialization_alias="schema")
+    default_config: dict[str, Any]
+
+
+AppIconType = Literal[IconType.EMOJI, IconType.IMAGE, IconType.LINK]
+
+
+class CreateAppPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, description="App name")
+    description: str | None = Field(default=None, max_length=400, description="App description")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+
+
+class CreatedAppResponse(BaseModel):
+    app_id: str
+    mode: str
+    name: str
+
+
+class AppSettingsInfo(BaseModel):
+    name: str
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    max_active_requests: int | None = None
+
+
+class ChatAppInfo(AppSettingsInfo):
+    use_icon_as_answer_icon: bool = False
+
+
+class AgentAppInfo(ChatAppInfo):
+    role: str | None = None
+
+
+class AppInfoPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, description="App name")
+    description: str | None = Field(default=None, max_length=400, description="Pass an empty string to clear")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+    max_active_requests: int | None = Field(default=None, ge=0, description="Concurrent run cap; 0 means no cap")
+
+
+class ChatAppInfoPatch(AppInfoPatch):
+    use_icon_as_answer_icon: bool | None = Field(default=None, description="Show the app icon on answers")
+
+
+class AgentAppInfoPatch(ChatAppInfoPatch):
+    role: str | None = Field(default=None, max_length=255, description="The agent's role; empty string clears it")
+
+
+class ServiceApi(BaseModel):
+    enabled: bool
+    base_url: str
+
+
+class AgentServiceApi(ServiceApi):
+    access_ready: bool
+    api_rpm: int = 0
+    api_rph: int = 0
+
+
+class ServiceApiPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(description="Turn the app's Service API on or off")
+
+
+class NodeRunPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Overrides for what the last draft run saved, keyed by variable reference such as #llm.text#",
+    )
+
+
+class AdvancedChatNodeRunPayload(NodeRunPayload):
+    query: str = Field(default="", description="The user message the node sees as sys.query")
+
+
+class WebApp(BaseModel):
+    enabled: bool
+    access_token: str | None = None
+    app_base_url: str
+    url: str | None = None
+    title: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    default_language: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+
+
+class WorkflowWebApp(WebApp):
+    show_workflow_steps: bool = False
+
+
+class ChatWebApp(WebApp):
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool = False
+    use_icon_as_answer_icon: bool = False
+    input_placeholder: str | None = None
+
+
+class AdvancedChatWebApp(ChatWebApp):
+    show_workflow_steps: bool = False
+
+
+class AgentWebApp(ChatWebApp):
+    access_ready: bool
+
+
+class WebAppPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool | None = Field(default=None, description="Turn the web app on or off")
+    title: str | None = Field(default=None, description="Page title")
+    description: str | None = Field(default=None, description="Page description")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+    default_language: str | None = Field(default=None, description="Language code, e.g. en-US")
+    copyright: str | None = Field(default=None, description="Footer copyright text")
+    privacy_policy: str | None = Field(default=None, description="Privacy policy URL")
+    custom_disclaimer: str | None = Field(default=None, description="Disclaimer shown on the page")
+
+    @field_validator("default_language")
+    @classmethod
+    def _language(cls, value: str | None) -> str | None:
+        return value if value is None else supported_language(value)
+
+
+class WorkflowWebAppPatch(WebAppPatch):
+    show_workflow_steps: bool | None = Field(default=None, description="Show each node step to users")
+
+
+class ChatWebAppPatch(WebAppPatch):
+    chat_color_theme: str | None = Field(default=None, description="Chat colour, e.g. #1C64F2")
+    chat_color_theme_inverted: bool | None = Field(default=None, description="Invert the chat colours")
+    use_icon_as_answer_icon: bool | None = Field(default=None, description="Show the app icon on answers")
+    input_placeholder: str | None = Field(default=None, description="Placeholder of the chat input")
+
+
+class AdvancedChatWebAppPatch(ChatWebAppPatch):
+    show_workflow_steps: bool | None = Field(default=None, description="Show each node step to users")
+
+
+class WebAppToken(BaseModel):
+    access_token: str | None = None
+    app_base_url: str
+    url: str | None = None
+
+
+class AccessSubjectRow(BaseModel):
+    id: str
+    type: str
+    name: str | None = None
+    email: str | None = None
+    member_count: int | None = None
+
+
+class WebAppAccess(BaseModel):
+    access_mode: str
+    subjects: list[AccessSubjectRow]
+
+
+class WebAppAccessPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_mode: WebAppAccessMode = Field(description="public, private, private_all or sso_verified")
+    subjects: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="For private only: who may open the web app, as {id, type} with type account or group. "
+        "Replaces the whole list. Find ids with get.access_subject",
+    )
+
+
+class AccessSubjectQuery(BaseModel):
+    keyword: str = Field(default="", description="Name or email to search for")
+    group_id: str | None = Field(default=None, description="Search only inside this group")
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class AccessSubjectListResponse(BaseModel):
+    page: int
+    limit: int
+    has_more: bool
+    data: list[AccessSubjectRow]

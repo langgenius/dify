@@ -15,23 +15,25 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
-from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded, WebAppAccessRequiresEE
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
+from models import AppMode
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
+from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
@@ -158,6 +160,42 @@ class CheckRBACPermission(Requirement):
 
 
 EDITOR_ROLES: Final = frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+ADMIN_ROLES: Final = frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+
+
+class CheckAppMode(Requirement):
+    """Ranked ahead of RBAC so a mode mismatch answers 422 whether RBAC is on or off."""
+
+    rank = Rank.EARLY
+
+    def __init__(self, *modes: AppMode) -> None:
+        self.modes = frozenset(modes)
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if load_app(ctx).mode not in self.modes:
+            raise UnprocessableEntity("app_mode_mismatch")
+
+
+class CheckWebAppAuthEnterprise(Requirement):
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            raise WebAppAccessRequiresEE()
+        if not SystemFeatureService.get_public_system_features().webapp_auth.enabled:
+            raise WebAppAccessRequiresEE()
+
+
+class CheckAppQuota(Requirement):
+    """The console's `billing_resource="apps"` gate."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        apps = FeatureService.get_features(load_workspace(ctx).id, exclude_vector_space=True).apps
+        if 0 < apps.limit <= apps.size:
+            raise Forbidden("The number of apps has reached the limit of your subscription.")
 
 
 class CheckWorkspaceRole(Requirement):
@@ -237,3 +275,17 @@ def account_app_guards(permission: RBACPermission, *, scope: Scope, editor: bool
         CheckRBACPermission(RBACCheck(permission, PlainApp())),
     )
     return (*guards, CheckWorkspaceRole(EDITOR_ROLES)) if editor else guards
+
+
+def account_settings_guards(
+    check: RBACCheck, *, scope: Scope, mode: AppMode, roles: frozenset[TenantAccountRole] | None
+) -> tuple[Requirement, ...]:
+    """App-settings guards. No `CheckAppApiEnabled`, so an admin can always switch the Service API back on."""
+    guards: tuple[Requirement, ...] = (
+        CheckSubject(allowed=(AccountSubject,)),
+        CheckWorkspaceMember(),
+        CheckAppMode(mode),
+        CheckScope(scope),
+        CheckRBACPermission(check),
+    )
+    return (*guards, CheckWorkspaceRole(roles)) if roles is not None else guards
