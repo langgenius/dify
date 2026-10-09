@@ -5,6 +5,7 @@ import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Lock
 from types import ModuleType
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, create_autospec, patch
@@ -12,7 +13,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -180,7 +181,7 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
 
 @pytest.fixture
 def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
-    """Copy the schema into an isolated directory without pytest's numbered scan.
+    """Copy the schema on the first connection into an isolated directory.
 
     ``tmp_path`` searches all preceding test directories for a free number. This
     autouse dependency needs only a unique, disposable directory, including any
@@ -188,8 +189,20 @@ def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
     """
     with TemporaryDirectory(prefix="case-", dir=_sqlite_database_template.parent) as directory:
         database_path = Path(directory) / "unit-tests.sqlite3"
-        shutil.copyfile(_sqlite_database_template, database_path)
         engine = create_engine(URL.create("sqlite", database=str(database_path)))
+        copy_lock = Lock()
+        copied = False
+
+        @event.listens_for(engine, "do_connect")
+        def copy_schema(*_args: object) -> None:
+            # Two sessions may open their first connections concurrently. Copy
+            # before either DBAPI connection opens the file, and never overwrite
+            # committed rows when the pool opens another connection later.
+            nonlocal copied
+            with copy_lock:
+                if not copied:
+                    shutil.copyfile(_sqlite_database_template, database_path)
+                    copied = True
 
         try:
             yield engine

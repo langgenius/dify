@@ -15,6 +15,45 @@ from models.base import TypeBase
 from models.model import ExporleBanner
 
 
+def test_unused_sqlite_engine_does_not_copy_database(sqlite_engine: Engine) -> None:
+    assert sqlite_engine.url.database is not None
+    database_path = Path(sqlite_engine.url.database)
+    assert not database_path.exists()
+
+    with sqlite_engine.connect() as connection:
+        assert inspect(connection).has_table(Account.__tablename__)
+
+    assert database_path.is_file()
+
+
+def test_concurrent_first_connections_see_the_full_schema(sqlite_engine: Engine) -> None:
+    start = Barrier(2)
+    connected = Barrier(2)
+
+    def read_schema() -> set[str]:
+        start.wait(timeout=5)
+        with sqlite_engine.connect() as connection:
+            connected.wait(timeout=5)
+            return set(inspect(connection).get_table_names())
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(read_schema) for _ in range(2)]
+        schemas = [future.result() for future in futures]
+
+    assert schemas == [set(TypeBase.metadata.tables)] * 2
+
+
+def test_reconnecting_does_not_overwrite_committed_rows(sqlite_engine: Engine) -> None:
+    with sqlite_engine.begin() as connection:
+        connection.execute(text("CREATE TABLE reconnect_probe (value INTEGER NOT NULL)"))
+        connection.execute(text("INSERT INTO reconnect_probe VALUES (42)"))
+
+    sqlite_engine.dispose()
+
+    with sqlite_engine.connect() as connection:
+        assert connection.scalar(text("SELECT value FROM reconnect_probe")) == 42
+
+
 def test_sqlite_session_contains_the_full_registered_schema(sqlite_session: Session) -> None:
     table_names = set(inspect(sqlite_session.get_bind()).get_table_names())
 
