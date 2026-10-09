@@ -578,9 +578,12 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
 
       expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPolicyEmptyTitle')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.ipPolicies')).toHaveLength(2)
       expect(
-        screen.getByText('deployments.studio.accessControl.emptyPoliciesTitle'),
+        screen.getByRole('heading', { name: 'common.settings.ipPolicies' }),
       ).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPoliciesDescription')).toBeInTheDocument()
     })
 
     it('opens IP Policies read-only for editors', () => {
@@ -594,11 +597,9 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
 
       expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(screen.getByText('common.settings.ipPolicyEmptyTitle')).toBeInTheDocument()
       expect(
-        screen.getByText('deployments.studio.accessControl.emptyPoliciesTitle'),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'common.settings.ipPolicyAddEntry' }),
+        screen.queryByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
       ).not.toBeInTheDocument()
     })
 
@@ -617,9 +618,7 @@ describe('AccountSetting', () => {
         expect(
           screen.queryByRole('button', { name: 'common.settings.ipPolicies' }),
         ).not.toBeInTheDocument()
-        expect(
-          screen.queryByText('deployments.studio.accessControl.emptyPoliciesTitle'),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByText('common.settings.ipPolicyEmptyTitle')).not.toBeInTheDocument()
       },
     )
 

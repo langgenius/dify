@@ -2,9 +2,11 @@
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IpPolicyFormSession } from './policy-form-analytics'
+import type { IpPolicySource } from '@/features/network-access/analytics'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import Image from 'next/image'
 import { useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -82,6 +84,7 @@ export default function IpPoliciesPage() {
   const [isRecovering, setIsRecovering] = useState(false)
   const [recoveryError, setRecoveryError] = useState(false)
   const groups = data?.groups ?? []
+  const isEmpty = !isPending && !isError && groups.length === 0
   const entitled = data?.entitled === true
   const canMutate = canManagePolicies && entitled
   const selectedGroup = dialogState && dialogState.mode !== 'create' ? dialogState.group : null
@@ -95,7 +98,7 @@ export default function IpPoliciesPage() {
 
   const openDialog = (
     next: DialogRequest,
-    source: 'list_add_button' | 'list_row' | 'list_row_menu' = 'list_row',
+    source: Extract<IpPolicySource, `list_${string}`> = 'list_row',
   ) => {
     dialogSessionRef.current += 1
     setIsRecovering(false)
@@ -136,20 +139,22 @@ export default function IpPoliciesPage() {
     }
   }
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = (
+    source: Extract<IpPolicySource, 'list_add_button' | 'list_empty_state'>,
+  ) => {
     if (!canManagePolicies || isPending || isError) return
     if (!entitled) {
       void setPricing('open')
       return
     }
-    openDialog({ mode: 'create' }, 'list_add_button')
+    openDialog({ mode: 'create' }, source)
   }
 
   if (!canReadPolicies) return null
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex min-h-15 items-start justify-between gap-4 py-2">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['settings.ipPolicies'], { ns: 'common' })}
@@ -158,8 +163,12 @@ export default function IpPoliciesPage() {
             {t(($) => $['settings.ipPoliciesDescription'], { ns: 'common' })}
           </p>
         </div>
-        {canManagePolicies && (
-          <Button variant="primary" size="small" onClick={handleOpenCreate}>
+        {canManagePolicies && !isEmpty && (
+          <Button
+            variant="primary"
+            size="small"
+            onClick={() => handleOpenCreate('list_add_button')}
+          >
             <span aria-hidden className="i-ri-add-line size-4" />
             {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
           </Button>
@@ -173,11 +182,23 @@ export default function IpPoliciesPage() {
         </p>
       )}
 
-      {!isPending && !isError && groups.length === 0 && (
-        <div className="flex flex-col items-center py-10 text-center">
-          <p className="system-sm-medium text-text-secondary">
-            {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
-          </p>
+      {isEmpty && (
+        <div className="flex min-h-100 flex-col items-center justify-center gap-4 py-6 text-center">
+          <Image src="/illustrations/ip-policies-empty.svg" alt="" width={48} height={48} />
+          <div className="flex w-full max-w-105 flex-col gap-2">
+            <h3 className="title-xl-semi-bold leading-6 text-text-primary">
+              {t(($) => $['settings.ipPolicyEmptyTitle'], { ns: 'common' })}
+            </h3>
+            <p className="system-sm-regular leading-5 whitespace-pre-line text-text-tertiary">
+              {t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })}
+            </p>
+          </div>
+          {canManagePolicies && (
+            <Button variant="primary" onClick={() => handleOpenCreate('list_empty_state')}>
+              <span aria-hidden className="i-ri-add-line size-4" />
+              {t(($) => $['settings.ipPolicyEmptyCreate'], { ns: 'common' })}
+            </Button>
+          )}
         </div>
       )}
 
