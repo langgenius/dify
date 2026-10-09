@@ -16,6 +16,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    attachmentsDir: './.vitest-browser/attachments',
     browser: {
       expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },
       enabled: true,
