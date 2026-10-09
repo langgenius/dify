@@ -1,369 +1,316 @@
-"""Suggested-question model selection, invocation parameters and failure fallbacks."""
+"""Real model-resolution failures and deterministic suggested-question transformations.
 
-from collections.abc import Sequence
-from typing import NoReturn
-from unittest.mock import Mock, patch
+Successful model invocation requires a configured plugin/model backend. These
+unit tests do not replace that backend or claim to cover successful LLM calls.
+"""
 
+from collections.abc import Callable, Iterator
+from uuid import uuid4
+
+import httpx
 import pytest
+from flask import Flask, current_app
+from pydantic import ValidationError
+from sqlalchemy import Connection, Engine, event, select
+from sqlalchemy.exc import IntegrityError, PendingRollbackError
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from yarl import URL
 
-from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+import core.plugin.impl.base as plugin_base
+import core.plugin.impl.model_runtime as model_runtime_module
+from core.llm_generator.llm_generator import _normalize_completion_params
+from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
+from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+from core.memory.token_buffer_memory import HistoryPrompt, PreparedHistory
 from core.model_context import get_credit_usage_metadata
-from core.model_manager import ModelInstance, ModelManager
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
-from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule, ParameterType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from models.provider import Provider
 from services.entities.message_entities import MessageEndUser
-from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_generator import (
+    PreparedSuggestedQuestionsModel,
+    SuggestedQuestionsGenerator,
+    _default_suggested_questions_model_parameters,
+)
 from services.message_suggested_questions_service import SuggestedQuestionsContext
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
-
-
-def _llm_result(content: str) -> LLMResult:
-    return LLMResult(
-        model="test-model",
-        message=AssistantPromptMessage(content=content),
-        usage=LLMUsage.empty_usage(),
-    )
-
-
-def _generate_questions(
-    tenant_id: str,
-    histories: str,
-    *,
-    instruction_prompt: str | None = None,
-    model_config: object | None = None,
-) -> Sequence[str]:
-    prepared_model = SuggestedQuestionsGenerator._prepare_model(tenant_id, model_config=model_config)
-    if prepared_model is None:
-        return []
-    return SuggestedQuestionsGenerator._invoke(prepared_model, histories, instruction_prompt=instruction_prompt)
+from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.unit_tests.model_factories import make_app
 
 
 @pytest.fixture
-def model_schema() -> AIModelEntity:
-    return make_model_config(provider="openai", model="gpt-4o", mode="chat").model_schema
+def invalid_provider_tenant(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> Iterator[str]:
+    tenant_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add(Provider(tenant_id=tenant_id, provider_name="invalid/provider", is_valid=True))
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+    db.init_app(app)
+    with app.app_context():
+        yield tenant_id
+        db.session.remove()
+        db.engine.dispose()
 
 
-@pytest.fixture
-def model_manager(monkeypatch: pytest.MonkeyPatch) -> ModelManager:
-    manager = create_plugin_model_manager(tenant_id="tenant_id")
-    monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
-    return manager
-
-
-@pytest.fixture
-def model_instance(
-    monkeypatch: pytest.MonkeyPatch, model_schema: AIModelEntity, model_manager: ModelManager
-) -> ModelInstance:
-    instance = make_model_instance(provider="openai", model="gpt-4o")
-    monkeypatch.setattr(instance.model_type_instance.model_runtime, "get_model_schema", lambda **_kwargs: model_schema)
-    monkeypatch.setattr(model_manager, "get_model_instance", lambda **_kwargs: instance)
-    monkeypatch.setattr(model_manager, "get_default_model_instance", lambda **_kwargs: instance)
-    return instance
-
-
-@pytest.fixture
-def llm_invocation(monkeypatch: pytest.MonkeyPatch, model_instance: ModelInstance) -> Mock:
-    invocation = Mock(return_value=_llm_result('["Question 1?"]'))
-    monkeypatch.setattr(model_instance.model_type_instance.model_runtime, "invoke_llm", invocation)
-    return invocation
-
-
-class TestSuggestedQuestionsGenerator:
-    def test_generate_suggested_questions_after_answer_success(self, llm_invocation: Mock) -> None:
-        llm_invocation.return_value = _llm_result('["Question 1?", "Question 2?"]')
-
-        questions = _generate_questions("tenant_id", "histories")
-        assert len(questions) == 2
-        assert questions[0] == "Question 1?"
-        assert llm_invocation.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 256,
-            "temperature": 0.0,
-        }
-
-    def test_generate_suggested_questions_after_answer_uses_lowest_reasoning_effort(
-        self, llm_invocation: Mock, model_schema: AIModelEntity
-    ) -> None:
-        model_schema.parameter_rules = [
-            ParameterRule(
-                name="reasoning_effort",
-                label=I18nObject(en_US="Reasoning effort"),
-                type=ParameterType.STRING,
-                options=["minimal", "low", "medium", "high"],
-            )
-        ]
-
-        questions = _generate_questions("tenant_id", "histories")
-
-        assert questions == ["Question 1?"]
-        assert llm_invocation.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 256,
-            "temperature": 0.0,
-            "reasoning_effort": "minimal",
-        }
-
-    def test_generate_suggested_questions_after_answer_uses_defaults_when_schema_lookup_fails(
-        self, llm_invocation: Mock, model_instance: ModelInstance
-    ) -> None:
-        with patch.object(
-            model_instance.model_type_instance.model_runtime,
-            "get_model_schema",
-            side_effect=ValueError("schema unavailable"),
-        ):
-            questions = _generate_questions("tenant_id", "histories")
-
-        assert questions == ["Question 1?"]
-        assert llm_invocation.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 256,
-            "temperature": 0.0,
-        }
-
-    @pytest.mark.parametrize(
-        ("parameter_type", "options", "expected_value"),
-        [
-            (ParameterType.BOOLEAN, [], False),
-            (ParameterType.STRING, ["enabled", "disabled"], "disabled"),
-        ],
-    )
-    def test_generate_suggested_questions_after_answer_disables_thinking(
-        self,
-        llm_invocation: Mock,
-        model_schema: AIModelEntity,
-        parameter_type: ParameterType,
-        options: list[str],
-        expected_value: bool | str,
-    ) -> None:
-        model_schema.parameter_rules = [
-            ParameterRule(name="thinking", label=I18nObject(en_US="Thinking"), type=parameter_type, options=options),
-            ParameterRule(
-                name="reasoning_effort",
-                label=I18nObject(en_US="Reasoning effort"),
-                type=ParameterType.STRING,
-                options=["low", "high"],
-            ),
-        ]
-
-        questions = _generate_questions("tenant_id", "histories")
-
-        assert questions == ["Question 1?"]
-        assert llm_invocation.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 256,
-            "temperature": 0.0,
-            "thinking": expected_value,
-        }
-
-    def test_generate_suggested_questions_after_answer_auth_error(
-        self, model_manager: ModelManager, llm_invocation: Mock
-    ) -> None:
-        with patch.object(
-            model_manager, "get_default_model_instance", side_effect=InvokeAuthorizationError("Auth failed")
-        ):
-            questions = _generate_questions("tenant_id", "histories")
-            assert questions == []
-        llm_invocation.assert_not_called()
-
-    def test_generate_suggested_questions_after_answer_model_resolution_error(
-        self, model_manager: ModelManager, llm_invocation: Mock
-    ) -> None:
-        with patch.object(
-            model_manager, "get_default_model_instance", side_effect=ValueError("unsupported default model")
-        ):
-            questions = _generate_questions("tenant_id", "histories")
-
-        assert questions == []
-        llm_invocation.assert_not_called()
-
-    def test_generate_suggested_questions_after_answer_invoke_error(self, llm_invocation: Mock) -> None:
-        llm_invocation.side_effect = InvokeError("Invoke failed")
-        questions = _generate_questions("tenant_id", "histories")
-        assert questions == []
-        llm_invocation.assert_called_once()
-
-    def test_generate_suggested_questions_after_answer_exception(self, llm_invocation: Mock) -> None:
-        llm_invocation.side_effect = Exception("Random error")
-        questions = _generate_questions("tenant_id", "histories")
-        assert questions == []
-        llm_invocation.assert_called_once()
-
-    def test_generate_suggested_questions_after_answer_with_custom_model_and_prompt(
-        self, model_manager: ModelManager, model_instance: ModelInstance, llm_invocation: Mock
-    ) -> None:
-        with patch.object(model_manager, "get_model_instance", return_value=model_instance) as model_lookup:
-            questions = _generate_questions(
-                "tenant_id",
-                "histories",
-                instruction_prompt="custom prompt",
-                model_config={
-                    "provider": "openai",
-                    "name": "gpt-4o",
-                    "completion_params": {"temperature": 0.2},
-                },
-            )
-
-        assert questions == ["Question 1?"]
-        model_lookup.assert_called_once_with(
-            tenant_id="tenant_id",
-            model_type=ModelType.LLM,
-            provider="openai",
-            model="gpt-4o",
-        )
-
-        invoke_kwargs = llm_invocation.call_args.kwargs
-        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
-        assert invoke_kwargs["stop"] is None
-        assert "custom prompt" in invoke_kwargs["prompt_messages"][0].content
-
-    def test_generate_suggested_questions_after_answer_with_custom_model_without_completion_params(
-        self, llm_invocation: Mock
-    ) -> None:
-        questions = _generate_questions(
-            "tenant_id",
-            "histories",
-            model_config={"provider": "openai", "name": "gpt-4o"},
-        )
-
-        assert questions == ["Question 1?"]
-        invoke_kwargs = llm_invocation.call_args.kwargs
-        assert invoke_kwargs["model_parameters"] == {}
-        assert invoke_kwargs["stop"] is None
-
-    def test_generate_suggested_questions_after_answer_fallback_to_default_model(
-        self, model_manager: ModelManager, model_instance: ModelInstance, llm_invocation: Mock
-    ) -> None:
-        with (
-            patch.object(model_manager, "get_model_instance", side_effect=ValueError("invalid configured model")),
-            patch.object(model_manager, "get_default_model_instance", return_value=model_instance) as default_lookup,
-        ):
-            questions = _generate_questions(
-                "tenant_id",
-                "histories",
-                model_config={
-                    "provider": "openai",
-                    "name": "not-found-model",
-                    "completion_params": {"temperature": 0.2},
-                },
-            )
-
-        assert questions == ["Question 1?"]
-        default_lookup.assert_called_once_with(
-            tenant_id="tenant_id",
-            model_type=ModelType.LLM,
-        )
-        assert llm_invocation.call_args.kwargs["model_parameters"] == {
-            "max_tokens": 256,
-            "temperature": 0.0,
-        }
-        assert llm_invocation.call_args.kwargs["stop"] is None
-
-    def test_generate_suggested_questions_after_answer_drops_non_positive_max_tokens(
-        self, llm_invocation: Mock
-    ) -> None:
-        questions = _generate_questions(
-            "tenant_id",
-            "histories",
-            model_config={
-                "provider": "openai",
-                "name": "gpt-4o",
-                "completion_params": {
-                    "temperature": 0.2,
-                    "max_tokens": 0,
-                    "stop": ["END"],
-                },
-            },
-        )
-
-        assert questions == ["Question 1?"]
-        invoke_kwargs = llm_invocation.call_args.kwargs
-        assert invoke_kwargs["model_parameters"] == {"temperature": 0.2}
-        assert invoke_kwargs["stop"] == ["END"]
-
-    @pytest.mark.parametrize("use_configured_model", [False, True])
-    def test_prepared_suggested_questions_defer_provider_calls_without_resolving_again(
-        self, monkeypatch: pytest.MonkeyPatch, use_configured_model: bool
-    ) -> None:
-        model_instance = make_model_instance(provider="openai", model="custom-model")
-        schema = make_model_config(provider="openai", model="custom-model", mode="chat").model_schema
-        get_schema = Mock(return_value=schema)
-        invocation = Mock()
-        runtime = model_instance.model_type_instance.model_runtime
-        monkeypatch.setattr(runtime, "get_model_schema", get_schema)
-        monkeypatch.setattr(runtime, "invoke_llm", invocation)
-        manager = create_plugin_model_manager(tenant_id="tenant_id")
-        monkeypatch.setattr(manager, "get_model_instance", Mock(return_value=model_instance))
-        monkeypatch.setattr(manager, "get_default_model_instance", Mock(return_value=model_instance))
-        resolve_manager = Mock(return_value=manager)
-        monkeypatch.setattr(ModelManager, "for_tenant", resolve_manager)
-        original_metadata = get_credit_usage_metadata()
-        original_timeout = _get_plugin_daemon_request_timeout()
-
-        def invoke(**_kwargs: object) -> LLMResult:
-            metadata = get_credit_usage_metadata()
-            assert metadata is not None
-            assert metadata["created_by"] == CreditUsageCreatedBy.SUGGESTED_QUESTIONS
-            assert _kwargs["request_metadata"] == metadata
-            timeout = _get_plugin_daemon_request_timeout()
-            assert timeout is not None
-            assert timeout.read == 30.0
-            return _llm_result('["Next question?"]')
-
-        invocation.side_effect = invoke
-        model_config = (
-            {
-                "provider": "openai",
-                "name": "custom-model",
-                "completion_params": {"temperature": 0.2, "stop": ["END"], "max_tokens": 0},
-            }
-            if use_configured_model
-            else None
-        )
-        prepared_model = SuggestedQuestionsGenerator._prepare_model("tenant_id", model_config=model_config)
-
-        assert prepared_model is not None
-        get_schema.assert_not_called()
-        invocation.assert_not_called()
-        resolve_manager.side_effect = AssertionError("Model lookup must finish in the preparation phase")
-
-        result = SuggestedQuestionsGenerator._invoke(
-            prepared_model, "Human: hello\nAssistant: world", instruction_prompt="Ask a follow-up"
-        )
-
-        assert result == ["Next question?"]
-        parameters = invocation.call_args.kwargs
-        assert parameters["model_parameters"] == (
-            {"temperature": 0.2} if use_configured_model else {"max_tokens": 256, "temperature": 0.0}
-        )
-        assert parameters["stop"] == (["END"] if use_configured_model else None)
-        assert parameters["stream"] is False
-        assert "Human: hello\nAssistant: world" in parameters["prompt_messages"][0].content
-        assert "Ask a follow-up" in parameters["prompt_messages"][0].content
-        assert get_credit_usage_metadata() == original_metadata
-        assert _get_plugin_daemon_request_timeout() == original_timeout
-
-
-def test_prepare_without_history_model_yields_none_without_tracing(
-    monkeypatch: pytest.MonkeyPatch, model_manager: ModelManager
+def test_prepare_preserves_caller_transaction_when_stored_provider_is_invalid(
+    invalid_provider_tenant: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     context = SuggestedQuestionsContext(
-        app_id="app-id",
-        tenant_id="tenant-id",
+        app_id=str(uuid4()),
+        tenant_id=invalid_provider_tenant,
         app_mode="chat",
-        message_id="message-id",
-        conversation_id="conversation-id",
-        actor=MessageEndUser(end_user_id="user-id"),
+        message_id=str(uuid4()),
+        conversation_id=str(uuid4()),
+        actor=MessageEndUser(end_user_id=str(uuid4())),
         invoke_from="service-api",
         config={"enabled": True},
     )
+    caller = db.session()
+    provider = caller.scalars(select(Provider).where(Provider.tenant_id == invalid_provider_tenant)).one()
+    provider.quota_limit = 27
+    with SuggestedQuestionsGenerator().prepare(context=context, instruction_prompt=None, model_config=None) as generate:
+        assert generate is None
+    assert db.session() is caller
+    assert caller.in_transaction()
+    assert provider in caller.dirty
+    assert provider.quota_limit == 27
+    assert "Invalid plugin id invalid/provider" in caplog.text
 
-    def unexpected_trace(*, app_id: str) -> NoReturn:
-        raise AssertionError(f"No trace manager should be created for {app_id} without a history model")
 
-    monkeypatch.setattr("services.message_suggested_questions_generator.TraceQueueManager", unexpected_trace)
-    with patch.object(model_manager, "get_default_model_instance", side_effect=ValueError("No default model")):
-        with SuggestedQuestionsGenerator().prepare(
-            context=context, instruction_prompt=None, model_config=None
-        ) as generate:
-            assert generate is None
+@pytest.mark.parametrize(
+    "model_config",
+    [None, {}, {"provider": "invalid/provider", "name": "model", "completion_params": {"temperature": 0.2}}],
+)
+def test_model_selection_returns_none_for_invalid_stored_provider(
+    invalid_provider_tenant: str, model_config: object, caplog: pytest.LogCaptureFixture
+) -> None:
+    metadata = get_credit_usage_metadata()
+    assert SuggestedQuestionsGenerator._prepare_model(invalid_provider_tenant, model_config=model_config) is None
+    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert get_credit_usage_metadata() == metadata
+
+
+def test_invocation_failure_returns_empty_questions_and_restores_request_context(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Use a real, uninitialized cache client, so no shared Redis mock participates.
+    # The real runtime then rejects the malformed provider ID before transport I/O.
+    monkeypatch.setattr(model_runtime_module, "redis_client", RedisClientWrapper())
+    model = make_model_instance(provider="invalid/provider", model="unavailable")
+    prepared = PreparedSuggestedQuestionsModel(model_instance=model, completion_params={"temperature": 0.2})
+    metadata = get_credit_usage_metadata()
+    timeout = _get_plugin_daemon_request_timeout()
+
+    assert SuggestedQuestionsGenerator._invoke(prepared, "Human: hello\nAssistant: world") == []
+
+    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert get_credit_usage_metadata() == metadata
+    assert _get_plugin_daemon_request_timeout() == timeout
+
+
+def test_default_parameters_survive_real_schema_lookup_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(model_runtime_module, "redis_client", RedisClientWrapper())
+    model = make_model_instance(provider="invalid/provider", model="unavailable")
+
+    assert _default_suggested_questions_model_parameters(model) == {"max_tokens": 256, "temperature": 0.0}
+    assert "Invalid plugin id invalid/provider" in caplog.text
+
+
+def test_token_transport_failure_propagates_before_best_effort_generation(
+    config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_overrides(PLUGIN_BASED_TOKEN_COUNTING_ENABLED=True)
+    # HTTPX rejects an unsupported configured scheme itself, without a network
+    # request or a replaced transport. The real plugin client wraps that error.
+    monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL("unsupported://plugin-daemon"))
+    history = PreparedHistory(
+        prompts=(
+            HistoryPrompt(
+                text="How does this work?",
+                is_user_message=True,
+                files=(),
+                tenant_id=str(uuid4()),
+                image_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            ),
+        )
+    )
+    context = SuggestedQuestionsContext(
+        app_id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        app_mode="chat",
+        message_id=str(uuid4()),
+        conversation_id=str(uuid4()),
+        actor=MessageEndUser(end_user_id=str(uuid4())),
+        invoke_from="service-api",
+        config={"enabled": True},
+    )
+    metadata = get_credit_usage_metadata()
+    timeout = _get_plugin_daemon_request_timeout()
+    with pytest.raises(PluginDaemonInnerError) as failure:
+        SuggestedQuestionsGenerator().generate(
+            history,
+            history_model=make_model_instance(provider="langgenius/openai/openai", model="history-model"),
+            context=context,
+            instruction_prompt=None,
+            model_config=None,
+        )
+    assert isinstance(failure.value.__context__, httpx.UnsupportedProtocol)
+    assert get_credit_usage_metadata() == metadata
+    assert _get_plugin_daemon_request_timeout() == timeout
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('["Question 1?", "还有吗？"]', ["Question 1?", "还有吗？"]),
+        ('Here are questions:\n["Next?"]', ["Next?"]),
+        ('["Next?", 1, null, true]', ["Next?"]),
+        ("[]", []),
+        ("", []),
+        ("not a question array", []),
+        ('["unfinished]', []),
+    ],
+)
+def test_response_parser_handles_question_arrays(text: str, expected: list[str]) -> None:
+    assert SuggestedQuestionsAfterAnswerOutputParser().parse(text) == expected
+
+
+@pytest.mark.parametrize("instruction", [None, "", " "])
+def test_empty_instruction_uses_default_prompt(instruction: str | None) -> None:
+    parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction)
+    assert parser.get_format_instructions() == DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+
+
+def test_custom_instruction_preserves_json_output_requirement() -> None:
+    instructions = SuggestedQuestionsAfterAnswerOutputParser("Ask a follow-up").get_format_instructions()
+    assert instructions.startswith("Ask a follow-up\n")
+    assert 'JSON array like ["question1", "question2", "question3"]' in instructions
+
+
+@pytest.mark.parametrize("limit", [0, -1, -0.5])
+def test_non_positive_token_limits_are_removed_without_mutating_configuration(limit: int | float) -> None:
+    configured: dict[str, object] = {
+        "temperature": 0.2,
+        "max_tokens": limit,
+        "max_output_tokens": limit,
+        "stop": ["END"],
+    }
+    parameters, stop = _normalize_completion_params(configured)
+    assert parameters == {"temperature": 0.2}
+    assert stop == ["END"]
+    assert configured == {"temperature": 0.2, "max_tokens": limit, "max_output_tokens": limit, "stop": ["END"]}
+
+
+def test_configured_parameters_keep_positive_limits() -> None:
+    assert _normalize_completion_params({"max_tokens": 512, "max_output_tokens": 1024}) == (
+        {"max_tokens": 512, "max_output_tokens": 1024},
+        [],
+    )
+
+
+@pytest.mark.parametrize("tracing", ["invalid trace JSON", '{"enabled":{"invalid":"type"}}'])
+def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
+    invalid_provider_tenant: str,
+    sqlite_session_factory: sessionmaker[Session],
+    tracing: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app_record = make_app(app_id=str(uuid4()), tenant_id=invalid_provider_tenant)
+    app_record.tracing = tracing
+    with sqlite_session_factory.begin() as session:
+        session.add(app_record)
+    context = SuggestedQuestionsContext(
+        app_id=app_record.id,
+        tenant_id=invalid_provider_tenant,
+        app_mode="chat",
+        message_id=str(uuid4()),
+        conversation_id=str(uuid4()),
+        actor=MessageEndUser(end_user_id=str(uuid4())),
+        invoke_from="service-api",
+        config={"enabled": True},
+    )
+    caller = db.session()
+    provider = caller.scalars(select(Provider).where(Provider.tenant_id == invalid_provider_tenant)).one()
+    provider.quota_limit = 27
+    transaction = caller.get_transaction()
+    sessions: list[Session] = []
+
+    def record_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    factory = db.session.session_factory
+    event.listen(factory, "after_begin", record_session)
+    try:
+        # Empty detached history needs no token-counting call. The real failed
+        # model lookup returns [], then trace construction reads the malformed
+        # stored config before it could create a timer or dispatch telemetry.
+        with pytest.raises(ValidationError), current_app.app_context():
+            SuggestedQuestionsGenerator().generate(
+                PreparedHistory(prompts=()),
+                history_model=make_model_instance(provider="invalid/provider", model="unused"),
+                context=context,
+                instruction_prompt=None,
+                model_config=None,
+            )
+    finally:
+        event.remove(factory, "after_begin", record_session)
+
+    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert len(sessions) == 2
+    assert sessions[0] is not sessions[1]
+    assert all(not session.in_transaction() and not session.identity_map for session in sessions)
+    assert db.session() is caller
+    assert caller.get_transaction() is transaction
+    assert provider in caller.dirty
+    assert provider.quota_limit == 27
+    with sqlite_session_factory() as session:
+        persisted = session.get(Provider, provider.id)
+        assert persisted is not None
+        assert persisted.quota_limit is None
+
+
+def test_prepare_isolates_a_caller_transaction_failed_by_a_real_constraint(
+    invalid_provider_tenant: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    context = SuggestedQuestionsContext(
+        app_id=str(uuid4()),
+        tenant_id=invalid_provider_tenant,
+        app_mode="chat",
+        message_id=str(uuid4()),
+        conversation_id=str(uuid4()),
+        actor=MessageEndUser(end_user_id=str(uuid4())),
+        invoke_from="service-api",
+        config={"enabled": True},
+    )
+    caller = db.session()
+    provider_id = caller.scalars(select(Provider.id).where(Provider.tenant_id == invalid_provider_tenant)).one()
+    duplicate = Provider(tenant_id=invalid_provider_tenant, provider_name="duplicate", is_valid=True)
+    duplicate.id = provider_id
+    caller.add(duplicate)
+    with pytest.raises(IntegrityError):
+        caller.flush()
+    failed_transaction = caller.get_transaction()
+    assert failed_transaction is not None
+    assert not caller.is_active
+
+    with SuggestedQuestionsGenerator().prepare(context=context, instruction_prompt=None, model_config=None) as generate:
+        assert generate is None
+
+    # Model resolution used an independent usable session. It must neither
+    # inherit the caller's failed transaction nor roll that transaction back.
+    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert db.session() is caller
+    assert caller.get_transaction() is failed_transaction
+    assert not caller.is_active
+    with pytest.raises(PendingRollbackError):
+        caller.scalar(select(Provider.id))
+    caller.rollback()
+    assert caller.scalar(select(Provider.id).where(Provider.id == provider_id)) == provider_id

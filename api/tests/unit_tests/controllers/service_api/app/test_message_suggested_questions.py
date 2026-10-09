@@ -1,8 +1,7 @@
 """Service API suggested questions with real admission, end-user provisioning, and SQLite."""
 
-import json
-from collections.abc import Iterator, Sequence
-from dataclasses import FrozenInstanceError, asdict, dataclass, field
+from collections.abc import Iterator
+from dataclasses import FrozenInstanceError, asdict, dataclass
 from decimal import Decimal
 from typing import Literal
 from uuid import uuid4
@@ -12,27 +11,19 @@ from flask import Flask
 from flask_login import LoginManager, current_user
 from sqlalchemy import Connection, Engine, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
-from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.errors.error import ProviderTokenNotInitError
-from core.model_manager import ModelInstance, ModelManager
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from extensions.ext_database import db
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from machinery.context import ServiceApiEndUserContext
 from models import Tenant, TenantStatus
 from models.agent import Agent, AgentScope, AgentSource
 from models.enums import ConversationFromSource, EndUserType
 from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, EndUser, Message
+from models.provider import Provider
 from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
@@ -47,18 +38,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
 )
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user, make_message
-
-
-@dataclass
-class _ModelCalls:
-    questions: list[str] = field(default_factory=lambda: ["What next?"])
-    failure: Literal["history_model", "generation_model", "invoke", "tokens", "tokens_http"] | None = None
-    prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
-    sessions: list[Session] = field(default_factory=list)
-    stages: list[tuple[str, bool]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -82,7 +62,6 @@ class _Harness:
     conversation: Conversation
     config: AppModelConfig
     provision_factory: sessionmaker[Session]
-    model_calls: _ModelCalls
     factory: sessionmaker[Session]
     message_id: str
     admissions: list[Session]
@@ -101,12 +80,10 @@ class _Harness:
             for session in self.admissions + self.provisions + self.queries + self.scoped_sessions
             if session is not caller
         )
-        assert all(closed for _stage, closed in self.model_calls.stages), self.model_calls.stages
 
 
 @pytest.fixture
 def harness(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> Iterator[_Harness]:
@@ -147,7 +124,9 @@ def harness(
     )
     token = ApiToken(app_id=target.id, tenant_id=tenant.id, type="app", token="test-token")
     with sqlite_session_factory.begin() as session:
-        session.add_all([tenant, target, end_user, config, conversation, message, token])
+        # Fail the actual provider ID validation before plugin discovery can run.
+        provider = Provider(tenant_id=tenant.id, provider_name="invalid/provider", is_valid=True)
+        session.add_all([tenant, target, end_user, config, conversation, message, token, provider])
 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
@@ -180,75 +159,6 @@ def harness(
     event.listen(query_factory, "after_begin", track_query)
     event.listen(db.session.session_factory, "after_begin", track_scoped)
 
-    model_calls = _ModelCalls()
-    model = make_model_instance(provider="openai", model="question-model")
-    schema = make_model_config(provider="openai", model="question-model", mode="chat").model_schema
-    manager = create_plugin_model_manager(tenant_id=tenant.id)
-
-    def record_sessions(stage: str) -> None:
-        sessions = admissions + provisions + query_sessions + model_calls.sessions
-        model_calls.stages.append(
-            (stage, all(not session.in_transaction() and not session.identity_map for session in sessions))
-        )
-
-    def resolve_model(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
-        assert tenant_id == tenant.id
-        assert model_type == ModelType.LLM
-        stage = "generation_model" if model_calls.sessions else "history_model"
-        record_sessions(stage)
-        # Credential lookup may leave a scoped transaction for the generator to release.
-        session = db.session()
-        session.get(App, target.id)
-        model_calls.sessions.append(session)
-        if model_calls.failure == stage:
-            raise ProviderTokenNotInitError("Credential unavailable")
-        return model
-
-    def model_manager(*, tenant_id: str) -> ModelManager:
-        assert tenant_id == tenant.id
-        return manager
-
-    def count_tokens(*, prompt_messages: Sequence[PromptMessage], **_kwargs: object) -> int:
-        record_sessions("tokens")
-        if model_calls.failure == "tokens":
-            raise InvokeError("Token counting failed")
-        if model_calls.failure == "tokens_http":
-            raise Forbidden("private provider failure")
-        return len(prompt_messages)
-
-    def model_schema(**_kwargs: object) -> AIModelEntity:
-        record_sessions("schema")
-        return schema
-
-    def invoke(*, prompt_messages: Sequence[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:
-        record_sessions("invoke")
-        assert stream is False
-        model_calls.prompts.append(prompt_messages[0].get_text_content())
-        if model_calls.failure == "invoke":
-            raise InvokeError("Provider timed out")
-        return LLMResult(
-            model=model.model_name,
-            message=AssistantPromptMessage(content=json.dumps(model_calls.questions)),
-            usage=LLMUsage.empty_usage(),
-        )
-
-    original_add_trace = TraceQueueManager.add_trace_task
-
-    def record_trace(queue: TraceQueueManager, task: TraceTask) -> None:
-        record_sessions("trace")
-        assert queue.app_id == target.id
-        model_calls.traces.append(task)
-        original_add_trace(queue, task)
-
-    monkeypatch.setattr(ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(manager, "get_default_model_instance", resolve_model)
-    runtime = model.model_type_instance.model_runtime
-    monkeypatch.setattr(runtime, "get_llm_num_tokens", count_tokens)
-    monkeypatch.setattr(runtime, "get_model_schema", model_schema)
-    monkeypatch.setattr(runtime, "invoke_llm", invoke)
-    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _self: None)
-    monkeypatch.setattr(TraceQueueManager, "add_trace_task", record_trace)
-
     queries = SuggestedQuestionsQuery(session_factory=query_factory, repository_factory=MessageRepository)
     service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
     app.extensions["application_services"] = _Services(
@@ -270,7 +180,6 @@ def harness(
         conversation,
         config,
         provision_factory,
-        model_calls,
         sqlite_session_factory,
         message.id,
         admissions,
@@ -288,7 +197,9 @@ def harness(
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-def test_admitted_identity_and_mode_generate_owned_questions(harness: _Harness, mode: AppMode) -> None:
+def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_config(
+    harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
+) -> None:
     with harness.factory.begin() as session:
         target = session.get(App, harness.target.id)
         assert target is not None
@@ -308,16 +219,23 @@ def test_admitted_identity_and_mode_generate_owned_questions(harness: _Harness, 
             target.workflow_id = workflow.id
     response = harness.get()
     assert response.status_code == 200
-    assert response.json == {"result": "success", "data": ["What next?"]}
+    assert response.json == {"result": "success", "data": []}
     assert response.headers["Content-Type"] == "application/json"
+    failures = [
+        record.exc_info[1]
+        for record in caplog.records
+        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+    ]
+    assert len(failures) == 1
+    assert isinstance(failures[0], ValueError)
+    assert str(failures[0]) == "Invalid plugin id invalid/provider"
+    assert len(harness.queries) == 1
     with harness.factory() as session:
         end_user = session.scalar(select(EndUser).where(EndUser.app_id == harness.target.id))
         assert end_user is not None
         assert end_user.type == EndUserType.SERVICE_API
         assert end_user.external_user_id == "alice"
         assert end_user.id == harness.end_user.id
-    assert len(harness.model_calls.prompts) == 1
-    assert "Human: How does this work?\nAssistant: Like this." in harness.model_calls.prompts[0]
     harness.assert_closed()
 
 
@@ -333,17 +251,8 @@ def test_existing_user_is_reused_within_the_token_app_only(harness: _Harness) ->
     with harness.factory.begin() as session:
         session.add(decoy)
     assert harness.get().status_code == 200
-    assert len(harness.model_calls.prompts) == 1
     with harness.factory() as session:
         assert len(session.scalars(select(EndUser)).all()) == 2
-
-
-@pytest.mark.parametrize("questions", [[], ["One?", "Two?"]])
-def test_response_preserves_question_lists(harness: _Harness, questions: list[str]) -> None:
-    harness.model_calls.questions = questions
-    response = harness.get()
-    assert response.status_code == 200
-    assert response.json == {"result": "success", "data": questions}
 
 
 @pytest.mark.parametrize("authorization", [None, "Basic test-token"])
@@ -353,7 +262,7 @@ def test_invalid_authorization_stops_before_database_admission(harness: _Harness
     assert response.json is not None
     assert response.json["code"] == "unauthorized"
     assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
-    assert harness.admissions == harness.provisions == harness.queries == harness.model_calls.prompts == []
+    assert harness.admissions == harness.provisions == harness.queries == []
 
 
 @pytest.mark.parametrize("user", [None, ""])
@@ -363,7 +272,7 @@ def test_required_user_rejected_before_provisioning(harness: _Harness, user: str
     assert response.json is not None
     assert response.json["code"] == "invalid_param"
     assert response.json["message"] == "Arg user must be provided."
-    assert harness.provisions == harness.queries == harness.model_calls.prompts == []
+    assert harness.provisions == harness.queries == []
     harness.assert_closed()
 
 
@@ -428,7 +337,7 @@ def test_app_and_workspace_admission(
     response = harness.get(user="new-user")
     assert response.status_code == 403
     assert response.json == {"code": code, "message": message, "status": 403}
-    assert harness.provisions == harness.queries == harness.model_calls.stages == []
+    assert harness.provisions == harness.queries == []
     with harness.factory() as session:
         assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
     harness.assert_closed()
@@ -444,7 +353,7 @@ def test_unsupported_mode_does_not_invoke_questions(harness: _Harness, mode: App
     assert response.status_code == 400
     assert response.json is not None
     assert response.json["code"] == "not_chat_app"
-    assert harness.queries == harness.model_calls.prompts == []
+    assert harness.queries == []
     harness.assert_closed()
 
 
@@ -500,7 +409,6 @@ def test_domain_errors_have_specific_http_codes(
     assert response.json["status"] == status
     if message:
         assert response.json["message"] == message
-    assert harness.model_calls.prompts == []
     harness.assert_closed()
 
 
@@ -541,7 +449,6 @@ def test_scope_changes_after_admission_have_specific_http_codes(
     assert response.json["status"] == status
     if message:
         assert response.json["message"] == message
-    assert harness.model_calls.prompts == []
     harness.assert_closed()
 
 
@@ -557,53 +464,6 @@ def test_malformed_configuration_returns_an_opaque_internal_error(harness: _Harn
     assert response.json["code"] == "internal_server_error"
     assert response.json["status"] == 500
     assert "private diagnostic" not in response.get_data(as_text=True)
-    assert harness.model_calls.prompts == []
-    harness.assert_closed()
-
-
-def test_unexpected_provider_http_error_does_not_escape_as_an_admission_error(harness: _Harness) -> None:
-    harness.model_calls.failure = "tokens_http"
-    response = harness.get()
-    assert response.status_code == 500
-    assert response.headers["Content-Type"] == "application/json"
-    assert response.json is not None
-    assert response.json["code"] == "internal_server_error"
-    assert response.json["status"] == 500
-    assert "private provider failure" not in response.get_data(as_text=True)
-    assert harness.model_calls.prompts == []
-    harness.assert_closed()
-
-
-@pytest.mark.parametrize(
-    ("failure", "expected_status", "expected_stages"),
-    [
-        ("history_model", 200, ["history_model"]),
-        ("generation_model", 200, ["history_model", "tokens", "generation_model", "trace"]),
-        ("invoke", 200, ["history_model", "tokens", "generation_model", "schema", "invoke", "trace"]),
-        ("tokens", 400, ["history_model", "tokens"]),
-    ],
-)
-def test_real_generation_preserves_stage_specific_failure_responses(
-    harness: _Harness,
-    failure: Literal["history_model", "generation_model", "invoke", "tokens"],
-    expected_status: int,
-    expected_stages: list[str],
-) -> None:
-    harness.model_calls.failure = failure
-    response = harness.get()
-
-    assert response.status_code == expected_status
-    if expected_status == 200:
-        assert response.json == {"result": "success", "data": []}
-    else:
-        assert response.json == {
-            "code": "completion_request_error",
-            "message": "Token counting failed",
-            "status": 400,
-        }
-    assert response.headers["Content-Type"] == "application/json"
-    assert harness.model_calls.stages == [(stage, True) for stage in expected_stages]
-    assert len(harness.queries) == (1 if failure == "history_model" else 2)
     harness.assert_closed()
 
 
@@ -616,7 +476,7 @@ def test_caller_session_and_pending_edits_are_preserved(harness: _Harness) -> No
         transaction = caller.get_transaction()
         response = harness.get()
         assert response.status_code == 200
-        assert response.json == {"result": "success", "data": ["What next?"]}
+        assert response.json == {"result": "success", "data": []}
         assert db.session() is caller
         assert caller.get_transaction() is transaction
         assert target in caller.dirty
@@ -650,7 +510,7 @@ def test_request_identity_remains_installed_after_generation(harness: _Harness) 
             f"/messages/{harness.message_id}/suggested?user=alice", headers={"Authorization": "Bearer test-token"}
         )
         assert response.status_code == 200
-        assert response.json == {"result": "success", "data": ["What next?"]}
+        assert response.json == {"result": "success", "data": []}
         assert current_user.id == harness.end_user.id
         assert current_user.app_id == harness.target.id
         assert current_user.tenant_id == harness.tenant.id
