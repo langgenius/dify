@@ -20,7 +20,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_workflow
 
@@ -316,7 +316,71 @@ class TestWorkflowEntrySingleStepRun:
         assert node.id == "node-id"
         assert list(generator) == ["event"]
         variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
+        @pytest.mark.parametrize(
+        ("workflow_type", "expects_query_mapping"),
+        [(WorkflowType.WORKFLOW, False), (WorkflowType.CHAT, True)],
+    )
+    def test_injects_memory_query_mapping_only_for_conversation_apps(
+        self, workflow_type: WorkflowType, expects_query_mapping: bool
+    ):
+        class FakeLLMNode:
+            id = "node-id"
+            title = "Node Title"
+            node_type = BuiltinNodeTypes.LLM
 
+            @staticmethod
+            def version():
+                return "1"
+
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(**_kwargs):
+                return {}
+
+        variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
+        workflow = make_workflow(
+            workflow_id="workflow-id",
+            tenant_id="tenant-id",
+            app_id="app-id",
+            created_by="user-id",
+            workflow_type=workflow_type,
+        )
+        node_config = {
+            "id": "node-id",
+            "data": BaseNodeData(type=BuiltinNodeTypes.LLM, version="1", memory=object()),
+        }
+
+        with (
+            patch.object(workflow, "get_node_config_by_id", return_value=node_config),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(
+                workflow_entry,
+                "GraphRuntimeState",
+                return_value=SimpleNamespace(variable_pool=variable_pool),
+            ),
+            patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeLLMNode),
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
+            patch.object(workflow_entry, "preload_node_creation_variables"),
+            patch.object(workflow_entry, "load_into_variable_pool"),
+            patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool") as mapping_inputs,
+            patch.object(
+                workflow_entry.WorkflowEntry,
+                "_run_node_with_layers",
+                return_value=iter(["event"]),
+            ),
+        ):
+            dify_node_factory.return_value.create_node.return_value = FakeLLMNode()
+            workflow_entry.WorkflowEntry.single_step_run(
+                workflow=workflow,
+                node_id="node-id",
+                user_id="user-id",
+                user_inputs={},
+                variable_pool=variable_pool,
+            )
+
+        variable_mapping = mapping_inputs.call_args.kwargs["variable_mapping"]
+        assert ("node-id.#sys.query#" in variable_mapping) is expects_query_mapping
+        
     def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self):
         class FakeNode:
             id = "node-id"
