@@ -434,9 +434,9 @@ def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_c
 ) -> None:
     if failure == "invalid_transport":
         monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL("unsupported://plugin-daemon"))
-    # The pinned daemon reports its missing installation as a ValueError.
-    # An invalid real HTTPX transport is wrapped as an InvokeError instead.
-    expected_code = "invalid_param" if failure == "missing_plugin" else "completion_request_error"
+    # PluginModelClient converts both missing-plugin (-404) and transport (-500)
+    # PluginDaemonInnerError failures to ValueError, yielding invalid_param.
+    expected_error = "-404" if failure == "missing_plugin" else "Request to Plugin Daemon Service failed-500"
     with Session(db.engine) as session:
         config = session.get(AppModelConfig, scenario.historical_config_id)
         assert config is not None
@@ -474,13 +474,15 @@ def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_c
             ]
             errors = [item for item in events if item["event"] == "error"]
             assert len(errors) == 1
-            assert errors[0]["code"] == expected_code
+            assert errors[0]["code"] == "invalid_param"
+            assert expected_error in errors[0]["message"]
             assert errors[0]["status"] == HTTPStatus.BAD_REQUEST
         else:
             assert response.status_code == HTTPStatus.BAD_REQUEST
             payload = response.get_json()
             assert isinstance(payload, dict)
-            assert payload["code"] == expected_code
+            assert payload["code"] == "invalid_param"
+            assert expected_error in payload["message"]
         response.close()
     finally:
         hooks.remove(observe_request)
@@ -491,7 +493,8 @@ def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_c
     with Session(db.engine) as session:
         generated = session.scalars(select(Message).where(Message.id != scenario.message_id)).one()
         assert generated.status == MessageStatus.ERROR
-        assert generated.error
+        assert generated.error is not None
+        assert expected_error in generated.error
         original = session.get(Message, scenario.message_id)
         assert original is not None
         assert original.answer == "Original answer"
