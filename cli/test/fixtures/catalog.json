@@ -60,16 +60,10 @@
     "restore.console_app.version": {
       "bind": { "app_id": "path", "version_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": { "app_id": "<app_id>", "version_id": "<version_id>" },
-          "title": "Restore an older version"
-        }
-      ],
       "input": {
-        "properties": { "app_id": { "type": "string" }, "version_id": { "type": "string" } },
-        "required": ["app_id", "version_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "version_id": {} },
+        "required": ["app_id", "version_id"]
       },
       "internal": false,
       "kind": "object",
@@ -998,82 +992,17 @@
         "workspace_id": "path"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "name": "Release notes"
-          },
-          "title": "Create a workflow app"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "maxLength": 400,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "App description",
-            "title": "Description"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "name": {
-            "description": "App name",
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "workspace_id": {
-            "type": "string"
-          }
+          "description": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "name": {},
+          "workspace_id": {}
         },
-        "required": ["workspace_id", "name"],
-        "type": "object"
+        "required": ["workspace_id", "name"]
       },
       "internal": false,
       "kind": "object",
@@ -1091,82 +1020,17 @@
         "workspace_id": "path"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "name": "Support bot"
-          },
-          "title": "Create an advanced-chat app"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "maxLength": 400,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "App description",
-            "title": "Description"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "name": {
-            "description": "App name",
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "workspace_id": {
-            "type": "string"
-          }
+          "description": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "name": {},
+          "workspace_id": {}
         },
-        "required": ["workspace_id", "name"],
-        "type": "object"
+        "required": ["workspace_id", "name"]
       },
       "internal": false,
       "kind": "object",
@@ -1175,48 +1039,12 @@
       "summary": "Create a blank advanced-chat app; export its DSL to start building"
     },
     "test.node.workflow": {
-      "bind": {
-        "app_id": "path",
-        "inputs": "body",
-        "node_id": "path"
-      },
+      "bind": { "app_id": "path", "inputs": "body", "node_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "node_id": "<node_id>"
-          },
-          "title": "Test a node"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "inputs": {
-              "#llm.text#": "Hello"
-            },
-            "node_id": "<node_id>"
-          },
-          "title": "Test a node with an upstream value overridden"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "inputs": {
-            "additionalProperties": true,
-            "description": "Overrides for what the last draft run saved, keyed by variable reference such as #llm.text#",
-            "title": "Inputs",
-            "type": "object"
-          },
-          "node_id": {
-            "type": "string"
-          }
-        },
-        "required": ["app_id", "node_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "inputs": {}, "node_id": {} },
+        "required": ["app_id", "node_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1225,46 +1053,12 @@
       "summary": "Test one node of a workflow draft, reusing what the last draft run saved"
     },
     "test.node.advanced_chat": {
-      "bind": {
-        "app_id": "path",
-        "inputs": "body",
-        "node_id": "path",
-        "query": "body"
-      },
+      "bind": { "app_id": "path", "inputs": "body", "node_id": "path", "query": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "node_id": "<node_id>",
-            "query": "Hi"
-          },
-          "title": "Test a node"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "inputs": {
-            "additionalProperties": true,
-            "description": "Overrides for what the last draft run saved, keyed by variable reference such as #llm.text#",
-            "title": "Inputs",
-            "type": "object"
-          },
-          "node_id": {
-            "type": "string"
-          },
-          "query": {
-            "default": "",
-            "description": "The user message the node sees as sys.query",
-            "title": "Query",
-            "type": "string"
-          }
-        },
-        "required": ["app_id", "node_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "inputs": {}, "node_id": {}, "query": {} },
+        "required": ["app_id", "node_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1281,98 +1075,16 @@
         "workspace_id": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "inputs": {
-              "topic": "test"
-            }
-          },
-          "title": "Test the draft with one input"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "files": {
-              "document": "./report.pdf"
-            }
-          },
-          "title": "Test the draft with a local file variable"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "format": "binary",
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
-            "title": "Attachments"
-          },
-          "files": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "format": "binary",
-                      "type": "string"
-                    },
-                    {
-                      "items": {
-                        "format": "binary",
-                        "type": "string"
-                      },
-                      "type": "array"
-                    }
-                  ]
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable",
-            "title": "Files"
-          },
-          "inputs": {
-            "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both.",
-            "title": "Inputs",
-            "type": "object"
-          },
-          "workspace_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Workspace that owns the app",
-            "title": "Workspace Id"
-          }
+          "app_id": {},
+          "attachments": {},
+          "files": {},
+          "inputs": {},
+          "workspace_id": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "sse",
@@ -1392,121 +1104,19 @@
         "workspace_id": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "query": "hello"
-          },
-          "title": "Test the draft with one message"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "files": {
-              "document": "./report.pdf"
-            },
-            "query": "Summarise the document"
-          },
-          "title": "Test the draft with a local file variable"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "attachments": {
-            "anyOf": [
-              {
-                "items": {
-                  "format": "binary",
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
-            "title": "Attachments"
-          },
-          "auto_generate_name": {
-            "default": true,
-            "description": "Let the server name a new conversation",
-            "title": "Auto Generate Name",
-            "type": "boolean"
-          },
-          "conversation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Continue an existing conversation",
-            "title": "Conversation Id"
-          },
-          "files": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "format": "binary",
-                      "type": "string"
-                    },
-                    {
-                      "items": {
-                        "format": "binary",
-                        "type": "string"
-                      },
-                      "type": "array"
-                    }
-                  ]
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable",
-            "title": "Files"
-          },
-          "inputs": {
-            "additionalProperties": true,
-            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both.",
-            "title": "Inputs",
-            "type": "object"
-          },
-          "query": {
-            "description": "User message",
-            "title": "Query",
-            "type": "string"
-          },
-          "workspace_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Workspace that owns the app",
-            "title": "Workspace Id"
-          }
+          "app_id": {},
+          "attachments": {},
+          "auto_generate_name": {},
+          "conversation_id": {},
+          "files": {},
+          "inputs": {},
+          "query": {},
+          "workspace_id": {}
         },
-        "required": ["app_id", "query"],
-        "type": "object"
+        "required": ["app_id", "query"]
       },
       "internal": false,
       "kind": "sse",
@@ -1517,17 +1127,7 @@
     "get.node_type": {
       "bind": {},
       "deprecated": false,
-      "examples": [
-        {
-          "input": {},
-          "title": "List node types"
-        }
-      ],
-      "input": {
-        "properties": {},
-        "required": [],
-        "type": "object"
-      },
+      "input": { "type": "object", "properties": {} },
       "internal": false,
       "kind": "object",
       "method": "GET",
@@ -1535,27 +1135,9 @@
       "summary": "Every node type this server can run; import decides which a mode allows"
     },
     "describe.node_type": {
-      "bind": {
-        "node_type": "path"
-      },
+      "bind": { "node_type": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "node_type": "llm"
-          },
-          "title": "Describe the LLM node"
-        }
-      ],
-      "input": {
-        "properties": {
-          "node_type": {
-            "type": "string"
-          }
-        },
-        "required": ["node_type"],
-        "type": "object"
-      },
+      "input": { "type": "object", "properties": { "node_type": {} }, "required": ["node_type"] },
       "internal": false,
       "kind": "object",
       "method": "GET",
@@ -1571,80 +1153,16 @@
         "triggered_from": "query"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "status": "failed",
-            "triggered_from": "app-run"
-          },
-          "title": "Latest failed runs from real use"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "limit": 1,
-            "triggered_from": "debugging"
-          },
-          "title": "My latest draft test run"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "last_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Cursor: id of the last run on the previous page",
-            "title": "Last Id"
-          },
-          "limit": {
-            "default": 20,
-            "maximum": 100,
-            "minimum": 1,
-            "title": "Limit",
-            "type": "integer"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "enum": ["running", "succeeded", "failed", "stopped", "partial-succeeded"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Status"
-          },
-          "triggered_from": {
-            "anyOf": [
-              {
-                "enum": ["debugging", "app-run"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console",
-            "title": "Triggered From"
-          }
+          "app_id": {},
+          "last_id": {},
+          "limit": {},
+          "status": {},
+          "triggered_from": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1653,31 +1171,12 @@
       "summary": "List runs of a workflow or advanced-chat app, newest first"
     },
     "get.run.node": {
-      "bind": {
-        "app_id": "path",
-        "run_id": "path"
-      },
+      "bind": { "app_id": "path", "run_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "run_id": "<run_id>"
-          },
-          "title": "Node steps of one run"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "run_id": {
-            "type": "string"
-          }
-        },
-        "required": ["app_id", "run_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "run_id": {} },
+        "required": ["app_id", "run_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1686,50 +1185,12 @@
       "summary": "Each node step of a run, to find the one that failed"
     },
     "publish.console_app": {
-      "bind": {
-        "app_id": "path",
-        "marked_comment": "body",
-        "marked_name": "body"
-      },
+      "bind": { "app_id": "path", "marked_comment": "body", "marked_name": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>"
-          },
-          "title": "Publish the draft"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "marked_comment": "Adds a retry",
-            "marked_name": "v2"
-          },
-          "title": "Publish a named version"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "marked_comment": {
-            "default": "",
-            "description": "Version note",
-            "maxLength": 100,
-            "title": "Marked Comment",
-            "type": "string"
-          },
-          "marked_name": {
-            "default": "",
-            "description": "Version name",
-            "maxLength": 20,
-            "title": "Marked Name",
-            "type": "string"
-          }
-        },
-        "required": ["app_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "marked_comment": {}, "marked_name": {} },
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1738,55 +1199,12 @@
       "summary": "Publish the draft as a new version and make the app use it"
     },
     "get.console_app.version": {
-      "bind": {
-        "app_id": "path",
-        "limit": "query",
-        "named_only": "query",
-        "page": "query"
-      },
+      "bind": { "app_id": "path", "limit": "query", "named_only": "query", "page": "query" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>"
-          },
-          "title": "Latest versions"
-        },
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "named_only": true
-          },
-          "title": "Only named versions"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "limit": {
-            "default": 20,
-            "maximum": 100,
-            "minimum": 1,
-            "title": "Limit",
-            "type": "integer"
-          },
-          "named_only": {
-            "default": false,
-            "description": "Only versions that have a name",
-            "title": "Named Only",
-            "type": "boolean"
-          },
-          "page": {
-            "default": 1,
-            "minimum": 1,
-            "title": "Page",
-            "type": "integer"
-          }
-        },
-        "required": ["app_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "limit": {}, "named_only": {}, "page": {} },
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -1803,60 +1221,16 @@
         "workspace_id": "path"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "keyword": "finance"
-          },
-          "title": "Find a group by name"
-        },
-        {
-          "input": {
-            "group_id": "<group_id>"
-          },
-          "title": "List the members of a group"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Search only inside this group",
-            "title": "Group Id"
-          },
-          "keyword": {
-            "default": "",
-            "description": "Name or email to search for",
-            "title": "Keyword",
-            "type": "string"
-          },
-          "limit": {
-            "default": 20,
-            "maximum": 100,
-            "minimum": 1,
-            "title": "Limit",
-            "type": "integer"
-          },
-          "page": {
-            "default": 1,
-            "minimum": 1,
-            "title": "Page",
-            "type": "integer"
-          },
-          "workspace_id": {
-            "type": "string"
-          }
+          "group_id": {},
+          "keyword": {},
+          "limit": {},
+          "page": {},
+          "workspace_id": {}
         },
-        "required": ["workspace_id"],
-        "type": "object"
+        "required": ["workspace_id"]
       },
       "internal": false,
       "kind": "list",
@@ -1880,168 +1254,23 @@
         "title": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "show_workflow_steps": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show each node step to users",
-            "title": "Show Workflow Steps"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          }
+          "app_id": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "privacy_policy": {},
+          "show_workflow_steps": {},
+          "title": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -2069,220 +1298,27 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "chat_color_theme": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Chat colour, e.g. #1C64F2",
-            "title": "Chat Color Theme"
-          },
-          "chat_color_theme_inverted": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Invert the chat colours",
-            "title": "Chat Color Theme Inverted"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "input_placeholder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Placeholder of the chat input",
-            "title": "Input Placeholder"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "show_workflow_steps": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show each node step to users",
-            "title": "Show Workflow Steps"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          },
-          "use_icon_as_answer_icon": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show the app icon on answers",
-            "title": "Use Icon As Answer Icon"
-          }
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "show_workflow_steps": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -2309,207 +1345,26 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "chat_color_theme": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Chat colour, e.g. #1C64F2",
-            "title": "Chat Color Theme"
-          },
-          "chat_color_theme_inverted": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Invert the chat colours",
-            "title": "Chat Color Theme Inverted"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "input_placeholder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Placeholder of the chat input",
-            "title": "Input Placeholder"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          },
-          "use_icon_as_answer_icon": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show the app icon on answers",
-            "title": "Use Icon As Answer Icon"
-          }
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -2536,207 +1391,26 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "chat_color_theme": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Chat colour, e.g. #1C64F2",
-            "title": "Chat Color Theme"
-          },
-          "chat_color_theme_inverted": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Invert the chat colours",
-            "title": "Chat Color Theme Inverted"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "input_placeholder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Placeholder of the chat input",
-            "title": "Input Placeholder"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          },
-          "use_icon_as_answer_icon": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show the app icon on answers",
-            "title": "Use Icon As Answer Icon"
-          }
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -2759,155 +1433,22 @@
         "title": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          }
+          "app_id": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "privacy_policy": {},
+          "title": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -2934,207 +1475,26 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true,
-            "title": "Support"
-          },
-          "title": "Turn the web app on and set its title"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "chat_color_theme": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Chat colour, e.g. #1C64F2",
-            "title": "Chat Color Theme"
-          },
-          "chat_color_theme_inverted": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Invert the chat colours",
-            "title": "Chat Color Theme Inverted"
-          },
-          "copyright": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Footer copyright text",
-            "title": "Copyright"
-          },
-          "custom_disclaimer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Disclaimer shown on the page",
-            "title": "Custom Disclaimer"
-          },
-          "default_language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Language code, e.g. en-US",
-            "title": "Default Language"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page description",
-            "title": "Description"
-          },
-          "enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Turn the web app on or off",
-            "title": "Enabled"
-          },
-          "icon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Emoji, file id or URL, per icon_type",
-            "title": "Icon"
-          },
-          "icon_background": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Background colour for an emoji icon",
-            "title": "Icon Background"
-          },
-          "icon_type": {
-            "anyOf": [
-              {
-                "enum": ["emoji", "image", "link"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "emoji, image or link",
-            "title": "Icon Type"
-          },
-          "input_placeholder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Placeholder of the chat input",
-            "title": "Input Placeholder"
-          },
-          "privacy_policy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Privacy policy URL",
-            "title": "Privacy Policy"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page title",
-            "title": "Title"
-          },
-          "use_icon_as_answer_icon": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Show the app icon on answers",
-            "title": "Use Icon As Answer Icon"
-          }
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
         },
-        "required": ["app_id"],
-        "type": "object"
+        "required": ["app_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3143,33 +1503,12 @@
       "summary": "Change an agent app's web app; only the fields passed change"
     },
     "set.service_api.workflow": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3178,33 +1517,12 @@
       "summary": "Turn a workflow app's Service API on or off"
     },
     "set.service_api.advanced_chat": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3213,33 +1531,12 @@
       "summary": "Turn an advanced-chat app's Service API on or off"
     },
     "set.service_api.chat": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3248,33 +1545,12 @@
       "summary": "Turn a chat app's Service API on or off"
     },
     "set.service_api.agent_chat": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3283,33 +1559,12 @@
       "summary": "Turn an agent-chat app's Service API on or off"
     },
     "set.service_api.completion": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3318,33 +1573,12 @@
       "summary": "Turn a completion app's Service API on or off"
     },
     "set.service_api.agent": {
-      "bind": {
-        "app_id": "path",
-        "enabled": "body"
-      },
+      "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "app_id": "<app_id>",
-            "enabled": true
-          },
-          "title": "Turn the Service API on"
-        }
-      ],
       "input": {
-        "properties": {
-          "app_id": {
-            "type": "string"
-          },
-          "enabled": {
-            "description": "Turn the app's Service API on or off",
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": ["app_id", "enabled"],
-        "type": "object"
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
       },
       "internal": false,
       "kind": "object",
@@ -3353,52 +1587,12 @@
       "summary": "Turn an agent app's Service API on or off"
     },
     "set.webapp_access.workflow": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3407,52 +1601,12 @@
       "summary": "Replace who may open a workflow app's web app (Enterprise)"
     },
     "set.webapp_access.advanced_chat": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3461,52 +1615,12 @@
       "summary": "Replace who may open an advanced-chat app's web app (Enterprise)"
     },
     "set.webapp_access.chat": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3515,52 +1629,12 @@
       "summary": "Replace who may open a chat app's web app (Enterprise)"
     },
     "set.webapp_access.agent_chat": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3569,52 +1643,12 @@
       "summary": "Replace who may open an agent-chat app's web app (Enterprise)"
     },
     "set.webapp_access.completion": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3623,52 +1657,12 @@
       "summary": "Replace who may open a completion app's web app (Enterprise)"
     },
     "set.webapp_access.agent": {
-      "bind": {
-        "access_mode": "body",
-        "app_id": "path",
-        "subjects": "body"
-      },
+      "bind": { "access_mode": "body", "app_id": "path", "subjects": "body" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "access_mode": "private",
-            "app_id": "<app_id>",
-            "subjects": [
-              {
-                "id": "<group_id>",
-                "type": "group"
-              }
-            ]
-          },
-          "title": "Open the web app to one group"
-        }
-      ],
       "input": {
-        "properties": {
-          "access_mode": {
-            "description": "public, private, private_all or sso_verified",
-            "enum": ["public", "private", "private_all", "sso_verified"],
-            "title": "WebAppAccessMode",
-            "type": "string"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "subjects": {
-            "description": "For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject",
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "title": "Subjects",
-            "type": "array"
-          }
-        },
-        "required": ["app_id", "access_mode"],
-        "type": "object"
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {}, "subjects": {} },
+        "required": ["app_id", "access_mode"]
       },
       "internal": false,
       "kind": "object",
@@ -3685,45 +1679,10 @@
         "workspace_id": "path"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": { "category": "model", "query": "openai" },
-          "title": "Find model plugins for OpenAI"
-        },
-        { "input": { "category": "tool" }, "title": "Most installed tool plugins" }
-      ],
       "input": {
-        "properties": {
-          "category": {
-            "anyOf": [
-              {
-                "enum": ["tool", "model", "extension", "agent-strategy", "datasource", "trigger"],
-                "title": "PluginCategory",
-                "type": "string"
-              },
-              { "type": "null" }
-            ],
-            "default": null,
-            "description": "Only plugins of this category"
-          },
-          "limit": {
-            "default": 20,
-            "maximum": 100,
-            "minimum": 1,
-            "title": "Limit",
-            "type": "integer"
-          },
-          "page": { "default": 1, "minimum": 1, "title": "Page", "type": "integer" },
-          "query": {
-            "default": "",
-            "description": "Words to search for; empty lists the most installed plugins",
-            "title": "Query",
-            "type": "string"
-          },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "category": {}, "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
       },
       "internal": false,
       "kind": "list",
@@ -3734,25 +1693,10 @@
     "get.plugin": {
       "bind": { "category": "query", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": { "category": "model" }, "title": "Installed model plugins" }],
       "input": {
-        "properties": {
-          "category": {
-            "anyOf": [
-              {
-                "enum": ["tool", "model", "extension", "agent-strategy", "datasource", "trigger"],
-                "title": "PluginCategory",
-                "type": "string"
-              },
-              { "type": "null" }
-            ],
-            "default": null,
-            "description": "Only plugins of this category"
-          },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "category": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3763,25 +1707,10 @@
     "install.plugin": {
       "bind": { "identifiers": "body", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": { "identifiers": ["langgenius/openai:0.2.1@<sha256>"] },
-          "title": "Install one plugin"
-        }
-      ],
       "input": {
-        "properties": {
-          "identifiers": {
-            "description": "Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin (identifier) or check.console_app.dependency",
-            "items": { "type": "string" },
-            "minItems": 1,
-            "title": "Identifiers",
-            "type": "array"
-          },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["workspace_id", "identifiers"],
-        "type": "object"
+        "type": "object",
+        "properties": { "identifiers": {}, "workspace_id": {} },
+        "required": ["workspace_id", "identifiers"]
       },
       "internal": false,
       "kind": "object",
@@ -3792,11 +1721,10 @@
     "describe.plugin.task": {
       "bind": { "task_id": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": { "task_id": "<task_id>" }, "title": "Check an install" }],
       "input": {
-        "properties": { "task_id": { "type": "string" }, "workspace_id": { "type": "string" } },
-        "required": ["task_id", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "task_id": {}, "workspace_id": {} },
+        "required": ["task_id", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3807,31 +1735,10 @@
     "upgrade.plugin": {
       "bind": { "identifier": "body", "plugin_id": "body", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "identifier": "langgenius/openai:0.3.0@<sha256>",
-            "plugin_id": "langgenius/openai"
-          },
-          "title": "Upgrade OpenAI"
-        }
-      ],
       "input": {
-        "properties": {
-          "identifier": {
-            "description": "Versioned id to upgrade to, from get.marketplace.plugin",
-            "title": "Identifier",
-            "type": "string"
-          },
-          "plugin_id": {
-            "description": "Installed plugin id such as langgenius/openai",
-            "title": "Plugin Id",
-            "type": "string"
-          },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["workspace_id", "plugin_id", "identifier"],
-        "type": "object"
+        "type": "object",
+        "properties": { "identifier": {}, "plugin_id": {}, "workspace_id": {} },
+        "required": ["workspace_id", "plugin_id", "identifier"]
       },
       "internal": false,
       "kind": "object",
@@ -3842,11 +1749,10 @@
     "delete.plugin": {
       "bind": { "plugin_id": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": { "plugin_id": "langgenius/openai" }, "title": "Uninstall OpenAI" }],
       "input": {
-        "properties": { "plugin_id": { "type": "string" }, "workspace_id": { "type": "string" } },
-        "required": ["plugin_id", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "plugin_id": {}, "workspace_id": {} },
+        "required": ["plugin_id", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3857,11 +1763,10 @@
     "describe.model_provider": {
       "bind": { "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": { "provider": "langgenius/openai/openai" }, "title": "OpenAI" }],
       "input": {
-        "properties": { "provider": { "type": "string" }, "workspace_id": { "type": "string" } },
-        "required": ["provider", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3872,34 +1777,10 @@
     "create.model_provider.credential": {
       "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "credentials": { "openai_api_key": "<from the user>" },
-            "provider": "langgenius/openai/openai"
-          },
-          "title": "Save an OpenAI key (pass credentials with @-)"
-        }
-      ],
       "input": {
-        "properties": {
-          "credentials": {
-            "additionalProperties": true,
-            "description": "Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op.",
-            "title": "Credentials",
-            "type": "object"
-          },
-          "name": {
-            "anyOf": [{ "type": "string" }, { "type": "null" }],
-            "default": null,
-            "description": "Credential name; the server makes one when absent",
-            "title": "Name"
-          },
-          "provider": { "type": "string" },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["provider", "workspace_id", "credentials"],
-        "type": "object"
+        "type": "object",
+        "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id", "credentials"]
       },
       "internal": false,
       "kind": "object",
@@ -3910,20 +1791,10 @@
     "switch.model_provider.credential": {
       "bind": { "credential_id": "path", "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": { "credential_id": "<credential_id>", "provider": "langgenius/openai/openai" },
-          "title": "Switch"
-        }
-      ],
       "input": {
-        "properties": {
-          "credential_id": { "type": "string" },
-          "provider": { "type": "string" },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["credential_id", "provider", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "credential_id": {}, "provider": {}, "workspace_id": {} },
+        "required": ["credential_id", "provider", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3934,13 +1805,10 @@
     "get.model": {
       "bind": { "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        { "input": { "provider": "langgenius/openai/openai" }, "title": "OpenAI models" }
-      ],
       "input": {
-        "properties": { "provider": { "type": "string" }, "workspace_id": { "type": "string" } },
-        "required": ["provider", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -3958,46 +1826,17 @@
         "workspace_id": "path"
       },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "credentials": { "base_url": "http://ollama:11434" },
-            "model": "llama3",
-            "model_type": "llm",
-            "provider": "langgenius/ollama/ollama"
-          },
-          "title": "A self-hosted model"
-        }
-      ],
       "input": {
+        "type": "object",
         "properties": {
-          "credentials": {
-            "additionalProperties": true,
-            "description": "Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op.",
-            "title": "Credentials",
-            "type": "object"
-          },
-          "model": {
-            "description": "Model name, as in get.model",
-            "title": "Model",
-            "type": "string"
-          },
-          "model_type": {
-            "description": "Enum class for model type.",
-            "enum": ["llm", "text-embedding", "rerank", "speech2text", "moderation", "tts"],
-            "title": "ModelType",
-            "type": "string"
-          },
-          "name": {
-            "anyOf": [{ "type": "string" }, { "type": "null" }],
-            "default": null,
-            "title": "Name"
-          },
-          "provider": { "type": "string" },
-          "workspace_id": { "type": "string" }
+          "credentials": {},
+          "model": {},
+          "model_type": {},
+          "name": {},
+          "provider": {},
+          "workspace_id": {}
         },
-        "required": ["provider", "workspace_id", "model", "model_type", "credentials"],
-        "type": "object"
+        "required": ["provider", "workspace_id", "model", "model_type", "credentials"]
       },
       "internal": false,
       "kind": "object",
@@ -4008,11 +1847,10 @@
     "get.default_model": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": {}, "title": "All defaults" }],
       "input": {
-        "properties": { "workspace_id": { "type": "string" } },
-        "required": ["workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "workspace_id": {} },
+        "required": ["workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -4023,33 +1861,10 @@
     "set.default_model": {
       "bind": { "model": "body", "model_type": "path", "provider": "body", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "model": "gpt-4o",
-            "model_type": "llm",
-            "provider": "langgenius/openai/openai"
-          },
-          "title": "Default LLM"
-        }
-      ],
       "input": {
-        "properties": {
-          "model": {
-            "description": "Model name, as in get.model",
-            "title": "Model",
-            "type": "string"
-          },
-          "model_type": { "type": "string" },
-          "provider": {
-            "description": "Provider id such as langgenius/openai/openai",
-            "title": "Provider",
-            "type": "string"
-          },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["model_type", "workspace_id", "provider", "model"],
-        "type": "object"
+        "type": "object",
+        "properties": { "model": {}, "model_type": {}, "provider": {}, "workspace_id": {} },
+        "required": ["model_type", "workspace_id", "provider", "model"]
       },
       "internal": false,
       "kind": "object",
@@ -4060,11 +1875,10 @@
     "describe.tool_provider": {
       "bind": { "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [{ "input": { "provider": "langgenius/tavily/tavily" }, "title": "Tavily" }],
       "input": {
-        "properties": { "provider": { "type": "string" }, "workspace_id": { "type": "string" } },
-        "required": ["provider", "workspace_id"],
-        "type": "object"
+        "type": "object",
+        "properties": { "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id"]
       },
       "internal": false,
       "kind": "object",
@@ -4075,33 +1889,10 @@
     "create.tool_provider.credential": {
       "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
       "deprecated": false,
-      "examples": [
-        {
-          "input": {
-            "credentials": { "tavily_api_key": "<from the user>" },
-            "provider": "langgenius/tavily/tavily"
-          },
-          "title": "Save a Tavily key (pass credentials with @-)"
-        }
-      ],
       "input": {
-        "properties": {
-          "credentials": {
-            "additionalProperties": true,
-            "description": "Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op.",
-            "title": "Credentials",
-            "type": "object"
-          },
-          "name": {
-            "anyOf": [{ "maxLength": 30, "type": "string" }, { "type": "null" }],
-            "default": null,
-            "title": "Name"
-          },
-          "provider": { "type": "string" },
-          "workspace_id": { "type": "string" }
-        },
-        "required": ["provider", "workspace_id", "credentials"],
-        "type": "object"
+        "type": "object",
+        "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id", "credentials"]
       },
       "internal": false,
       "kind": "object",
