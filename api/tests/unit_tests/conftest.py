@@ -5,6 +5,7 @@ import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import ModuleType
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, create_autospec, patch
 
@@ -65,6 +66,19 @@ def _patch_redis_clients_on_loaded_modules() -> None:
     for module in list(sys.modules.values()):
         if module is None:
             continue
+        # Ordinary modules store imported clients directly in their namespace.
+        # Avoid raising AttributeError twice for every unrelated SDK module.
+        # Still scan every test: imports, module replacements and newly assigned
+        # client attributes must be picked up without a stale discovery cache.
+        if type(module) is ModuleType:
+            namespace = vars(module)
+            if "redis_client" in namespace:
+                namespace["redis_client"] = redis_mock
+            if "_pubsub_redis_client" in namespace:
+                namespace["_pubsub_redis_client"] = redis_mock
+            if "__getattr__" not in namespace:
+                continue
+        # Preserve dynamic exports and custom module attribute access.
         for client_attribute in ("redis_client", "_pubsub_redis_client"):
             if hasattr(module, client_attribute):
                 setattr(module, client_attribute, redis_mock)
