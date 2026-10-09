@@ -11,7 +11,11 @@ from core.entities.execution_extra_content import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import ButtonStyle, TimeoutUnit, ValueSourceType
-from models.human_input_entities import FormDefinition, FormInputConfig, HumanInputNodeData
+from models.human_input_entities import (
+    FormDefinition,
+    FormInputConfig,
+    HumanInputNodeData,
+)
 
 
 def _legacy_form_input_payloads() -> list[dict[str, Any]]:

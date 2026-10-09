@@ -1,11 +1,13 @@
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
+
 """Tests for WorkflowEntry integration with Redis command channel."""
 
 from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 
 class TestWorkflowEntryRedisChannel:
@@ -24,7 +26,7 @@ class TestWorkflowEntryRedisChannel:
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
         # Patch GraphEngine to verify it receives the Redis channel
-        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("services.workflow.execution.adapters.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MockGraphEngine.return_value  # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
@@ -39,6 +41,7 @@ class TestWorkflowEntryRedisChannel:
                 variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,  # Provide Redis channel
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
             # Verify GraphEngine was initialized with the Redis channel
@@ -57,8 +60,10 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch GraphEngine and InMemoryChannel
         with (
-            patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
-            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as MockInMemoryChannel,
+            patch("services.workflow.execution.adapters.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
+            patch(
+                "services.workflow.execution.adapters.workflow_entry.InMemoryChannel", autospec=True
+            ) as MockInMemoryChannel,
         ):
             mock_graph_engine = MockGraphEngine.return_value
             mock_inmemory_channel = MockInMemoryChannel.return_value  # Create WorkflowEntry without providing a channel
@@ -75,6 +80,7 @@ class TestWorkflowEntryRedisChannel:
                 variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=None,  # No channel provided
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
             # Verify InMemoryChannel was created
@@ -103,7 +109,7 @@ class TestWorkflowEntryRedisChannel:
         mock_event2 = MagicMock()
 
         # Patch GraphEngine
-        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("services.workflow.execution.adapters.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MagicMock()
             mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
             MockGraphEngine.return_value = mock_graph_engine
@@ -122,6 +128,7 @@ class TestWorkflowEntryRedisChannel:
                 variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
             # Run the workflow

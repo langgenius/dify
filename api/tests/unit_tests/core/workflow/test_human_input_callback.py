@@ -8,15 +8,16 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_contracts import FormCreateParams
 from models.human_input_entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,12 +35,13 @@ def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Inpu
 @pytest.fixture
 def repository(
     sqlite_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
 ) -> HumanInputFormRepositoryImpl:
-    mocker.patch(
-        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sqlite_session_factory,
     )
-    return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
 
 
 def test_session_binding_identity_mapping() -> None:

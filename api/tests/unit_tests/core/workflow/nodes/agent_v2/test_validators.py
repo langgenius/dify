@@ -4,25 +4,19 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.validators import (
-    WorkflowAgentNodeValidationError,
-    WorkflowAgentNodeValidator,
-)
+from enums.agent import WorkflowAgentBindingType
 from extensions.storage.storage_type import StorageType
-from models.agent import (
-    Agent,
-    AgentConfigSnapshot,
-    AgentScope,
-    AgentSource,
-    AgentStatus,
-    WorkflowAgentBindingType,
-    WorkflowAgentNodeBinding,
-)
+from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow
-from tests.unit_tests.model_factories import make_workflow
+from repositories.agent.workflow_binding_repository import WorkflowAgentBindingRepository, workflow_binding_scope
+from services.agent.workflow_validator import (
+    WorkflowAgentNodeValidationError,
+    WorkflowAgentNodeValidator,
+)
+from tests.unit_tests.model_factories import make_dataset, make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
@@ -144,7 +138,9 @@ def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
     }
     session = Mock()
 
-    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session)).validate_published_workflow(
+        workflow=workflow_binding_scope(_workflow(graph))
+    )
 
     session.scalar.assert_not_called()
 
@@ -190,14 +186,15 @@ def test_publish_validation_accepts_upstream_previous_output_ref(sqlite_session:
     )
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=sqlite_session,
-        workflow=_workflow(
-            _graph(
-                [
-                    {"source": "start", "target": "previous-node"},
-                    {"source": "previous-node", "target": "agent-node"},
-                ]
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(
+            _workflow(
+                _graph(
+                    [
+                        {"source": "start", "target": "previous-node"},
+                        {"source": "previous-node", "target": "agent-node"},
+                    ]
+                )
             )
         ),
     )
@@ -218,9 +215,8 @@ def test_publish_validation_uses_active_snapshot_for_roster_agent(sqlite_session
     snapshot.id = "active-snapshot"
     _persist_validation_scope(sqlite_session, node_job=node_job, binding=binding, agent=agent, snapshot=snapshot)
 
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=sqlite_session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -231,9 +227,10 @@ def test_publish_validation_rejects_unpublished_roster_agent(sqlite_session: Ses
     sqlite_session.commit()
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unpublished roster agent"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -244,23 +241,25 @@ def test_publish_validation_rejects_non_upstream_previous_output_ref(sqlite_sess
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="non-upstream"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(
-                _graph(
-                    [
-                        {"source": "start", "target": "agent-node"},
-                        {"source": "agent-node", "target": "later-node"},
-                    ]
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(
+                _workflow(
+                    _graph(
+                        [
+                            {"source": "start", "target": "agent-node"},
+                            {"source": "agent-node", "target": "later-node"},
+                        ]
+                    )
                 )
             ),
         )
 
 
 def test_draft_validation_allows_unbound_agent_node(sqlite_session: Session):
-    WorkflowAgentNodeValidator.validate_draft_workflow(
-        session=sqlite_session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -270,9 +269,8 @@ def test_draft_validation_allows_missing_previous_node(sqlite_session: Session):
     )
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
-    WorkflowAgentNodeValidator.validate_draft_workflow(
-        session=sqlite_session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -282,20 +280,21 @@ def test_draft_validation_allows_non_upstream_previous_output_ref(sqlite_session
     )
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
-    WorkflowAgentNodeValidator.validate_draft_workflow(
-        session=sqlite_session,
-        workflow=_workflow(
-            _graph(
-                [
-                    {"source": "start", "target": "agent-node"},
-                    {"source": "agent-node", "target": "later-node"},
-                ]
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+        workflow=workflow_binding_scope(
+            _workflow(
+                _graph(
+                    [
+                        {"source": "start", "target": "agent-node"},
+                        {"source": "agent-node", "target": "later-node"},
+                    ]
+                )
             )
         ),
     )
 
 
-def test_draft_validation_allows_missing_agent_soul_model():
+def test_draft_validation_allows_missing_agent_soul_model(sqlite_session: Session):
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -304,12 +303,10 @@ def test_draft_validation_allows_missing_agent_soul_model():
         version=1,
         config_snapshot=AgentSoulConfig(),
     )
-    session = Mock()
-    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+    _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
-    WorkflowAgentNodeValidator.validate_draft_workflow(
-        session=session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -318,17 +315,17 @@ def test_draft_validation_rejects_incomplete_previous_output_ref(sqlite_session:
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete previous node output ref"):
-        WorkflowAgentNodeValidator.validate_draft_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
 def test_publish_validation_requires_binding(sqlite_session: Session):
     with pytest.raises(WorkflowAgentNodeValidationError, match="requires a binding"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -344,9 +341,10 @@ def test_publish_validation_rejects_duplicate_output_names(sqlite_session: Sessi
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate output name"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -362,9 +360,10 @@ def test_publish_validation_rejects_missing_agent_soul_model(sqlite_session: Ses
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="requires Agent Soul model"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -398,9 +397,10 @@ def test_publish_validation_dedupes_provider_level_tool_entries(sqlite_session: 
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate Dify Plugin Tool"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -431,9 +431,8 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry(sqli
     )
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=sqlite_session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -451,9 +450,10 @@ def test_publish_validation_rejects_duplicate_cli_tool_names(sqlite_session: Ses
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate CLI Tool name pytest"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -471,9 +471,10 @@ def test_publish_validation_rejects_unauthorized_cli_tool(sqlite_session: Sessio
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized CLI Tool"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -493,9 +494,10 @@ def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool(sqlite_ses
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unacknowledged dangerous CLI Tool"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -513,9 +515,10 @@ def test_publish_validation_rejects_unauthorized_secret_ref(sqlite_session: Sess
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference API_TOKEN"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -543,9 +546,10 @@ def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthoriz
     binding, _, snapshot = _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate env/secret name TOKEN"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
     snapshot.config_snapshot = AgentSoulConfig(
@@ -569,9 +573,10 @@ def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthoriz
     sqlite_session.commit()
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference GITHUB_TOKEN"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -582,9 +587,10 @@ def test_publish_validation_rejects_missing_previous_node(sqlite_session: Sessio
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="references missing previous node"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -595,9 +601,10 @@ def test_publish_validation_rejects_self_previous_output_ref(sqlite_session: Ses
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="non-upstream"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -606,9 +613,10 @@ def test_publish_validation_rejects_locked_agent_soul_override_in_metadata(sqlit
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="cannot override locked Agent Soul fields"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -617,9 +625,10 @@ def test_publish_validation_rejects_invalid_human_contact_ref(sqlite_session: Se
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="invalid human contact ref"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -630,9 +639,10 @@ def test_publish_validation_rejects_out_of_scope_human_contact_ref(sqlite_sessio
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="out-of-scope human contact"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
@@ -654,9 +664,8 @@ def test_publish_validation_accepts_tenant_scoped_file_ref(sqlite_session: Sessi
     )
     _persist_validation_scope(sqlite_session, node_job=node_job, extras=(_upload_file(),))
 
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=sqlite_session,
-        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
     )
 
 
@@ -665,74 +674,70 @@ def test_publish_validation_rejects_missing_file_ref(sqlite_session: Session):
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="missing or out-of-scope metadata file ref"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}]))),
         )
 
 
-def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
+@pytest.mark.parametrize("owner", [None, "tenant-2", "tenant-1"])
+def test_publish_validation_checks_knowledge_dataset_ownership(sqlite_session: Session, owner: str | None):
     dataset_id = "550e8400-e29b-41d4-a716-446655440000"
-    node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot_with_knowledge_dataset(dataset_id)
-    _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
-
-    captured = {}
-
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
-        captured["ids"] = ids
-        captured["tenant_id"] = tenant_id
-        return [], 0
-
-    import services.knowledge.dataset_service as dataset_service_module
-
-    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
-
-    with pytest.raises(WorkflowAgentNodeValidationError, match=dataset_id):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
-        )
-
-    assert captured == {"ids": [dataset_id], "tenant_id": "tenant-1"}
+    _persist_validation_scope(sqlite_session, node_job=WorkflowNodeJobConfig(), snapshot=snapshot)
+    if owner is not None:
+        sqlite_session.add(make_dataset(dataset_id=dataset_id, tenant_id=owner))
+        sqlite_session.commit()
+    validator = WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session))
+    workflow = workflow_binding_scope(_workflow(_graph([{"source": "start", "target": "agent-node"}])))
+    if owner == "tenant-1":
+        validator.validate_published_workflow(workflow=workflow)
+    else:
+        with pytest.raises(WorkflowAgentNodeValidationError, match=dataset_id):
+            validator.validate_published_workflow(workflow=workflow)
 
 
 def test_publish_validation_accepts_tool_node_agentic_manual_mode(unbound_session: Session):
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=unbound_session,
-        workflow=_workflow(_tool_graph({"agentic_mode": {"state": "manual"}})),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(unbound_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(_workflow(_tool_graph({"agentic_mode": {"state": "manual"}}))),
     )
 
 
 def test_publish_validation_accepts_tool_node_agentic_parameter_draft(unbound_session: Session):
-    WorkflowAgentNodeValidator.validate_published_workflow(
-        session=unbound_session,
-        workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "parameter_draft": {"query": "x"}}})),
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(unbound_session)).validate_published_workflow(
+        workflow=workflow_binding_scope(
+            _workflow(_tool_graph({"agentic_mode": {"state": "agentic", "parameter_draft": {"query": "x"}}}))
+        ),
     )
 
 
 def test_publish_validation_rejects_incomplete_tool_node_agentic_config(unbound_session: Session):
     with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete agentic mode config"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=unbound_session,
-            workflow=_workflow(_tool_graph({"agentic_mode": True})),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(unbound_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(_workflow(_tool_graph({"agentic_mode": True}))),
         )
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete agentic mode config"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=unbound_session,
-            workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "complete": False}})),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(unbound_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(
+                _workflow(_tool_graph({"agentic_mode": {"state": "agentic", "complete": False}}))
+            ),
         )
 
 
 def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unbound_session: Session):
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized agentic mode config"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=unbound_session,
-            workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}})),
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(unbound_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(
+                _workflow(_tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}}))
+            ),
         )
 
 
@@ -741,9 +746,13 @@ def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_sessi
     job = WorkflowNodeJobConfig.model_validate({"output_routes": {"enabled": True, "routes": routes}})
     _persist_validation_scope(sqlite_session, node_job=job)
     workflow = _workflow(_graph([{"source": "start", "target": "agent-node"}]))
-    WorkflowAgentNodeValidator.validate_draft_workflow(session=sqlite_session, workflow=workflow)
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(sqlite_session)).validate_draft_workflow(
+        workflow=workflow_binding_scope(workflow)
+    )
     with pytest.raises(ValueError, match="route"):
-        WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=workflow)
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(workflow=workflow_binding_scope(workflow))
 
 
 def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session):
@@ -760,14 +769,17 @@ def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session)
     )
     _persist_validation_scope(sqlite_session, node_job=job)
     with pytest.raises(WorkflowAgentNodeValidationError, match="non-upstream"):
-        WorkflowAgentNodeValidator.validate_published_workflow(
-            session=sqlite_session,
-            workflow=_workflow(
-                _graph(
-                    [
-                        {"source": "start", "target": "agent-node"},
-                        {"source": "agent-node", "target": "later-node"},
-                    ]
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(
+            workflow=workflow_binding_scope(
+                _workflow(
+                    _graph(
+                        [
+                            {"source": "start", "target": "agent-node"},
+                            {"source": "agent-node", "target": "later-node"},
+                        ]
+                    )
                 )
             ),
         )
@@ -786,4 +798,6 @@ def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Ses
     graph = _graph([{"source": "start", "target": "agent-node"}])
     graph["nodes"][2]["data"]["error_strategy"] = "default-value"
     with pytest.raises(WorkflowAgentNodeValidationError, match="default-value"):
-        WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=_workflow(graph))
+        WorkflowAgentNodeValidator(
+            repository=WorkflowAgentBindingRepository(sqlite_session)
+        ).validate_published_workflow(workflow=workflow_binding_scope(_workflow(graph)))

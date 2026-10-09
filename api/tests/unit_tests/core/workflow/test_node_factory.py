@@ -3,17 +3,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
-from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
-from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -26,34 +22,9 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
-from models.base import TypeBase
-from models.model import AppMode, Conversation, ConversationFromSource
+from services.workflow.execution.adapters import node_factory
+from services.workflow.execution.adapters.node_runtime import DifyPreparedLLM
 from tests.unit_tests.core.model_fixtures import make_model_instance
-
-
-@pytest.fixture
-def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
-    """Bind node memory lookup to an explicit SQLite session factory."""
-
-    TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
-    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
-    return session_maker
-
-
-def _persist_conversation(session_maker: sessionmaker[Session]) -> None:
-    with session_maker.begin() as session:
-        session.add(
-            Conversation(
-                id="conversation-id",
-                app_id="app-id",
-                mode=AppMode.ADVANCED_CHAT,
-                name="Conversation",
-                _inputs={},
-                from_source=ConversationFromSource.API,
-                from_end_user_id="end-user-id",
-            )
-        )
 
 
 def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
@@ -145,78 +116,6 @@ class TestResolveWorkflowNodeClass:
         )
 
         assert resolved is latest_node_class
-
-
-class TestFetchMemory:
-    @pytest.mark.parametrize(
-        ("conversation_id", "memory_config"),
-        [
-            (None, object()),
-            ("conversation-id", None),
-        ],
-    )
-    def test_returns_none_when_memory_or_conversation_is_missing(self, conversation_id, memory_config):
-        result = node_factory.fetch_memory(
-            conversation_id=conversation_id,
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
-        )
-
-        assert result is None
-
-    def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
-
-        assert result is None
-
-    def test_builds_token_buffer_memory_for_existing_conversation(
-        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
-    ):
-        memory = sentinel.memory
-        _persist_conversation(memory_session_maker)
-        token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
-
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
-
-        assert result is memory
-        loaded_conversation = token_buffer_memory.call_args.kwargs["conversation"]
-        assert isinstance(loaded_conversation, Conversation)
-        assert loaded_conversation.id == "conversation-id"
-        assert token_buffer_memory.call_args.kwargs["model_instance"] is sentinel.model_instance
-
-    def test_uses_configured_session_factory_without_flask_app_context(
-        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
-    ):
-        class RaisingDB:
-            @property
-            def engine(self):
-                raise RuntimeError("Working outside of application context.")
-
-        token_buffer_memory = MagicMock(return_value=sentinel.memory)
-        _persist_conversation(memory_session_maker)
-        monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
-        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
-
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
-
-        assert result is sentinel.memory
 
 
 class TestDifyGraphInitContext:
@@ -345,8 +244,9 @@ class TestDifyNodeFactoryResolveContext:
 
 class TestDifyNodeFactoryCreateNode:
     @pytest.fixture
-    def factory(self):
+    def factory(self, workflow_runtime):
         factory = object.__new__(node_factory.DifyNodeFactory)
+        factory._workflow_runtime = workflow_runtime
         factory.graph_init_params = sentinel.graph_init_params
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
         factory._dify_context = SimpleNamespace(
@@ -368,7 +268,6 @@ class TestDifyNodeFactoryCreateNode:
         factory._prompt_message_serializer = sentinel.prompt_message_serializer
         factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
         factory._llm_file_saver = sentinel.llm_file_saver
-        factory._human_input_runtime = sentinel.human_input_runtime
         factory._tool_runtime = sentinel.tool_runtime
         factory._http_request_file_manager = sentinel.file_manager
         factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
@@ -1158,41 +1057,10 @@ class TestDifyNodeFactoryMemory:
         assert result is None
         factory.graph_runtime_state.variable_pool.get.assert_not_called()
 
-    def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
-        memory_config = sentinel.memory_config
-        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
-        fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
-
-        result = factory._build_memory_for_llm_node(
-            node_data=SimpleNamespace(memory=memory_config),
-            model_instance=sentinel.model_instance,
-        )
-
-        assert result is sentinel.memory
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
-        fetch_memory.assert_called_once_with(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
-        )
-
-    def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
-        memory_config = sentinel.memory_config
+    def test_ignores_non_string_segment_conversation_ids(self, factory):
         factory.graph_runtime_state.variable_pool.get.return_value = sentinel.segment
-        fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
-
         result = factory._build_memory_for_llm_node(
-            node_data=SimpleNamespace(memory=memory_config),
+            node_data=SimpleNamespace(memory=sentinel.memory_config),
             model_instance=sentinel.model_instance,
         )
-
-        assert result is sentinel.memory
-        fetch_memory.assert_called_once_with(
-            conversation_id=None,
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
-        )
+        assert result is None

@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from flask import Flask
@@ -13,16 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
-from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     DIFY_RUN_CONTEXT_KEY,
     AdvancedChatAppGenerateEntity,
@@ -36,15 +27,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     WorkflowQueueMessage,
 )
-from core.repositories.human_input_repository import (
-    HumanInputFormSubmissionRepository,
-)
-from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
-from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from enums.human_input import HumanInputFormStatus
 from graphon.entities import GraphInitParams, WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
@@ -84,7 +67,21 @@ from models.human_input_entities import (
     UserActionConfig,
 )
 from models.model import AppMode
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
+from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.app.generation.response import convert_to_event_stream
+from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+    AdvancedChatAppGenerateResponseConverter,
+)
+from services.workflow.execution.adapters.chatflow.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from services.workflow.execution.adapters.events import WorkflowEventPublisher
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from tests.unit_tests.model_factories import make_message
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 
 def _persist_form(
@@ -322,11 +319,17 @@ def _build_timeout_node(
     )
 
 
-def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
-    return _publish_graph_events(_filter_human_input_events(node.run(), node=node))
+def _publish_node_events(node: HumanInputNode, *, sessions: sessionmaker[Session] | None = None) -> list[AppQueueEvent]:
+    form_reader = HumanInputFormSubmissionRepository(sessions=sessions) if sessions else NO_HUMAN_INPUT_FORMS
+    return _publish_graph_events(_filter_human_input_events(node.run(), node=node, form_reader=form_reader))
 
 
-def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: HumanInputNode | None = None):
+def _filter_human_input_events(
+    events: Iterable[GraphEngineEvent],
+    *,
+    node: HumanInputNode | None = None,
+    form_reader=NO_HUMAN_INPUT_FORMS,
+):
     node = node or _build_node()
     return filter_graph_events(
         events,
@@ -334,7 +337,7 @@ def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: Huma
             graph=Graph(root_node=node),
             runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
         ),
-        filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        filters=[HumanInputFormEventFilter(form_repository=form_reader)],
     )
 
 
@@ -398,26 +401,31 @@ class _EventQueue(AppQueueManager):
 
 
 def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
-    node = _build_node()
-    runtime_state = node.graph_runtime_state
-    queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
-    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
-    workflow_entry = WorkflowEntry(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
-        graph_config={},
-        graph=Graph(root_node=node),
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
-        variable_pool=runtime_state.variable_pool,
-        graph_runtime_state=runtime_state,
-    )
+    published: list[AppQueueEvent] = []
+    queue_manager = create_autospec(AppQueueManager, instance=True, spec_set=True)
+    queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
+    publisher = WorkflowEventPublisher(queue_manager, resolve_pause=lambda **_: [], notify_pause=lambda _: None)
+    workflow_entry = create_autospec(WorkflowEntry, instance=True, spec_set=True)
     for event in events:
-        runner._handle_event(workflow_entry, event)
-    return queue_manager.events
+        publisher.publish(workflow_entry, event)
+
+    return published
+
+
+class StreamMessageWrites:
+    """The SSE contract tests replace persistence at its port; SQLite tests cover writes."""
+
+    def attach_workflow(self, identity, workflow_run_id):
+        pass
+
+    def record_human_input(self, identity, *, workflow_run_id, form_id, node_id):
+        pass
+
+    def save_message(self, identity, update):
+        pass
+
+    def fail_message(self, identity, error):
+        pass
 
 
 def _sse_payloads(
@@ -426,6 +434,9 @@ def _sse_payloads(
     app: Flask,
     sessions: sessionmaker[Session],
     runtime_state: GraphRuntimeState | None = None,
+    *,
+    workflow_contexts,
+    tool_providers,
 ) -> list[dict[str, Any]]:
     generate_entity = AdvancedChatAppGenerateEntity(
         task_id="task-1",
@@ -481,6 +492,8 @@ def _sse_payloads(
                     status=HumanInputFormStatus.SUBMITTED,
                 )
     pipeline = AdvancedChatAppGenerateTaskPipeline(
+        contexts=workflow_contexts,
+        chat_records=StreamMessageWrites(),
         application_generate_entity=generate_entity,
         workflow=WorkflowSnapshot(id="workflow", tenant_id="tenant", features_dict={}),
         queue_manager=queue_manager,
@@ -492,6 +505,7 @@ def _sse_payloads(
         stream=True,
         dialogue_count=1,
         draft_var_saver_factory=MagicMock(),
+        tool_providers=tool_providers,
     )
     with app.test_request_context():
         if not any(isinstance(event, QueueWorkflowStartedEvent) for event in events):
@@ -501,7 +515,7 @@ def _sse_payloads(
                 )
             )
         response = compact_generate_response(
-            BaseAppGenerator.convert_to_event_stream(
+            convert_to_event_stream(
                 AdvancedChatAppGenerateResponseConverter.convert(
                     pipeline._to_stream_response(pipeline._process_stream_response()), invoke_from
                 )
@@ -515,11 +529,23 @@ def _sse_payloads(
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP], ids=["full", "simple"])
 def test_submitted_human_input_reaches_response_stream(
-    invoke_from: InvokeFrom, app: Flask, sqlite_session_factory: sessionmaker[Session]
+    invoke_from: InvokeFrom,
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     events = _publish_node_events(_build_node())
 
-    payloads = _sse_payloads(events, invoke_from, app, sqlite_session_factory)
+    payloads = _sse_payloads(
+        events,
+        invoke_from,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
 
     # Dify's original HumanInputNode (9c339239850) emitted the form event
     # before node completion; its runner and task pipeline preserved that order.
@@ -547,10 +573,19 @@ def test_submitted_human_input_reaches_response_stream(
     assert submitted_data["attachments"][0]["type"] == "image"
 
 
-def test_button_only_human_input_reaches_response_stream(app: Flask, sqlite_session_factory: sessionmaker[Session]):
+def test_button_only_human_input_reaches_response_stream(
+    app: Flask, sqlite_session_factory: sessionmaker[Session], *, workflow_contexts, tool_providers
+):
     events = _publish_node_events(_build_node("Approve deployment?", with_inputs=False))
 
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
+    payloads = _sse_payloads(
+        events,
+        InvokeFrom.WEB_APP,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
 
     assert [payload["event"] for payload in payloads] == [
         "node_started",
@@ -564,7 +599,12 @@ def test_button_only_human_input_reaches_response_stream(app: Flask, sqlite_sess
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.WAITING])
 def test_timed_out_human_input_reaches_response_stream(
-    status: HumanInputFormStatus, sqlite_session_factory: sessionmaker[Session], app: Flask
+    status: HumanInputFormStatus,
+    sqlite_session_factory: sessionmaker[Session],
+    app: Flask,
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
     for form_id, expiration in (
@@ -580,9 +620,16 @@ def test_timed_out_human_input_reaches_response_stream(
             status=status,
         )
 
-    events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
+    events = _publish_node_events(_build_timeout_node(expiration_time, status=status), sessions=sqlite_session_factory)
 
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
+    payloads = _sse_payloads(
+        events,
+        InvokeFrom.WEB_APP,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
     assert [payload["event"] for payload in payloads] == [
         "node_started",
         "human_input_form_timeout",
@@ -598,7 +645,14 @@ def test_timed_out_human_input_reaches_response_stream(
 @pytest.mark.parametrize("timed_out", [False, True])
 @pytest.mark.parametrize("terminal", ["end", "answer"])
 def test_human_input_completion_and_referenced_answer_reach_response_stream(
-    timed_out: bool, terminal: str, mocker: MockerFixture, app: Flask, sqlite_session_factory: sessionmaker[Session]
+    timed_out: bool,
+    terminal: str,
+    mocker: MockerFixture,
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
     node = (
@@ -658,8 +712,17 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
 
     mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
 
-    events = _publish_graph_events(iter_dify_graph_engine_events(engine))
-    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory, runtime_state)
+    repository = HumanInputFormSubmissionRepository(sessions=sqlite_session_factory)
+    events = _publish_graph_events(iter_dify_graph_engine_events(engine, human_form_reader=repository))
+    payloads = _sse_payloads(
+        events,
+        InvokeFrom.WEB_APP,
+        app,
+        sqlite_session_factory,
+        runtime_state,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
     lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
@@ -697,4 +760,4 @@ def test_timeout_rejects_missing_or_unrelated_form(
         )
 
     with pytest.raises(ValueError, match="Cannot resolve timed-out human input form"):
-        _publish_node_events(_build_timeout_node())
+        _publish_node_events(_build_timeout_node(), sessions=sqlite_session_factory)

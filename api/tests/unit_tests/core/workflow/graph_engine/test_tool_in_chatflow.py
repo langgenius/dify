@@ -1,10 +1,11 @@
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStreamChunkEvent,
 )
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 from .test_mock_config import MockConfigBuilder
 from .test_table_runner import TableTestRunner
@@ -32,7 +33,7 @@ def test_tool_in_chatflow():
         config=GraphEngineConfig(),
     )
 
-    events = list(iter_dify_graph_engine_events(engine))
+    events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
 
     # Check for successful completion
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
@@ -86,7 +87,7 @@ def test_answer_can_render_llm_structured_output_in_chatflow():
         config=GraphEngineConfig(),
     )
 
-    events = list(iter_dify_graph_engine_events(engine))
+    events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
 
     assert success_events, "Workflow should complete successfully"
