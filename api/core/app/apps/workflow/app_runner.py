@@ -21,12 +21,10 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
@@ -38,6 +36,8 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
+from services.workflow.execution.adapters.node_factory import get_default_root_node_id
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +181,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
         workflow_entry = WorkflowEntry(
+            human_form_reader=self._human_form_reader,
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
             workflow_id=self._workflow.id,

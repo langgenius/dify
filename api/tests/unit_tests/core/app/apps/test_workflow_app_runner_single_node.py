@@ -7,7 +7,6 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
@@ -15,6 +14,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
 from services.workflow.execution.ports import WorkflowRuntime
 

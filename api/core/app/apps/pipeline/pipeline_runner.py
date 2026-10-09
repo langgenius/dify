@@ -18,10 +18,8 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
 from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
@@ -31,6 +29,12 @@ from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariable
 from models.dataset import Dataset, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.workflow.execution.adapters.node_factory import (
+    DifyGraphInitContext,
+    DifyNodeFactory,
+    get_default_root_node_id,
+)
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +216,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
+            human_form_reader=self._human_form_reader,
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,

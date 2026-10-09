@@ -11,7 +11,6 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.node_runtime import DifyToolFileManager
 from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -20,6 +19,7 @@ from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment
+from services.workflow.execution.adapters.node_runtime import DifyToolFileManager
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only

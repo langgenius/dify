@@ -42,7 +42,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
-from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.filters import ResponseStreamFilter
@@ -55,6 +54,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.workflow.execution.adapters.node_factory import get_default_root_node_id
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
