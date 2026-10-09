@@ -15,20 +15,34 @@ import {
   menuItemDestructiveClassName,
   menuPopupBaseClassName,
   menuPopupSurfaceClassName,
+  triggerFocusClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 const DropdownMenu = Menu.Root
 const DropdownMenuPortal = Menu.Portal
-const DropdownMenuTrigger = Menu.Trigger
 const DropdownMenuSub = Menu.SubmenuRoot
 const DropdownMenuGroup = Menu.Group
 const createDropdownMenuHandle = Menu.createHandle
 
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
+type DropdownMenuActions = Menu.Root.Actions
+
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
+
+function DropdownMenuTrigger<Payload = unknown>({
+  className,
+  ...props
+}: DropdownMenuTriggerProps<Payload>) {
+  return (
+    <Menu.Trigger
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
 type DropdownMenuGroupProps = Menu.Group.Props
@@ -319,6 +333,7 @@ export {
 }
 
 export type {
+  DropdownMenuActions,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
   DropdownMenuContentProps,

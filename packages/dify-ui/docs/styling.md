@@ -58,9 +58,23 @@ Use semantic Dify tokens and existing component variants before hard-coded value
 primitive classes. Use an important modifier only for a tightly scoped compatibility override
 after the owning variant, data attribute, and selector structure cannot express the state.
 
-Attach focus-visible styling to the element that visually represents focus. If a visible wrapper
-contains the native focus target, select that descendant state from the wrapper; for example,
-`SliderThumb` uses `has-[:focus-visible]` because its internal range input receives focus.
+## Focus indicator
+
+Controls own their focus indicator, so callers never write one. That includes every trigger that
+opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
+share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
+(Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
+
+Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
+groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
+keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
+the indicator, because their checked fill is the indicator color.
+
+Attach the indicator to the element that visually represents focus. If a visible wrapper contains
+the native focus target, select that descendant state from the wrapper; for example, `SliderThumb`
+uses `has-[:focus-visible]` because its internal range input receives focus. Select
+`:focus-visible`, except on a text control, which selects `:focus` because it shows focus however
+it was reached.
 
 [Tailwind CSS functions and directives]: https://tailwindcss.com/docs/functions-and-directives
 [Tailwind CSS v4 upgrade guide]: https://tailwindcss.com/docs/upgrade-guide

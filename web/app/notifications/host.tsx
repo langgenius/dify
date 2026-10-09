@@ -1,13 +1,7 @@
 'use client'
 
-import type { ToastManager, ToastViewportProps } from '@langgenius/dify-ui/toast'
-import {
-  ToastCard,
-  ToastPortal,
-  ToastProvider,
-  ToastViewport,
-  useToastManager,
-} from '@langgenius/dify-ui/toast'
+import type { ToasterProps, ToastManager } from '@langgenius/dify-ui/toast'
+import { ToastCard, Toaster, useToasts } from '@langgenius/dify-ui/toast'
 import { manager } from '.'
 import { CopyErrorAction } from './copy-error-action'
 
@@ -15,11 +9,11 @@ export type AppToastHostProps = {
   manager?: ToastManager
   timeout?: number
   limit?: number
-  offset?: ToastViewportProps['offset']
+  offset?: ToasterProps['offset']
 }
 
 function Notifications() {
-  const { toasts } = useToastManager<Record<string, never>>()
+  const toasts = useToasts()
   return toasts.map((item) => {
     const parts = [item.title, item.description]
     const text = parts.every((part) => part == null || typeof part === 'string')
@@ -40,12 +34,8 @@ export function AppToastHost({
   offset,
 }: AppToastHostProps) {
   return (
-    <ToastProvider toastManager={toastManager} timeout={timeout} limit={limit}>
-      <ToastPortal>
-        <ToastViewport offset={offset}>
-          <Notifications />
-        </ToastViewport>
-      </ToastPortal>
-    </ToastProvider>
+    <Toaster toastManager={toastManager} timeout={timeout} limit={limit} offset={offset}>
+      <Notifications />
+    </Toaster>
   )
 }

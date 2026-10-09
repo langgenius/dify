@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { HttpNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,8 +8,8 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ApiInput from './components/api-input'
-import AuthorizationModal from './components/authorization'
-import CurlPanel from './components/curl-panel'
+import { AuthorizationDialog } from './components/authorization'
+import { CurlImportDialog } from './components/curl-import-dialog'
 import EditBody from './components/edit-body'
 import KeyValue from './components/key-value'
 import Timeout from './components/timeout'
@@ -34,14 +33,8 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
     setParams,
     addParam,
     setBody,
-    isShowAuthorization,
-    showAuthorization,
-    hideAuthorization,
     setAuthorization,
     setTimeout,
-    isShowCurlPanel,
-    showCurlPanel,
-    hideCurlPanel,
     handleCurlImport,
     handleSSLVerifyChange,
   } = useConfig(id, data)
@@ -56,47 +49,13 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
           required
           operations={
             <div className="flex">
-              <div
-                onClick={showAuthorization}
-                className={cn(
-                  !readOnly && 'cursor-pointer hover:bg-state-base-hover',
-                  'flex h-6 items-center space-x-1 rounded-md px-2',
-                )}
-              >
-                {!readOnly && (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-line-general-settings-01 size-3 text-text-tertiary"
-                  />
-                )}
-                <div className="text-xs font-medium text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.authorization.authorization`], {
-                    ns: 'workflowIntegrations',
-                  })}
-                  <span className="ml-1 text-text-secondary">
-                    {t(($) => $[`${i18nPrefix}.authorization.${inputs.authorization.type}`], {
-                      ns: 'workflowIntegrations',
-                    })}
-                  </span>
-                </div>
-              </div>
-              <div
-                onClick={showCurlPanel}
-                className={cn(
-                  !readOnly && 'cursor-pointer hover:bg-state-base-hover',
-                  'flex h-6 items-center space-x-1 rounded-md px-2',
-                )}
-              >
-                {!readOnly && (
-                  <span
-                    aria-hidden
-                    className="i-custom-vender-line-files-file-arrow-01 size-3 text-text-tertiary"
-                  />
-                )}
-                <div className="text-xs font-medium text-text-tertiary">
-                  {t(($) => $[`${i18nPrefix}.curl.title`], { ns: 'workflowIntegrations' })}
-                </div>
-              </div>
+              <AuthorizationDialog
+                nodeId={id}
+                payload={inputs.authorization}
+                onChange={setAuthorization}
+                readOnly={readOnly}
+              />
+              <CurlImportDialog readOnly={readOnly} onImport={handleCurlImport} />
             </div>
           }
         >
@@ -147,15 +106,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
       </div>
       <Split />
       <Timeout nodeId={id} readonly={readOnly} payload={inputs.timeout} onChange={setTimeout} />
-      {isShowAuthorization && !readOnly && (
-        <AuthorizationModal
-          nodeId={id}
-          isShow
-          onHide={hideAuthorization}
-          payload={inputs.authorization}
-          onChange={setAuthorization}
-        />
-      )}
       <Split />
       <div className="">
         <OutputVars>
@@ -191,9 +141,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
           </>
         </OutputVars>
       </div>
-      {isShowCurlPanel && !readOnly && (
-        <CurlPanel nodeId={id} isShow onHide={hideCurlPanel} handleCurlImport={handleCurlImport} />
-      )}
     </div>
   )
 }

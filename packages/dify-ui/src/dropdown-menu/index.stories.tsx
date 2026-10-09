@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import {
   createDropdownMenuHandle,
   DropdownMenu,
@@ -27,7 +27,7 @@ function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
       render={
         <button
           type="button"
-          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover"
         />
       }
     >
@@ -359,7 +359,7 @@ function DetachedTriggerDemo() {
       <DropdownMenuTrigger
         handle={handle}
         payload={{ name: 'Report' }}
-        className="rounded-lg border border-divider-subtle px-3 py-1.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="rounded-lg border border-divider-subtle px-3 py-1.5"
       >
         Report actions
       </DropdownMenuTrigger>
@@ -389,12 +389,16 @@ export const DetachedTrigger: Story = {
     trigger.focus()
     await userEvent.keyboard('{ArrowDown}')
     const archive = await body.findByRole('menuitem', { name: 'Archive' })
-    await expect(archive).toHaveFocus()
+    await waitFor(async () => {
+      await expect(archive).toHaveFocus()
+    })
     await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('status', { name: 'Archived document' })).toHaveTextContent(
       'Report',
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    await expect(trigger).toHaveFocus()
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
   },
 }

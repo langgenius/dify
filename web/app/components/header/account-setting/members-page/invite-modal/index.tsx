@@ -1,6 +1,6 @@
 'use client'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactElement } from 'react'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { EmailRecipient } from './email-recipients'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -15,22 +15,20 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
+import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
 import { getInviteErrorCode } from './invite-error'
 import { RoleSelector } from './role-selector'
 
 type InviteModalProps = {
-  open: boolean
-  trigger: ReactElement
   isEmailSetup: boolean
-  onOpenChange: (open: boolean) => void
   onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
 
@@ -39,23 +37,31 @@ type InviteFormValues = {
   emails: string
   role: string
 }
-type SubmissionError =
-  | { kind: 'fields'; errors: Partial<Record<InviteFieldName, string>> }
-  | { kind: 'form'; message: string }
-  | null
+type InviteFormProps = {
+  isEmailSetup: boolean
+  isPending: boolean
+  error: unknown
+  onSubmit: (emails: string[], role: string) => void
+  onDismissError: () => void
+}
 
-type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
-
-function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
+function InviteForm({ isEmailSetup, isPending, error, onSubmit, onDismissError }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
-  const locale = useLocale()
-  const queryClient = useQueryClient()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
+  const submitButtonRef = useRef<HTMLButtonElement>(null)
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
-  const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
-  const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  // The request owns its failure; the form only decides where to present it.
+  const errorCode = error ? getInviteErrorCode(error) : null
+  const fieldErrors: Partial<Record<InviteFieldName, string>> | undefined =
+    errorCode === 'limit_exceeded'
+      ? { emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' }) }
+      : errorCode === 'invalid_role'
+        ? { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) }
+        : undefined
+  const formError =
+    error && !fieldErrors ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }) : null
   // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
@@ -68,61 +74,20 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
 
-  const { mutate, isPending } = useMutation(
-    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-
-  const clearEmailSubmissionError = () => {
-    setSubmissionError((error) => (error?.kind === 'fields' && error.errors.emails ? null : error))
+  const dismissEmailError = () => {
+    if (fieldErrors?.emails) onDismissError()
   }
 
   const handleSubmit = ({ role }: InviteFormValues) => {
     if (isPending) return
 
+    // Keep keyboard submission focused before pending disables the email composer.
+    submitButtonRef.current?.focus()
     setRecipients(effectiveRecipients)
     setDraft('')
-    setSubmissionError(null)
-    mutate(
-      {
-        body: {
-          emails: effectiveRecipients.map(({ value }) => value),
-          role,
-          language: locale,
-        },
-      },
-      {
-        onSuccess: (response) => {
-          void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-          void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-          onOpenChange(false)
-          onSend(response.invitation_results)
-        },
-        onError: (error) => {
-          switch (getInviteErrorCode(error)) {
-            case 'limit_exceeded':
-              setSubmissionError({
-                kind: 'fields',
-                errors: {
-                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' }),
-                },
-              })
-              break
-            case 'invalid_role':
-              setSubmissionError({
-                kind: 'fields',
-                errors: { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) },
-              })
-              break
-            default:
-              setSubmissionError({
-                kind: 'form',
-                message: t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }),
-              })
-          }
-        },
-      },
+    onSubmit(
+      effectiveRecipients.map(({ value }) => value),
+      role,
     )
   }
 
@@ -146,7 +111,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         draft={draft}
         onRecipientsChange={setRecipients}
         onDraftChange={setDraft}
-        onChange={clearEmailSubmissionError}
+        onChange={dismissEmailError}
         disabled={isPending}
       />
       <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
@@ -166,12 +131,18 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           </span>
         </div>
       )}
-      {submissionError?.kind === 'form' && (
+      {formError && (
         <div role="alert" className="body-xs-regular text-text-destructive">
-          {submissionError.message}
+          {formError}
         </div>
       )}
-      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
+      <Button
+        ref={submitButtonRef}
+        type="submit"
+        variant="primary"
+        className="w-full"
+        loading={isPending}
+      >
         {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
               ns: 'workspaceMembers',
@@ -183,18 +154,36 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   )
 }
 
-export function InviteModal({
-  open,
-  trigger,
-  isEmailSetup,
-  onOpenChange,
-  onSend,
-}: InviteModalProps) {
+export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
+  const locale = useLocale()
+  const queryClient = useQueryClient()
+  const actionsRef = useRef<DialogActions>(null)
+  const { mutate, reset, isPending, error } = useMutation(
+    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: (response) => {
+        // The request alone decides success; seat and member refreshes run in the background.
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+        void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
+        onSend(response.invitation_results)
+        actionsRef.current?.close()
+      },
+    }),
+  )
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>
-      <DialogTrigger render={trigger} />
+    <Dialog
+      actionsRef={actionsRef}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        // A failure stays visible through the exit transition and ends with the session.
+        if (!open) reset()
+      }}
+    >
+      <DialogTrigger render={<InviteButton />} />
       <DialogContent backdropProps={{ forceRender: true }}>
         <div className="grid gap-1 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
@@ -204,8 +193,15 @@ export function InviteModal({
             {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
           </DialogDescription>
         </div>
-        <InviteForm isEmailSetup={isEmailSetup} onOpenChange={onOpenChange} onSend={onSend} />
+        <InviteForm
+          isEmailSetup={isEmailSetup}
+          isPending={isPending}
+          error={error}
+          onSubmit={(emails, role) => mutate({ body: { emails, role, language: locale } })}
+          onDismissError={reset}
+        />
         <DialogClose
+          disabled={isPending}
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}

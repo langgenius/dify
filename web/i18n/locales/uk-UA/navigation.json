@@ -28,6 +28,8 @@
   "menus.plugins": "Інтеграції",
   "menus.status": "бета",
   "menus.tools": "Інструменти",
+  "settings.accessToken": "Токени доступу",
+  "settings.accessTokenDescription": "Створюйте токени Service API, які надають доступ лише до вибраних застосунків і баз знань.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Виставлення рахунків",
   "settings.customEndpoint": "Користувацька кінцева точка",

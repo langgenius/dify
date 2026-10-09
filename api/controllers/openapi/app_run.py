@@ -46,7 +46,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -133,7 +133,7 @@ def _translate_service_errors() -> Generator[None]:
 
 
 _RUN_GUARDS: Final = (
-    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
@@ -370,6 +370,10 @@ class AppRunTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
+            if owner != f"end-user-{ctx.end_user.id}".encode():
+                raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return TaskStopResponse(result="success")
