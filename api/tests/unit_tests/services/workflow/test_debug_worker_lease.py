@@ -256,9 +256,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=make_workflow(),
         system_user_id="account",
-        workflow_execution_repository=create_autospec(
-            WorkflowExecutionRepository, instance=True, spec_set=True
-        ),
+        workflow_execution_repository=create_autospec(WorkflowExecutionRepository, instance=True, spec_set=True),
         workflow_node_execution_repository=create_autospec(
             WorkflowNodeExecutionRepository, instance=True, spec_set=True
         ),
