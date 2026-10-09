@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient } from '@/service/console'
 import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
@@ -351,19 +351,9 @@ describe('ExternalContactDialog pending state', () => {
   it.each(['load', 'error'] as const)(
     'shows no fallback while the existing avatar loads, then handles its %s result',
     async (result) => {
-      const OriginalImage = window.Image
-      const images: HTMLImageElement[] = []
-      window.Image = class extends OriginalImage {
-        constructor() {
-          super()
-          Object.defineProperties(this, {
-            complete: { value: false },
-            src: { value: '', writable: true },
-          })
-          images.push(this)
-        }
-      }
-
+      const complete = vi
+        .spyOn(HTMLImageElement.prototype, 'complete', 'get')
+        .mockReturnValue(false)
       try {
         const contact = {
           id: 'existing-contact',
@@ -373,13 +363,12 @@ describe('ExternalContactDialog pending state', () => {
         }
         renderAvatarDialog(contact)
         const avatar = screen.getByRole('button', { name: 'common.avatar.editAction' })
-        await waitFor(() =>
-          expect(images.some((image) => image.src === contact.avatar_url)).toBe(true),
-        )
+        const photo = within(avatar).getByAltText('Alice')
         expect(within(avatar).queryByText('A')).not.toBeInTheDocument()
         expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
 
-        act(() => images.forEach((image) => image.dispatchEvent(new Event(result))))
+        if (result === 'load') fireEvent.load(photo)
+        else fireEvent.error(photo)
 
         if (result === 'load') {
           expect(await within(avatar).findByRole('img', { name: 'Alice' })).toHaveAttribute(
@@ -393,7 +382,7 @@ describe('ExternalContactDialog pending state', () => {
           expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
         }
       } finally {
-        window.Image = OriginalImage
+        complete.mockRestore()
       }
     },
   )

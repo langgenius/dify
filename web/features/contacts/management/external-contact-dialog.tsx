@@ -86,7 +86,15 @@ function ContactAvatar({
         />
       )}
     >
-      {avatar && <AvatarImage src={avatar} alt={name} />}
+      {avatar && (
+        <AvatarImage
+          key={avatar.split('?')[0]}
+          keepMounted
+          src={avatar}
+          alt={name}
+          className="data-error:invisible"
+        />
+      )}
       <AvatarFallback
         size="3xl"
         className={cn(
