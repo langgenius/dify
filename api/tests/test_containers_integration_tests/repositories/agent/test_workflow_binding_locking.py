@@ -20,7 +20,12 @@ from models.model import App
 from models.workflow import Workflow, WorkflowRun
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
 from services.agent.composer_service import AgentComposerService
-from services.entities.agent_entities import ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
+from services.entities.agent_entities import (
+    ComposerSavePayload,
+    ComposerSaveStrategy,
+    ComposerSoulLockPayload,
+    ComposerVariant,
+)
 from services.workflow.contracts import DebugReservationCursor, WorkflowSnapshot
 from tests.unit_tests.workflow_execution import debug_lease
 
@@ -145,6 +150,7 @@ def test_debug_reservation_and_composer_use_the_same_lock_order(
                 payload=ComposerSavePayload(
                     variant=ComposerVariant.WORKFLOW,
                     save_strategy=strategy,
+                    soul_lock=ComposerSoulLockPayload(locked=False),
                     agent_soul=soul,
                 ),
             )
@@ -158,7 +164,11 @@ def test_debug_reservation_and_composer_use_the_same_lock_order(
         with ThreadPoolExecutor(max_workers=2) as workers:
             saving = workers.submit(save)
             try:
-                assert agent_updated.wait(timeout=5), "Composer did not reach its Agent update"
+                if not agent_updated.wait(timeout=5):
+                    if saving.done():
+                        saving.result()
+                        pytest.fail("Composer completed without updating its Agent")
+                    pytest.fail("Composer did not reach its Agent update")
                 debugging = workers.submit(reserve)
                 pid = debug_pid.get(timeout=5)
                 deadline = time.monotonic() + 5
