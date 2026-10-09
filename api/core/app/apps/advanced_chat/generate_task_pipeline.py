@@ -87,7 +87,7 @@ from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -722,9 +722,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             resolved_state = None
 
         with self._database_session() as session:
+            # Serialize the message's pause state with durable stop on the run.
+            workflow_run_status = session.scalar(
+                select(WorkflowRun.status)
+                .where(
+                    WorkflowRun.id == self._workflow_run_id,
+                    WorkflowRun.tenant_id == self._workflow_tenant_id,
+                    WorkflowRun.app_id == self._application_generate_entity.app_config.app_id,
+                )
+                .with_for_update()
+            )
             self._save_message(session=session, graph_runtime_state=resolved_state)
             message = self._get_message(session=session)
-            if message is not None:
+            if message is not None and workflow_run_status == WorkflowExecutionStatus.PAUSED:
                 message.status = MessageStatus.PAUSED
             self._message_saved_on_pause = True
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)

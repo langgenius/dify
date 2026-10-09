@@ -3,6 +3,7 @@ import logging
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
+from functools import partial
 from typing import Annotated, Any
 
 from celery import shared_task
@@ -36,6 +37,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -564,9 +566,15 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     # signals armed against that ID before or during the pause would abort it
     # immediately and report it as stopped by the user. This attempt is starting
     # deliberately, so drop them before any engine can observe them.
-    clear_app_task_cancellation_signals(generate_entity.task_id)
-
-    workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
+    try:
+        workflow_run_repo.resume_workflow_pause(
+            workflow_run_id,
+            pause_entity,
+            before_resume=partial(clear_app_task_cancellation_signals, generate_entity.task_id),
+        )
+    except WorkflowRunNotPausedError:
+        logger.info("Workflow run %s was stopped or resumed by another request", workflow_run_id)
+        return
 
     pause_config = PauseStateLayerConfig(
         session_factory=session_factory,

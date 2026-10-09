@@ -110,11 +110,21 @@ class _Tasks:
     calls: list[str] = field(default_factory=list)
     chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode) -> None:
+    def stop_task(
+        self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode, tenant_id: str, app_id: str
+    ) -> None:
         assert invoke_from == InvokeFrom.EXPLORE
+        assert tenant_id
+        assert app_id
         self.chat_calls.append((task_id, user_id, app_mode))
 
-    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
+    def stop_workflow_task(
+        self, *, task_id: str, tenant_id: str, app_id: str, app_mode: AppMode, owner: object
+    ) -> None:
+        assert owner is None
+        assert tenant_id
+        assert app_id
+        assert app_mode == AppMode.WORKFLOW
         self.calls.append(task_id)
 
 
@@ -208,6 +218,8 @@ def harness(
 
     for module in (trial_module, admission_module):
         monkeypatch.setattr(module, "application_services", lambda: services)
+    monkeypatch.setattr(trial_module.AppTaskService, "stop_task", services.app_tasks.stop_task)
+    monkeypatch.setattr(trial_module.AppTaskService, "stop_workflow_task", services.app_tasks.stop_workflow_task)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
     monkeypatch.setattr(login_module, "current_user", account)
     monkeypatch.setattr(login_module, "check_csrf_token", csrf)

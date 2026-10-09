@@ -147,7 +147,7 @@ class WorkflowPersistenceLayer(Layer):
             started_at=naive_utc_now(),
         )
 
-        self._workflow_execution_repository.save(workflow_execution)
+        self._workflow_execution_repository.save_synchronously(workflow_execution)
         self._workflow_execution = workflow_execution
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
@@ -180,7 +180,7 @@ class WorkflowPersistenceLayer(Layer):
         self._populate_completion_statistics(execution)
         if execution.status in (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.STOPPED):
             self._fail_running_node_executions(error_message=execution.error_message or "")
-        self._workflow_execution_repository.save(execution)
+        self._workflow_execution_repository.save_synchronously(execution)
         self._enqueue_trace_task(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
@@ -413,6 +413,12 @@ class WorkflowPersistenceLayer(Layer):
 
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
+
+    def persist_unfinished_nodes_synchronously(self) -> None:
+        """Make paused participants durable before exposing a resumable pause."""
+        for execution in self._node_execution_cache.values():
+            if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                self._workflow_node_execution_repository.save_synchronously(execution)
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         now = naive_utc_now()

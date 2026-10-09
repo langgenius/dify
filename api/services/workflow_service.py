@@ -55,7 +55,7 @@ from events.app_event import app_draft_workflow_was_synced, app_published_workfl
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
@@ -143,6 +143,7 @@ class _DebugHumanInputNode:
 HumanInputNode = _DebugHumanInputNode
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_version_number_service import allocate_version_number
@@ -1194,7 +1195,7 @@ class WorkflowService:
             add_variables_to_pool(
                 variable_pool,
                 build_bootstrap_variables(
-                    system_variables=default_system_variables(),
+                    system_variables=build_system_variables(),
                     environment_variables=draft_workflow.environment_variables,
                 ),
             )
@@ -1222,18 +1223,6 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
-
-        # Set workflow_id on the NodeExecution
-        node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
@@ -1241,6 +1230,46 @@ class WorkflowService:
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        node, node_events = run
+        started_event: NodeRunStartedEvent | None = None
+
+        def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
+            nonlocal started_event
+            for event in node_events:
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+                    started_event = event
+                    # Agent workspace allocation requires this caller row before the node body runs.
+                    repository.save_synchronously(
+                        WorkflowNodeExecution(
+                            id=event.id,
+                            node_execution_id=event.id,
+                            workflow_id=draft_workflow.id,
+                            index=1,
+                            predecessor_node_id=event.predecessor_node_id,
+                            node_id=event.node_id,
+                            node_type=event.node_type,
+                            title=event.node_title,
+                            process_data=event.node_run_result.process_data or None,
+                            metadata=event.node_run_result.metadata,
+                            created_at=event.start_at,
+                        )
+                    )
+                yield event
+
+        start_at = time.perf_counter()
+        node_execution = self._handle_single_step_result(
+            invoke_node_fn=lambda: (node, persist_node_start()),
+            start_at=start_at,
+            node_id=node_id,
+        )
+        node_execution.workflow_id = draft_workflow.id
+        if started_event is not None:
+            node_execution.id = started_event.id
+            node_execution.node_execution_id = started_event.id
+            node_execution.created_at = started_event.start_at
+            node_execution.predecessor_node_id = started_event.predecessor_node_id
+        repository.save_synchronously(node_execution)
+        # LogStore needs its terminal append in addition to the synchronous SQL caller row.
         repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
@@ -1599,7 +1628,7 @@ class WorkflowService:
         human_input_node_data = HumanInputNodeData.model_validate(
             adapt_human_input_node_data_for_graph(node_config["data"])
         )
-        variable_mapping = human_input_node_data.extract_variable_selector_to_variable_mapping(node_config["id"])
+        variable_mapping = get_human_input_form_variable_mapping(node_config["id"], human_input_node_data)
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
 
         load_into_variable_pool(

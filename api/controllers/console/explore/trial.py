@@ -99,6 +99,7 @@ from services.app_preview_query_service import (
     AppPreviewSiteUnavailableError,
     AppPreviewUnavailableError,
 )
+from services.app_task_service import AppTaskService
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -566,7 +567,13 @@ class TrialAppWorkflowTaskStopApi(Resource):
         if trial_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=trial_app.tenant_id,
+            app_id=trial_app.app_id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
         return dump_response(SimpleResultResponse, {"result": "success"})
 
@@ -642,7 +649,9 @@ class TrialChatTaskStopApi(Resource):
         if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
-        application_services().app_tasks.stop_task(
+        AppTaskService.stop_task(
+            tenant_id=trial_app.tenant_id,
+            app_id=trial_app.app_id,
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,

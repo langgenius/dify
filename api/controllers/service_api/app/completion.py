@@ -312,6 +312,8 @@ class CompletionStopApi(Resource):
             raise AppUnavailableError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,
@@ -499,6 +501,8 @@ class ChatStopApi(Resource):
             raise NotChatAppError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,

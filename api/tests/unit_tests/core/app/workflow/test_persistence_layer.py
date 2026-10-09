@@ -200,7 +200,7 @@ class TestWorkflowPersistenceLayer:
 
         layer.on_event(GraphRunSucceededEvent(outputs={"ok": True}))
 
-        saved = exec_repo.saved[-1]
+        saved = exec_repo.synchronously_saved[-1]
         assert saved.status == WorkflowExecutionStatus.SUCCEEDED
         assert saved.total_tokens == 3
         assert saved.total_steps == 2
@@ -217,7 +217,7 @@ class TestWorkflowPersistenceLayer:
 
         layer.on_event(GraphRunPartialSucceededEvent(outputs={"ok": True}, exceptions_count=2))
 
-        saved = exec_repo.saved[-1]
+        saved = exec_repo.synchronously_saved[-1]
         assert saved.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         assert saved.exceptions_count == 2
         assert saved.total_tokens == 5
@@ -243,7 +243,7 @@ class TestWorkflowPersistenceLayer:
         layer.on_event(GraphRunFailedEvent(error="boom", exceptions_count=1))
 
         assert node_repo.saved
-        assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
+        assert exec_repo.synchronously_saved[-1].status == WorkflowExecutionStatus.FAILED
         assert trace_tasks
 
     def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch: pytest.MonkeyPatch):
@@ -309,7 +309,7 @@ class TestWorkflowPersistenceLayer:
 
         layer.on_event(GraphRunAbortedEvent(reason=None, outputs={}))
 
-        saved = exec_repo.saved[-1]
+        saved = exec_repo.synchronously_saved[-1]
         assert saved.status == WorkflowExecutionStatus.STOPPED
         assert saved.error_message
 

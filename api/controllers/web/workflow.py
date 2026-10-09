@@ -18,8 +18,6 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.execution_coordinator import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -30,6 +28,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
@@ -128,11 +127,12 @@ class WorkflowTaskStopApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        send_abort_command(task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id=task_id,
+            app_mode=AppMode.value_of(app_model.mode),
+            owner=None,
+        )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

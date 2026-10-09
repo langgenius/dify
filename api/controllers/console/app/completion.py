@@ -216,6 +216,8 @@ class CompletionMessageStopApi(Resource):
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user_id,
@@ -580,6 +582,8 @@ def _generate_chat_message_response(
 
 def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     AppTaskService.stop_task(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
         task_id=task_id,
         invoke_from=InvokeFrom.DEBUGGER,
         user_id=current_user_id,

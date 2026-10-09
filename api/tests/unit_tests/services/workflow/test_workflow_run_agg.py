@@ -28,6 +28,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
+from graphon.engine_events import GraphRunPausedEvent
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
@@ -352,3 +353,68 @@ def test_active_execution_snapshot_failure_is_not_published_as_a_pause(sqlite_en
         assert run is not None
         assert run.status == "failed"
         assert session.scalar(select(WorkflowPause)) is None
+
+
+@pytest.mark.usefixtures("_local_storage")
+@pytest.mark.parametrize("stop_timing", ["before_summary", "during_upload"])
+def test_stop_wins_while_engine_is_persisting_a_pause(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, stop_timing: str
+) -> None:
+    from sqlalchemy.orm import sessionmaker
+
+    from core.app.entities.queue_entities import QueueStopEvent
+    from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+    from graphon.enums import WorkflowExecutionStatus
+    from models.human_input import HumanInputForm
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+    runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
+    entity = runner.application_generate_entity
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(sqlite_engine))
+    stop_calls = []
+
+    def request_stop() -> None:
+        admitted = repository.stop_paused_workflow_task(
+            tenant_id=entity.app_config.tenant_id,
+            app_id=entity.app_config.app_id,
+            task_id=entity.task_id,
+            owner=None,
+        )
+        assert admitted is not None
+        stop_calls.append(admitted.status)
+
+    if stop_timing == "during_upload":
+        original_save = storage.save
+
+        def save(key: str, data: bytes) -> None:
+            if key.startswith("workflow-state-"):
+                request_stop()
+            return original_save(key, data)
+
+        monkeypatch.setattr(storage, "save", save)
+    else:
+        original_persist = WorkflowRunAgg._persist_pause
+
+        def persist(aggregate: WorkflowRunAgg, event: GraphRunPausedEvent) -> None:
+            request_stop()
+            return original_persist(aggregate, event)
+
+        monkeypatch.setattr(WorkflowRunAgg, "_persist_pause", persist)
+
+    WorkflowRunAgg.run(
+        runner, PauseStateLayerConfig(sqlite_engine, entity.user_id), workflow_repository, node_repository
+    )
+    events = [message.event for message in runner._queue_manager.listen()]
+    assert stop_calls
+    assert isinstance(events[-1], QueueStopEvent), events
+    assert not any(isinstance(event, QueueWorkflowPausedEvent) for event in events)
+    with Session(sqlite_engine) as session:
+        run = session.get(WorkflowRun, entity.workflow_execution_id)
+        assert run is not None
+        assert run.status == WorkflowExecutionStatus.STOPPED
+        assert run.stop_requested_at is not None
+        assert run.task_id == entity.task_id
+        assert session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id)) is None
+        forms = session.scalars(select(HumanInputForm).where(HumanInputForm.workflow_run_id == run.id)).all()
+        assert forms
+        assert all(form.status == HumanInputFormStatus.EXPIRED for form in forms)

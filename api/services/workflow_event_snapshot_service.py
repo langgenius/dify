@@ -8,6 +8,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -97,6 +98,32 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    if pause_entity is not None and resumption_context is not None:
+        saved_generate_entity = resumption_context.get_generate_entity()
+        try:
+            UUID(saved_generate_entity.task_id)
+        except ValueError:
+            pass
+        else:
+            saved_run_id = (
+                saved_generate_entity.workflow_run_id
+                if isinstance(saved_generate_entity, AdvancedChatAppGenerateEntity)
+                else saved_generate_entity.workflow_execution_id
+            )
+            if (
+                saved_run_id == workflow_run.id
+                and saved_generate_entity.app_config.tenant_id == tenant_id
+                and saved_generate_entity.app_config.app_id == app_id
+            ):
+                # The authorized snapshot is already loaded. Index its trusted
+                # task ID without scanning or re-reading historical state files.
+                workflow_run_repo.backfill_workflow_pause_task_id(
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_run_id=workflow_run.id,
+                    pause_id=pause_entity.id,
+                    task_id=saved_generate_entity.task_id,
+                )
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
         if workflow_run.status == WorkflowExecutionStatus.PAUSED:

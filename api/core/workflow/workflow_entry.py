@@ -52,6 +52,7 @@ from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
+from services.workflow_node_variables import add_node_input_to_variable_pool, load_additional_node_variables
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -282,6 +283,14 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
+        variable_mapping = load_additional_node_variables(
+            node_config=node_config,
+            graph_config=workflow.graph_dict,
+            variable_mapping=variable_mapping,
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            user_inputs=user_inputs,
+        )
         if node_type != BuiltinNodeTypes.DATASOURCE:
             cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
@@ -493,7 +502,8 @@ class WorkflowEntry:
         # WARNING(QuantumGhost): The semantics of this method are not clearly defined,
         # and multiple parts of the codebase depend on its current behavior.
         # Modify with caution.
-        for node_variable, variable_selector in variable_mapping.items():
+        # Apply whole objects before nested overrides, independent of editor field order.
+        for node_variable, variable_selector in sorted(variable_mapping.items(), key=lambda item: len(item[1])):
             # fetch node id and variable key from node_variable
             node_variable_list = node_variable.split(".")
             if len(node_variable_list) < 1:
@@ -512,13 +522,11 @@ class WorkflowEntry:
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]
-            variable_key_list = variable_selector[1:]
-            variable_key_list = list(variable_key_list)
 
             # get input value
-            input_value = user_inputs.get(node_variable)
-            if not input_value:
-                input_value = user_inputs.get(node_variable_key)
+            input_value = (
+                user_inputs[node_variable] if node_variable in user_inputs else user_inputs.get(node_variable_key)
+            )
             if input_value is None:
                 continue
 
@@ -541,17 +549,7 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
-                # In single run, the input_value is set as the LLM's structured output value within the variable_pool.
-                if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
-                    input_value = {variable_key_list[1]: input_value}
-                    variable_key_list = variable_key_list[0:1]
-
-                    # Support for a single node to reference multiple structured_output variables
-                    current_variable = variable_pool.get([variable_node_id] + variable_key_list)
-                    if current_variable and isinstance(current_variable.value, dict):
-                        input_value = current_variable.value | input_value
-
-                variable_pool.add([variable_node_id] + variable_key_list, input_value)
+                add_node_input_to_variable_pool(variable_pool, variable_selector, input_value)
 
     @staticmethod
     def _run_node_with_layers(node: Node, *, tenant_id: str) -> Generator[NodeEvent | ContainerAwaitRequest]:

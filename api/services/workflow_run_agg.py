@@ -49,6 +49,7 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from services.conversation_variable_updater import ConversationVariableUpdater
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
@@ -171,13 +172,33 @@ class WorkflowRunAgg:
                         | GraphRunAbortedEvent,
                     ):
                         self._refresh_form_completions()
+                    if isinstance(event, GraphRunStartedEvent):
+                        self._api_run_repository().bind_workflow_task(
+                            tenant_id=self._run_context.tenant_id,
+                            app_id=self._prepared.generate_entity.app_config.app_id,
+                            workflow_run_id=self._run_id,
+                            task_id=self._prepared.generate_entity.task_id,
+                        )
                     yield event
                     if isinstance(event, GraphRunStartedEvent):
                         self._refresh_form_completions()
             if paused_event is not None:
                 self._refresh_form_completions()
-                self._persist_pause(paused_event)
-                yield paused_event
+                try:
+                    self._persist_pause(paused_event)
+                except WorkflowPauseStoppedError:
+                    self._api_run_repository().stop_paused_workflow_task(
+                        tenant_id=self._run_context.tenant_id,
+                        app_id=self._prepared.generate_entity.app_config.app_id,
+                        task_id=self._prepared.generate_entity.task_id,
+                        owner=None,
+                    )
+                    aborted = GraphRunAbortedEvent(reason="User requested stop")
+                    for layer in self._application_layers:
+                        layer.on_event(aborted)
+                    yield aborted
+                else:
+                    yield paused_event
         except Exception as error:
             logger.exception("Workflow run orchestration failed")
             failed = GraphRunFailedEvent(
@@ -201,6 +222,13 @@ class WorkflowRunAgg:
             if form_id not in forms:
                 raise ValueError(f"Human input form not found or does not belong to this workflow run: {form_id}")
         return forms
+
+    def _api_run_repository(self):
+        config = self._pause_state_config
+        factory = session_factory.get_session_maker() if config is None else config.session_factory
+        if isinstance(factory, Engine):
+            factory = sessionmaker(factory)
+        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(factory)
 
     def _refresh_form_completions(self) -> None:
         pending = {key: reason for key, reason in self._pending_forms.items() if key not in self._published_form_ids}
@@ -256,14 +284,10 @@ class WorkflowRunAgg:
             execution.exceptions_count, self._runtime_state.graph_execution.exceptions_count
         )
         execution.finished_at = None
-        self._workflow_execution_repository.save(execution)
+        self._persistence_layer.persist_unfinished_nodes_synchronously()
+        self._workflow_execution_repository.save_synchronously(execution)
         if config is not None and snapshot is not None:
-            factory = (
-                sessionmaker(config.session_factory)
-                if isinstance(config.session_factory, Engine)
-                else config.session_factory
-            )
-            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(factory)
+            repository = self._api_run_repository()
             repository.create_workflow_pause(
                 workflow_run_id=self._run_id,
                 state_owner_user_id=config.state_owner_user_id,

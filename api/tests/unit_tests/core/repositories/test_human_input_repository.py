@@ -40,6 +40,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     RecipientType,
 )
+from repositories.human_input_errors import FormAlreadyHandledError
 
 
 @pytest.fixture
@@ -557,6 +558,28 @@ def test_mark_submitted_updates_and_raises_when_missing(
     assert persisted.submitted_at == fixed_now
     assert persisted.completed_by_recipient_id == recipient.id
     assert record.submitted_data == {"k": "v"}
+
+
+@pytest.mark.parametrize("status", [HumanInputFormStatus.EXPIRED, HumanInputFormStatus.SUBMITTED])
+def test_mark_submitted_does_not_overwrite_a_concurrent_stop_or_submission(
+    repository_session: Session, status: HumanInputFormStatus
+) -> None:
+    form = _persist_form(repository_session, form_id="stopped-form", workflow_run_id=None)
+    form.status = status
+    repository_session.commit()
+    with pytest.raises(FormAlreadyHandledError) as error:
+        HumanInputFormSubmissionRepository().mark_submitted(
+            form_id=form.id,
+            recipient_id=None,
+            selected_action_id="approve",
+            form_data={"note": "late submission"},
+            submission_user_id=None,
+            submission_end_user_id=None,
+        )
+    assert error.value.status == status
+    repository_session.expire_all()
+    assert form.status == status
+    assert form.submitted_data is None
 
 
 def test_mark_submitted_serializes_select_and_file_payloads(

@@ -494,6 +494,10 @@ def test_submit_form_by_token_missing_inputs(
 @pytest.mark.parametrize(
     ("input_definition", "submitted_value", "expected_message"),
     [
+        *[
+            ({"type": "paragraph", "output_variable_name": "note"}, value, "note")
+            for value in (12, True, None, ["text"], {"text": "text"})
+        ],
         (
             {
                 "type": "select",
@@ -539,7 +543,7 @@ def test_submit_form_by_token_missing_inputs(
         ),
     ],
 )
-def test_validate_human_input_submission_rejects_invalid_select_and_file_payloads(
+def test_validate_human_input_submission_rejects_invalid_input_payloads(
     form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],

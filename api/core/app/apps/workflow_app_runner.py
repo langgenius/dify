@@ -106,6 +106,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from graphon.variables.factory import build_segment
 from models.workflow import Workflow
+from services.workflow_node_variables import load_additional_node_variables
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
@@ -481,6 +482,14 @@ class WorkflowBasedAppRunner:
             variable_loader=self._variable_loader,
             variable_pool=variable_pool,
             variable_mapping=variable_mapping,
+            user_inputs=node_user_inputs,
+        )
+        variable_mapping = load_additional_node_variables(
+            node_config=target_node_config.to_typed_node_config(),
+            graph_config=graph_config,
+            variable_mapping=variable_mapping,
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
             user_inputs=node_user_inputs,
         )
 

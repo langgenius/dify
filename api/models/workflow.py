@@ -786,11 +786,17 @@ class WorkflowRun(Base):
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
         sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
+        sa.Index("workflow_run_task_id_idx", "task_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
+
+    # Public cancellation uses a task ID distinct from the workflow run ID.
+    # Nullable for historical runs whose task ID is recovered on pause replay.
+    task_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255))
