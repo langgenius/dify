@@ -103,7 +103,7 @@ class RecordingAudioModel(ModelInstance):
     """Concrete audio model with configurable results and recorded invocations."""
 
     speech_to_text_result: str = "Transcribed text"
-    tts_result: bytes | Generator[bytes | TTSAudioChunk, None, None] = b"audio data"
+    tts_result: bytes | Generator[bytes | TTSAudioChunk] = b"audio data"
     voices: list[dict[str, str]] = field(default_factory=list)
     voices_error: Exception | None = None
     speech_to_text_calls: list[bytes] = field(default_factory=list)
@@ -114,7 +114,7 @@ class RecordingAudioModel(ModelInstance):
         self.speech_to_text_calls.append(file.read())
         return self.speech_to_text_result
 
-    def invoke_tts(self, *, content_text: str, voice: str) -> bytes | Generator[bytes | TTSAudioChunk, None, None]:
+    def invoke_tts(self, *, content_text: str, voice: str) -> bytes | Generator[bytes | TTSAudioChunk]:
         self.tts_calls.append({"content_text": content_text, "voice": voice})
         return self.tts_result
 
