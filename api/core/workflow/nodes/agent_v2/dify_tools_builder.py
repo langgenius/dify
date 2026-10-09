@@ -28,7 +28,7 @@ from extensions.ext_database import db
 from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
 
 _CORE_TOOL_PROVIDER_TYPES: Final[dict[ToolProviderType, DifyCoreToolProviderType]] = {
     ToolProviderType.BUILT_IN: "builtin",

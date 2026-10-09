@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from models.tools import MCPToolProvider
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
 
 PROVIDER_UUID = "0b2bd1e4-3a7d-4a0b-9f2a-9b2d6f3c1e55"
 SERVER_IDENTIFIER = "monday_mcp"

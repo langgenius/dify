@@ -410,7 +410,7 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
 @patch("core.tools.tool_manager.create_provider_encrypter")
 @patch("core.plugin.impl.oauth.OAuthHandler")
 @patch(
-    "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+    "services.tools.legacy_builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
     return_value={"client_id": "id"},
 )
 @patch("core.tools.tool_manager.time.time", return_value=1000)
@@ -497,7 +497,7 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
         patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, Mock())),
         patch("core.tools.tool_manager.time.time", return_value=1000),
         patch(
-            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+            "services.tools.legacy_builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
             return_value={"client_id": "id"},
         ),
         patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,

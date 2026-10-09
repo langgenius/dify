@@ -11,7 +11,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from models.account import Account
 from models.tools import MCPToolProvider
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 
 @pytest.fixture
