@@ -9,7 +9,7 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import type { TimePanelHandle, TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
+import type { TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
 import type { ZonedWallTime } from './zoned-value'
 import { useControlled } from '@base-ui/utils/useControlled'
 import { enUS } from '@daypicker/react/locale/en-US'
@@ -176,7 +176,6 @@ function Session() {
     hourCycle,
   } = useContext()
   const { close } = usePickerContext()
-  const panelRef = React.useRef<TimePanelHandle>(null)
   const [draft, setDraft] = React.useState(() => getZonedWallTime(value ?? new Date(), timeZone))
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(draft.date, minDate, maxDate),
@@ -223,10 +222,6 @@ function Session() {
     return () => cancelAnimationFrame(frame)
   }, [view])
   function changeView(next: 'date' | 'time') {
-    if (view === 'time') {
-      const time = panelRef.current?.settle() ?? draft.time
-      setDraft((previous) => ({ ...previous, time }))
-    }
     ref.current?.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true })
     setView(next)
   }
@@ -238,9 +233,7 @@ function Session() {
       disabled={unavailable}
       aria-describedby={unavailable ? errorId : undefined}
       onClick={() => {
-        const next = { ...draft, time: panelRef.current?.settle() ?? draft.time }
-        setDraft(next)
-        const instant = availableInstant(next)
+        const instant = availableInstant(draft)
         if (instant) {
           commit(instant)
           close()
@@ -315,7 +308,6 @@ function Session() {
           }
         >
           <TimePanel
-            ref={panelRef}
             scrollRequest={scrollRequest}
             value={draft.time}
             onValueChange={(update) =>

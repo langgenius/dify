@@ -24,11 +24,9 @@ async function openMonths() {
   return { screen, months, years, changed }
 }
 
-// Synthetic intent with real Chromium scrolling, matching the time-column gesture tests.
-function startTouch(column: Element, top: number) {
-  column.dispatchEvent(new Event('touchstart'))
+// Any scroll the column did not start is a selection, matching the time-column scroll tests.
+function scrollColumn(column: Element, top: number) {
   column.scrollTo({ top, behavior: 'instant' })
-  column.dispatchEvent(new Event('scroll'))
 }
 
 it('shares top alignment across click, keyboard and touch and applies both moving month/year columns', async () => {
@@ -49,16 +47,16 @@ it('shares top alignment across click, keyboard and touch and applies both movin
   await userEvent.keyboard('{ArrowDown}')
   await expect.element(months.getByRole('option', { name: 'May' })).toHaveFocus()
   expect(months.element().scrollTop).toBe(104)
-  startTouch(months.element(), 136)
-  startTouch(years.element(), 188)
+  scrollColumn(months.element(), 136)
+  scrollColumn(years.element(), 188)
   await expect
     .element(months.getByRole('option', { name: 'June' }))
     .toHaveAttribute('aria-selected', 'true')
   await expect
     .element(years.getByRole('option', { name: '2027' }))
     .toHaveAttribute('aria-selected', 'true')
-  expect(months.element().scrollTop).toBe(136)
-  expect(years.element().scrollTop).toBe(188)
+  expect(months.element().scrollTop).toBe(130)
+  expect(years.element().scrollTop).toBe(182)
   await apply.click()
   await expect
     .element(screen.getByRole('button', { name: 'Choose month and year: June 2027' }))
@@ -71,12 +69,8 @@ it('shares top alignment across click, keyboard and touch and applies both movin
 
 it('settles month gestures without losing a concurrent year draft and cancels them without applying', async () => {
   const { screen, months, years, changed } = await openMonths()
-  startTouch(months.element(), 136)
-  startTouch(years.element(), 188)
-  for (const column of [months.element(), years.element()]) {
-    column.dispatchEvent(new Event('touchend'))
-    column.dispatchEvent(new Event('scrollend'))
-  }
+  scrollColumn(months.element(), 136)
+  scrollColumn(years.element(), 188)
   await expect
     .element(months.getByRole('option', { name: 'June' }))
     .toHaveAttribute('aria-selected', 'true')
@@ -89,4 +83,25 @@ it('settles month gestures without losing a concurrent year draft and cancels th
     .element(screen.getByRole('button', { name: 'Choose month and year: January 2025' }))
     .toHaveFocus()
   expect(changed).not.toHaveBeenCalled()
+})
+
+it('applies the highlighted year when OK is clicked while the column is still scrolling', async () => {
+  const { screen, years } = await openMonths()
+  const column = years.element()
+  const ok = screen.getByRole('button', { name: 'OK', exact: true }).element() as HTMLElement
+  column.scrollTo({ top: 0, behavior: 'smooth' })
+  const seen = await new Promise<{ year: string; top: number }>((resolve) => {
+    function frame() {
+      const year = column.querySelector('[aria-selected="true"]')!.textContent
+      if (year === '2025') return requestAnimationFrame(frame)
+      const top = column.scrollTop
+      ok.click()
+      resolve({ year, top })
+    }
+    requestAnimationFrame(frame)
+  })
+  expect(seen.top).toBeGreaterThan(0)
+  await expect
+    .element(screen.getByRole('button', { name: `Choose month and year: January ${seen.year}` }))
+    .toBeInTheDocument()
 })
