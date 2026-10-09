@@ -1,24 +1,18 @@
 import json
 import logging
-from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
-from sqlalchemy import delete, or_, select
-from sqlalchemy.orm import sessionmaker
-
-from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
-from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from models.model import App
+from models.tool_runtime_contracts import WorkflowToolDefinition, WorkflowToolStore
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow
+from services.tools.tool_label_manager import ToolLabelManager
 from services.tools.tools_transform_service import ToolTransformService
+from services.tools.workflow.provider import WorkflowToolProviderController
+from services.tools.workflow.tool import WorkflowTool
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +22,11 @@ class WorkflowToolManageService:
     Service class for managing workflow tools.
     """
 
-    @staticmethod
+    def __init__(self, queries: WorkflowToolStore) -> None:
+        self._queries = queries
+
     def create_workflow_tool(
+        self,
         *,
         user_id: str,
         tenant_id: str,
@@ -43,45 +40,14 @@ class WorkflowToolManageService:
         labels: list[str] | None = None,
         import_id: str = "",
     ):
-        # check if the name is unique
-        existing_workflow_tool_provider: WorkflowToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            # query if the name or app_id exists
-            existing_workflow_tool_provider = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    # name or app_id
-                    or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
-                )
-                .limit(1)
-            )
-
-        # if the name or app_id exists raise error
-        if existing_workflow_tool_provider is not None:
-            raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
-
-        # query the app and its published workflow in the same session
-        app: App | None = None
-        workflow: Workflow | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
-            if app is not None:
-                workflow = app.workflow_with_session(session=_session)
-
-        # if not found raise error
-        if app is None:
-            raise ValueError(f"App {workflow_app_id} not found")
-
-        # if not found raise error
-        if workflow is None:
-            raise ValueError(f"Workflow not found for app {workflow_app_id}")
+        workflow = self._queries.current_workflow(tenant_id=tenant_id, app_id=workflow_app_id)
 
         # check if workflow configuration is synced
         WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         # create workflow tool provider
-        workflow_tool_provider = WorkflowToolProvider(
+        workflow_tool_provider = WorkflowToolDefinition(
+            id=import_id or str(uuid4()),
             tenant_id=tenant_id,
             user_id=user_id,
             app_id=workflow_app_id,
@@ -89,32 +55,21 @@ class WorkflowToolManageService:
             label=label,
             icon=json.dumps(icon),
             description=description,
-            parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
+            parameter_configurations=parameters,
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
-        if import_id:
-            workflow_tool_provider.id = import_id
-        try:
-            WorkflowToolProviderController.from_db(workflow_tool_provider)
-        except Exception as e:
-            logger.warning(e, exc_info=True)
-            raise ValueError(str(e))
-
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            _session.add(workflow_tool_provider)
-
-        # keep the session open to make orm instances in the same session
-        if labels is not None:
-            ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
-            )
+        ToolTransformService.workflow_provider_to_controller(workflow_tool_provider, queries=self._queries)
+        self._queries.save(
+            workflow_tool_provider,
+            labels=ToolLabelManager.filter_tool_labels(labels) if labels is not None else None,
+            create=True,
+        )
 
         return {"result": "success"}
 
-    @classmethod
     def update_workflow_tool(
-        cls,
+        self,
         user_id: str,
         tenant_id: str,
         workflow_tool_id: str,
@@ -142,86 +97,34 @@ class WorkflowToolManageService:
         :return: the updated tool
         """
 
-        existing_workflow_tool_provider: WorkflowToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            # query if the name exists for other tools
-            existing_workflow_tool_provider = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.name == name,
-                    WorkflowToolProvider.id != workflow_tool_id,
-                )
-                .limit(1)
-            )
-
-        # if the name exists raise error
-        if existing_workflow_tool_provider is not None:
-            raise ValueError(f"Tool with name {name} already exists")
-
-        # query the workflow tool provider
-        workflow_tool_provider: WorkflowToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            workflow_tool_provider = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-                .limit(1)
-            )
-
-        # if not found raise error
-        if workflow_tool_provider is None:
+        provider = self._queries.provider(tenant_id=tenant_id, provider_id=workflow_tool_id)
+        if provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
-
-        # query the app and its published workflow in the same session
-        app: App | None = None
-        workflow: Workflow | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            app = _session.scalar(
-                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
-            )
-            if app is not None:
-                workflow = app.workflow_with_session(session=_session)
-
-        # if not found raise error
-        if app is None:
-            raise ValueError(f"App {workflow_tool_provider.app_id} not found")
-
-        # if not found raise error
-        if workflow is None:
-            raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
-
-        # check if workflow configuration is synced
+        workflow = self._queries.current_workflow(tenant_id=tenant_id, app_id=provider.app_id)
         WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
-
-        with sessionmaker(db.engine).begin() as _session:
-            _session.add(workflow_tool_provider)
-
-            # update workflow tool provider
-            workflow_tool_provider.name = name
-            workflow_tool_provider.label = label
-            workflow_tool_provider.icon = json.dumps(icon)
-            workflow_tool_provider.description = description
-            workflow_tool_provider.parameter_configuration = json.dumps([p.model_dump() for p in parameters])
-            workflow_tool_provider.privacy_policy = privacy_policy
-            workflow_tool_provider.version = workflow.version
-            workflow_tool_provider.updated_at = datetime.now()
-
-            try:
-                WorkflowToolProviderController.from_db(workflow_tool_provider)
-            except Exception as e:
-                raise ValueError(str(e))
-
-            if labels is not None:
-                ToolLabelManager.update_tool_labels(
-                    ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
-                    labels,
-                    session=_session,
-                )
+        definition = WorkflowToolDefinition(
+            id=provider.id,
+            tenant_id=tenant_id,
+            user_id=provider.user_id,
+            app_id=provider.app_id,
+            name=name,
+            label=label,
+            icon=json.dumps(icon),
+            description=description,
+            parameter_configurations=parameters,
+            privacy_policy=privacy_policy,
+            version=workflow.version,
+        )
+        ToolTransformService.workflow_provider_to_controller(definition, queries=self._queries)
+        self._queries.save(
+            definition,
+            labels=ToolLabelManager.filter_tool_labels(labels) if labels is not None else None,
+            create=False,
+        )
 
         return {"result": "success"}
 
-    @classmethod
-    def list_tenant_workflow_tools(cls, user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_tenant_workflow_tools(self, user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         List workflow tools.
 
@@ -230,11 +133,7 @@ class WorkflowToolManageService:
         :return: the list of tools
         """
 
-        providers: list[WorkflowToolProvider] = []
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = list(
-                _session.scalars(select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)).all()
-            )
+        providers = self._queries.providers(tenant_id=tenant_id)
 
         # Create a mapping from provider_id to app_id
         provider_id_to_app_id = {provider.id: provider.app_id for provider in providers}
@@ -242,12 +141,12 @@ class WorkflowToolManageService:
         tools: list[WorkflowToolProviderController] = []
         for provider in providers:
             try:
-                tools.append(ToolTransformService.workflow_provider_to_controller(provider))
+                tools.append(ToolTransformService.workflow_provider_to_controller(provider, queries=self._queries))
             except Exception:
                 # skip deleted tools
                 logger.exception("Failed to load workflow tool provider %s", provider.id)
 
-        labels = ToolLabelManager.get_tools_labels([tool for tool in tools if isinstance(tool, ToolProviderController)])
+        labels = self._queries.labels(tenant_id=tenant_id, provider_ids=[tool.provider_id for tool in tools])
 
         result: list[ToolProviderApiEntity] = []
 
@@ -270,8 +169,7 @@ class WorkflowToolManageService:
 
         return result
 
-    @classmethod
-    def delete_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str):
+    def delete_workflow_tool(self, user_id: str, tenant_id: str, workflow_tool_id: str):
         """
         Delete a workflow tool.
 
@@ -280,17 +178,11 @@ class WorkflowToolManageService:
         :param workflow_tool_id: the workflow tool id
         """
 
-        with sessionmaker(db.engine).begin() as _session:
-            _ = _session.execute(
-                delete(WorkflowToolProvider).where(
-                    WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
-                )
-            )
+        self._queries.delete(tenant_id=tenant_id, provider_id=workflow_tool_id)
 
         return {"result": "success"}
 
-    @classmethod
-    def get_workflow_tool_by_tool_id(cls, user_id: str, tenant_id: str, workflow_tool_id: str):
+    def get_workflow_tool_by_tool_id(self, user_id: str, tenant_id: str, workflow_tool_id: str):
         """
         Get a workflow tool.
 
@@ -300,18 +192,11 @@ class WorkflowToolManageService:
         :return: the tool
         """
 
-        tool_provider: WorkflowToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            tool_provider = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-                .limit(1)
-            )
+        tool_provider = self._queries.provider(tenant_id=tenant_id, provider_id=workflow_tool_id)
 
-        return cls._get_workflow_tool(tenant_id, tool_provider)
+        return self._get_workflow_tool(tenant_id, tool_provider)
 
-    @classmethod
-    def get_workflow_tool_by_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str):
+    def get_workflow_tool_by_app_id(self, user_id: str, tenant_id: str, workflow_app_id: str):
         """
         Get a workflow tool.
 
@@ -321,17 +206,11 @@ class WorkflowToolManageService:
         :return: the tool
         """
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            tool_provider: WorkflowToolProvider | None = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
-                .limit(1)
-            )
+        tool_provider = self._queries.provider_for_app(tenant_id=tenant_id, app_id=workflow_app_id)
 
-        return cls._get_workflow_tool(tenant_id, tool_provider)
+        return self._get_workflow_tool(tenant_id, tool_provider)
 
-    @classmethod
-    def _get_workflow_tool(cls, tenant_id: str, db_tool: WorkflowToolProvider | None):
+    def _get_workflow_tool(self, tenant_id: str, db_tool: WorkflowToolProvider | None):
         """
         Get a workflow tool.
 
@@ -341,22 +220,9 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = None
-        workflow: Workflow | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            workflow_app = _session.scalar(
-                select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
-            )
-            if workflow_app is not None:
-                workflow = workflow_app.workflow_with_session(session=_session)
+        workflow = self._queries.current_workflow(tenant_id=tenant_id, app_id=db_tool.app_id)
 
-        if workflow_app is None:
-            raise ValueError(f"App {db_tool.app_id} not found")
-
-        if not workflow:
-            raise ValueError("Workflow not found")
-
-        tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        tool = ToolTransformService.workflow_provider_to_controller(db_tool, queries=self._queries)
         workflow_tools: list[WorkflowTool] = tool.get_tools(tenant_id)
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {db_tool.id} not found")
@@ -376,15 +242,16 @@ class WorkflowToolManageService:
             "output_schema": output_schema,
             "tool": ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
-                labels=ToolLabelManager.get_tool_labels(tool),
+                labels=self._queries.labels(tenant_id=tenant_id, provider_ids=[tool.provider_id]).get(
+                    tool.provider_id, []
+                ),
                 tenant_id=tenant_id,
             ),
             "synced": workflow.version == db_tool.version,
             "privacy_policy": db_tool.privacy_policy,
         }
 
-    @classmethod
-    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[ToolApiEntity]:
+    def list_single_workflow_tools(self, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[ToolApiEntity]:
         """
         List workflow tool provider tools.
 
@@ -394,18 +261,12 @@ class WorkflowToolManageService:
         :return: the list of tools
         """
 
-        provider: WorkflowToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-                .limit(1)
-            )
+        provider = self._queries.provider(tenant_id=tenant_id, provider_id=workflow_tool_id)
 
         if provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        tool = ToolTransformService.workflow_provider_to_controller(provider)
+        tool = ToolTransformService.workflow_provider_to_controller(provider, queries=self._queries)
         workflow_tools: list[WorkflowTool] = tool.get_tools(tenant_id)
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {workflow_tool_id} not found")
@@ -413,7 +274,9 @@ class WorkflowToolManageService:
         return [
             ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(provider.tenant_id)[0],
-                labels=ToolLabelManager.get_tool_labels(tool),
+                labels=self._queries.labels(tenant_id=tenant_id, provider_ids=[tool.provider_id]).get(
+                    tool.provider_id, []
+                ),
                 tenant_id=tenant_id,
             )
         ]

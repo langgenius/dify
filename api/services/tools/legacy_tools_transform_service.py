@@ -1,12 +1,12 @@
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
-from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
@@ -14,6 +14,7 @@ from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -25,15 +26,10 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
-from models import Account
-from models.tool_runtime_contracts import WorkflowToolDefinition, WorkflowToolQueries
-from models.tools import BuiltinToolProvider, WorkflowToolProvider
-from services.tools.api.contracts import ApiToolProviderRecord
-from services.tools.api.provider import ApiToolProviderController
-from services.tools.provider_queries import MCPProviderRecord
-from services.tools.workflow.provider import WorkflowToolProviderController
-from services.tools.workflow.tool import WorkflowTool
-from services.workflow.execution.ports import WorkflowRuntime
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.tools.workflow_as_tool.tool import WorkflowTool
+from extensions.ext_database import db
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +188,7 @@ class ToolTransformService:
 
     @staticmethod
     def api_provider_to_controller(
-        db_provider: ApiToolProviderRecord,
+        db_provider: ApiToolProvider,
     ) -> ApiToolProviderController:
         """
         convert provider controller to user provider
@@ -205,33 +201,20 @@ class ToolTransformService:
         elif credentials_auth_type == "api_key_query":
             auth_type = ApiProviderAuthType.API_KEY_QUERY
 
-        controller = ApiToolProviderController.from_provider(
-            provider=db_provider,
+        controller = ApiToolProviderController.from_db(
+            db_provider=db_provider,
             auth_type=auth_type,
-            author=db_provider.author,
+            session=db.session(),
         )
 
         return controller
 
     @staticmethod
-    def workflow_provider_to_controller(
-        db_provider: WorkflowToolProvider | WorkflowToolDefinition,
-        *,
-        queries: WorkflowToolQueries,
-        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
-        workflow_runtime: WorkflowRuntime | None = None,
-    ) -> WorkflowToolProviderController:
-        """Convert provider metadata, retaining the caller's debugger dependency.
-
-        Listing and configuration validation do not execute tools and need no
-        saver. Debugger execution supplies the same saver as its parent run.
+    def workflow_provider_to_controller(db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
         """
-        return WorkflowToolProviderController.from_db(
-            db_provider,
-            queries=queries,
-            draft_variable_saver=draft_variable_saver,
-            workflow_runtime=workflow_runtime,
-        )
+        convert provider controller to provider
+        """
+        return WorkflowToolProviderController.from_db(db_provider)
 
     @staticmethod
     def workflow_provider_to_user_provider(
@@ -262,13 +245,16 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_provider_to_user_provider(
-        record: MCPProviderRecord,
+        db_provider: MCPToolProvider,
+        user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
         from core.entities.mcp_provider import MCPConfiguration
 
-        db_provider = record.provider
-        user_name = record.author
+        # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
+        if user_name is None:
+            user = db_provider.load_user(db.session())
+            user_name = user.name if user else None
 
         # Convert to entity and use its API response method
         provider_entity = db_provider.to_entity()
@@ -280,7 +266,7 @@ class ToolTransformService:
             mcp_tools = []
         # Add additional fields specific to the transform
         response["id"] = db_provider.id
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(mcp_tools, user_name=user_name)
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
         response["server_identifier"] = db_provider.server_identifier
 
         # Convert configuration dict to MCPConfiguration object
@@ -293,7 +279,14 @@ class ToolTransformService:
         return ToolProviderApiEntity(**response)
 
     @staticmethod
-    def mcp_tool_to_user_tool(tools: list[MCPTool], *, user_name: str | None) -> list[ToolApiEntity]:
+    def mcp_tool_to_user_tool(
+        mcp_provider: MCPToolProvider, tools: list[MCPTool], user_name: str | None = None
+    ) -> list[ToolApiEntity]:
+        # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
+        if user_name is None:
+            user = mcp_provider.load_user(db.session())
+            user_name = user.name if user else "Anonymous"
+
         return [
             ToolApiEntity(
                 author=user_name or "Anonymous",
@@ -314,18 +307,31 @@ class ToolTransformService:
     def api_provider_to_user_provider(
         cls,
         provider_controller: ApiToolProviderController,
-        db_provider: ApiToolProviderRecord,
+        db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
         labels: list[str] | None = None,
+        *,
+        session: Session,
     ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
         """
+        username = "Anonymous"
+        user = db_provider.user(session=session)
+        if user is None:
+            raise ValueError(f"user is None for api provider {db_provider.id}")
+        try:
+            if not user:
+                raise ValueError("user not found")
+
+            username = user.name
+        except Exception:
+            logger.exception("failed to get user name for api provider %s", db_provider.id)
         # add provider into providers
         credentials = db_provider.credentials
         result = ToolProviderApiEntity(
             id=db_provider.id,
-            author=db_provider.author,
+            author=username,
             name=db_provider.name,
             description=I18nObject(
                 en_US=db_provider.description,

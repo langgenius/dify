@@ -571,7 +571,7 @@ class TestMCPClientWithAuthRetry:
         assert client.authorization_code == "initial-code"
         assert client._has_retried is False
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("services.tools.legacy_mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_success(
         self,
         mock_service_class,
@@ -640,7 +640,7 @@ class TestMCPClientWithAuthRetry:
 
         assert exc_info.value == error
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("services.tools.legacy_mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_no_token(
         self,
         mock_service_class,
@@ -663,7 +663,7 @@ class TestMCPClientWithAuthRetry:
 
         assert "Authentication failed - no token received" in str(exc_info.value)
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("services.tools.legacy_mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_generic_exception(
         self,
         mock_service_class,
@@ -695,7 +695,7 @@ class TestMCPClientWithAuthRetry:
 
         assert "Authentication retry failed: DB error" in str(exc_info.value)
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("services.tools.legacy_mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_mcp_auth_error_propagation(
         self,
         mock_service_class,

@@ -9,10 +9,10 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
-MODULE = "services.tools.tools_transform_service"
+MODULE = "services.tools.legacy_tools_transform_service"
 
 
 def _parameter(

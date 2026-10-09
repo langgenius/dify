@@ -158,7 +158,7 @@ def _mock_credential_encryption(controller_module: ModuleType):
     encrypter.mask_plugin_credentials.return_value = {"api_key": "[__HIDDEN__]"}
     with (
         patch(
-            "services.tools.builtin_tools_manage_service.ToolManager.get_builtin_provider",
+            "services.tools.legacy_builtin_tools_manage_service.ToolManager.get_builtin_provider",
             return_value=MagicMock(),
         ),
         patch.object(

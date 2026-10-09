@@ -1321,7 +1321,7 @@ class AgentComposerService:
         A plugin-daemon outage must degrade the slash menu to an empty tools
         tab, not break the whole candidates endpoint.
         """
-        from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+        from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
         try:
             providers = BuiltinToolManageService.list_builtin_tools(user_id, tenant_id)

@@ -6948,7 +6948,7 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
         ],
     )
 
-    import services.tools.builtin_tools_manage_service as builtin_tools_module
+    import services.tools.legacy_builtin_tools_manage_service as builtin_tools_module
 
     monkeypatch.setattr(
         builtin_tools_module.BuiltinToolManageService,
