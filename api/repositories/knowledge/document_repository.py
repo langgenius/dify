@@ -1,7 +1,8 @@
 """SQLAlchemy repository for tenant-owned document state."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import exists, select, update
@@ -9,8 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.dataset import Dataset, DatasetProcessRule, Document, Pipeline
+from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import IndexingStatus
+from models.pipeline_execution import PipelineDocumentSeed
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.knowledge.document_sync import SyncDocumentRecord
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
@@ -59,6 +61,13 @@ def _get_document(session: Session, document_ref: DocumentRef) -> Document | Non
     )
 
 
+def next_document_position(dataset_id: str, session: Session) -> int:
+    position = session.scalar(
+        select(Document.position).where(Document.dataset_id == dataset_id).order_by(Document.position.desc()).limit(1)
+    )
+    return position + 1 if position is not None else 1
+
+
 def require_indexing_document(session: Session, ref: DocumentRef, *, lock: bool = False) -> Document:
     """Validate the persisted owner chain before each indexing phase."""
     statement = (
@@ -88,8 +97,80 @@ class SQLAlchemyDocumentRepository:
         self._session_factory = session_factory
 
     def get_pipeline_dataset(self, pipeline: Pipeline, *, session: Session) -> Dataset | None:
-        """Read within the pipeline caller's transaction, including uncommitted changes."""
+        """Read within the legacy pipeline caller's transaction, including uncommitted changes."""
         return get_pipeline_dataset(pipeline, session=session)
+
+    def prepare_pipeline_documents(
+        self,
+        *,
+        tenant_id: str,
+        pipeline_id: str,
+        dataset_id: str,
+        user_id: str,
+        batch: str,
+        start_node_id: str,
+        inputs: Mapping[str, Any],
+        seeds: Sequence[PipelineDocumentSeed],
+        original_document_id: str | None,
+    ) -> list[Document]:
+        """Commit documents and dispatch logs together before enqueueing a run."""
+        with self._session_factory.begin() as session:
+            dataset = session.scalar(
+                select(Dataset)
+                .join(Pipeline, Pipeline.id == Dataset.pipeline_id)
+                .where(
+                    Dataset.id == dataset_id,
+                    Dataset.tenant_id == tenant_id,
+                    Pipeline.id == pipeline_id,
+                    Pipeline.tenant_id == tenant_id,
+                )
+                .with_for_update(of=Dataset)
+            )
+            if dataset is None:
+                raise ValueError("Pipeline dataset is required")
+            original = None
+            if original_document_id:
+                original = _get_document(session, DatasetRef(tenant_id, dataset_id).document(original_document_id))
+                if original is None:
+                    raise ValueError("Pipeline document not found")
+                original.indexing_status = IndexingStatus.WAITING
+            position = next_document_position(dataset_id, session)
+            documents = []
+            for offset, seed in enumerate(seeds):
+                document = original
+                if document is None:
+                    document = Document(
+                        id=seed.id,
+                        tenant_id=tenant_id,
+                        dataset_id=dataset_id,
+                        position=position + offset,
+                        data_source_type=seed.data_source_type,
+                        data_source_info=json.dumps(seed.data_source_info),
+                        batch=batch,
+                        name=seed.name,
+                        created_from="rag-pipeline",
+                        created_by=user_id,
+                        doc_form=dataset.chunk_structure,
+                        doc_metadata=dict(seed.doc_metadata) or None,
+                    )
+                    session.add(document)
+                    session.flush()
+                    documents.append(document)
+                session.add(
+                    DocumentPipelineExecutionLog(
+                        document_id=document.id,
+                        datasource_type=seed.data_source_type,
+                        datasource_info=json.dumps(seed.data_source_info),
+                        datasource_node_id=start_node_id,
+                        input_data=dict(inputs),
+                        pipeline_id=pipeline_id,
+                        created_by=user_id,
+                    )
+                )
+            session.flush()
+            for document in documents:
+                session.expunge(document)
+            return documents
 
     def get_indexing_document(self, ref: DocumentRef) -> IndexingDocument:
         with self._session_factory() as session:
@@ -168,17 +249,22 @@ class SQLAlchemyDocumentRepository:
                 )
             )
 
-    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None:
+    def mark_failed(
+        self, *, workspace_id: str, dataset_id: str, document_id: str, error: str, pipeline_id: str | None = None
+    ) -> None:
         with self._session_factory.begin() as session:
-            session.execute(
-                update(Document)
-                .where(
-                    Document.tenant_id == workspace_id,
-                    Document.dataset_id == dataset_id,
-                    Document.id == document_id,
-                )
-                .values(indexing_status=IndexingStatus.ERROR, error=error)
+            stmt = update(Document).where(
+                Document.tenant_id == workspace_id,
+                Document.dataset_id == dataset_id,
+                Document.id == document_id,
             )
+            if pipeline_id is not None:
+                stmt = stmt.where(
+                    exists().where(
+                        Dataset.id == dataset_id, Dataset.tenant_id == workspace_id, Dataset.pipeline_id == pipeline_id
+                    )
+                )
+            session.execute(stmt.values(indexing_status=IndexingStatus.ERROR, error=error))
 
     def get_estimate_document(self, document_ref: DocumentRef) -> EstimateDocumentRecord | None:
         with self._session_factory() as session:

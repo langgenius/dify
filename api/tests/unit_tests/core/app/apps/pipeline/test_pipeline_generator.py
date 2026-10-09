@@ -1,7 +1,8 @@
 import contextlib
 import json
+from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, create_autospec
+from unittest.mock import MagicMock, Mock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -9,10 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.pipeline.pipeline_generator as module
+import services.workflow.execution.adapters.pipeline.pipeline_generator as module
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from graphon.variable_loader import VariableLoader
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
@@ -20,6 +23,9 @@ from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
+from services.errors.app import WorkflowNotFoundError
+from services.rag_pipeline.document_preparation import prepare_pipeline_document
+from services.workflow.execution.ports import WorkflowRuntime
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -40,15 +46,19 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture, sqlite_engine: Engine):
+def generator(mocker: MockerFixture, sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
+    variable_loader = create_autospec(VariableLoader, instance=True, spec_set=True)
+    draft_variable_saver = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
     gen = module.PipelineGenerator(
+        draft_variable_loader=Mock(return_value=variable_loader),
+        draft_variable_saver=Mock(return_value=draft_variable_saver),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
         datasource_providers=DatasourceProviderService(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
+        runtime=workflow_runtime,
     )
 
-    _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
     mocker.patch.object(module, "RagPipelineInvokeEntity", side_effect=lambda **kwargs: kwargs)
     mocker.patch.object(module.contexts, "plugin_tool_providers", SimpleNamespace(set=MagicMock()))
@@ -114,10 +124,6 @@ def _build_args():
     }
 
 
-def _patch_sqlite_engine(mocker: MockerFixture, sqlite_engine: Engine) -> None:
-    mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine)
-
-
 def _persist_pipeline_scope(
     session: Session,
     *,
@@ -164,9 +170,8 @@ def _dummy_preserve[**P](*args: P.args, **kwargs: P.kwargs):
 def test_generate_dataset_missing(generator, sqlite_session: Session):
     pipeline = _build_pipeline()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(WorkflowNotFoundError):
         generator.generate(
-            session=sqlite_session,
             pipeline=pipeline,
             workflow=_build_workflow(),
             user=_build_user(),
@@ -191,21 +196,12 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
+    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
+    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
     mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
     result = generator.generate(
-        session=sqlite_session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -236,27 +232,17 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
     features = SimpleNamespace()
     get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
     check_limits = mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
 
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
+    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
+    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
     task_proxy = MagicMock()
     mocker.patch.object(module, "RagPipelineTaskProxy", return_value=task_proxy)
 
     result = generator.generate(
-        session=sqlite_session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -306,7 +292,6 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
 
     with pytest.raises(ValueError, match="document limit exceeded"):
         generator.generate(
-            session=sqlite_session,
             pipeline=pipeline,
             workflow=workflow,
             user=_build_user(),
@@ -334,16 +319,8 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
+    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
+    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
     generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
@@ -351,7 +328,6 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     args["original_document_id"] = "document-1"
 
     result = generator.generate(
-        session=sqlite_session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -377,7 +353,6 @@ def test_generate_worker_handles_errors(
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
     _persist_worker_records(sqlite_session)
-    _patch_sqlite_engine(mocker, sqlite_engine)
 
     application_generate_entity = FakeRagPipelineGenerateEntity(
         app_config=SimpleNamespace(tenant_id=TENANT_ID, app_id=PIPELINE_ID, workflow_id=WORKFLOW_ID),
@@ -391,6 +366,7 @@ def test_generate_worker_handles_errors(
 
     queue_manager = MagicMock()
     generator._generate_worker(
+        system_user_id="session",
         flask_app=flask_app,
         application_generate_entity=application_generate_entity,
         queue_manager=queue_manager,
@@ -413,7 +389,6 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
     _persist_worker_records(sqlite_session)
-    _patch_sqlite_engine(mocker, sqlite_engine)
 
     application_generate_entity = FakeRagPipelineGenerateEntity(
         app_config=SimpleNamespace(tenant_id=TENANT_ID, app_id=PIPELINE_ID, workflow_id=WORKFLOW_ID),
@@ -425,6 +400,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
 
     generator._generate_worker(
+        system_user_id="session",
         flask_app=flask_app,
         application_generate_entity=application_generate_entity,
         queue_manager=MagicMock(),
@@ -441,11 +417,8 @@ def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixtur
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
-    session = sqlite_session
-
-    with pytest.raises(ValueError):
+    with pytest.raises(WorkflowNotFoundError):
         generator._generate(
-            session=session,
             flask_app=flask_app,
             context=contextlib.nullcontext(),
             pipeline=_build_pipeline(),
@@ -469,9 +442,9 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     workflow = Workflow(
-        id="00000000-0000-0000-0000-000000000001",
-        tenant_id="00000000-0000-0000-0000-000000000002",
-        app_id="00000000-0000-0000-0000-000000000003",
+        id=WORKFLOW_ID,
+        tenant_id=TENANT_ID,
+        app_id=PIPELINE_ID,
         type=WorkflowType.RAG_PIPELINE,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
@@ -480,7 +453,6 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     )
     sqlite_session.add(workflow)
     sqlite_session.commit()
-    session = sqlite_session
 
     queue_manager = MagicMock()
     mocker.patch.object(module, "PipelineQueueManager", return_value=queue_manager)
@@ -494,7 +466,6 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value="converted")
 
     result = generator._generate(
-        session=session,
         flask_app=flask_app,
         context=contextlib.nullcontext(),
         pipeline=_build_pipeline(),
@@ -518,9 +489,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
 
 def test_single_iteration_generate_validates_inputs(generator, sqlite_session: Session):
     with pytest.raises(ValueError):
-        generator.single_iteration_generate(
-            _build_pipeline(), _build_workflow(), "", _build_user(), {}, session=sqlite_session
-        )
+        generator.single_iteration_generate(_build_pipeline(), _build_workflow(), "", _build_user(), {})
 
     with pytest.raises(ValueError):
         generator.single_iteration_generate(
@@ -529,21 +498,19 @@ def test_single_iteration_generate_validates_inputs(generator, sqlite_session: S
             "node",
             _build_user(),
             {"inputs": None},
-            session=sqlite_session,
         )
 
 
-def test_single_iteration_generate_dataset_required(generator, sqlite_session: Session):
+def test_single_iteration_generate_dataset_required(generator):
     pipeline = _build_pipeline()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(WorkflowNotFoundError):
         generator.single_iteration_generate(
             pipeline,
             _build_workflow(),
             "node",
             _build_user(),
             {"inputs": {"a": 1}},
-            session=sqlite_session,
         )
 
 
@@ -559,18 +526,8 @@ def test_single_iteration_generate_success(
         "get_pipeline_config",
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
-    mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
+    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
+    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
     mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
@@ -581,7 +538,6 @@ def test_single_iteration_generate_success(
         _build_user(),
         {"inputs": {"a": 1}},
         streaming=False,
-        session=sqlite_session,
     )
 
     assert result == {"ok": True}
@@ -599,18 +555,8 @@ def test_single_loop_generate_success(
         "get_pipeline_config",
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
-    mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
+    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
+    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
     mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
@@ -621,7 +567,6 @@ def test_single_loop_generate_success(
         _build_user(),
         {"inputs": {"a": 1}},
         streaming=False,
-        session=sqlite_session,
     )
 
     assert result == {"ok": True}
@@ -647,55 +592,37 @@ def test_handle_response_value_error_triggers_generate_task_stopped(generator, m
         )
 
 
-def test_build_document_sets_metadata_for_builtin_fields(generator):
-    document = generator._build_document(
-        tenant_id="tenant",
-        dataset_id="ds",
+def test_build_document_sets_metadata_for_builtin_fields():
+    document = prepare_pipeline_document(
         built_in_field_enabled=True,
         datasource_type=DatasourceProviderType.LOCAL_FILE,
         datasource_info={"name": "file"},
-        created_from="rag-pipeline",
-        position=1,
-        account=_build_user(),
-        batch="batch",
-        document_form="text",
+        uploader_name="User",
     )
 
     assert document.name == "file"
     assert document.doc_metadata
 
 
-def test_build_document_supports_online_drive_datasource_type(generator):
-    document = generator._build_document(
-        tenant_id="tenant",
-        dataset_id="ds",
+def test_build_document_supports_online_drive_datasource_type():
+    document = prepare_pipeline_document(
         built_in_field_enabled=True,
         datasource_type=DatasourceProviderType.ONLINE_DRIVE,
         datasource_info={"id": "file-1", "bucket": "bucket-1", "name": "drive.pdf", "type": "file"},
-        created_from="rag-pipeline",
-        position=1,
-        account=_build_user(),
-        batch="batch",
-        document_form="text",
+        uploader_name="User",
     )
 
     assert DataSourceType(document.data_source_type) == DataSourceType.ONLINE_DRIVE
     assert document.name == "drive.pdf"
 
 
-def test_build_document_invalid_datasource_type(generator):
+def test_build_document_invalid_datasource_type():
     with pytest.raises(ValueError):
-        generator._build_document(
-            tenant_id="tenant",
-            dataset_id="ds",
+        prepare_pipeline_document(
             built_in_field_enabled=False,
             datasource_type="invalid",
             datasource_info={},
-            created_from="rag-pipeline",
-            position=1,
-            account=_build_user(),
-            batch="batch",
-            document_form="text",
+            uploader_name="User",
         )
 
 

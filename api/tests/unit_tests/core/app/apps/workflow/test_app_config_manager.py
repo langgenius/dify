@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow
+from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfigManager
 from tests.unit_tests.model_factories import make_app, make_workflow
 
 
@@ -21,11 +21,11 @@ class TestWorkflowAppConfigManager:
 
         with (
             patch(
-                "core.app.apps.workflow.app_config_manager.SensitiveWordAvoidanceConfigManager.convert",
+                "services.workflow.execution.adapters.workflow.app_config_manager.SensitiveWordAvoidanceConfigManager.convert",
                 return_value=None,
             ),
             patch(
-                "core.app.apps.workflow.app_config_manager.WorkflowVariablesConfigManager.convert",
+                "services.workflow.execution.adapters.workflow.app_config_manager.WorkflowVariablesConfigManager.convert",
                 return_value=[],
             ),
         ):
@@ -51,15 +51,15 @@ class TestWorkflowAppConfigManager:
 
         with (
             patch(
-                "core.app.apps.workflow.app_config_manager.FileUploadConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.workflow.app_config_manager.FileUploadConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("file_upload", 1),
             ),
             patch(
-                "core.app.apps.workflow.app_config_manager.TextToSpeechConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.workflow.app_config_manager.TextToSpeechConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("text_to_speech", 2),
             ),
             patch(
-                "core.app.apps.workflow.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.workflow.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("sensitive_word_avoidance", 3),
             ),
         ):

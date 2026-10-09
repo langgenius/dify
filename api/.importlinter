@@ -1360,3 +1360,24 @@ forbidden_modules =
     extensions.application_services
     extensions.ext_application_services
 allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-core-boundary]
+name = App execution receives variable loader and saver ports from its caller
+type = forbidden
+source_modules =
+    services.app.generation.input_adapter
+    services.workflow.execution.adapters.chatflow.app_generator
+    services.workflow.execution.adapters.chatflow.generate_task_pipeline
+    services.workflow.execution.adapters.response_converter
+    services.app.generation.adapters.message_cycle
+    services.workflow.execution.adapters.workflow.app_generator
+    services.workflow.execution.adapters.workflow.generate_task_pipeline
+    services.workflow.execution.adapters.pipeline.pipeline_generator
+    services.tools.workflow.tool
+    services.tools.workflow.provider
+forbidden_modules =
+    repositories.workflow.draft_variable_repository
+    services.workflow.draft_variable_service
+    services.workflow.variable_service
+    extensions.application_services.workflow_variables
+allow_indirect_imports = True
