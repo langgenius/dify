@@ -93,7 +93,7 @@ it('renders an op descriptor with input, options, global and examples', () => {
 
 it('renders a static descriptor with arguments and flags', () => {
   expect(descriptorView(skillsInstall).text(plain)).toMatchInlineSnapshot(`
-    "install skills  Write skills from the collection into a skills root  write
+    "install skills  Write the difyctl skill into a skills root  write
 
     Usage
       difyctl install skills <dir> [flags]
@@ -103,19 +103,16 @@ it('renders a static descriptor with arguments and flags', () => {
                                per skill
 
     Flags
-      --skill  string[]  []                                                        Skill to install (repeatable); default: the whole collection
-      --from   string    "https://github.com/langgenius/dify/tree/0000000/skills"  Where the skills come from: a GitHub folder URL or a local
-                                                                                   folder
+      --from  string  optional  A local skill folder to install instead of the one built
+                                into difyctl
 
     Global
       --verbose  boolean  false  Keep the raw server response in error envelopes
       --json     boolean  false  Print JSON even on a terminal
 
     Examples
-      # Install every skill for Claude Code
-      difyctl install skills ~/.claude/skills
-      # Install one skill for Codex
-      difyctl install skills ~/.codex/skills --skill difyctl"
+      # Install the skill for Claude Code
+      difyctl install skills ~/.claude/skills"
   `)
 })
 
@@ -126,9 +123,9 @@ it('example lines put positionals first, scalars as --flag value, non-scalars as
   expect(
     exampleLine(skillsInstall, {
       title: 't',
-      input: { dir: '~/.claude/skills', skill: ['difyctl'] },
+      input: { dir: '~/.claude/skills', from: './skill' },
     }),
-  ).toBe('difyctl install skills ~/.claude/skills --skill difyctl')
+  ).toBe('difyctl install skills ~/.claude/skills --from ./skill')
 })
 
 it('a missing positional prints as itself and a non-scalar one as json', () => {

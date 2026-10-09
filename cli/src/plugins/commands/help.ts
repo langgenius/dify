@@ -13,6 +13,7 @@ import { collectCommands } from './registry'
 const SEARCH_LIMIT = 20
 const NEWLINE = '\n'
 const SKILL_WORDS = 'install skills <dir>'
+export const SKILL_NOTICE = `AI agents: run \`${BINARY} ${SKILL_WORDS.replace('<dir>', '<skills root>')}\` once to learn how to use ${BINARY}.`
 const POINTER_MESSAGE = `${BINARY} has no built-in business commands; every server operation is a command`
 
 export type HelpEntry = {

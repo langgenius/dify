@@ -68,7 +68,7 @@ it('every command the tree hides comes back with includeHidden', () => {
 })
 
 it('search ranks the plain words against ids, summaries, fields and examples', () => {
-  expect(helpSearch(['chatbot'], tree).entries[0]).toMatchObject({
+  expect(helpSearch(['chatbot', 'streams'], tree).entries[0]).toMatchObject({
     id: 'run console_app chat',
     kind: 'sse',
   })

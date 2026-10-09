@@ -17,6 +17,7 @@ import {
   helpMap,
   helpSearch,
   pointer,
+  SKILL_NOTICE,
   spacedWords,
 } from '@/plugins/commands/help'
 import {
@@ -131,6 +132,7 @@ async function discover(args: Discovery): Promise<number> {
 
   const entries = entriesOf(tree, listing)
   if (path.length === 0) {
+    streams.notice(SKILL_NOTICE)
     await streams.document(mapView(helpMap(entries)))
     return ExitCode.Success
   }
