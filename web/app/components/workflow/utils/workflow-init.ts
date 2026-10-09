@@ -1,3 +1,4 @@
+import type { HttpNodeType } from '../nodes/http/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
@@ -20,6 +21,7 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { BodyType } from '../nodes/http/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -304,12 +306,19 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     if (node.data.type === BlockEnum.ParameterExtractor)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
 
-    if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
-      node.data.retry_config = {
-        retry_enabled: true,
-        max_retries: DEFAULT_RETRY_MAX,
-        retry_interval: DEFAULT_RETRY_INTERVAL,
+    if (node.data.type === BlockEnum.HttpRequest) {
+      if (!node.data.retry_config) {
+        node.data.retry_config = {
+          retry_enabled: true,
+          max_retries: DEFAULT_RETRY_MAX,
+          retry_interval: DEFAULT_RETRY_INTERVAL,
+        }
       }
+
+      // Imported DSL may omit body.data; legacy string data is converted when the panel opens.
+      const httpNodeData = node.data as HttpNodeType
+      if (!httpNodeData.body) httpNodeData.body = { type: BodyType.none, data: [] }
+      else if (!httpNodeData.body.data) httpNodeData.body.data = []
     }
 
     if (

@@ -1,3 +1,4 @@
+import type { HttpNodeType } from '../../nodes/http/types'
 import type { IfElseNodeType } from '../../nodes/if-else/types'
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { KnowledgeRetrievalNodeType } from '../../nodes/knowledge-retrieval/types'
@@ -12,6 +13,7 @@ import {
   DEFAULT_RETRY_MAX,
   NESTED_ELEMENT_Z_INDEX,
 } from '@/app/components/workflow/constants'
+import { BodyPayloadValueType, BodyType } from '@/app/components/workflow/nodes/http/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
@@ -493,6 +495,61 @@ describe('initialNodes', () => {
 
     const result = initialNodes(nodes, [])
     expect(result[0]!.data.retry_config).toEqual(existingConfig)
+  })
+
+  it('should default missing body.data to an empty list for HttpRequest nodes', () => {
+    const nodes = [
+      createNode({
+        id: 'http-1',
+        data: {
+          type: BlockEnum.HttpRequest,
+          title: '',
+          desc: '',
+          body: { type: BodyType.none },
+        },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+    expect((result[0]!.data as HttpNodeType).body).toEqual({ type: BodyType.none, data: [] })
+  })
+
+  it('should default a missing body for HttpRequest nodes', () => {
+    const nodes = [
+      createNode({
+        id: 'http-1',
+        data: {
+          type: BlockEnum.HttpRequest,
+          title: '',
+          desc: '',
+        },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+    expect((result[0]!.data as HttpNodeType).body).toEqual({ type: BodyType.none, data: [] })
+  })
+
+  it('should keep existing body data for HttpRequest nodes', () => {
+    const listBody = {
+      type: BodyType.json,
+      data: [{ id: 'd-1', type: BodyPayloadValueType.text, value: '{"a":1}' }],
+    }
+    const legacyBody = { type: BodyType.rawText, data: 'raw {{#start.q#}}' }
+    const nodes = [
+      createNode({
+        id: 'http-1',
+        data: { type: BlockEnum.HttpRequest, title: '', desc: '', body: listBody },
+      }),
+      createNode({
+        id: 'http-2',
+        data: { type: BlockEnum.HttpRequest, title: '', desc: '', body: legacyBody },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+    expect((result[0]!.data as HttpNodeType).body).toEqual(listBody)
+    expect((result[1]!.data as HttpNodeType).body).toEqual(legacyBody)
   })
 
   it('should migrate legacy Tool node configurations', () => {
