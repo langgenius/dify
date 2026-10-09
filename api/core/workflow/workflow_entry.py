@@ -47,7 +47,7 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -276,6 +276,7 @@ class WorkflowEntry:
             node_type=node_type,
             node_data=node_config_data,
             variable_mapping=variable_mapping,
+            supports_conversation=workflow.type == WorkflowType.CHAT,
         )
 
         # Loading missing variable from draft var here, and set it into
@@ -433,6 +434,8 @@ class WorkflowEntry:
                 node_type=node_type,
                 node_data=node_data,
                 variable_mapping=variable_mapping,
+                # Free nodes run outside any app, so no conversation provides `sys.query`.
+                supports_conversation=False,
             )
 
             cls.mapping_user_inputs_to_variable_pool(
