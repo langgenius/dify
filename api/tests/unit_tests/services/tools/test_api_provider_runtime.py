@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.db import session_factory
-from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.errors import ToolInvokeError
@@ -23,6 +22,7 @@ from models.model import App
 from models.tools import ApiToolProvider
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.tools.api.provider import ApiToolProviderController
 from tests.unit_tests.model_factories import make_account
 from tests.unit_tests.services.agent.test_tool_invocation_service import (
     TENANT_ID,

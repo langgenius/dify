@@ -1,13 +1,15 @@
 [importlinter]
 root_packages =
-    services.entities.external_knowledge_entities
-    enums
     core
+    enums
     core.rag.extractor.entity
+    core.tools.__base
+    services.entities.external_knowledge_entities
     constants
     context
     configs
     controllers
+    controllers.console.explore
     extensions
     factories
     fields
@@ -45,14 +47,11 @@ ignore_imports =
     core.rag.index_processor.processor.paragraph_index_processor -> services.knowledge.summaries.adapters
     core.rag.index_processor.processor.parent_child_index_processor -> services.knowledge.summaries.adapters
     core.rag.index_processor.processor.qa_index_processor -> services.knowledge.summaries.adapters
-    core.rag.retrieval.dataset_retrieval -> services.knowledge.external.service
-    core.rag.retrieval.dataset_retrieval -> services.knowledge.retrieval.attachments
-    core.rag.retrieval.dataset_retrieval -> services.feature_service
     core.rag.summary_index.summary_index -> services.knowledge.summaries.adapters
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    # Node construction delegates datasource dependency assembly to the composition root.
+    # Node construction receives configured datasource and Agent dependencies from composition.
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
@@ -1072,6 +1071,186 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:console-workflow-application-boundary]
+name = Console workflow use cases and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workflow.console_service
+    services.workflow.publication_service
+    services.rag_pipeline.publication_service
+    services.rag_pipeline.publication_contracts
+    services.workflow.draft_service
+    services.workflow.contracts
+    services.trigger.workflow_policy
+    services.trigger.schedule_policy
+forbidden_modules =
+    controllers
+    extensions
+    fields
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+    services.workflow.runtime_gateway
+    services.human_input.file_gateway
+    services.workflow.access_gateway
+    services.workflow.definition_gateway
+    services.workflow_service
+
+[importlinter:contract:console-workflow-controller-boundary]
+name = Console workflow controllers reach persistence and runtime implementations through composition
+type = forbidden
+source_modules =
+    controllers.console.app.workflow
+    controllers.console.app.workflow_admission
+forbidden_modules =
+    repositories
+    sqlalchemy
+    extensions.ext_database
+    extensions.ext_redis
+    services.workflow_service
+    services.app_generate_service
+    services.workflow.runtime_gateway
+    services.human_input.file_gateway
+    services.workflow.access_gateway
+    services.workflow.definition_gateway
+    services.workflow.draft_service
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-definition-persistence-boundary]
+name = Workflow definition persistence does not delegate back to workflow orchestration
+type = forbidden
+source_modules =
+    repositories.workflow.definition_repository
+    repositories.workflow.draft_repository
+    repositories.workflow.pipeline_publication_repository
+    repositories.workflow.debug_reservation_repository
+forbidden_modules =
+    services.workflow_service
+    services.workflow.console_service
+    services.workflow.definition_gateway
+    services.rag_pipeline.publication_service
+    services.rag_pipeline.publication_gateway
+    services.rag_pipeline.rag_pipeline
+    services.knowledge.dataset_service
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-agent-persistence-boundary]
+name = Definition persistence does not coordinate Agent services
+type = forbidden
+source_modules =
+    repositories.workflow.definition_repository
+    repositories.workflow.snippet_publication_repository
+    repositories.workflow.draft_repository
+    repositories.workflow.pipeline_publication_repository
+    repositories.workflow.debug_reservation_repository
+forbidden_modules =
+    services.agent
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-execution-dependency-boundary]
+name = Workflow and DSL services receive dependencies without calling composition roots
+type = forbidden
+source_modules =
+    services.app_dsl_service
+    services.snippet_dsl_service
+    services.data_migration.import_service
+    services.workflow_service
+    services.app_generate_service
+    services.snippet_generate_service
+    services.rag_pipeline.rag_pipeline
+    services.rag_pipeline.execution_service
+forbidden_modules =
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:human-input-debug-application-boundary]
+name = Human input debug orchestration is independent of transport and persistence implementations
+type = forbidden
+source_modules =
+    services.human_input.debug_service
+    services.human_input.contracts
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    sqlalchemy
+    models.human_input
+    models.workflow
+    models.model
+    models.base
+    models.engine
+    repositories
+    services.human_input.file_gateway
+    services.human_input_service
+    services.human_input_delivery_test_service
+allow_indirect_imports = True
+
+
+[importlinter:contract:workflow-variable-persistence-boundary]
+name = Variable persistence does not own variable policy or file uploads
+type = forbidden
+source_modules =
+    repositories.workflow.draft_variable_repository
+forbidden_modules =
+    services.workflow.draft_variable_service
+    services.workflow.variable_service
+    services.file_service
+    services.variable_truncator
+    extensions.ext_storage
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-core-boundary]
+name = App execution receives variable loader and saver ports from its caller
+type = forbidden
+source_modules =
+    services.app.generation.input_adapter
+    services.workflow.execution.adapters.chatflow.app_generator
+    services.workflow.execution.adapters.chatflow.generate_task_pipeline
+    services.workflow.execution.adapters.response_converter
+    services.app.generation.adapters.message_cycle
+    services.workflow.execution.adapters.workflow.app_generator
+    services.workflow.execution.adapters.workflow.generate_task_pipeline
+    services.workflow.execution.adapters.pipeline.pipeline_generator
+    services.tools.workflow.tool
+    services.tools.workflow.provider
+forbidden_modules =
+    repositories.workflow.draft_variable_repository
+    services.workflow.draft_variable_service
+    services.workflow.variable_service
+    extensions.application_services.workflow_variables
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-policy-boundary]
+name = Workflow variable merge policy is independent of persistence and transport
+type = forbidden
+source_modules =
+    services.workflow.variable_policy
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+    flask
+    controllers
+    extensions
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-application-boundary]
+name = Workflow variable services consume injected persistence and storage ports
+type = forbidden
+source_modules =
+    services.workflow.variable_service
+    services.workflow.draft_variable_service
+forbidden_modules =
+    repositories
+    sqlalchemy
+    flask
+    controllers
+    extensions
+allow_indirect_imports = True
+
 [importlinter:contract:human-input-contract-boundary]
 name = Shared Human Input contracts are independent of application and persistence layers
 type = forbidden
@@ -1090,23 +1269,6 @@ forbidden_modules =
     flask
     sqlalchemy
     werkzeug
-
-[importlinter:contract:retrieval-persistence-boundary]
-name = Retrieval use cases consume explicit persistence ports
-type = forbidden
-source_modules =
-    services.knowledge.retrieval.dataset_retrieval
-    core.rag.rerank.rerank_model
-    services.knowledge.retrieval.reranking
-forbidden_modules =
-    sqlalchemy
-    repositories
-    extensions.ext_database
-    core.db
-    flask
-    extensions.application_services
-    extensions.ext_application_services
-allow_indirect_imports = True
 
 [importlinter:contract:workflow-agent-application-boundary]
 name = Workflow Agent binding rules consume ports without ORM or infrastructure adapters
@@ -1136,111 +1298,53 @@ forbidden_modules =
     services.agent
 allow_indirect_imports = True
 
-[importlinter:contract:workflow-definition-persistence-boundary]
-name = Workflow definition persistence does not delegate back to workflow orchestration
+[importlinter:contract:workflow-worker-lifetime-boundary]
+name = Workflow worker lifetime is independent of transport and persistence
 type = forbidden
 source_modules =
-    repositories.workflow.definition_repository
-    repositories.workflow.draft_repository
-    repositories.workflow.pipeline_publication_repository
+    services.workflow.execution.generation_service
 forbidden_modules =
-    services.workflow_service
-    services.workflow.console_service
-    services.rag_pipeline.publication_service
-    services.rag_pipeline.publication_gateway
-    services.rag_pipeline.rag_pipeline
-    services.knowledge.dataset_service
-allow_indirect_imports = True
-
-[importlinter:contract:workflow-variable-persistence-boundary]
-name = Variable persistence does not own variable policy or file uploads
-type = forbidden
-source_modules =
-    repositories.workflow.draft_variable_repository
-forbidden_modules =
-    services.workflow.draft_variable_service
-    services.workflow.variable_service
-    services.file_service
-    services.variable_truncator
-    extensions.ext_storage
-allow_indirect_imports = True
-
-[importlinter:contract:workflow-variable-policy-boundary]
-name = Workflow variable merge policy is independent of persistence and transport
-type = forbidden
-source_modules =
-    services.workflow.variable_policy
-forbidden_modules =
-    repositories
-    models
-    sqlalchemy
-    flask
-    controllers
-    extensions
-allow_indirect_imports = True
-
-[importlinter:contract:api-tool-provider-boundary]
-name = API tool providers build runtimes from loaded configuration
-type = forbidden
-source_modules =
-    services.tools.api.provider
-    services.tools.tool_manager
-    services.tools.tools_transform_service
-    services.tools.api.contracts
-forbidden_modules =
-    sqlalchemy
-    extensions.ext_database
-    core.db
-    repositories
-    extensions.application_services
-    extensions.ext_application_services
-allow_indirect_imports = True
-
-[importlinter:contract:builtin-tool-credential-boundary]
-name = Builtin tool credential resolution owns no database or composition dependencies
-type = forbidden
-source_modules =
-    services.tools.builtin.credentials
-    services.tools.provider_queries
-forbidden_modules =
-    sqlalchemy
-    extensions.ext_database
-    core.db
-    repositories
-    extensions.application_services
-    extensions.ext_application_services
-allow_indirect_imports = True
-
-[importlinter:contract:workflow-variable-application-boundary]
-name = Workflow variable services consume injected persistence and storage ports
-type = forbidden
-source_modules =
-    services.workflow.variable_service
-    services.workflow.draft_variable_service
-forbidden_modules =
-    repositories
-    sqlalchemy
-    flask
-    controllers
-    extensions
-allow_indirect_imports = True
-
-[importlinter:contract:console-draft-variable-use-case-boundary]
-name = Console variable use cases receive persistence and file resolution through ports
-type = forbidden
-source_modules =
-    services.workflow.console_variable_service
-forbidden_modules =
-    sqlalchemy
-    extensions.ext_database
-    core.db
     flask
     werkzeug
-    controllers
+    sqlalchemy
+    extensions
     repositories
-    extensions.application_services
-    extensions.ext_application_services
-    factories.file_factory
+    models
+    services.workflow.execution.adapters
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-invocation-read-boundary]
+name = Workflow, Chatflow, Pipeline and Agent invocation adapters receive persistence through ports
+type = forbidden
+source_modules =
+    services.workflow.execution.adapters.workflow.app_generator
+    services.workflow.execution.adapters.workflow.generate_task_pipeline
+    services.workflow.execution.adapters.chatflow.app_generator
+    services.workflow.execution.adapters.chatflow.generate_task_pipeline
+    services.workflow.execution.adapters.response_converter
+    services.app.generation.adapters.message_cycle
+    services.workflow.execution.adapters.graph
+    services.workflow.execution.adapters.pipeline.pipeline_generator
+    services.workflow.execution.adapters.pipeline.pipeline_runner
+    services.workflow.execution.adapters.chatflow.app_runner
+    services.app.generation.message_records
+    services.app.generation.adapters.message_pipeline
+    services.app.generation.adapters.base_runner
+    services.app.generation.adapters.agent_runner
+    services.app.generation.adapters.agent_app
+    services.app.generation.agent_config
+    services.app.generation.ports
+    services.app.generation.runtime
+    services.workflow.execution.ports
+    services.workflow.execution.chatflow_ports
+    services.workflow.execution.adapters.chatflow.conversation_variables
+    services.tools.workflow.contracts
+    services.annotation.reply_service
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db.session_factory
+    repositories
 allow_indirect_imports = True
 
 [importlinter:contract:message-persistence-contract-boundary]
@@ -1257,42 +1361,83 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 
-[importlinter:contract:agent-chat-runner-persistence-boundary]
-name = Agent Chat runners receive persistence and dataset tools through injected ports
+[importlinter:contract:refactored-route-error-boundary]
+name = Refactored routes map domain failures through application HTTP errors
 type = forbidden
 source_modules =
-    services.agent.chat.base_runner
-    services.agent.chat.function_call_runner
-    services.agent.chat.cot_runner
-    services.app.generation.adapters.agent_chat_runner
+    controllers.trigger.webhook
+    controllers.trigger.trigger
+    controllers.console.explore.message
+    controllers.console.explore.trial
+    controllers.console.datasets.hit_testing_base
+    controllers.openapi.app_run
+forbidden_modules =
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-tool-controller-boundary]
+name = Agent tool controller does not own persistence
+type = forbidden
+source_modules =
+    controllers.inner_api.agent.tools
+forbidden_modules =
+    sqlalchemy
+    repositories
+    extensions.ext_database
+    core.db
+    controllers.console.app.wraps
+allow_indirect_imports = True
+
+[importlinter:contract:agent-tool-application-boundary]
+name = Agent tool invocation coordinates explicit ports
+type = forbidden
+source_modules =
+    services.agent.tool_invocation_service
+forbidden_modules =
+    sqlalchemy
+    flask
+    werkzeug
+    extensions
+    repositories
+    core
+    services.tools.agent_invocation_gateway
+allow_indirect_imports = True
+
+[importlinter:contract:agent-tool-gateway-boundary]
+name = Agent tool execution does not wrap external calls in a database session
+type = forbidden
+source_modules =
+    services.tools.agent_invocation_gateway
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-conversion-boundary]
+name = Workflow conversion prepares values and persists through an explicit port
+type = forbidden
+source_modules =
+    services.workflow.conversion_service
+    services.workflow.workflow_converter
 forbidden_modules =
     sqlalchemy
     extensions.ext_database
     core.db
     repositories
-    extensions.application_services
-    extensions.ext_application_services
+    flask
 allow_indirect_imports = True
 
-[importlinter:contract:tool-engine-persistence-boundary]
-name = Tool Engine receives Sessions but cannot source persistence dependencies
+[importlinter:contract:api-tool-provider-boundary]
+name = API tool providers build runtimes from loaded configuration
 type = forbidden
 source_modules =
-    services.tools.tool_engine
+    services.tools.api.provider
+    services.tools.tool_manager
+    services.tools.tools_transform_service
+    services.tools.api.contracts
 forbidden_modules =
-    extensions.ext_database
-    core.db
-    repositories
-    extensions.application_services
-    extensions.ext_application_services
-allow_indirect_imports = True
-
-[importlinter:contract:agent-chat-worker-database-boundary]
-name = Agent Chat workers cannot create a global database session
-type = forbidden
-source_modules =
-    services.app.generation.adapters.agent_chat
-forbidden_modules =
+    sqlalchemy
     extensions.ext_database
     core.db
     repositories
@@ -1317,23 +1462,188 @@ forbidden_modules =
     extensions.ext_application_services
 allow_indirect_imports = True
 
-[importlinter:contract:workflow-variable-core-boundary]
-name = App execution receives variable loader and saver ports from its caller
+[importlinter:contract:builtin-tool-credential-boundary]
+name = Builtin tool credential resolution owns no database or composition dependencies
 type = forbidden
 source_modules =
-    services.app.generation.input_adapter
-    services.workflow.execution.adapters.chatflow.app_generator
-    services.workflow.execution.adapters.chatflow.generate_task_pipeline
-    services.workflow.execution.adapters.response_converter
-    services.app.generation.adapters.message_cycle
-    services.workflow.execution.adapters.workflow.app_generator
-    services.workflow.execution.adapters.workflow.generate_task_pipeline
-    services.workflow.execution.adapters.pipeline.pipeline_generator
-    services.tools.workflow.tool
-    services.tools.workflow.provider
+    services.tools.builtin.credentials
+    services.tools.provider_queries
 forbidden_modules =
-    repositories.workflow.draft_variable_repository
-    services.workflow.draft_variable_service
-    services.workflow.variable_service
-    extensions.application_services.workflow_variables
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:agent-log-controller-boundary]
+name = Agent log controller delegates through admission and an application service
+type = forbidden
+source_modules =
+    controllers.console.app.agent
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    repositories
+    models
+    controllers.common.session
+    controllers.console.app.wraps
+    services.agent_service
+allow_indirect_imports = True
+
+[importlinter:contract:agent-log-service-boundary]
+name = Agent log use cases and contracts own no transport or database resources
+type = forbidden
+source_modules =
+    services.agent.log_service
+    services.agent.log_contracts
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    flask
+    werkzeug
+    controllers
+    repositories
+    libs.login
+    services.tools.tool_manager
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:domain-errors-without-http]
+name = Annotation, document and trigger domain errors have no HTTP dependencies
+type = forbidden
+source_modules =
+    services.annotation.errors
+    services.knowledge.dataset_service
+    services.trigger.errors
+    services.errors.dataset
+    services.errors.document
+    tasks.annotation.batch_import_annotations_task
+forbidden_modules =
+    werkzeug
+    libs.exception
+    controllers
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-controller-error-boundary]
+name = Workflow controllers translate failures with project error contracts
+type = forbidden
+source_modules =
+    controllers.console.app.workflow
+    controllers.console.app.workflow_admission
+    controllers.console.snippets.snippet_workflow
+    controllers.console.datasets.rag_pipeline.rag_pipeline_workflow
+    controllers.service_api.app.workflow
+    controllers.web.workflow
+forbidden_modules =
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:console-draft-variable-controller-boundary]
+name = App, Pipeline and Snippet variable controllers delegate without persistence or runtime construction
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_draft_variable
+    controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable
+    controllers.console.snippets.snippet_workflow_draft_variable
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core
+    repositories
+    models
+    factories
+    controllers.common.session
+    services.workflow_service
+    services.rag_pipeline.rag_pipeline
+    services.snippet_service
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:console-draft-variable-use-case-boundary]
+name = Console variable use cases receive persistence and file resolution through ports
+type = forbidden
+source_modules =
+    services.workflow.console_variable_service
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    flask
+    werkzeug
+    controllers
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+    factories.file_factory
+allow_indirect_imports = True
+
+[importlinter:contract:agent-chat-runner-persistence-boundary]
+name = Agent Chat runners receive persistence and dataset tools through injected ports
+type = forbidden
+source_modules =
+    services.agent.chat.base_runner
+    services.agent.chat.function_call_runner
+    services.agent.chat.cot_runner
+    services.app.generation.adapters.agent_chat_runner
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:tool-engine-persistence-boundary]
+name = Tool invocation receives Sessions but cannot source persistence dependencies
+type = forbidden
+source_modules =
+    services.tools.tool_engine
+    core.tools.__base.tool
+    services.tools.dataset.tool
+forbidden_modules =
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:agent-chat-worker-database-boundary]
+name = Agent Chat workers cannot create a global database session
+type = forbidden
+source_modules =
+    services.app.generation.adapters.agent_chat
+forbidden_modules =
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:retrieval-persistence-boundary]
+name = Retrieval use cases and tools consume explicit persistence ports
+type = forbidden
+source_modules =
+    services.knowledge.retrieval.dataset_retrieval
+    core.rag.rerank.rerank_model
+    services.knowledge.retrieval.reranking
+    services.knowledge_retrieval_inner_service
+    services.app.generation.adapters.chat_runner
+    services.app.generation.adapters.completion_runner
+    services.workflow.execution.adapters.knowledge_retrieval
+    services.workflow.execution.adapters.human_input_events
+forbidden_modules =
+    sqlalchemy
+    repositories
+    extensions.ext_database
+    core.db
+    flask
+    extensions.application_services
+    extensions.ext_application_services
 allow_indirect_imports = True
