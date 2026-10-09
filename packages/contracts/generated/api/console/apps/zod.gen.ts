@@ -2196,10 +2196,10 @@ export const zAgentToolCallResponse = z.object({
   status: z.string(),
   time_cost: z.union([z.number(), z.int()]),
   tool_icon: z.unknown().optional(),
-  tool_input: z.record(z.string(), z.unknown()),
+  tool_input: z.unknown(),
   tool_label: z.string(),
   tool_name: z.string(),
-  tool_output: z.record(z.string(), z.unknown()),
+  tool_output: z.unknown(),
   tool_parameters: z.record(z.string(), z.unknown()),
 })
 
