@@ -37,7 +37,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message
-from services.agent.chat.ports import AgentDatasetTools
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.adapters.base_runner import AppRunner
 from services.app.generation.ports import AgentHistoryMessage, AgentMessageRecords, MessageIdentity
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
@@ -54,6 +54,7 @@ class BaseAgentRunner(AppRunner):
         *,
         records: AgentMessageRecords,
         dataset_tools: AgentDatasetTools,
+        tool_invoker: AgentToolInvoker,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
         conversation: Conversation,
@@ -74,6 +75,7 @@ class BaseAgentRunner(AppRunner):
         self.tenant_id = tenant_id
         self._draft_variable_saver = draft_variable_saver
         self._workflow_runtime = workflow_runtime
+        self._tool_invoker = tool_invoker
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
         self.app_config = app_config

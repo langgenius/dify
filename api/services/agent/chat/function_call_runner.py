@@ -31,7 +31,6 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from models.model import Message
 from services.agent.chat.base_runner import BaseAgentRunner
 from services.tools.dataset.tool import DatasetRetrieverTool
-from services.tools.tool_engine import ToolEngine
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +288,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else:
                     # invoke tool
                     with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
-                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                        tool_invoke_response, message_files, tool_invoke_meta = self._tool_invoker(
                             records=self._records,
                             tool=tool_instance,
                             tool_parameters=tool_call_args,
