@@ -774,6 +774,9 @@ export const InlineInPopover: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Choose reviewer' }))
     const reopenedPopover = await body.findByRole('dialog', { name: 'Choose reviewer' })
+    await waitFor(async () => {
+      await expect(reopenedPopover).toBeVisible()
+    })
     await expect(
       within(reopenedPopover).getByRole('combobox', { name: 'Search reviewers' }),
     ).toHaveValue('')
