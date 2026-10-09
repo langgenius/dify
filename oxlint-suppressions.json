@@ -500,7 +500,7 @@
   },
   "web/app/components/app/log/list.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 6
+      "count": 2
     },
     "typescript/no-explicit-any": {
       "count": 5
@@ -1703,9 +1703,6 @@
     }
   },
   "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "jsx-a11y/no-autofocus": {
       "count": 2
     }
@@ -2889,11 +2886,6 @@
       "count": 8
     }
   },
-  "web/app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -4045,17 +4037,12 @@
       "count": 2
     }
   },
-  "web/features/skills/detail/builder-panel.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/features/skills/detail/file-editor.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
     },
     "eslint-react/set-state-in-effect": {
-      "count": 24
+      "count": 14
     }
   },
   "web/features/skills/detail/file-tree-items.tsx": {

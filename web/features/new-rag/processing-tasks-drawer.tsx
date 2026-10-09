@@ -251,9 +251,7 @@ export function ProcessingTasksDrawer({
     if (!wasOpen || open) return
     openCycleRef.current += 1
     loadMoreRequestedRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close resets drawer-local pagination and errors.
     setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close starts a fresh action-error cycle.
     setActionErrors({})
   }, [open])
 
