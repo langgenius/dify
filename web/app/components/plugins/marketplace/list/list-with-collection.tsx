@@ -124,7 +124,6 @@ const CollectionSection = ({
     if (!section) return
 
     if (typeof IntersectionObserver === 'undefined') {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- This is the hydration fallback for browsers without IntersectionObserver.
       setIsMounted(true)
       return
     }
