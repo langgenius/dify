@@ -208,7 +208,7 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
         INTERNAL_FILES_URL="https://internal.example.com",
     )
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
-    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
+    monkeypatch.setattr("libs.signed_query.os.urandom", lambda _: b"\x01" * 16)
 
     runtime = _build_runtime()
     url = runtime.resolve_upload_file_url(

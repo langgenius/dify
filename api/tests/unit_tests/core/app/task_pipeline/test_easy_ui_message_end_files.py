@@ -6,11 +6,11 @@ and the fallback used when a local message file references a missing upload.
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     EasyUIBasedAppConfig,
@@ -21,15 +21,17 @@ from core.app.app_config.entities import (
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from extensions.ext_redis import RedisClientWrapper
+from extensions import ext_redis
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole
-from models.model import AppMode, Conversation, Message, MessageFile, UploadFile
+from models.model import App, Conversation, Message, MessageFile, UploadFile
+from repositories.app.generation_repository import AppGenerationRepository
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
 from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message
 
-SQLITE_MODELS = (MessageFile, UploadFile)
+SQLITE_MODELS = (App, Conversation, Message, MessageFile, UploadFile)
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
     pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
@@ -39,25 +41,39 @@ pytestmark = [
 class TestMessageEndStreamResponseFiles:
     """Verify message-end file payloads from actual ORM query results."""
 
-    @pytest.fixture(autouse=True)
-    def bind_sqlite_engine(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Bind sessions opened by the pipeline to the per-test SQLite engine."""
-
-        sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
-
     @pytest.fixture
     def pipeline(
-        self, monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[RedisClientWrapper, MagicMock]
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock],
+        app_records: AppGenerationRepository,
+        sqlite_session: Session,
     ) -> EasyUIBasedGenerateTaskPipeline:
-        """Construct the pipeline with validated request, model, and task state."""
+        """Construct the service adapter with real request models and injected records."""
         monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis_transport[0])
+        app = make_app()
+        conversation = make_conversation(inputs={}, from_source=ConversationFromSource.API)
+        message = make_message(
+            message_id=str(uuid.uuid4()),
+            inputs={},
+            query="hello",
+            message={},
+            answer="",
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            created_at=datetime.now(),
+        )
+        sqlite_session.add_all([app, conversation, message])
+        sqlite_session.commit()
+
         request = ChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=EasyUIBasedAppConfig(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                app_mode=AppMode.CHAT,
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                app_mode=app.mode,
                 app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
                 app_model_config_dict={},
                 model=ModelConfigEntity(provider="test-provider", model="test-model"),
@@ -70,21 +86,12 @@ class TestMessageEndStreamResponseFiles:
             stream=True,
             invoke_from=InvokeFrom.WEB_APP,
         )
-        conversation = Conversation(
-            id=str(uuid.uuid4()),
-            app_id="app-id",
-            mode=AppMode.CHAT,
-            name="Conversation",
-            from_source=ConversationFromSource.API,
-            inputs={},
-        )
-        message = Message(id=str(uuid.uuid4()), created_at=datetime.now())
         queue = MessageBasedAppQueueManager(
             task_id=request.task_id,
             user_id=request.user_id,
             invoke_from=request.invoke_from,
             conversation_id=conversation.id,
-            app_mode=AppMode.CHAT,
+            app_mode=app.mode,
             message_id=message.id,
         )
         return EasyUIBasedGenerateTaskPipeline(
@@ -93,6 +100,7 @@ class TestMessageEndStreamResponseFiles:
             conversation=conversation,
             message=message,
             stream=True,
+            records=app_records,
         )
 
     @staticmethod
@@ -144,7 +152,7 @@ class TestMessageEndStreamResponseFiles:
         """Create upload metadata matching the local message-file reference."""
 
         upload = UploadFile(
-            tenant_id=str(uuid.uuid4()),
+            tenant_id="tenant-1",
             storage_type=StorageType.LOCAL,
             key="uploads/test_image.png",
             name="test_image.png",

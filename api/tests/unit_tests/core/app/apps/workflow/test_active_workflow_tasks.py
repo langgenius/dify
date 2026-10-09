@@ -3,12 +3,12 @@ from collections.abc import Generator
 
 import pytest
 
-from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.workflow.active_workflow_tasks import (
+from services.workflow.execution.adapters.workflow.active_workflow_tasks import (
     active_workflow_task,
     get_active_workflow_task_count,
     reset_active_workflow_tasks,
 )
+from services.workflow.execution.generation_service import consume_stream
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +54,7 @@ def test_managed_stream_waits_for_active_worker_cleanup() -> None:
     worker_thread.start()
     assert worker_started.wait(timeout=2)
 
-    managed_stream = BaseAppGenerator._wrap_stream_with_worker_thread_join(response_stream(), worker_thread)
+    managed_stream = consume_stream(response_stream(), worker_thread)
     assert next(managed_stream) == {"event": "workflow_finished"}
 
     def finish_stream() -> None:
