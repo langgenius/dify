@@ -14,9 +14,8 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine
@@ -32,6 +31,7 @@ from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from tests.workflow_test_utils import build_test_graph_init_params

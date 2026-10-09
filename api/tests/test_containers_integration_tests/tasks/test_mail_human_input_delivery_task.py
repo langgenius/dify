@@ -11,20 +11,20 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_adapter import (
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    MemberRecipient,
-)
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_entities import HumanInputNodeData
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task

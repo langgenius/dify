@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from enums.agent import WorkflowAgentBindingType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -105,15 +106,6 @@ class AgentConfigDraftType(StrEnum):
     DRAFT = "draft"
     # Per-editor build draft mutated during debug/build mode.
     DEBUG_BUILD = "debug_build"
-
-
-class WorkflowAgentBindingType(StrEnum):
-    """How a workflow node is bound to an Agent."""
-
-    # Node uses a reusable Agent from the workspace roster.
-    ROSTER_AGENT = "roster_agent"
-    # Node owns a workflow-only Agent that is not visible in the roster.
-    INLINE_AGENT = "inline_agent"
 
 
 class AgentWorkingResourceStatus(StrEnum):

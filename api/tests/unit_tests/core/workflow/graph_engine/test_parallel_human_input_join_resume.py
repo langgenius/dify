@@ -13,16 +13,8 @@ from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    HumanInputNodeData,
-    SelectInputConfig,
-    StringListSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.system_variables import build_system_variables
+from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.entities import WorkflowStartReason
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
@@ -42,6 +34,14 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    HumanInputNodeData,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

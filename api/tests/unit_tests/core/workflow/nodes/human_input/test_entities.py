@@ -20,39 +20,20 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    EmailRecipientType,
-    ExternalRecipient,
-    MemberRecipient,
-    WebAppDeliveryMethod,
-    _WebAppDeliveryConfig,
-)
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    StringSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import (
+from core.workflow.system_variables import build_system_variables
+from enums.human_input import (
     ButtonStyle,
+    DeliveryMethodType,
+    EmailRecipientType,
     FormInputType,
     HumanInputFormStatus,
     TimeoutUnit,
     ValueSourceType,
 )
-from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent
@@ -63,6 +44,25 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    StringSource,
+    UserActionConfig,
+)
 from tests.unit_tests.model_factories import make_account, make_tenant
 
 

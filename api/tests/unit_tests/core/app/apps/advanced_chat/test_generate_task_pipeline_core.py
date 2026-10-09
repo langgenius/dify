@@ -51,7 +51,6 @@ from core.app.entities.task_entities import (
     ReasoningChunkStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
@@ -60,6 +59,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
+from models.human_input_entities import UserActionConfig
 from models.model import AppMode, EndUser, Message, MessageFile
 from tests.workflow_test_utils import build_test_variable_pool
 

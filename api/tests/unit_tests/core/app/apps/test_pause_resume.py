@@ -8,7 +8,7 @@ from typing import Any
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-import core.workflow.nodes.human_input.entities  # noqa: F401
+import models.human_input_entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom

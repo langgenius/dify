@@ -12,16 +12,16 @@ from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.workflow.human_input_adapter import (
+from graphon.runtime import VariablePool
+from models.account import Account, TenantAccountJoin
+from models.engine import db
+from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
     MemberRecipient,
 )
-from graphon.runtime import VariablePool
-from models.account import Account, TenantAccountJoin
-from models.engine import db
 from services import human_input_delivery_test_service as service_module
 from services.entities.feature_entities import FeatureModel
 from services.human_input_delivery_test_service import (

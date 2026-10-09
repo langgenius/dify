@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from enums.human_input import RecipientType
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -52,7 +53,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputFormRecipient
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType

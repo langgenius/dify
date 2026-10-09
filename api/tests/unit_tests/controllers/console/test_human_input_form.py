@@ -21,10 +21,10 @@ from controllers.console.human_input_form import (
     _jsonify_form_definition,
 )
 from core.workflow.human_input_policy import HumanInputSurface
+from enums.human_input import RecipientType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from tests.unit_tests.config_override import apply_config_overrides
