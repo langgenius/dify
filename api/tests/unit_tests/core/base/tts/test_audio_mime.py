@@ -113,7 +113,7 @@ def test_exhausting_inspected_stream_closes_source(chunks: list[bytes]) -> None:
 def test_closing_inspected_stream_runs_provider_finally_without_gc() -> None:
     released: list[bool] = []
 
-    def provider() -> Generator[bytes, None, None]:
+    def provider() -> Generator[bytes]:
         try:
             yield b"x" * 32
             yield b"unread"
@@ -136,7 +136,7 @@ def test_provider_error_closes_source_without_being_replaced_by_cleanup_error(
 ) -> None:
     provider_error = RuntimeError("provider interrupted")
 
-    def provider() -> Generator[bytes, None, None]:
+    def provider() -> Generator[bytes]:
         if after_prefix:
             yield b"x" * 32
         raise provider_error

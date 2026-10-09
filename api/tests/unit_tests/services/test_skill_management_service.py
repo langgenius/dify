@@ -101,7 +101,7 @@ class _FakeToolFileManager(ToolFileManager):
 
 
 @pytest.fixture(autouse=True)
-def _tables() -> Generator[None, None, None]:
+def _tables() -> Generator[None]:
     engine = session_factory.get_session_maker().kw["bind"]
     models = (
         Account,

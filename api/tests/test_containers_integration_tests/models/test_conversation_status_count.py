@@ -21,7 +21,7 @@ class TestConversationStatusCount:
     """Integration tests for Conversation.status_count_with_session."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         """Automatically rollback session changes after each test."""
         yield
         db_session_with_containers.rollback()
@@ -266,7 +266,7 @@ class TestSiteGenerateCode:
     """Integration tests for Site.generate_code static method."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         """Automatically rollback session changes after each test."""
         yield
         db_session_with_containers.rollback()

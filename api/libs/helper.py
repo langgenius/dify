@@ -425,7 +425,7 @@ def compact_generate_response(
     else:
         stream_response = response
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             yield from stream_response
 
         return Response(
@@ -437,7 +437,7 @@ def compact_generate_response(
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes] | RateLimitGenerator,
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -485,7 +485,7 @@ def length_prefixed_response(
 
     stream_response = response
 
-    def generate() -> Generator[bytes, None, None]:
+    def generate() -> Generator[bytes]:
         for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))

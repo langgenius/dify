@@ -20,6 +20,7 @@ type AutocompleteActions = BaseAutocomplete.Root.Actions
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
+type AutocompleteOpenChangeEventDetails = BaseAutocomplete.Root.OpenChangeEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
   AutocompleteProps<Items[number]['items'][number]>,
   'items'
@@ -439,6 +440,7 @@ export type {
   AutocompleteItemProps,
   AutocompleteItemTextProps,
   AutocompleteListProps,
+  AutocompleteOpenChangeEventDetails,
   AutocompletePopupProps,
   AutocompletePortalProps,
   AutocompletePositionerProps,

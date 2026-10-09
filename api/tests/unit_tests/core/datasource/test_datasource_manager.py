@@ -74,7 +74,7 @@ def _persist_upload_file(session: Session, *, file_id: str, tenant_id: str) -> U
     return upload_file
 
 
-def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:
+def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage]:
     yield DatasourceMessage(
         type=DatasourceMessage.MessageType.TEXT,
         message=DatasourceMessage.TextMessage(text=text),

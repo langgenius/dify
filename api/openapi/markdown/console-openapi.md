@@ -26588,13 +26588,13 @@ FastOpenAPI proof of concept for Dify API
 ##### [GET] /console/api/setup
 **Get system setup status.
 
-    NOTE: This endpoint is unauthenticated by design.
+NOTE: This endpoint is unauthenticated by design.
 
-    During first-time bootstrap there is no admin account yet, so frontend initialization must be
-    able to query setup progress before any login flow exists.
+During first-time bootstrap there is no admin account yet, so frontend initialization must be
+able to query setup progress before any login flow exists.
 
-    Only bootstrap-safe status information should be returned by this endpoint.
-    **
+Only bootstrap-safe status information should be returned by this endpoint.
+**
 
 ###### Responses
 
@@ -26605,10 +26605,10 @@ FastOpenAPI proof of concept for Dify API
 ##### [POST] /console/api/setup
 **Initialize system setup with admin account.
 
-    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
-    and init-password validation rather than user session authentication.
-    **
+NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
+and init-password validation rather than user session authentication.
+**
 
 ###### Request Body
 
