@@ -18,6 +18,11 @@ class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def app_tenant_id(self, app_id: str) -> str | None:
+        """Read ownership only, allowing the trusted inner API to distinguish 403 from 404."""
+        with self._session_factory() as session:
+            return session.scalar(select(App.tenant_id).where(App.id == app_id))
+
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         with self._session_factory() as session:
             try:

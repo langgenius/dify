@@ -10,10 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.repositories.human_input_repository import (
-    HumanInputFormRecord,
-    HumanInputFormSubmissionRepository,
-)
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType, ValueSourceType
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -22,6 +19,7 @@ from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
+from models.human_input_contracts import HumanInputFormRecordView, HumanInputFormSubmissionStore
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -45,7 +43,7 @@ _MappingSequenceAdapter: TypeAdapter[Sequence[Mapping[str, Any]]] = TypeAdapter(
 
 
 class Form:
-    def __init__(self, record: HumanInputFormRecord):
+    def __init__(self, record: HumanInputFormRecordView):
         self._record = record
 
     def get_definition(self) -> FormDefinition:
@@ -155,7 +153,7 @@ class HumanInputService:
     def __init__(
         self,
         session_factory: sessionmaker[Session] | Engine,
-        form_repository: HumanInputFormSubmissionRepository | None = None,
+        form_repository: HumanInputFormSubmissionStore | None = None,
     ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)

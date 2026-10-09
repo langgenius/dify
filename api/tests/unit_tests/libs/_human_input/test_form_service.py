@@ -6,9 +6,14 @@ from datetime import timedelta
 
 import pytest
 
-from enums.human_input import TimeoutUnit
+from enums.human_input import (
+    TimeoutUnit,
+)
 from libs.datetime_utils import naive_utc_now
-from models.human_input_entities import ParagraphInputConfig, UserActionConfig
+from models.human_input_entities import (
+    ParagraphInputConfig,
+    UserActionConfig,
+)
 
 from .support import (
     FormAlreadySubmittedError,
