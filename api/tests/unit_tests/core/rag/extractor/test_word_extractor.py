@@ -15,6 +15,7 @@ import pytest
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from httpx import Response
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
@@ -85,19 +86,14 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
 
     calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
 
-    class FakeResponse:
-        status_code = 200
-        content = docx_bytes
-
-        def close(self) -> None:
-            calls.append(("close", None))
+    response = Response(200, content=docx_bytes)
 
     def fake_make_request(method: str, url: str, **kwargs):
         assert method == "GET"
         calls.append(("get", (url, kwargs)))
-        return FakeResponse()
+        return response
 
-    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
+    monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
 
     extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
     try:
@@ -111,6 +107,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
         assert extractor.web_path == "https://example.com/test.docx"
         assert extractor.file_path != extractor.web_path
         assert Path(extractor.file_path).read_bytes() == docx_bytes
+        assert response.is_closed
     finally:
         extractor.temp_file.close()
 
@@ -126,7 +123,7 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_sessio
     def save(key: str, data: bytes):
         saves.append((key, data))
 
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=save))
+    monkeypatch.setattr(we.storage, "save", save)
 
     db_stub = SimpleNamespace(session=sqlite_session)
     monkeypatch.setattr(we, "db", db_stub)
