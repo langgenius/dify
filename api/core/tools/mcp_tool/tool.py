@@ -293,7 +293,7 @@ class MCPTool(Tool):
         from sqlalchemy.orm import Session
 
         from extensions.ext_database import db
-        from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
+        from services.tools.mcp_tools_manage_service import MCPToolManageService
 
         # Step 1: Load provider entity and credentials in a short-lived session
         # This minimizes database connection hold time

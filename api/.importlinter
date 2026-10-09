@@ -31,56 +31,9 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
-    core.app.apps.advanced_chat.app_runner -> extensions.workflow_warm_shutdown
-    core.app.apps.workflow.app_runner -> extensions.workflow_warm_shutdown
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
-    core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
-    core.app.apps.advanced_chat.app_generator -> services.conversation_service
-    core.app.apps.advanced_chat.app_generator -> services.errors.conversation
-    core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
-    core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.agent_app.app_generator -> services.agent.composer_service
-    core.app.apps.agent_app.app_generator -> services.agent.workspace_service
-    core.app.apps.agent_app.app_generator -> services.conversation_service
-    core.app.apps.agent_app.app_generator -> services.workflow.execution.adapters.agent_v2.dify_tools_builder
-    core.app.apps.agent_app.runtime_request_builder -> services.agent.prompt_mentions
-    core.app.apps.agent_app.runtime_request_builder -> services.workflow.execution.adapters.agent_v2.dify_tools_builder
-    core.app.apps.agent_app.runtime_request_builder -> services.workflow.execution.adapters.agent_v2.runtime_request_builder
     core.app.apps.agent_app.session_store -> services.agent.workspace_service
-    core.app.apps.agent_chat.app_generator -> services.conversation_service
-    core.app.apps.base_app_generator -> services.workflow_draft_variable_service
-    core.app.apps.chat.app_generator -> services.conversation_service
-    core.app.apps.common.workflow_response_converter -> services.variable_truncator
-    core.app.apps.common.workflow_response_converter -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.completion.app_generator -> services.errors.app
-    core.app.apps.completion.app_generator -> services.errors.message
-    core.app.apps.message_based_app_generator -> services.errors.app_model_config
-    core.app.apps.message_based_app_generator -> services.errors.conversation
-    core.app.apps.message_based_app_generator -> services.errors.message
-    core.app.apps.pipeline.pipeline_generator -> services.rag_pipeline.rag_pipeline_task_proxy
-    core.app.apps.pipeline.pipeline_generator -> services.knowledge.dataset_service
-    core.app.apps.pipeline.pipeline_generator -> services.data_source.provider_service
-    core.app.apps.pipeline.pipeline_generator -> services.feature_service
-    core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
-    core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.workflow.app_generator -> controllers.console.app.workflow
-    core.app.apps.workflow.app_generator -> services.snippet_generate_service
-    core.app.apps.workflow.app_generator -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.events
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.human_input_events
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.llm.quota -> services.credit_pool_service
-    core.app.task_pipeline.message_cycle_manager -> services.annotation_service
-    core.app.workflow.layers.persistence -> services.workflow.inspector_events
-    core.app.workflow.layers.persistence -> services.workflow.execution.adapters.workflow_entry
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services.tools.mcp_tools_manage_service
@@ -99,9 +52,6 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    core.tools.tool_manager -> services.tools.legacy_builtin_tools_manage_service
-    core.tools.tool_manager -> services.tools.legacy_mcp_tools_manage_service
-    core.tools.tool_manager -> services.tools.legacy_tools_transform_service
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
@@ -313,8 +263,8 @@ allow_indirect_imports = True
 name = Pipeline core depends on its document store port
 type = forbidden
 source_modules =
-    core.app.apps.pipeline.pipeline_generator
-    core.app.apps.pipeline.pipeline_runner
+    services.workflow.execution.adapters.pipeline.pipeline_generator
+    services.workflow.execution.adapters.pipeline.pipeline_runner
 forbidden_modules =
     repositories
 allow_indirect_imports = True

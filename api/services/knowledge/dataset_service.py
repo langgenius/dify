@@ -1279,11 +1279,6 @@ class DocumentService:
     }
     DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION = ".zip"
 
-    @staticmethod
-    def get_documents_position(dataset_id: str, session: Session) -> int:
-        """Return the next document position for legacy pipeline execution callers."""
-        return next_document_position(dataset_id, session)
-
     @classmethod
     def normalize_display_status(cls, status: str | None) -> str | None:
         if not status:
