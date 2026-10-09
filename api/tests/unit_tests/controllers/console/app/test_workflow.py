@@ -1014,7 +1014,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
         lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
     )
 
-    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+    from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
     monkeypatch.setattr(
         WorkflowAgentPublishService,

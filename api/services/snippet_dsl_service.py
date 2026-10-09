@@ -19,8 +19,8 @@ from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
+from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import (

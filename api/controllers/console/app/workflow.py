@@ -607,7 +607,7 @@ class DraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         # Return workflow with response-only Agent node job projection so the
         # front-end can treat draft graph node data as the editing source.

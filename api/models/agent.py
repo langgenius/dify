@@ -396,11 +396,18 @@ class AgentConfigRevision(Base):
     )
 
 
+WORKFLOW_EXECUTION_BINDING_VERSION = "execution"
+
+
 class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
     """Binding between one workflow node and one Agent config snapshot.
 
     ``node_job_config`` stores Workflow Node Job JSON only. Agent Soul belongs
     to ``AgentConfigSnapshot.config_snapshot`` and must not be duplicated here.
+
+    Execution-owned snapshots use ``workflow_version="execution"`` and the run
+    ID as ``workflow_id``. They keep the same indexed Agent ownership relation
+    while draft bindings change, and survive until terminal cleanup succeeds.
     """
 
     __tablename__ = "workflow_agent_node_bindings"
