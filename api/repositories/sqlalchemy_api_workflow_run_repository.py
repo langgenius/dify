@@ -22,7 +22,7 @@ Implementation Notes:
 import json
 import logging
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, NamedTuple, cast, override
@@ -46,7 +46,6 @@ from extensions.ext_storage import storage
 from graphon.entities.pause_reason import (
     HitlRequired,
     PauseReasonType,
-    SchedulingPause,
 )
 from graphon.entities.pause_reason import (
     PauseReason as GraphonPauseReason,
@@ -85,9 +84,7 @@ class WorkflowRunMessageRef(NamedTuple):
 
 class WorkflowRunPauseRecord(NamedTuple):
     status: WorkflowExecutionStatus
-    paused_at: datetime | None
-    reasons: tuple[DifyPauseReason, ...]
-    form_tokens: Mapping[str, str]
+    pause: WorkflowPauseEntity | None
 
 
 class _WorkflowRunError(Exception):
@@ -298,6 +295,43 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.id == run_id,
             )
             return session.scalar(stmt)
+
+    @override
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """Lock the scoped run in the caller's transaction."""
+        stmt = (
+            select(WorkflowRun)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id == run_id,
+            )
+            .with_for_update()
+        )
+        return session.scalar(stmt)
+
+    @override
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        run.status = WorkflowExecutionStatus.STOPPED
+        run.error = error
+        run.finished_at = finished_at
+        pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id).with_for_update())
+        if pause is not None and pause.resumed_at is None:
+            pause.resumed_at = finished_at
 
     @override
     def get_workflow_run_by_id_without_tenant(
@@ -1055,35 +1089,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 workflow_run_id=workflow_run.id,
                 state_object_key=state_obj_key,
             )
-            pause_reason_models = []
-            for reason in pause_reasons:
-                match reason:
-                    case HitlRequired():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=PauseReasonType.HITL_REQUIRED,
-                            form_id=default_session_binding.resolve_form_id_from_session_id(
-                                session_id=reason.session_id
-                            ),
-                            node_id=reason.node_id,
-                        )
-                    case HumanInputRequired():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=PauseReasonType.HITL_REQUIRED,
-                            form_id=reason.form_id,
-                            node_id=reason.node_id,
-                        )
-                    case SchedulingPause():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=reason.TYPE,
-                            message=reason.message,
-                        )
-                    case _:
-                        raise AssertionError(f"unknown reason type: {type(reason)}")
-
-                pause_reason_models.append(pause_reason_model)
+            pause_reason_models = [
+                WorkflowPauseReason.from_entity(pause_id=pause_model.id, pause_reason=reason)
+                for reason in pause_reasons
+                if (
+                    isinstance(reason, HumanInputRequired)
+                    and reason.form_version == "1"
+                    or isinstance(reason, HitlRequired)
+                    and default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[0] == "1"
+                )
+            ]
 
             # Update workflow run status
             workflow_run.status = WorkflowExecutionStatus.PAUSED
@@ -1095,21 +1110,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            # NOTE(QuantumGhost): repository callers on the Dify side should only
-            # observe enriched Dify pause reasons. The Graphon-native reason is an
-            # input-only boundary concern while persisting the pause.
-            hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
-            return _PrivateWorkflowPauseEntity(
-                pause_model=pause_model,
-                reason_models=pause_reason_models,
-                pause_reasons=hydrated_pause_reasons,
-            )
-
-    def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
+    @override
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> list[DifyPauseReason]:
         reason_stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_id)
-        pause_reason_models = session.scalars(reason_stmt).all()
-        return pause_reason_models
+        return self._hydrate_pause_reasons(session, session.scalars(reason_stmt).all())
 
     def _hydrate_pause_reasons(
         self,
@@ -1176,17 +1182,34 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model = workflow_run.pause
             if pause_model is None:
                 return None
-            pause_reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
-            pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
 
-        return _PrivateWorkflowPauseEntity(
-            pause_model=pause_model,
-            reason_models=pause_reason_models,
-            pause_reasons=pause_reasons,
+        return _PrivateWorkflowPauseEntity(pause_model=pause_model)
+
+    @override
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool:
+        active_pause = (
+            select(WorkflowPause.id)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id == run_id,
+                WorkflowPause.resumed_at.is_(None),
+            )
+            .exists()
         )
+        return session.scalar(select(active_pause)) is True
 
     def get_pause_record(
         self,
+        session: Session,
         *,
         workspace_id: str,
         workflow_run_id: str,
@@ -1199,33 +1222,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.id == workflow_run_id,
             )
         )
-        with self._session_maker() as session:
-            workflow_run = session.scalar(stmt)
-            if workflow_run is None:
-                return None
-            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
-                return WorkflowRunPauseRecord(
-                    status=workflow_run.status,
-                    paused_at=None,
-                    reasons=(),
-                    form_tokens={},
-                )
+        workflow_run = session.scalar(stmt)
+        if workflow_run is None:
+            return None
+        pause_model = workflow_run.pause if workflow_run.status == WorkflowExecutionStatus.PAUSED else None
+        return WorkflowRunPauseRecord(
+            status=workflow_run.status,
+            pause=_PrivateWorkflowPauseEntity(pause_model=pause_model) if pause_model is not None else None,
+        )
 
-            pause_model = workflow_run.pause
-            if pause_model is None:
-                reasons: tuple[DifyPauseReason, ...] = ()
-            else:
-                reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
-                reasons = tuple(self._hydrate_pause_reasons(session, reason_models))
-            form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
-            form_tokens = load_form_tokens_by_form_id(form_ids, session=session)
-
-            return WorkflowRunPauseRecord(
-                status=workflow_run.status,
-                paused_at=pause_model.created_at if pause_model is not None else None,
-                reasons=reasons,
-                form_tokens=form_tokens,
-            )
+    def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
+        return load_form_tokens_by_form_id(form_ids, session=session)
 
     @override
     def resume_workflow_pause(
@@ -1278,9 +1285,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if pause_model.resumed_at is not None:
                 raise _WorkflowRunError(f"Cannot resume an already resumed pause, pause_id={pause_model.id}")
 
-            pause_reasons = self._get_reasons_by_pause_id(session, pause_model.id)
-            hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reasons)
-
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
             workflow_run.status = WorkflowExecutionStatus.RUNNING
@@ -1290,11 +1294,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Resumed workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity(
-                pause_model=pause_model,
-                reason_models=pause_reasons,
-                pause_reasons=hydrated_pause_reasons,
-            )
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
     @override
     def delete_workflow_pause(
@@ -1655,19 +1655,9 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     the concrete implementation of the WorkflowPauseEntity interface.
     """
 
-    def __init__(
-        self,
-        *,
-        pause_model: WorkflowPause,
-        reason_models: Sequence[WorkflowPauseReason],
-        pause_reasons: Sequence[DifyPauseReason] | None = None,
-        human_input_form: Sequence = (),
-    ) -> None:
+    def __init__(self, *, pause_model: WorkflowPause) -> None:
         self._pause_model = pause_model
-        self._reason_models = reason_models
-        self._pause_reasons = pause_reasons
         self._cached_state: bytes | None = None
-        self._human_input_form = human_input_form
 
     @property
     @override
@@ -1704,12 +1694,6 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     @override
     def resumed_at(self) -> datetime | None:
         return self._pause_model.resumed_at
-
-    @override
-    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
-        if self._pause_reasons is not None:
-            return list(self._pause_reasons)
-        return [_to_dify_pause_reason(reason) for reason in self._reason_models]
 
     @property
     @override

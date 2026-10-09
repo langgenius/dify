@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
+from sqlalchemy.orm import Session, sessionmaker
+
 import contexts
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
@@ -19,6 +21,7 @@ from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
 )
+from services.workflow_pause_service import load_workflow_pause_snapshot
 
 
 class WorkflowRunListArgs(TypedDict, total=False):
@@ -49,9 +52,11 @@ class WorkflowRunService:
         *,
         workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
         node_executions: DifyAPIWorkflowNodeExecutionRepository,
+        session_factory: sessionmaker[Session],
     ) -> None:
         self._workflow_runs = workflow_runs
         self._node_executions = node_executions
+        self._session_factory = session_factory
 
     def get_paginate_advanced_chat_workflow_runs(
         self,
@@ -211,29 +216,45 @@ class WorkflowRunService:
         *,
         workflow_run_id: str,
     ) -> WorkflowRunPauseDetails | None:
-        pause_record = self._workflow_runs.get_pause_record(
-            workspace_id=context.active_workspace_id,
-            workflow_run_id=workflow_run_id,
-        )
+        with self._session_factory() as session:
+            pause_record = self._workflow_runs.get_pause_record(
+                session,
+                workspace_id=context.active_workspace_id,
+                workflow_run_id=workflow_run_id,
+            )
         if pause_record is None:
             return None
-        if pause_record.status != WorkflowExecutionStatus.PAUSED:
+        if pause_record.status != WorkflowExecutionStatus.PAUSED or pause_record.pause is None:
             return WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
 
+        snapshot = load_workflow_pause_snapshot(pause_record.pause, session_factory=self._session_factory)
         human_input_reasons: list[HumanInputRequired] = []
-        for reason in pause_record.reasons:
+        for reason in snapshot.reasons:
             if not isinstance(reason, HumanInputRequired):
                 raise NotImplementedError(f"Pause details do not support {type(reason).__name__}")
             human_input_reasons.append(reason)
 
+        legacy_form_ids = [reason.form_id for reason in human_input_reasons if reason.form_version == "1"]
+        form_tokens: dict[str, str] = {}
+        if legacy_form_ids:
+            with self._session_factory() as session:
+                form_tokens = self._workflow_runs.get_legacy_form_tokens(session, form_ids=legacy_form_ids)
+        form_tokens.update(
+            {
+                form_id: prepared.form_token.get_secret_value()
+                for form_id, prepared in snapshot.v2_forms.items()
+                if prepared.form_token is not None
+            }
+        )
+
         return WorkflowRunPauseDetails(
-            paused_at=pause_record.paused_at,
+            paused_at=pause_record.pause.paused_at,
             paused_nodes=tuple(
                 WorkflowRunPausedNode(
                     node_id=reason.node_id,
                     node_title=reason.node_title,
                     form_id=reason.form_id,
-                    form_token=pause_record.form_tokens.get(reason.form_id),
+                    form_token=form_tokens.get(reason.form_id),
                 )
                 for reason in human_input_reasons
             ),

@@ -33,6 +33,7 @@ class TestWorkflowRunService:
         workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
         return WorkflowRunService(
             workflow_runs=workflow_runs,
+            session_factory=session_factory,
             node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),

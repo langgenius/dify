@@ -342,5 +342,5 @@ def test_human_input_required_response_accepts_current_serialized_payload() -> N
 def test_session_binding_identity_mapping() -> None:
     binding = SessionBinding()
 
-    assert binding.issue_session_id_for_form(form_id="form-1") == "form-1"
-    assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"
+    assert binding.issue_session_id_for_form(node_version="1", form_id="form-1") == "form-1"
+    assert binding.resolve_form_id_from_session_id(session_id="form-1") == ("1", "form-1")

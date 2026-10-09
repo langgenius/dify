@@ -45,6 +45,27 @@ def test_concurrent_creation_reuses_the_committed_form(db_session_with_container
     assert forms[0] == forms[1]
 
 
+def test_waiting_form_discovery_does_not_wait_for_form_locks(db_session_with_containers: Session) -> None:
+    engine = db_session_with_containers.get_bind()
+    tenant_id = TenantId(str(uuid4()))
+    app_id = str(uuid4())
+    params = _params()
+    assert params.workflow_run_id is not None
+    with Session(engine) as session, session.begin():
+        form = SQLAlchemyFormRepository(session, tenant_id, app_id).create_form(params)
+
+    with Session(engine) as blocker, blocker.begin():
+        blocker.scalars(sa.select(HumanInputForm).where(HumanInputForm.id == form.id).with_for_update()).one()
+        with Session(engine) as reader, reader.begin():
+            # Discovery must read committed facts even while a form is locked;
+            # only its eventual state transition needs to wait for that lock.
+            reader.execute(sa.text("SET LOCAL lock_timeout = '1s'"))
+            batch = SQLAlchemyFormRepository(reader, tenant_id, app_id).list_waiting_forms_for_run(
+                params.workflow_run_id
+            )
+            assert batch.forms == (form,)
+
+
 def test_submission_rechecks_facts_and_clock_after_the_lock(db_session_with_containers: Session) -> None:
     engine = db_session_with_containers.get_bind()
     tenant_id = TenantId(str(uuid4()))

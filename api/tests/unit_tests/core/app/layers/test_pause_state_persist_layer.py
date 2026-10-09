@@ -313,7 +313,7 @@ class TestPauseStatePersistenceLayer:
             node_id="node-123",
             node_title="Ask for approval",
         )
-        enrich_mock = Mock(return_value=[enriched_reason])
+        enrich_mock = Mock(return_value=enriched_reason)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
         monkeypatch.setattr(
             pause_layer_module,
@@ -323,7 +323,7 @@ class TestPauseStatePersistenceLayer:
         )
         monkeypatch.setattr(
             pause_layer_module,
-            "enrich_graph_pause_reasons",
+            "resolve_human_input_v1_pause_reason",
             enrich_mock,
             raising=False,
         )
@@ -339,12 +339,13 @@ class TestPauseStatePersistenceLayer:
             node_id="node-123",
             node_title="Ask for approval",
         )
+        layer.on_node_run_start(Mock(id="node-123", node_type="human-input", version=Mock(return_value="1")))
         event = GraphRunPausedEvent(reasons=[raw_reason], outputs={})
 
         layer.on_event(event)
 
         enrich_mock.assert_called_once_with(
-            reasons=[raw_reason],
+            reason=raw_reason,
             form_repository=mock_form_repository,
             variable_pool=graph_runtime_state.variable_pool,
         )

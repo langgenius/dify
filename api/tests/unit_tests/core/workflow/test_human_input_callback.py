@@ -42,11 +42,30 @@ def repository(
     return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
 
 
-def test_session_binding_identity_mapping() -> None:
+@pytest.mark.parametrize(
+    ("node_version", "form_id", "session_id"),
+    [
+        ("1", "form-1", "form-1"),
+        ("2", "form-2", "hitlv2:form-2"),
+    ],
+)
+def test_session_binding_preserves_form_version(node_version: str, form_id: str, session_id: str) -> None:
     binding = SessionBinding()
 
-    assert binding.issue_session_id_for_form(form_id="form-1") == "form-1"
-    assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"
+    assert binding.issue_session_id_for_form(node_version, form_id) == session_id
+    assert binding.resolve_form_id_from_session_id(session_id) == (node_version, form_id)
+
+
+def test_session_binding_reads_existing_v1_identifiers() -> None:
+    assert SessionBinding().resolve_form_id_from_session_id("00000000-0000-0000-0000-000000000001") == (
+        "1",
+        "00000000-0000-0000-0000-000000000001",
+    )
+
+
+def test_session_binding_rejects_unsupported_node_versions() -> None:
+    with pytest.raises(ValueError, match="Unsupported Human Input node version"):
+        SessionBinding().issue_session_id_for_form("3", "form-3")
 
 
 def test_dify_hitl_callback_creates_pause_requested_for_new_form(

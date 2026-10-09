@@ -147,6 +147,37 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """Read and lock a run in the complete tenant/app scope.
+
+        The caller owns the Session and transaction. The lock remains held
+        until that transaction ends, allowing related writes to share it.
+        Return None when the run does not exist in the requested scope.
+        """
+        ...
+
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        """Persist STOPPED and invalidate the run's active pause together.
+
+        The caller owns the transaction, has locked the owner-scoped run in
+        this Session, and has decided that execution must stop.
+        """
+        ...
+
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
@@ -543,6 +574,29 @@ class APIWorkflowRunRepository(Protocol):
         """Retrieve the current pause for a workflow execution.
 
         If there is no current pause, this method would return `None`.
+        """
+        ...
+
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool:
+        """Check for an unresumed pause in the complete tenant/app scope.
+
+        Use the caller's Session without managing its transaction. Callers
+        coordinating writes must lock the run first in the same transaction.
+        """
+        ...
+
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> Sequence[DifyPauseReason]:
+        """Load V1 presentation for an already-authorized pause using the caller's Session.
+
+        Only call when the checkpoint contains V1 references. This method does
+        not create a Session or manage its transaction.
         """
         ...
 

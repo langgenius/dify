@@ -2,10 +2,13 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
+from kombu.exceptions import OperationalError as BrokerOperationalError
 from sqlalchemy import or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.db.session_factory import session_factory as v2_session_factory
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
@@ -14,9 +17,39 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowPause, WorkflowRun
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormExpirationRepository
 from services.human_input_service import HumanInputService
+from services.human_input_v2.form_service import FormExecutionContext, HumanInputFormService
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(name="human_input_v2_form_timeout.check_and_resume", queue="schedule_executor")
+def check_and_handle_human_input_v2_timeouts(limit: int = 100) -> None:
+    """Handle at most limit candidate runs, considering every waiting form per run."""
+    now = naive_utc_now()
+    with v2_session_factory.create_session() as session:
+        runs = SQLAlchemyFormExpirationRepository(session).list_expired_runs(now=now, limit=limit)
+
+    for run in runs:
+        context = FormExecutionContext(
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            workflow_run_id=run.workflow_run_id,
+            global_timeout_deadline=run.global_timeout_deadline,
+            initiator=None,
+            debugging_account_id=None,
+        )
+        service = HumanInputFormService(session_factory=v2_session_factory.get_session_maker(), context=context)
+        try:
+            service.handle_timeouts()
+        except (SQLAlchemyError, BrokerOperationalError):
+            logger.exception(
+                "Failed to handle v2 timeouts: tenant_id=%s app_id=%s workflow_run_id=%s",
+                run.tenant_id,
+                run.app_id,
+                run.workflow_run_id,
+            )
 
 
 def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, *, now) -> bool:

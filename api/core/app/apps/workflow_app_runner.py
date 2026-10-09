@@ -44,8 +44,11 @@ from core.workflow.node_factory import (
     resolve_workflow_node_class,
 )
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.boundary import resolve_human_input_v1_pause_reason
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
+from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
+from core.workflow.nodes.human_input_v2.presentation import resolve_human_input_v2_pause_reason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -171,6 +174,8 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        # Maps form IDs to node-provided PreparedForm snapshots for the pending workflow pause.
+        self._human_input_v2_forms: dict[str, PreparedForm] = {}
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -490,22 +495,47 @@ class WorkflowBasedAppRunner:
                         reason=event.reason or "Workflow execution aborted",
                     )
                 )
+            case NodeRunHumanInputV2FormRequiredEvent():
+                self._human_input_v2_forms[event.prepared_form.form.id] = event.prepared_form
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = list(
                     dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
                 )
-                enriched_reasons = enrich_graph_pause_reasons(
-                    reasons=event.reasons,
-                    form_repository=HumanInputFormSubmissionRepository(),
-                    variable_pool=runtime_state.variable_pool,
-                )
-                self._enqueue_human_input_notifications(enriched_reasons)
+                forms: dict[str, PreparedForm] = {}
+                reasons: list[PauseReason] = []
+                v1_reasons: list[HumanInputRequired] = []
+                for reason in event.reasons:
+                    if not isinstance(reason, HitlRequired):
+                        reasons.append(reason)
+                        continue
+                    node = workflow_entry.graph_engine.graph.nodes[reason.node_id]
+                    # Other HITL producers (for example Agent nodes) still use v1 forms.
+                    form_version = node.version() if node.node_type == BuiltinNodeTypes.HUMAN_INPUT else "1"
+                    match form_version:
+                        case "1":
+                            resolved = resolve_human_input_v1_pause_reason(
+                                reason=reason,
+                                form_repository=HumanInputFormSubmissionRepository(),
+                                variable_pool=runtime_state.variable_pool,
+                            )
+                            v1_reasons.append(resolved)
+                        case "2":
+                            resolved = resolve_human_input_v2_pause_reason(
+                                reason=reason, forms=self._human_input_v2_forms
+                            )
+                            forms[resolved.form_id] = self._human_input_v2_forms[resolved.form_id]
+                        case _:
+                            raise ValueError(f"Unsupported Human Input form version: {form_version}")
+                    reasons.append(resolved)
+                # TODO(QuantumGhost): the notification enqueue logic should be moved to the node.
+                self._enqueue_human_input_v1_notifications(v1_reasons)
                 self._publish_event(
                     QueueWorkflowPausedEvent(
-                        reasons=enriched_reasons,
+                        reasons=reasons,
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
+                        human_input_v2_forms=forms,
                     )
                 )
             case NodeRunHumanInputFormFilledEvent():
@@ -780,10 +810,8 @@ class WorkflowBasedAppRunner:
                     )
                 )
 
-    def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
+    def _enqueue_human_input_v1_notifications(self, reasons: Sequence[HumanInputRequired]) -> None:
         for reason in reasons:
-            if not isinstance(reason, HumanInputRequired):
-                continue
             if not reason.form_id:
                 continue
             try:

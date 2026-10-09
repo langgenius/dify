@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from graphon.entities import WorkflowStartReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -588,3 +589,6 @@ class QueueWorkflowPausedEvent(AppQueueEvent):
     reasons: Sequence[PauseReason] = Field(default_factory=list)
     outputs: Mapping[str, object] = Field(default_factory=dict)
     paused_nodes: Sequence[str] = Field(default_factory=list)
+    # Live node snapshots consumed by Dify's response converter, never included
+    # in the public pause reason or the persisted graph resumption state.
+    human_input_v2_forms: Mapping[str, PreparedForm] = Field(default_factory=dict, repr=False)

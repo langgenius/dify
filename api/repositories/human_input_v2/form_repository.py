@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -63,6 +63,24 @@ class FormCreateParams:
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
 
 
+@dataclass(frozen=True, slots=True)
+class FormExpirationRun:
+    """Owner-scoped candidate with the earliest waiting form global deadline."""
+
+    tenant_id: TenantId
+    app_id: str
+    workflow_run_id: str
+    global_timeout_deadline: NaiveDatetime
+
+
+@dataclass(frozen=True, slots=True)
+class FormExpirationBatch:
+    """All waiting runtime forms in a locked run and the persistence clock."""
+
+    forms: tuple[Form, ...]
+    now: NaiveDatetime
+
+
 class FormSubmissionFailure(StrEnum):
     """Expected rejection reasons that require distinct caller handling."""
 
@@ -92,6 +110,14 @@ class FormRepository(Protocol):
 
     def get_form_by_id(self, form_id: str) -> Form | None:
         """Read a runtime or delivery-test form; missing or out of scope returns None."""
+        ...
+
+    def get_forms_by_ids(self, *, workflow_run_id: str, form_ids: Sequence[str]) -> tuple[Form, ...]:
+        """Read requested forms belonging to one run within the bound tenant and app.
+
+        Omit missing or out-of-scope IDs and return each matching form once.
+        Empty IDs return an empty tuple. Result order is unspecified.
+        """
         ...
 
     def create_form(self, params: FormCreateParams) -> Form:
@@ -146,13 +172,31 @@ class FormRepository(Protocol):
         ...
 
     def expire_form(self, form_id: str) -> Form | None:
-        """Atomically settle a WAITING form whose deadline has been reached.
+        """Set a WAITING form to EXPIRED when its global deadline is reached.
 
-        Set EXPIRED if the global deadline is reached, otherwise TIMEOUT if the
-        form deadline is reached, using persistence time after acquiring the
-        form lock. Preserve terminal states and forms that are not yet due.
-        Return the current form, or None if missing/out of scope. The caller
-        coordinates the corresponding workflow outcome in the same transaction;
-        this method neither reads nor terminates a workflow run.
+        Use persistence time after acquiring the form lock. Preserve terminal
+        states and forms whose global deadline is still in the future. Return
+        the current form, or None if missing/out of scope. The caller terminates
+        the workflow in the same transaction.
+        """
+        ...
+
+    def list_waiting_forms_for_run(self, workflow_run_id: str) -> FormExpirationBatch:
+        """Read all WAITING runtime forms in this run without locking form rows.
+
+        Scope reads to the bound owner and sample persistence time after the
+        read. The caller must first lock the run to serialize with submission.
+        Only subsequent state transitions lock individual forms. No pagination
+        may truncate the run's global-expiration decision.
+        """
+        ...
+
+    def timeout_form(self, form_id: str) -> Form | None:
+        """Set a WAITING form to TIMEOUT when only its node deadline is reached.
+
+        Use persistence time after acquiring the form lock. Preserve terminal
+        states. If the global deadline is reached, leave the form WAITING for
+        global expiration handling. Return the current form, or None if missing
+        or out of scope. The caller requests resume after committing.
         """
         ...

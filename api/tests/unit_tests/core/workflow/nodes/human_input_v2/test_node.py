@@ -35,6 +35,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     Initiator,
     MessageTemplateConfig,
 )
+from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
 from graphon.entities import GraphInitParams, WorkflowStartReason
@@ -130,6 +131,35 @@ def submit(form: Form) -> Form:
     )
 
 
+@pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
+def test_v1_event_filter_preserves_v2_completion_without_duplicate_events(form, status):
+    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+    from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
+    from graphon.filters import GraphEventFilterContext, filter_graph_events
+    from graphon.graph import Graph
+    from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper
+
+    form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
+    node, _ = build_node(form)
+    events = list(
+        filter_graph_events(
+            node.run(),
+            context=GraphEventFilterContext(
+                graph=Graph(root_node=node),
+                runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+            ),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+    completion_type = (
+        NodeRunHumanInputFormFilledEvent
+        if status == HumanInputFormStatus.SUBMITTED
+        else NodeRunHumanInputFormTimeoutEvent
+    )
+    assert [type(event) for event in events] == [NodeRunStartedEvent, completion_type, NodeRunSucceededEvent]
+
+
 def test_submitted_emits_filled_before_completion_from_frozen_values(form):
     form = submit(form)
     node, runtime = build_node(form)
@@ -155,9 +185,20 @@ def test_submitted_emits_filled_before_completion_from_frozen_values(form):
 def test_waiting_does_not_infer_timeout_from_clock(form):
     node, _ = build_node(form, initiator=True, token="initiator-token")
     events = list(node.run())
-    assert [type(event) for event in events] == [NodeRunStartedEvent, NodeRunPauseRequestedEvent]
-    assert events[1].reason.session_id == "form-1"
-    assert events[1].reason.node_title == "Frozen title"
+    assert [type(event) for event in events] == [
+        NodeRunStartedEvent,
+        NodeRunHumanInputV2FormRequiredEvent,
+        NodeRunPauseRequestedEvent,
+    ]
+    required = events[1]
+    assert isinstance(required, NodeRunHumanInputV2FormRequiredEvent)
+    assert required.prepared_form.form == form
+    assert required.prepared_form.form_token.get_secret_value() == "initiator-token"
+    assert required.id == "execution-1"
+    assert required.node_id == "node-1"
+    assert required.node_version == "2"
+    assert events[2].reason.session_id == "hitlv2:form-1"
+    assert events[2].reason.node_title == "Frozen title"
 
 
 def test_waiting_reason_obeys_the_graphon_wire_contract(form):
@@ -167,10 +208,256 @@ def test_waiting_reason_obeys_the_graphon_wire_contract(form):
     restored = TypeAdapter(PauseReason).validate_json(pause.reason.model_dump_json())
     assert restored.model_dump(mode="json") == {
         "TYPE": "hitl_required",
-        "session_id": "form-1",
+        "session_id": "hitlv2:form-1",
         "node_id": "node-1",
         "node_title": "Frozen title",
     }
+
+
+@pytest.mark.parametrize("token", ["initiator-token", None])
+@pytest.mark.parametrize("session_id", ["hitlv2:form-1", "engine-session"])
+def test_waiting_form_crosses_engine_persistence_and_live_response_without_reloading(
+    form, token, session_id, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from sqlalchemy.orm import sessionmaker
+
+    from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+    from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
+    from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
+    from core.db.session_factory import session_factory
+    from core.workflow.nodes.human_input.session_binding import default_session_binding
+    from core.workflow.system_variables import SystemVariableKey, system_variable_selector
+    from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
+    from graphon.graph import Graph
+    from graphon.graph_engine import GraphEngine
+    from graphon.graph_engine.command_channels import InMemoryChannel
+    from graphon.graph_events import GraphRunPausedEvent
+    from graphon.nodes.start import StartNode
+    from graphon.nodes.start.entities import StartNodeData
+    from repositories.factory import DifyAPIRepositoryFactory
+    from tests.unit_tests.core.app.layers.test_pause_state_persist_layer import TestPauseStatePersistenceLayer
+
+    session_ids = {form.id: session_id}
+    form_ids = {session_id: form.id}
+
+    def issue_session_id(*, node_version, form_id):
+        assert node_version == "2"
+        return session_ids[form_id]
+
+    monkeypatch.setattr(default_session_binding, "issue_session_id_for_form", issue_session_id)
+    monkeypatch.setattr(
+        default_session_binding, "resolve_form_id_from_session_id", lambda *, session_id: ("2", form_ids[session_id])
+    )
+    node, _ = build_node(form, initiator=token is not None, token=token)
+    state = node.graph_runtime_state
+    state.variable_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "run-1")
+    queue = MagicMock()
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app-1")
+    legacy_repository = MagicMock()
+    legacy_repository.get_by_form_id.side_effect = AssertionError("V2 must not use V1 enrichment")
+    for module in ("core.app.apps.workflow_app_runner", "core.app.layers.pause_state_persist_layer"):
+        monkeypatch.setattr(f"{module}.HumanInputFormSubmissionRepository", lambda: legacy_repository)
+    monkeypatch.setattr(
+        session_factory, "create_session", MagicMock(side_effect=AssertionError("Unexpected form reload"))
+    )
+    repository = MagicMock()
+    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository)
+    notifications = MagicMock()
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", notifications)
+    response_filter = ResponseStreamFilter()
+    layer = PauseStatePersistenceLayer(
+        session_factory=sessionmaker(),
+        generate_entity=TestPauseStatePersistenceLayer._create_generate_entity("run-1"),
+        state_owner_user_id="account",
+        response_stream_filter=response_filter,
+    )
+    start = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        graph_init_params=GraphInitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0),
+        graph_runtime_state=state,
+    )
+    engine = GraphEngine(
+        workflow_id="workflow",
+        graph=Graph.new().add_root(start).add_node(node, from_node_id="start").build(),
+        graph_runtime_state=state,
+        command_channel=InMemoryChannel(),
+    ).layer(layer)
+    for event in filter_graph_events(
+        engine.run(), context=GraphEventFilterContext.from_engine(engine), filters=[response_filter]
+    ):
+        runner._handle_event(SimpleNamespace(graph_engine=engine), event)
+
+    assert isinstance(event, GraphRunPausedEvent)
+    assert event.reasons[0].session_id == session_id
+    paused = next(
+        call.args[0] for call in queue.publish.call_args_list if isinstance(call.args[0], QueueWorkflowPausedEvent)
+    )
+    stored_reasons = repository.create_workflow_pause.call_args.kwargs["pause_reasons"]
+    assert stored_reasons == []
+    from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+
+    checkpoint = WorkflowResumptionContext.loads(repository.create_workflow_pause.call_args.kwargs["state"])
+    restored_state = GraphRuntimeState.from_snapshot(checkpoint.serialized_graph_runtime_state)
+    assert restored_state.graph_execution.pause_reasons[0].session_id == session_id
+    if token is not None:
+        assert token not in repository.create_workflow_pause.call_args.kwargs["state"]
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task-1", workflow_run_id="run-1", workflow_id="workflow", reason=WorkflowStartReason.INITIAL
+    )
+    responses = converter.workflow_pause_to_stream_response(event=paused, task_id="task-1", graph_runtime_state=state)
+    assert [type(response) for response in responses] == [HumanInputRequiredResponse, WorkflowPauseStreamResponse]
+    data = responses[0].data.model_dump(mode="json")
+    assert data["form_id"] == form.id
+    assert data["form_content"] == form.resolved_form.legacy_form_content
+    assert data["form_token"] == token
+    assert data["display_in_ui"] == (token is not None)
+    assert {"version", "form_version"}.isdisjoint(data)
+    assert responses[1].data.reasons[0]["form_token"] == token
+    notifications.apply_async.assert_not_called()
+
+
+def test_mixed_pause_keeps_each_v2_execution_and_delivers_only_the_legacy_form(form, monkeypatch):
+    from types import SimpleNamespace
+
+    from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+    from core.workflow.nodes.human_input.entities import FormDefinition
+    from graphon.entities.pause_reason import HitlRequired
+    from graphon.graph_events import GraphRunPausedEvent
+
+    queue = MagicMock()
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app-1")
+    node, _ = build_node(form)
+    entry = SimpleNamespace(
+        graph_engine=SimpleNamespace(
+            graph=SimpleNamespace(
+                nodes={
+                    "node-1": node,
+                    "legacy-node": SimpleNamespace(node_type="human-input", version=lambda: "1"),
+                }
+            ),
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=VariablePool(),
+                start_at=0,
+            ),
+        )
+    )
+    legacy_record = SimpleNamespace(
+        form_id="legacy-form",
+        node_id="legacy-node",
+        rendered_content="Legacy content",
+        definition=FormDefinition(
+            form_content="Legacy content", rendered_content="Legacy content", expiration_time=datetime(2099, 1, 1)
+        ),
+    )
+    legacy_repository = MagicMock()
+
+    def read_legacy(form_id):
+        assert form_id == "legacy-form", "V2 forms must not enter the legacy repository"
+        return legacy_record
+
+    legacy_repository.get_by_form_id.side_effect = read_legacy
+    monkeypatch.setattr(
+        "core.app.apps.workflow_app_runner.HumanInputFormSubmissionRepository", lambda: legacy_repository
+    )
+    notifications = MagicMock()
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", notifications)
+    second = replace(form, id="second-form", node_execution_id="second-execution")
+    for snapshot in (form, second):
+        runner._handle_event(
+            entry,
+            NodeRunHumanInputV2FormRequiredEvent(
+                id=snapshot.node_execution_id,
+                node_id="node-1",
+                node_type="human-input",
+                node_version="2",
+                prepared_form=PreparedForm(snapshot, None),
+            ),
+        )
+    reasons = [
+        HitlRequired(session_id="legacy-form", node_id="legacy-node", node_title="Legacy"),
+        HitlRequired(session_id=f"hitlv2:{form.id}", node_id="node-1", node_title="First"),
+        HitlRequired(session_id=f"hitlv2:{second.id}", node_id="node-1", node_title="Second"),
+    ]
+    runner._handle_event(entry, GraphRunPausedEvent(reasons=reasons, outputs={}))
+    paused = queue.publish.call_args.args[0]
+    assert isinstance(paused, QueueWorkflowPausedEvent)
+    assert [reason.form_id for reason in paused.reasons] == ["legacy-form", form.id, second.id]
+    assert set(paused.human_input_v2_forms) == {form.id, second.id}
+    notifications.apply_async.assert_called_once_with(
+        kwargs={"form_id": "legacy-form", "node_title": "Legacy"},
+        queue="mail",
+    )
+
+
+def test_v2_missing_snapshot_is_not_resolved_by_the_legacy_repository(form, monkeypatch):
+    from types import SimpleNamespace
+
+    from graphon.entities.pause_reason import HitlRequired
+    from graphon.graph_events import GraphRunPausedEvent
+
+    node, _ = build_node(form)
+    entry = SimpleNamespace(
+        graph_engine=SimpleNamespace(
+            graph=SimpleNamespace(nodes={node.id: node}),
+            graph_runtime_state=node.graph_runtime_state,
+        )
+    )
+    legacy_repository = MagicMock()
+    legacy_repository.get_by_form_id.side_effect = AssertionError("V2 must not fall back to the legacy repository")
+    monkeypatch.setattr(
+        "core.app.apps.workflow_app_runner.HumanInputFormSubmissionRepository", lambda: legacy_repository
+    )
+    runner = WorkflowBasedAppRunner(queue_manager=MagicMock(), app_id="app-1")
+    with pytest.raises(ValueError, match="snapshot"):
+        runner._handle_event(
+            entry,
+            GraphRunPausedEvent(
+                reasons=[
+                    HitlRequired(session_id=f"hitlv2:{form.id}", node_id=node.id, node_title="Approval"),
+                ],
+                outputs={},
+            ),
+        )
+
+
+def test_v2_pause_persistence_uses_graph_state_without_the_node_snapshot(form, monkeypatch):
+    from sqlalchemy.orm import sessionmaker
+
+    from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer, WorkflowResumptionContext
+    from graphon.entities.pause_reason import HitlRequired
+    from graphon.graph_events import GraphRunPausedEvent
+    from repositories.factory import DifyAPIRepositoryFactory
+    from tests.unit_tests.core.app.layers.test_pause_state_persist_layer import (
+        MockCommandChannel,
+        TestPauseStatePersistenceLayer,
+        _create_initialized_response_stream_filter,
+    )
+
+    repository = MagicMock()
+    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository)
+    layer = PauseStatePersistenceLayer(
+        session_factory=sessionmaker(),
+        generate_entity=TestPauseStatePersistenceLayer._create_generate_entity("run-1"),
+        state_owner_user_id="account",
+        response_stream_filter=_create_initialized_response_stream_filter(),
+    )
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    from core.workflow.system_variables import SystemVariableKey, system_variable_selector
+
+    state.variable_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "run-1")
+    reason = HitlRequired(session_id=f"hitlv2:{form.id}", node_id="approval", node_title="Approval")
+    state.graph_execution.pause(reason)
+    layer.initialize(state, MockCommandChannel())
+    layer.on_event(GraphRunPausedEvent(reasons=[reason], outputs={}))
+    saved = repository.create_workflow_pause.call_args.kwargs
+    assert saved["pause_reasons"] == []
+    context = WorkflowResumptionContext.loads(saved["state"])
+    restored = GraphRuntimeState.from_snapshot(context.serialized_graph_runtime_state)
+    assert restored.graph_execution.pause_reasons == [reason]
 
 
 def test_persisted_timeout_emits_timeout_before_timeout_branch(form):
@@ -243,15 +530,34 @@ def test_actual_graph_queue_response_path_preserves_order_and_fields(form, statu
 @pytest.mark.parametrize("token", ["initiator-token", None])
 def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(form, token):
     from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+    from core.app.entities.task_entities import HumanInputRequiredPauseReasonPayload
 
     prepared = PreparedForm(form, SecretStr(token) if token else None)
     with patch(
         "core.app.apps.common.workflow_response_converter.Session", side_effect=AssertionError("unexpected lookup")
     ):
-        data = WorkflowResponseConverter._human_input_v2_required_data(prepared, node_id="node-1")
+        data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")
     assert data.form_token == token
     assert data.form_content == form.resolved_form.legacy_form_content
     assert data.resolved_default_values == {"answer": "original"}
+    wire_fields = {
+        "form_id",
+        "node_id",
+        "node_title",
+        "form_content",
+        "inputs",
+        "actions",
+        "display_in_ui",
+        "form_token",
+        "approval_channels",
+        "resolved_default_values",
+        "expiration_time",
+    }
+    assert set(data.model_dump(mode="json")) == wire_fields
+    assert set(HumanInputRequiredPauseReasonPayload.from_response_data(data).model_dump(mode="json")) == {
+        "TYPE",
+        *wire_fields,
+    }
 
 
 def test_file_segments_survive_node_graph_queue_and_response(form):
@@ -315,7 +621,7 @@ def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form):
     option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), default_value="old-b")
     form = replace(form, resolved_form=form.resolved_form.model_copy(update={"parts": (option, option)}))
     prepared = PreparedForm(form, SecretStr("secret-token"))
-    data = WorkflowResponseConverter._human_input_v2_required_data(prepared, node_id="node-1")
+    data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")
     assert len(data.inputs) == 1
     assert isinstance(data.inputs[0], SelectInputConfig)
     assert data.inputs[0].option_source.value == ["old-a", "old-b"]

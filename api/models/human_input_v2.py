@@ -14,6 +14,18 @@ from enum import StrEnum
 from typing import Annotated, Literal
 
 import sqlalchemy as sa
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    NaiveDatetime,
+    RootModel,
+    TypeAdapter,
+)
+from sqlalchemy import orm
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from core.human_input_v2.entities import (
     EmailProviderType as _EmailProviderType,
 )
@@ -47,17 +59,9 @@ from core.workflow.nodes.human_input.enums import (
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    JsonValue,
-    NaiveDatetime,
-    RootModel,
-    TypeAdapter,
-)
 from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
 from repositories.human_input_v2.delivery_repository import (
+    DeliveryTargetType,
     EmailTargetSnapshot,
     IMUserTargetSnapshot,
     InitiatorSnapshot,
@@ -65,8 +69,6 @@ from repositories.human_input_v2.delivery_repository import (
     TargetSnapshot,
 )
 from repositories.human_input_v2.im_channel_repository import IMChannelStatus
-from sqlalchemy import orm
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
@@ -1208,6 +1210,8 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
         ),
         # Equality predicates precede the ID cursor used by expiration scans.
         sa.Index("hitlv2_forms_expiration_scan_idx", "tenant_id", "app_id", "form_kind", "status", "id"),
+        sa.Index("hitlv2_forms_node_deadline_idx", "form_kind", "status", "expiration_time", "id"),
+        sa.Index("hitlv2_forms_global_deadline_idx", "form_kind", "status", "global_timeout_deadline", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1329,6 +1333,10 @@ _TARGET_SNAPSHOT_ADAPTER: TypeAdapter[TargetSnapshot] = TypeAdapter(TargetSnapsh
 
 class HumanInputDelivery(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "hitlv2_deliveries"
+    __table_args__ = (
+        sa.Index("hitlv2_deliveries_token_idx", "token_hash"),
+        sa.Index("hitlv2_deliveries_form_target_idx", "form_id", "target_type"),
+    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1340,6 +1348,7 @@ class HumanInputDelivery(DefaultFieldsDCMixin, TypeBase):
         EnumText(SubmissionAuthType),
         nullable=False,
     )
+    target_type: Mapped[DeliveryTargetType] = mapped_column(EnumText(DeliveryTargetType), nullable=False)
     target_snapshot: Mapped[TargetSnapshot] = mapped_column(
         FrozenPydanticModelColumn(
             _TARGET_SNAPSHOT_ADAPTER,

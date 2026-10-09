@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,6 +25,11 @@ class _DummyRuntimeState:
 class _DummyGraphEngine:
     def __init__(self):
         self.graph_runtime_state = _DummyRuntimeState()
+        self.graph = SimpleNamespace(
+            nodes={
+                "node-1": SimpleNamespace(node_type="human-input", version=lambda: "1"),
+            }
+        )
 
 
 class _DummyWorkflowEntry:
@@ -31,10 +37,14 @@ class _DummyWorkflowEntry:
         self.graph_engine = _DummyGraphEngine()
 
 
-def test_handle_pause_event_enqueues_form_delivery_task(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(("node_type", "node_version"), [("human-input", "1"), ("agent", "2")])
+def test_handle_pause_event_enqueues_form_delivery_task(monkeypatch: pytest.MonkeyPatch, node_type, node_version):
     queue_manager = _DummyQueueManager()
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
     workflow_entry = _DummyWorkflowEntry()
+    workflow_entry.graph_engine.graph.nodes["node-1"] = SimpleNamespace(
+        node_type=node_type, version=lambda: node_version
+    )
 
     graph_reason = HitlRequired(session_id="form-123", node_id="node-1", node_title="Review")
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={})
@@ -49,8 +59,8 @@ def test_handle_pause_event_enqueues_form_delivery_task(monkeypatch: pytest.Monk
         node_title="Review",
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
-        lambda **_: [enriched_reason],
+        "core.app.apps.workflow_app_runner.resolve_human_input_v1_pause_reason",
+        lambda **_: enriched_reason,
     )
     monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", form_delivery_task)
 

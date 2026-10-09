@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from typing import override
 
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
-from core.workflow.nodes.human_input_v2.runtime import HumanInputRuntime, PreparedForm
+from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
 
 from .delivery_service import HumanInputDeliveryService
 from .form_service import HumanInputFormService
+
+logger = logging.getLogger(__name__)
 
 
 class DifyHumanInputRuntime(HumanInputRuntime):
@@ -37,34 +41,47 @@ class DifyHumanInputRuntime(HumanInputRuntime):
         node_data: HumanInputNodeData,
         variable_pool: ReadOnlyVariablePool,
     ) -> PreparedForm:
-        """Run the initial delivery round only for this call's CreatedForm result.
+        """Send notifications on first initialization, then prepare to pause.
 
-        Call form_service.prepare_form once. Return a reused PreparedForm
-        immediately; do not check existence separately or infer initialization
-        ownership from the number of recipients.
+        Existing forms are read without repeating notifications, including when
+        initialization or delivery was interrupted. Reentry only recovers the
+        persisted form and its existing Current Initiator entry.
 
-        For CreatedForm, initialization has already committed. Invoke
-        delivery_service.deliver once for each persisted recipient, passing the
-        detached Form, Recipient, and frozen message template. Do not compare
-        recipients' endpoints, select card/link mode, create deliveries, or
-        generate tokens here. DeliveryService owns these operations and returns
-        committed attempts plus a nullable Current Initiator token. Aggregate
-        results across recipients; a partial failure remains a warning.
-
-        After sending, call form_service.get_form for the same node execution:
-        an earlier delivery may already have produced an accepted submission.
-        Honor the persisted terminal outcome before interpreting skipped sends
-        as all-delivery failure. Otherwise, no successful notification and no
-        usable initiator surface raises HumanInputDeliveryError for Node.
-        Failure does not roll back initialization or completed external sends.
-        Do not add a new Form status for delivery failure.
-
-        Return PreparedForm with the refreshed Form and the nullable initiator
-        token from delivery results. Never substitute an Email or IM recipient's
-        token. Recipient merging is complete before this runtime starts delivery.
-
-        TODO: Specify recovery for a crash after initialization commits but
-        before sends finish. Ordinary existing-form reentry must not resend;
-        cross-service calls do not provide a distributed transaction.
+        Only Current Initiator deliveries provide a stream token. Submission
+        requires a persisted workflow pause, so the initial delivery round does
+        not refresh the form before requesting that pause.
+        Partial failure does not discard successful deliveries; total failure
+        still fails the node without rolling back external sends.
         """
-        raise NotImplementedError
+        initialization = self._form_service.prepare_form(
+            node_execution_id=node_execution_id,
+            node_data=node_data,
+            variable_pool=variable_pool,
+        )
+        if isinstance(initialization, PreparedForm):
+            return initialization
+        has_successful_delivery = False
+        form_token = None
+        for recipient in initialization.recipients:
+            result = self._delivery_service.deliver(
+                form=initialization.form,
+                recipient=recipient,
+                message_template=initialization.message_template,
+                debug_channels=initialization.debug_channels,
+            )
+            if result.form_token is not None:
+                form_token = result.form_token
+            for attempt in result.attempts:
+                if attempt.status == DeliveryStatus.SUCCEEDED:
+                    has_successful_delivery = True
+                else:
+                    logger.warning(
+                        "Human Input delivery failed: form_id=%s recipient_id=%s delivery_id=%s attempt_id=%s",
+                        initialization.form.id,
+                        recipient.id,
+                        attempt.delivery_id,
+                        attempt.id,
+                    )
+        if not has_successful_delivery and form_token is None:
+            raise HumanInputDeliveryError("No one can approve this step.")
+        return PreparedForm(form=initialization.form, form_token=form_token)

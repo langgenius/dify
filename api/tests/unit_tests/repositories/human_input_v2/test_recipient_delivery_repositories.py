@@ -40,6 +40,7 @@ from repositories.human_input_v2.delivery_attempt_repository import DeliveryAtte
 from repositories.human_input_v2.delivery_repository import (
     DeliveryCreateParams,
     EmailTargetSnapshot,
+    IMMessageType,
     IMUserTargetSnapshot,
     InitiatorSnapshot,
     SubmissionAuthType,
@@ -60,6 +61,44 @@ _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _FORM = "00000000-0000-0000-0000-000000000002"
 _CONTACT = ContactId("00000000-0000-0000-0000-000000000003")
 _HASH = "a" * 64
+
+
+@pytest.mark.parametrize("message_type", ["card", "link"])
+def test_im_snapshot_preserves_the_chosen_message_type(message_type: str) -> None:
+    snapshot = IMUserTargetSnapshot.model_validate(
+        {
+            "im_provider": IMProvider.SLACK,
+            "im_tenant_id": "team",
+            "im_provider_user_id": "user",
+            "message_type": message_type,
+        }
+    )
+    assert snapshot.model_dump(mode="json")["message_type"] == message_type
+
+
+@pytest.mark.parametrize("message_fields", [{}, {"message_type": None}])
+def test_im_snapshot_requires_message_type(message_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="message_type"):
+        IMUserTargetSnapshot.model_validate(
+            {
+                "im_provider": IMProvider.SLACK,
+                "im_tenant_id": "team",
+                "im_provider_user_id": "user",
+                **message_fields,
+            }
+        )
+
+
+def test_initiator_snapshot_preserves_protected_token_without_exposing_it_in_repr() -> None:
+    snapshot = InitiatorSnapshot.model_validate({"protected_form_token": "encrypted-token"})
+    assert snapshot.model_dump(mode="json")["protected_form_token"] == "encrypted-token"
+    assert "encrypted-token" not in repr(snapshot)
+
+
+@pytest.mark.parametrize("token_fields", [{}, {"protected_form_token": None}])
+def test_initiator_snapshot_requires_protected_token(token_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="protected_form_token"):
+        InitiatorSnapshot.model_validate(token_fields)
 
 
 @pytest.fixture
@@ -255,12 +294,15 @@ def test_failed_batch_is_rolled_back_by_the_caller_transaction(delivery_engine: 
     ("target", "authentication"),
     [
         (EmailTargetSnapshot(email_address="shared@example.com"), SubmissionAuthType.EMAIL_OTP),
-        (InitiatorSnapshot(), SubmissionAuthType.CONSOLE),
-        (InitiatorSnapshot(), SubmissionAuthType.WEB_APP),
+        (InitiatorSnapshot(protected_form_token="encrypted-token"), SubmissionAuthType.CONSOLE),
+        (InitiatorSnapshot(protected_form_token="encrypted-token"), SubmissionAuthType.WEB_APP),
         *[
             (
                 IMUserTargetSnapshot(
-                    im_provider=provider, im_tenant_id="provider-tenant", im_provider_user_id="provider-user"
+                    im_provider=provider,
+                    im_tenant_id="provider-tenant",
+                    im_provider_user_id="provider-user",
+                    message_type=IMMessageType.CARD,
                 ),
                 SubmissionAuthType.IM,
             )
@@ -288,6 +330,10 @@ def test_delivery_round_trips_frozen_access_data(
         repo = SQLAlchemyDeliveryRepository(session)
         assert repo.get_delivery_by_token_hash(_HASH) == delivery
         assert repo.get_delivery_by_token_hash(_HASH.upper()) is None
+        assert (
+            session.scalar(sa.select(HumanInputDelivery.target_type).where(HumanInputDelivery.id == delivery.id))
+            == target.type
+        )
 
 
 def test_deliveries_keep_distinct_recipients_sharing_an_endpoint_and_reject_ambiguous_hashes(
@@ -541,3 +587,71 @@ def test_malformed_persisted_json_is_rejected_at_the_storage_boundary(
         else:
             with pytest.raises(ValidationError):
                 session.get(HumanInputDeliveryAttempt, attempt.id)
+
+
+def test_initiator_delivery_lookup_is_scoped_to_form_and_tenant(delivery_engine: Engine) -> None:
+    recipient = _create_recipient(delivery_engine)
+    initiator = _create_recipient(
+        delivery_engine, replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())))
+    )
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) is None
+        repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id))
+        repo.create_delivery(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            params=replace(
+                _delivery_params(recipient.id),
+                target_snapshot=IMUserTargetSnapshot(
+                    im_provider=IMProvider.SLACK,
+                    im_tenant_id="team",
+                    im_provider_user_id="user",
+                    message_type=IMMessageType.CARD,
+                ),
+                auth_type=SubmissionAuthType.IM,
+            ),
+        )
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) is None
+        delivery = repo.create_delivery(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            params=replace(
+                _delivery_params(initiator.id),
+                target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-initiator-token"),
+                auth_type=SubmissionAuthType.WEB_APP,
+            ),
+        )
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyDeliveryRepository(session)
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) == delivery
+        assert repo.get_initiator_delivery(tenant_id=TenantId(str(uuid4())), form_id=_FORM) is None
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=str(uuid4())) is None
+
+
+@pytest.mark.parametrize("same_recipient", [False, True])
+def test_initiator_delivery_lookup_rejects_multiple_entries_for_the_form(
+    delivery_engine: Engine, same_recipient: bool
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    other = (
+        recipient
+        if same_recipient
+        else _create_recipient(
+            delivery_engine, replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())))
+        )
+    )
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        for candidate in (recipient, other):
+            repo.create_delivery(
+                tenant_id=_TENANT,
+                form_id=_FORM,
+                params=replace(
+                    _delivery_params(candidate.id),
+                    target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-token"),
+                    auth_type=SubmissionAuthType.CONSOLE,
+                ),
+            )
+    with Session(delivery_engine) as session, pytest.raises(MultipleResultsFound):
+        SQLAlchemyDeliveryRepository(session).get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM)

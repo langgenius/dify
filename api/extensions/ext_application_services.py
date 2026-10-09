@@ -662,6 +662,7 @@ def build_application_services(
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
+            session_factory=database_client,
         ),
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(

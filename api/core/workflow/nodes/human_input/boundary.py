@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.filters import GraphEventFilterContext
 from graphon.graph_events import (
@@ -18,7 +18,7 @@ from graphon.graph_events import (
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 
 from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
-from .pause_reason import HumanInputRequired, PauseReason
+from .pause_reason import HumanInputRequired
 from .session_binding import default_session_binding
 
 
@@ -27,11 +27,12 @@ class HumanInputPauseReasonResolutionError(LookupError):
 
 
 class HumanInputFormEventFilter:
-    """Adapt HITL callback results into Dify's form lifecycle event stream."""
+    """Adapt V1 callback results; V2 nodes emit their own form lifecycle events."""
 
     def __init__(self, *, form_repository: HumanInputFormSubmissionRepository) -> None:
         self._form_repository = form_repository
         self._node_titles: dict[str, str] = {}
+        self._v1_node_ids: set[str] = set()
         self._app_id: str | None = None
 
     @property
@@ -40,13 +41,21 @@ class HumanInputFormEventFilter:
 
     def initialize(self, context: GraphEventFilterContext) -> None:
         self._node_titles.clear()
+        # Graphon completion events can retain the default version. Route by
+        # the concrete node in the graph instead of the event's version field.
+        self._v1_node_ids = {
+            node.id
+            for node in (context.graph.root_node, *context.graph.nodes.values())
+            if node.node_type == BuiltinNodeTypes.HUMAN_INPUT and node.version() == "1"
+        }
         self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
 
     def on_event(self, event: GraphEngineEvent) -> Iterable[GraphEngineEvent]:
-        if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            self._node_titles[event.id] = event.node_title
-        elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            yield self._completion_event(event)
+        if isinstance(event, NodeRunStartedEvent | NodeRunSucceededEvent) and event.node_id in self._v1_node_ids:
+            if isinstance(event, NodeRunStartedEvent):
+                self._node_titles[event.id] = event.node_title
+            else:
+                yield self._completion_event(event)
 
         yield event
 
@@ -92,35 +101,16 @@ class HumanInputFormEventFilter:
         )
 
 
-def enrich_graph_pause_reasons(
-    *,
-    reasons: Sequence[HitlRequired | PauseReason],
-    form_repository: HumanInputFormSubmissionRepository,
-    variable_pool: ReadOnlyVariablePool | None,
-) -> list[PauseReason]:
-    enriched: list[PauseReason] = []
-    for reason in reasons:
-        if isinstance(reason, HitlRequired):
-            enriched_reason = _enrich_hitl_required(
-                reason=reason,
-                form_repository=form_repository,
-                variable_pool=variable_pool,
-            )
-            if enriched_reason is not None:
-                enriched.append(enriched_reason)
-            continue
-        if isinstance(reason, HumanInputRequired | SchedulingPause):
-            enriched.append(reason)
-    return enriched
-
-
-def _enrich_hitl_required(
+def resolve_human_input_v1_pause_reason(
     *,
     reason: HitlRequired,
     form_repository: HumanInputFormSubmissionRepository,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> HumanInputRequired:
-    form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+    """Load the legacy form from the V1 submission repository."""
+    node_version, form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+    if node_version != "1":
+        raise ValueError("Expected a Human Input v1 session")
     record = form_repository.get_by_form_id(form_id)
     if record is None:
         raise HumanInputPauseReasonResolutionError(

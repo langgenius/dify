@@ -23,6 +23,7 @@ def _service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
     node_executions, workflow_runs = dependencies
     return WorkflowRunService(
         workflow_runs=workflow_runs,
+        session_factory=MagicMock(),
         node_executions=node_executions,
     )
 

@@ -407,7 +407,16 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(
+            graph_engine=SimpleNamespace(
+                graph_runtime_state=graph_runtime_state,
+                graph=SimpleNamespace(
+                    nodes={
+                        "node-1": SimpleNamespace(node_type="human-input", version=lambda: "1"),
+                    }
+                ),
+            )
+        )
 
         form_deliveries: list[dict] = []
 
@@ -420,15 +429,13 @@ class TestWorkflowBasedAppRunner:
             _Dispatch(),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
-            lambda **_: [
-                HumanInputRequired(
-                    form_id="form",
-                    form_content="content",
-                    node_id="node-1",
-                    node_title="Node",
-                )
-            ],
+            "core.app.apps.workflow_app_runner.resolve_human_input_v1_pause_reason",
+            lambda **_: HumanInputRequired(
+                form_id="form",
+                form_content="content",
+                node_id="node-1",
+                node_title="Node",
+            ),
         )
 
         reason = HitlRequired(

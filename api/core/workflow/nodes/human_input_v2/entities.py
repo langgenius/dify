@@ -88,7 +88,7 @@ def _version_validator(version: str) -> str:
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     # BaseNodeData exposes the discriminator as a class variable, while the
     # concrete Pydantic model must validate and serialize an exact wire value.
@@ -105,7 +105,7 @@ class HumanInputNodeData(BaseNodeData):
     inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     timeout: int = 36
-    timeout_unit: TimeoutUnit = TimeoutUnit.HOUR
+    timeout_unit: TimeoutUnit = Field(default=TimeoutUnit.HOUR, strict=False)
 
     @field_validator("inputs")
     @classmethod

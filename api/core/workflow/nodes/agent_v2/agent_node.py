@@ -140,8 +140,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     @staticmethod
     def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
         if isinstance(reason, HumanInputRequired):
+            # Agent v2 still creates legacy Human Input forms.
             return HitlRequired(
-                session_id=default_session_binding.issue_session_id_for_form(form_id=reason.form_id),
+                session_id=default_session_binding.issue_session_id_for_form(node_version="1", form_id=reason.form_id),
                 node_id=reason.node_id,
                 node_title=reason.node_title,
             )
