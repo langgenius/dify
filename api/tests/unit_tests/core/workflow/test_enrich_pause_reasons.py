@@ -1,10 +1,10 @@
 import pytest
 
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities.pause_reason import HitlRequired
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
+from services.workflow.execution.adapters.human_input_events import enrich_graph_pause_reasons
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 

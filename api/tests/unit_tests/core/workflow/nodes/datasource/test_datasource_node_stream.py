@@ -2,27 +2,28 @@
 
 import time
 from collections.abc import Generator
-from types import SimpleNamespace
+from dataclasses import replace
 from typing import Never
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.mark.parametrize("use_factory", [False, True])
-def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: Engine, use_factory: bool) -> None:
+def test_node_integration_minimal_stream(
+    mocker: MockerFixture, workflow_runtime: WorkflowExecutionDependencies, use_factory: bool
+) -> None:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             datasource_type="online_document",
@@ -72,15 +73,12 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
         datasource_name="ds",
     )
     if use_factory:
-        database_client = sessionmaker(sqlite_engine)
-        mocker.patch("core.workflow.node_factory.get_session_maker", return_value=database_client)
-        build_credentials = mocker.patch(
-            "core.workflow.node_factory.build_data_source_credentials",
-            return_value=SimpleNamespace(providers=SimpleNamespace(get_datasource_credentials=load_credentials)),
+        factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            workflow_runtime=replace(workflow_runtime, datasource_credentials=load_credentials),
         )
-        factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
         node = factory.create_node({"id": "n", "data": node_data.model_dump()})
-        build_credentials.assert_called_once_with(database_client=database_client)
         assert isinstance(node, DatasourceNode)
     else:
         node = DatasourceNode(

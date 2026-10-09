@@ -10,7 +10,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
-from core.workflow.node_runtime import DifyPreparedLLM, DifyPromptMessageSerializer, resolve_dify_run_context
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -20,6 +19,11 @@ from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemo
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.node_runtime import (
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    resolve_dify_run_context,
+)
 from tests.unit_tests.core.model_fixtures import make_model_instance
 from tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params

@@ -12,17 +12,6 @@ from unittest.mock import MagicMock
 
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.workflow.node_runtime import (
-    DifyFileReferenceFactory,
-    DifyPreparedLLM,
-    DifyPromptMessageSerializer,
-    DifyToolFileManager,
-    DifyToolNodeRuntime,
-    build_dify_llm_file_saver,
-    resolve_dify_run_context,
-)
-from core.workflow.nodes.agent import AgentNode
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -35,6 +24,17 @@ from graphon.nodes.question_classifier import QuestionClassifierNode
 from graphon.nodes.template_transform import TemplateTransformNode
 from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from services.workflow.execution.adapters.agent_node import AgentNode
+from services.workflow.execution.adapters.knowledge_retrieval import KnowledgeRetrievalNode
+from services.workflow.execution.adapters.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from tests.unit_tests.core.model_fixtures import make_model_instance
 
 if TYPE_CHECKING:

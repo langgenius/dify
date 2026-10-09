@@ -6,18 +6,11 @@ answer nodes downstream of a pre-pause branch never unlock for streaming on
 resume, even though the graph executes correctly.
 """
 
-from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.repositories.human_input_repository import (
-    HumanInputFormRepository,
-    HumanInputFormRepositoryImpl,
-)
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.system_variables import build_system_variables
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from enums.human_input import HumanInputFormStatus
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph import Graph
@@ -36,7 +29,14 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_contracts import HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 from tests.workflow_test_utils import build_test_graph_init_params
 
 WORKFLOW_EXECUTION_ID = "wf-exec-38525"
@@ -143,13 +143,12 @@ def _build_runtime_state() -> GraphRuntimeState:
 
 def test_if_else_human_input_pause_resume_answer_chunks_survive_resume(
     sqlite_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
 ) -> None:
-    mocker.patch(
-        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
-    )
     repository = HumanInputFormRepositoryImpl(
-        tenant_id="tenant", app_id="app", workflow_execution_id=WORKFLOW_EXECUTION_ID
+        tenant_id="tenant",
+        app_id="app",
+        workflow_execution_id=WORKFLOW_EXECUTION_ID,
+        sessions=sqlite_session_factory,
     )
     # ---- Phase 1: run to GraphRunPausedEvent ----
     runtime_state_1 = _build_runtime_state()
@@ -199,7 +198,13 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume(
     filter_2 = ResponseStreamFilter()
     filter_2.loads(response_filter_snapshot)
 
-    phase2_events = list(iter_dify_graph_engine_events(engine_2, filter_2))
+    phase2_events = list(
+        iter_dify_graph_engine_events(
+            engine_2,
+            filter_2,
+            human_form_reader=HumanInputFormSubmissionRepository(sessions=sqlite_session_factory),
+        )
+    )
 
     assert any(isinstance(e, GraphRunSucceededEvent) for e in phase2_events)
 

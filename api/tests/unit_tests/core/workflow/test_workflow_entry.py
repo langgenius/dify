@@ -10,13 +10,13 @@ from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 
 @pytest.fixture(autouse=True)

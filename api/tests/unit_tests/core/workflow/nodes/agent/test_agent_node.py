@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from graphon.entities import GraphInitParams
@@ -8,6 +7,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import NodeRunStreamChunkEvent
 from graphon.node_events import StreamChunkEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.agent_node import AgentNode
 
 
 def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:

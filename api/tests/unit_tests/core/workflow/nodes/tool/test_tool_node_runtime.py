@@ -2,33 +2,35 @@ from __future__ import annotations
 
 import sys
 import types
+from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from typing import cast
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
-from core.tools.tool_engine import ToolEngine
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import VariablePool
+from services.tools.tool_engine import ToolEngine
+from services.tools.tool_manager import ToolManager
+from services.workflow.execution.adapters.node_runtime import DifyToolNodeRuntime
+from services.workflow.execution.ports import WorkflowToolInvoker
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 @pytest.fixture
-def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
+def runtime(monkeypatch: pytest.MonkeyPatch, workflow_runtime: WorkflowExecutionDependencies) -> DifyToolNodeRuntime:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)
@@ -46,8 +48,7 @@ def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolN
         invoke_from="debugger",
         call_depth=0,
     )
-    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-    return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
+    return DifyToolNodeRuntime(init_params.run_context, workflow_runtime=workflow_runtime)
 
 
 def _build_tool_node_data() -> ToolNodeData:
@@ -76,10 +77,14 @@ def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRunt
         variables=build_system_variables(conversation_id="conversation-id")
     )
     workflow_tool = MagicMock()
+    tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
+    tool_invoker.return_value = (message for message in [core_message])
+    assert runtime._workflow_runtime is not None
+    dependencies = cast(WorkflowExecutionDependencies, runtime._workflow_runtime)
+    runtime._workflow_runtime = replace(dependencies, tool_invoker=tool_invoker)
 
     with (
         patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_tool),
-        patch.object(ToolEngine, "generic_invoke", return_value=iter([core_message])) as generic_invoke_mock,
         patch.object(
             ToolFileMessageTransformer,
             "transform_tool_invoke_messages",
@@ -107,10 +112,10 @@ def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRunt
     assert isinstance(graph_message.message, ToolRuntimeMessage.TextMessage)
     assert graph_message.message.text == "https://dify.ai"
 
-    callback = generic_invoke_mock.call_args.kwargs["workflow_tool_callback"]
+    callback = tool_invoker.call_args.kwargs["workflow_tool_callback"]
     assert isinstance(callback, DifyWorkflowCallbackHandler)
-    assert generic_invoke_mock.call_args.kwargs["session"] is not None
-    assert generic_invoke_mock.call_args.kwargs["conversation_id"] == "conversation-id"
+    assert "session" not in tool_invoker.call_args.kwargs
+    assert tool_invoker.call_args.kwargs["conversation_id"] == "conversation-id"
 
     transform_kwargs = transform_tool_messages.call_args.kwargs
     assert transform_kwargs["conversation_id"] == "conversation-id"
@@ -333,28 +338,51 @@ def test_resolve_provider_icons_prefers_builtin_tool_icons(runtime: DifyToolNode
         name="search",
         declaration=SimpleNamespace(icon={"plugin": "icon"}),
     )
-    builtin_tool = SimpleNamespace(
-        name="langgenius/tools/search",
-        icon={"builtin": "icon"},
-        icon_dark={"builtin": "dark"},
+    from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+    from core.tools.plugin_tool.provider import PluginToolProviderController
+
+    builtin_tool = PluginToolProviderController(
+        entity=ToolProviderEntityWithPlugin.model_validate(
+            {
+                "identity": {
+                    "name": "langgenius/tools/search",
+                    "author": "author",
+                    "description": {"en_US": "Search"},
+                    "label": {"en_US": "Search"},
+                    "icon": "light.svg",
+                    "icon_dark": "dark.svg",
+                },
+            }
+        ),
+        plugin_id="langgenius/tools",
+        plugin_unique_identifier="langgenius/tools:1",
+        tenant_id="tenant-id",
     )
 
     with (
-        patch("core.workflow.node_runtime.PluginInstaller") as installer_cls,
-        patch("core.workflow.node_runtime.BuiltinToolManageService.list_builtin_tools", return_value=[builtin_tool]),
+        patch("services.workflow.execution.adapters.node_runtime.PluginInstaller") as installer_cls,
+        patch(
+            "services.workflow.execution.adapters.node_runtime.ToolManager.list_builtin_providers",
+            return_value=[builtin_tool],
+        ),
     ):
         installer_cls.return_value.list_plugins.return_value = [plugin]
 
         icon, icon_dark = runtime.resolve_provider_icons(provider_name="langgenius/tools/search")
 
-    assert icon == {"builtin": "icon"}
-    assert icon_dark == {"builtin": "dark"}
+    assert isinstance(icon, str)
+    assert "light.svg" in icon
+    assert isinstance(icon_dark, str)
+    assert "dark.svg" in icon_dark
 
 
 def test_resolve_provider_icons_returns_default_when_provider_is_unknown(runtime: DifyToolNodeRuntime) -> None:
     with (
-        patch("core.workflow.node_runtime.PluginInstaller") as installer_cls,
-        patch("core.workflow.node_runtime.BuiltinToolManageService.list_builtin_tools", return_value=[]),
+        patch("services.workflow.execution.adapters.node_runtime.PluginInstaller") as installer_cls,
+        patch(
+            "services.workflow.execution.adapters.node_runtime.ToolManager.list_builtin_providers",
+            return_value=[],
+        ),
     ):
         installer_cls.return_value.list_plugins.return_value = []
 

@@ -10,7 +10,6 @@ from dify_agent.protocol import DeferredToolCallPayload
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import (
     AskHumanFormBuildError,
     ask_human_args_to_node_data,
@@ -21,8 +20,15 @@ from core.workflow.nodes.agent_v2.ask_human_hitl import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from enums.human_input import ButtonStyle, TimeoutUnit
 from models.agent_config_entities import AgentHumanContactConfig
+from models.human_input_contracts import FormCreateParams
 from models.human_input_delivery import EmailDeliveryMethod, ExternalRecipient, InteractiveSurfaceDeliveryMethod
-from models.human_input_entities import FileInputConfig, FileListInputConfig, ParagraphInputConfig, SelectInputConfig
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    ParagraphInputConfig,
+    SelectInputConfig,
+)
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
 
 def _args(**overrides: Any) -> AskHumanToolArgs:
@@ -36,11 +42,13 @@ def _deferred_call(args: dict[str, Any], *, tool_name: str = "ask_human") -> Def
 
 
 @pytest.fixture
-def repo(sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture) -> HumanInputFormRepositoryImpl:
-    mocker.patch(
-        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
+def repo(sqlite_session_factory: sessionmaker[Session]) -> HumanInputFormRepositoryImpl:
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="wf-1",
+        sessions=sqlite_session_factory,
     )
-    return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="wf-1")
 
 
 # ─────────────────────────── parse_ask_human_args ───────────────────────────
