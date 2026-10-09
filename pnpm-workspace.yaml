@@ -69,8 +69,8 @@ catalog:
   '@amplitude/analytics-browser': 2.47.4
   '@amplitude/plugin-session-replay-browser': 1.36.1
   '@axe-core/playwright': 4.13.0
-  '@base-ui/react': 1.8.0
-  '@base-ui/utils': 0.4.0
+  '@base-ui/react': 1.9.0
+  '@base-ui/utils': 0.5.0
   '@chromatic-com/storybook': 5.4.0
   '@cucumber/cucumber': 13.3.0
   '@date-fns/tz': 1.5.0
