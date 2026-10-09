@@ -8497,10 +8497,7 @@ Generate structured output rules using LLM
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
-**Stop a running snippet workflow task**
-
-Uses both the legacy stop flag mechanism and the graph engine
-command channel for backward compatibility.
+**Stop a running or paused task belonging to this snippet**
 
 #### Parameters
 
