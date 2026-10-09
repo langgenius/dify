@@ -83,7 +83,7 @@ export const fetchModelParameterRulesForModel = async (
   modelId: string,
 ): Promise<ModelParameterRule[]> => {
   const { fetchModelParameterRules } = await import('@/service/common')
-  const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
+  const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${encodeURIComponent(modelId)}`
   const { data: parameterRules } = await fetchModelParameterRules(url)
   return parameterRules ?? []
 }
