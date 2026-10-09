@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -99,6 +100,14 @@ class TestExtractProcessorLoaders:
         ("url", "headers", "expected_suffix"),
         [
             ("https://example.com/file.txt", {"Content-Type": "text/plain"}, ".txt"),
+            ("https://example.com/file.pdf?signature=abc", {"Content-Type": "text/plain"}, ".pdf"),
+            ("https://example.com/file.pdf#page=2", {}, ".pdf"),
+            ("https://example.com/no_suffix?filename=report.txt", {"Content-Type": "application/pdf"}, ".pdf"),
+            (
+                "https://example.com/no_suffix#report.txt",
+                {"Content-Disposition": 'attachment; filename="report.md"'},
+                ".md",
+            ),
             ("https://example.com/no_suffix", {"Content-Type": "application/pdf"}, ".pdf"),
             (
                 "https://example.com/no_suffix",
@@ -139,10 +148,10 @@ class TestExtractProcessorLoaders:
         monkeypatch.setattr(ExtractProcessor, "extract", fake_extract)
 
         docs = ExtractProcessor.load_from_url(url, return_text=False)
-        assert captured["file_path_docs"].endswith(expected_suffix)
+        assert Path(captured["file_path_docs"]).suffix == expected_suffix
 
         text = ExtractProcessor.load_from_url(url, return_text=True)
-        assert captured["file_path_text"].endswith(expected_suffix)
+        assert Path(captured["file_path_text"]).suffix == expected_suffix
 
         assert len(docs) == 2
         assert text == "u1\nu2"
@@ -157,15 +166,28 @@ class TestExtractProcessorLoaders:
 
         assert text == content
 
-    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize("etl_type", ["dify", "Unstructured"])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://example.com/report",
+            "https://example.com/report.pdf?X-Amz-Signature=abc",
+            "https://example.com/report.pdf#page=2",
+            "https://example.com/report.pdf?download=1#page=2",
+            "https://example.com/download?filename=report.txt",
+        ],
+    )
+    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch, url, etl_type):
         response = SimpleNamespace(headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
-        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        make_request = Mock(return_value=response)
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", make_request)
         factory = _patch_all_extractors(monkeypatch)
-        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+        apply_config_overrides(monkeypatch, ETL_TYPE=etl_type)
 
-        text = ExtractProcessor.load_from_url("https://example.com/report", return_text=True)
+        text = ExtractProcessor.load_from_url(url, return_text=True)
 
         assert text == "extracted-by-PdfExtractor"
+        make_request.assert_called_once_with("GET", url, headers={"User-Agent": processor_module.USER_AGENT})
         name, args, kwargs = factory.calls[-1]
         assert name == "PdfExtractor"
         # no upload_file for URL-loaded files: tenant/user context must be None
