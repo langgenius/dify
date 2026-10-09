@@ -6,34 +6,21 @@ import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlFocusClassName } from '../form-control-shared'
+import { textControlClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-const textareaVariants = cva(
-  [
-    'min-h-20 w-full appearance-none overflow-auto border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color]',
-    'placeholder:text-components-input-text-placeholder',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlFocusClassName,
-    'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
-    'read-only:cursor-default read-only:shadow-none read-only:hover:border-transparent read-only:hover:bg-components-input-bg-normal read-only:focus:border-transparent read-only:focus:bg-components-input-bg-normal read-only:focus:shadow-none read-only:focus-visible:ring-2 read-only:focus-visible:ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-components-input-bg-disabled disabled:text-components-input-text-filled-disabled',
-    'disabled:hover:border-transparent disabled:hover:bg-components-input-bg-disabled',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'rounded-md px-2 py-1 system-xs-regular',
-        medium: 'rounded-lg px-3 py-2 system-sm-regular',
-        large: 'rounded-[10px] px-4 py-2 system-md-regular',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
+const textareaVariants = cva([textControlClassName, 'min-h-20 overflow-auto'], {
+  variants: {
+    size: {
+      small: 'rounded-md px-2 py-1 system-xs-regular',
+      medium: 'rounded-lg px-3 py-2 system-sm-regular',
+      large: 'rounded-[10px] px-4 py-2 system-md-regular',
     },
   },
-)
+  defaultVariants: {
+    size: 'medium',
+  },
+})
 
 type TextareaValue = string | number
 type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails

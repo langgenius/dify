@@ -57,6 +57,22 @@ that assert final DOM state. Storybook uses its preview setup and retains real a
 A unit test that intentionally asserts animation behavior may set the flag to `false` locally,
 but must restore the previous value during cleanup.
 
+## Failure artifacts
+
+Vitest writes automatic failure screenshots and attachments to its default `.vitest/attachments/`
+directory. Configured browser screenshots and unit Playwright traces use `.vitest-browser/`.
+The failure upload steps in `.github/workflows/web-tests.yml` collect both directories, including
+hidden files, and retain them for seven days.
+
+Read the failing test's log for the screenshot or trace path, then download the matching job's
+artifact: `dify-ui-test-failures` for unit tests or `dify-ui-storybook-test-failures` for Storybook.
+
+```sh
+gh run download <run-id> --repo langgenius/dify --name <artifact-name> --dir <output-dir>
+```
+
+The download preserves `.vitest/attachments/` and `.vitest-browser/` relative to `<output-dir>`.
+
 [Browser Mode]: https://vitest.dev/guide/browser
 [Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon/index
 [Vitest projects]: https://vitest.dev/guide/projects.html
