@@ -264,7 +264,6 @@ catalog:
   vinext: 1.1.0
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plugin-inspect: 12.0.2
-  vite-plugin-wasm: 3.6.0
   vite-plus: 1.1.0
   vitest: 5.0.3
   vitest-browser-react: 2.3.0

@@ -193,7 +193,6 @@
     "vinext": "catalog:",
     "vite": "catalog:",
     "vite-plugin-inspect": "catalog:",
-    "vite-plugin-wasm": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-browser-react": "catalog:",

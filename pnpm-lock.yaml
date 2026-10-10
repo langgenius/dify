@@ -752,9 +752,6 @@ catalogs:
     vite-plugin-inspect:
       specifier: 12.0.2
       version: 12.0.2
-    vite-plugin-wasm:
-      specifier: 3.6.0
-      version: 3.6.0
     vite-plus:
       specifier: 1.1.0
       version: 1.1.0
@@ -1837,9 +1834,6 @@ importers:
       vite-plugin-inspect:
         specifier: 'catalog:'
         version: 12.0.2(@typescript/typescript6@6.0.2)(@voidzero-dev/vite-plus-core@1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))(srvx@1.0.5)
-      vite-plugin-wasm:
-        specifier: 'catalog:'
-        version: 3.6.0(@voidzero-dev/vite-plus-core@1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       vite-plus:
         specifier: 'catalog:'
         version: 1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.3)(@vitest/coverage-v8@5.0.3)(@vitest/ui@5.0.3)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.0)(tsx@4.23.13)(yaml@2.9.1)
@@ -9259,11 +9253,6 @@ packages:
       next: ^14.1.0 || ^15.0.0 || ^16.0.0
       storybook: ^10.6.1
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  vite-plugin-wasm@3.6.0:
-    resolution: {integrity: sha512-mL/QPziiIA4RAA6DkaZZzOstdwbW5jO4Vz7Zenj0wieKWBlNvIvX5L5ljum9lcUX0ShNfBgCNLKTjNkRVVqcsw==}
-    peerDependencies:
-      vite: ^2 || ^3 || ^4 || ^5 || ^6 || ^7 || ^8
 
   vite-plus@1.1.0:
     resolution: {integrity: sha512-khkRlY70qqbBV0QmF9QKXSrhxIRYftb1H05AJMowMoq7iouchmAoXYeReZ8pKKMOadqrWVxFa3S9BA2m7w59iA==}
@@ -17144,10 +17133,6 @@ snapshots:
       - supports-color
       - typescript
 
-  vite-plugin-wasm@3.6.0(@voidzero-dev/vite-plus-core@1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)):
-    dependencies:
-      vite: '@voidzero-dev/vite-plus-core@1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)'
-
   vite-plus@1.1.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.3)(@vitest/coverage-v8@5.0.3)(@vitest/ui@5.0.3)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.0)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:
       '@oxc-project/types': 0.153.0
@@ -17719,7 +17704,6 @@ time:
   uuid@14.0.2: '2026-08-18T18:21:56.060Z'
   vinext@1.1.0: '2026-10-08T23:07:10.965Z'
   vite-plugin-inspect@12.0.2: '2026-07-13T05:34:12.173Z'
-  vite-plugin-wasm@3.6.0: '2026-03-15T17:39:44.504Z'
   vite-plus@1.1.0: '2026-10-07T02:28:15.485Z'
   vitest-browser-react@2.3.0: '2026-09-04T08:00:00.941Z'
   vitest-canvas-mock@1.2.0: '2026-09-05T05:25:27.538Z'

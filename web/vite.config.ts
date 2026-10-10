@@ -23,14 +23,11 @@ export default defineConfig(({ command, mode, isPreview }) => {
       target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
     },
     plugins: lazyPlugins(async () => {
-      const [{ default: react }, { default: wasm }] = await Promise.all([
-        import('@vitejs/plugin-react'),
-        import('vite-plugin-wasm'),
-      ])
+      const { default: react } = await import('@vitejs/plugin-react')
 
-      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react(), wasm()]
+      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
 
-      if (isStorybook) return [react(), wasm()]
+      if (isStorybook) return [react()]
 
       const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
         await Promise.all([
@@ -69,7 +66,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
         inspector,
         tailwindcss(),
         react(),
-        wasm(),
         vinext({ react: false }),
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
