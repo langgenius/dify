@@ -159,6 +159,59 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue(defaultChatHookReturn as ChatHookReturn)
   })
 
+  it.each([false, true])(
+    'should preserve a composer draft unless the send is accepted (%s)',
+    async (accepted) => {
+      const draftKey = 'chat-wrapper-send-acceptance'
+      sessionStorage.setItem(draftKey, 'Send this message')
+      vi.mocked(useChatWithHistoryContext).mockReturnValue({
+        ...defaultContextValue,
+        chatInputDraftKey: draftKey,
+      })
+      const handleSend = vi.fn().mockResolvedValue(accepted)
+      vi.mocked(useChat).mockReturnValue({
+        ...defaultChatHookReturn,
+        handleSend,
+      } as ChatHookReturn)
+      const view = render(<ChatWrapper />)
+      const textarea = screen.getByRole('textbox')
+
+      await act(async () => {
+        fireEvent.keyDown(textarea, { key: 'Enter' })
+      })
+
+      expect(handleSend).toHaveBeenCalled()
+      expect(textarea).toHaveValue(accepted ? '' : 'Send this message')
+      expect(sessionStorage.getItem(draftKey)).toBe(accepted ? null : 'Send this message')
+      view.unmount()
+      sessionStorage.removeItem(draftKey)
+    },
+  )
+
+  it('should retain the composer draft when the send fails before acceptance', async () => {
+    const draftKey = 'chat-wrapper-failed-send'
+    sessionStorage.setItem(draftKey, 'Retry this message')
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      chatInputDraftKey: draftKey,
+    })
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend: vi.fn().mockRejectedValue(new Error('send failed')),
+    } as ChatHookReturn)
+    const view = render(<ChatWrapper />)
+    const textarea = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.keyDown(textarea, { key: 'Enter' })
+    })
+
+    expect(textarea).toHaveValue('Retry this message')
+    expect(sessionStorage.getItem(draftKey)).toBe('Retry this message')
+    view.unmount()
+    sessionStorage.removeItem(draftKey)
+  })
+
   it('should render welcome screen and handle message sending', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChatWithHistoryContext).mockReturnValue({

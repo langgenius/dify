@@ -168,10 +168,24 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const appId = useMemo(() => appData?.app_id, [appData])
   const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const [userId, setUserId] = useState<string>()
+  const [isSystemVariablesResolved, setIsSystemVariablesResolved] = useState(false)
+  const draftUserId = isInstalledApp ? userId : appData?.end_user_id
+  const isUserIdResolved = isInstalledApp ? isSystemVariablesResolved : !!draftUserId
   useEffect(() => {
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
-      setUserId(user_id)
-    })
+    let isActive = true
+
+    getProcessedSystemVariablesFromUrlParams()
+      .then(({ user_id }) => {
+        if (isActive) setUserId(user_id)
+      })
+      .catch(noop)
+      .finally(() => {
+        if (isActive) setIsSystemVariablesResolved(true)
+      })
+
+    return () => {
+      isActive = false
+    }
   }, [])
   useEffect(() => {
     const setLocaleFromProps = async () => {
@@ -192,6 +206,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
     userId: isInstalledApp ? userId : appData?.end_user_id,
   })
+  const chatInputDraftKey = useMemo(() => {
+    if (!conversationScopeId || !isUserIdResolved) return undefined
+
+    return `chat-input-draft:${JSON.stringify([
+      appSourceType,
+      conversationScopeId,
+      draftUserId || 'DEFAULT',
+      currentConversationId || 'NEW',
+    ])}`
+  }, [appSourceType, conversationScopeId, currentConversationId, draftUserId, isUserIdResolved])
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -599,7 +623,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   return {
     isInstalledApp,
     appId,
+    isUserIdResolved,
     currentConversationId,
+    chatInputDraftKey,
+    migrateChatInputDraft: !!currentConversationId && currentConversationId === newConversationId,
     currentConversationItem,
     handleConversationIdInfoChange,
     appData,

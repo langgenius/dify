@@ -79,6 +79,8 @@ export type ChatProps = {
   sendOnEnter?: boolean
   speechToTextTarget?: SpeechToTextTarget
   onBeforeSpeechToText?: () => Promise<unknown>
+  chatInputDraftKey?: string
+  migrateChatInputDraft?: boolean
   renderAgentContent?: (props: {
     item: ChatItem
     responding?: boolean
@@ -141,6 +143,8 @@ const Chat: FC<ChatProps> = ({
   sendOnEnter,
   speechToTextTarget,
   onBeforeSpeechToText,
+  chatInputDraftKey,
+  migrateChatInputDraft,
   renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
@@ -303,6 +307,8 @@ const Chat: FC<ChatProps> = ({
                 speechToTextConfig={config?.speech_to_text}
                 speechToTextTarget={speechToTextTarget}
                 onBeforeSpeechToText={onBeforeSpeechToText}
+                draftKey={chatInputDraftKey}
+                migrateDraft={migrateChatInputDraft}
                 onSend={onSend}
                 inputs={inputs}
                 inputsForm={inputsForm}
