@@ -83,3 +83,90 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
 
     assert closed == [True]
     limiter.exit.assert_called_once_with("request-1")
+
+
+def test_posted_live_mode_cannot_select_builder_policy(monkeypatch, config_overrides):
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
+
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    app = App(id="app", tenant_id="tenant", mode="workflow")
+    user = Account(name="Owner", email="owner@example.invalid")
+    user.id = "account"
+    workflow = MagicMock(created_by="account")
+    marker = context()
+    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=workflow))
+    monkeypatch.setattr(module, "restricted_admission_snapshot", MagicMock())
+    monkeypatch.setattr(app, "is_agent_with_session", lambda **_: False)
+    monkeypatch.setattr(AppGenerateService, "_ensure_workflow_service_mode_available", lambda **_: None)
+    monkeypatch.setattr(AppGenerateService, "_get_max_active_requests", lambda _: 0)
+    monkeypatch.setattr(module.session_factory, "get_session_maker", sessionmaker)
+    limiter = RateLimit("posted-live-mode-test", 0)
+    limiter.enter = MagicMock(return_value="request")
+    limiter.exit = MagicMock()
+    monkeypatch.setattr(module, "RateLimit", MagicMock(return_value=limiter))
+    generate = MagicMock(return_value=iter(()))
+    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generate)
+    for policy in (None, marker):
+        with Session() as session:
+            response = AppGenerateService.generate(
+                app,
+                user,
+                {"inputs": {}, "execution_mode": "live_confirmed", "builder_execution": {"mode": "live_confirmed"}},
+                InvokeFrom.DEBUGGER,
+                session=session,
+                workflow_execution_mode="in_process",
+                builder_execution=policy,
+                builder_execution_admit=MagicMock() if policy else None,
+            )
+            list(response)
+        assert generate.call_args.kwargs["builder_execution"] is policy
+    assert marker.mode == "restricted"
+    assert limiter.exit.call_count == 2
+
+
+@pytest.mark.parametrize("mode", ["advanced-chat", "agent", "agent-chat"])
+def test_restricted_dispatch_rejects_other_modes_before_guardrails(monkeypatch, mode):
+    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
+
+    guardrails = MagicMock(side_effect=AssertionError("must refuse before native dispatch"))
+    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", guardrails)
+    with Session() as session, pytest.raises(BuilderExecutionPolicyError):
+        AppGenerateService.generate(
+            App(id="app", tenant_id="tenant", mode=mode),
+            MagicMock(spec=Account),
+            {"inputs": {}},
+            InvokeFrom.DEBUGGER,
+            session=session,
+            workflow_execution_mode="in_process",
+            builder_execution=context(),
+            builder_execution_admit=MagicMock(),
+        )
+    guardrails.assert_not_called()
+
+
+def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypatch):
+    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
+
+    app = MagicMock(spec=App)
+    app.mode = "workflow"
+    app.is_agent_with_session.return_value = True
+    agent = MagicMock()
+    monkeypatch.setattr(module.AgentChatAppGenerator, "generate", agent)
+    with pytest.raises(BuilderExecutionPolicyError):
+        AppGenerateService._dispatch_generate(
+            app_model=app,
+            user=MagicMock(spec=Account),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+            root_node_id=None,
+            session=MagicMock(),
+            rate_limit=MagicMock(),
+            request_id="request",
+            workflow_execution_mode="in_process",
+            builder_execution=context(),
+            builder_execution_admit=MagicMock(),
+        )
+    agent.assert_not_called()
