@@ -60,6 +60,7 @@ def upgrade() -> None:
         sa.Column("target_type", sa.String(length=32), nullable=False),
         sa.Column("target_id", models.types.StringUUID(), nullable=False),
         sa.Column("target_workflow_version_id", models.types.StringUUID(), nullable=True),
+        sa.Column("target_agent_config_snapshot_id", models.types.StringUUID(), nullable=True),
         sa.Column("evaluation_config_id", models.types.StringUUID(), nullable=False),
         sa.Column("config_snapshot", models.types.LongText(), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
@@ -95,6 +96,8 @@ def upgrade() -> None:
         sa.Column("id", models.types.StringUUID(), nullable=False),
         sa.Column("evaluation_run_id", models.types.StringUUID(), nullable=False),
         sa.Column("workflow_run_id", models.types.StringUUID(), nullable=True),
+        sa.Column("agent_backend_run_id", sa.String(length=255), nullable=True),
+        sa.Column("agent_workspace_binding_id", models.types.StringUUID(), nullable=True),
         sa.Column("item_index", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("inputs", models.types.LongText(), nullable=True),
@@ -103,6 +106,7 @@ def upgrade() -> None:
         sa.Column("metrics", models.types.LongText(), nullable=True),
         sa.Column("judgment", models.types.LongText(), nullable=True),
         sa.Column("metadata_json", models.types.LongText(), nullable=True),
+        sa.Column("target_result_json", models.types.LongText(), nullable=True),
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("overall_score", sa.Float(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=_current_timestamp_default(), nullable=False),
@@ -115,10 +119,12 @@ def upgrade() -> None:
     )
     with op.batch_alter_table("evaluation_run_items", schema=None) as batch_op:
         batch_op.create_index("evaluation_run_item_workflow_run_idx", ["workflow_run_id"], unique=False)
+        batch_op.create_index("evaluation_run_item_agent_backend_run_idx", ["agent_backend_run_id"], unique=False)
 
 
 def downgrade() -> None:
     with op.batch_alter_table("evaluation_run_items", schema=None) as batch_op:
+        batch_op.drop_index("evaluation_run_item_agent_backend_run_idx")
         batch_op.drop_index("evaluation_run_item_workflow_run_idx")
     op.drop_table("evaluation_run_items")
 

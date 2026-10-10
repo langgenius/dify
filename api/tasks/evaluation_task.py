@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
@@ -18,11 +19,22 @@ from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
+    AgentBackendRunCancelledInternalEvent,
+    AgentBackendRunEventAdapter,
+    AgentBackendRunFailedInternalEvent,
+    AgentBackendRunSucceededInternalEvent,
+    create_agent_backend_run_client,
+)
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
+    AgentEvaluationItem,
+    AgentToolDefinition,
     EvaluationCategory,
     EvaluationDatasetInput,
     EvaluationItemResult,
@@ -42,6 +54,7 @@ from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from models.agent import AgentWorkspaceBinding
 from models.enums import CreatorUserRole
 from models.evaluation import (
     EvaluationRun,
@@ -51,7 +64,10 @@ from models.evaluation import (
     EvaluationTargetType,
 )
 from models.model import UploadFile
+from services.agent.evaluation_target_service import AgentEvaluationTargetService
+from services.agent.workspace_service import AgentWorkspaceService
 from services.evaluation_service import EvaluationService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +230,7 @@ def reconcile_stale_evaluation_runs() -> int:
     heartbeat, completion, or cancellation win if it races with the reconciler.
     """
     cutoff = naive_utc_now() - timedelta(seconds=dify_config.EVALUATION_RUN_LEASE_TIMEOUT)
-    stale_runs: list[tuple[str, str | None, str, int]] = []
+    stale_runs: list[tuple[str, str, str | None, str, int]] = []
     with session_factory.create_session() as session:
         candidates = list(
             session.scalars(
@@ -250,7 +266,13 @@ def reconcile_stale_evaluation_runs() -> int:
             )
             if result.rowcount == 1:
                 stale_runs.append(
-                    (run.id, run.celery_task_id, EvaluationTargetType(run.target_type).value, run.total_items)
+                    (
+                        run.tenant_id,
+                        run.id,
+                        run.celery_task_id,
+                        EvaluationTargetType(run.target_type).value,
+                        run.total_items,
+                    )
                 )
         session.commit()
 
@@ -259,9 +281,11 @@ def reconcile_stale_evaluation_runs() -> int:
 
     from celery import current_app as celery_app
 
-    for run_id, celery_task_id, target_type, total_items in stale_runs:
+    for tenant_id, run_id, celery_task_id, target_type, total_items in stale_runs:
         if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
             EvaluationService._stop_workflow_tasks(run_id, total_items)
+        elif target_type == EvaluationTargetType.AGENTS.value:
+            EvaluationService._stop_agent_runs(tenant_id=tenant_id, evaluation_run_id=run_id)
         if celery_task_id:
             try:
                 celery_app.control.revoke(celery_task_id, terminate=False)
@@ -326,10 +350,20 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData, lease: Ev
         or EvaluationTargetType(evaluation_run.target_type).value != run_data.target_type
         or evaluation_run.target_id != run_data.target_id
         or evaluation_run.target_workflow_version_id != run_data.target_workflow_version_id
+        or evaluation_run.target_agent_config_snapshot_id != run_data.target_agent_config_snapshot_id
         or persisted_framework != run_data.evaluation_framework
     ):
         raise ValueError("Evaluation task payload does not match the persisted run.")
-    if run_data.target_type != EvaluationTargetType.KNOWLEDGE_BASE.value and not run_data.target_workflow_version_id:
+    if run_data.target_type == EvaluationTargetType.AGENTS.value and not run_data.target_agent_config_snapshot_id:
+        raise ValueError("Evaluation task payload is missing target_agent_config_snapshot_id.")
+    if (
+        run_data.target_type
+        not in {
+            EvaluationTargetType.KNOWLEDGE_BASE.value,
+            EvaluationTargetType.AGENTS.value,
+        }
+        and not run_data.target_workflow_version_id
+    ):
         raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
 
     evaluation_instance = EvaluationManager.get_evaluation_instance(run_data.evaluation_framework)
@@ -349,6 +383,14 @@ def _execute_running_evaluation(
 ) -> None:
     if run_data.target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
         _resume_retrieval_rows(
+            session,
+            run_data,
+            evaluation_instance,
+            run_created_by,
+            lease,
+        )
+    elif run_data.target_type == EvaluationTargetType.AGENTS.value:
+        _resume_agent_rows(
             session,
             run_data,
             evaluation_instance,
@@ -454,6 +496,408 @@ def _resume_retrieval_rows(
             lease=lease,
             report_progress=False,
         )
+
+
+def _resume_agent_rows(
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+    run_created_by: str,
+    lease: EvaluationRunLease,
+) -> None:
+    """Resume each Agent V2 row from its durable backend-run checkpoint."""
+    for position, item in enumerate(run_data.input_list):
+        checkpoint = session.scalar(
+            select(EvaluationRunItem).where(
+                EvaluationRunItem.evaluation_run_id == run_data.evaluation_run_id,
+                EvaluationRunItem.item_index == item.index,
+            )
+        )
+        if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.COMPLETED:
+            binding_id = checkpoint.agent_workspace_binding_id
+            session.rollback()
+            if binding_id:
+                _retire_agent_binding(run_data.tenant_id, binding_id)
+            continue
+
+        agent_item: AgentEvaluationItem | None = None
+        target_error: str | None = None
+        if checkpoint is not None and checkpoint.status == EvaluationRunItemStatus.TARGET_COMPLETED:
+            target_error = checkpoint.error
+            binding_id = checkpoint.agent_workspace_binding_id
+            if checkpoint.target_result_json:
+                agent_item = AgentEvaluationItem.model_validate_json(checkpoint.target_result_json)
+            elif target_error is None:
+                target_error = "Checkpointed Agent target result is missing."
+            session.rollback()
+            if binding_id:
+                _retire_agent_binding(run_data.tenant_id, binding_id)
+        else:
+            session.rollback()
+            agent_item, target_error = _execute_agent_target(
+                session=session,
+                run_data=run_data,
+                dataset_item=item,
+                account_id=run_created_by,
+                lease=lease,
+            )
+
+        _evaluate_agent_row(
+            session=session,
+            run_data=run_data.model_copy(update={"input_list": [item]}),
+            evaluation_instance=evaluation_instance,
+            agent_item=agent_item,
+            target_error=target_error,
+            lease=lease,
+        )
+        _update_run_progress(
+            session,
+            lease,
+            0.05 + 0.9 * (position + 1) / max(len(run_data.input_list), 1),
+        )
+
+
+def _execute_agent_target(
+    *,
+    session: Session,
+    run_data: EvaluationRunData,
+    dataset_item: EvaluationDatasetInput,
+    account_id: str,
+    lease: EvaluationRunLease,
+) -> tuple[AgentEvaluationItem | None, str | None]:
+    """Create or reconnect one isolated Agent V2 backend run."""
+    snapshot_id = run_data.target_agent_config_snapshot_id
+    if not snapshot_id:
+        raise ValueError("Agent evaluation target snapshot is missing.")
+    _cooperative_checkpoint(session, lease)
+    target = AgentEvaluationTargetService.resolve_active_snapshot(
+        session=session,
+        tenant_id=run_data.tenant_id,
+        agent_id=run_data.target_id,
+        snapshot_id=snapshot_id,
+    )
+    run_item = session.scalar(
+        select(EvaluationRunItem)
+        .where(
+            EvaluationRunItem.evaluation_run_id == lease.run_id,
+            EvaluationRunItem.item_index == dataset_item.index,
+        )
+        .with_for_update()
+    )
+    if run_item is None:
+        run_item = EvaluationRunItem(
+            evaluation_run_id=lease.run_id,
+            item_index=dataset_item.index,
+            status=EvaluationRunItemStatus.TARGET_RUNNING,
+            inputs=json.dumps(dataset_item.inputs, ensure_ascii=False),
+            expected_output=dataset_item.serialize_expected_output(),
+        )
+        session.add(run_item)
+        session.flush()
+    if run_item.status == EvaluationRunItemStatus.TARGET_COMPLETED:
+        persisted_item = (
+            AgentEvaluationItem.model_validate_json(run_item.target_result_json)
+            if run_item.target_result_json
+            else None
+        )
+        target_error = run_item.error
+        session.rollback()
+        return persisted_item, target_error
+    if run_item.status == EvaluationRunItemStatus.COMPLETED:
+        session.rollback()
+        return None, "Agent evaluation row was already completed."
+
+    run_item_id = run_item.id
+    checkpoint_binding_id = run_item.agent_workspace_binding_id
+    backend_run_id = run_item.agent_backend_run_id
+    binding: AgentWorkspaceBinding | None = None
+    if checkpoint_binding_id:
+        binding = session.scalar(
+            select(AgentWorkspaceBinding).where(
+                AgentWorkspaceBinding.id == checkpoint_binding_id,
+                AgentWorkspaceBinding.tenant_id == run_data.tenant_id,
+            )
+        )
+    if backend_run_id is None:
+        binding = AgentEvaluationTargetService.ensure_row_binding(
+            session=session,
+            target=target,
+            tenant_id=run_data.tenant_id,
+            run_item_id=run_item_id,
+            binding_id=checkpoint_binding_id,
+        )
+        run_item.agent_workspace_binding_id = binding.id
+        run_item.status = EvaluationRunItemStatus.TARGET_RUNNING
+        _touch_execution_lease(session, lease)
+        session.commit()
+    else:
+        session.rollback()
+
+    binding_id = binding.id if binding is not None else checkpoint_binding_id or ""
+    backend_binding_ref = binding.backend_binding_ref if binding is not None else "evaluation-replay"
+    runtime = AgentEvaluationTargetService.build_runtime_request(
+        target=target,
+        tenant_id=run_data.tenant_id,
+        account_id=account_id,
+        run_item_id=run_item_id,
+        binding_id=binding_id,
+        backend_binding_ref=backend_binding_ref,
+        query=str(dataset_item.inputs.get("query", "")),
+        idempotency_key=f"evaluation:{run_data.evaluation_run_id}:{run_item_id}",
+    )
+    available_tools = [
+        AgentToolDefinition(
+            tool_ref=tool.tool_ref,
+            name=tool.name,
+            display_name=tool.display_name,
+            description=tool.description,
+            input_schema=tool.input_schema,
+            schema_available=tool.schema_available,
+        )
+        for tool in runtime.available_tools
+    ]
+    client = create_agent_backend_run_client(
+        base_url=dify_config.AGENT_BACKEND_BASE_URL,
+        api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+        fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+        stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
+        stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
+    )
+    if backend_run_id is None:
+        create_response = client.create_run(runtime.request)
+        backend_run_id = create_response.run_id
+        try:
+            _persist_agent_backend_run_id(session, lease, dataset_item.index, backend_run_id)
+        except Exception:
+            try:
+                client.cancel_run(backend_run_id)
+            except Exception:
+                logger.exception("Failed to cancel uncheckpointed Agent evaluation run %s", backend_run_id)
+            _retire_agent_binding(run_data.tenant_id, binding_id)
+            raise
+
+    collector = AgentV2TraceCollector(available_tools)
+    adapter = AgentBackendRunEventAdapter()
+    terminal: (
+        AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent
+        | AgentBackendDeferredToolCallInternalEvent
+        | None
+    ) = None
+    stop_error: EvaluationRunCancelledError | EvaluationRunOwnershipLostError | None = None
+    last_lease_check = 0.0
+
+    def should_stop() -> bool:
+        nonlocal last_lease_check, stop_error
+        now = time.monotonic()
+        if now - last_lease_check < 0.5:
+            return False
+        last_lease_check = now
+        try:
+            _cooperative_checkpoint(session, lease)
+        except (EvaluationRunCancelledError, EvaluationRunOwnershipLostError) as exc:
+            stop_error = exc
+            return True
+        return False
+
+    session.rollback()
+    for raw_event in client.stream_events(backend_run_id, should_stop=should_stop):
+        for event in adapter.adapt(raw_event):
+            collector.consume(event)
+            if isinstance(
+                event,
+                AgentBackendRunSucceededInternalEvent
+                | AgentBackendRunFailedInternalEvent
+                | AgentBackendRunCancelledInternalEvent
+                | AgentBackendDeferredToolCallInternalEvent,
+            ):
+                terminal = event
+                break
+        if terminal is not None:
+            break
+    if stop_error is not None:
+        raise stop_error
+    _cooperative_checkpoint(session, lease)
+    if terminal is None:
+        raise RuntimeError(f"Agent backend stream for run {backend_run_id} ended without a terminal event.")
+
+    node_info = _agent_target_node_info(run_data)
+    if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
+        agent_item = collector.build_item(dataset_item=dataset_item, node_info=node_info, output=terminal.output)
+        target_error = None
+    elif isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
+        agent_item = None
+        target_error = "Agent requested human input, which dataset evaluation does not support."
+    elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
+        agent_item = None
+        target_error = f"Agent execution failed: {terminal.error}"
+    else:
+        agent_item = None
+        target_error = f"Agent execution was cancelled: {terminal.message or terminal.reason or 'cancelled'}"
+
+    retired_binding_id = _persist_agent_target_checkpoint(
+        session=session,
+        lease=lease,
+        tenant_id=run_data.tenant_id,
+        dataset_item=dataset_item,
+        backend_run_id=backend_run_id,
+        binding_id=binding_id or None,
+        agent_item=agent_item,
+        target_error=target_error,
+    )
+    if retired_binding_id is not None:
+        _enqueue_retired_agent_binding(run_data.tenant_id, retired_binding_id)
+    return agent_item, target_error
+
+
+def _persist_agent_backend_run_id(
+    session: Session,
+    lease: EvaluationRunLease,
+    item_index: int,
+    backend_run_id: str,
+) -> None:
+    _assert_execution_lease(session, lease)
+    run_item = session.scalar(
+        select(EvaluationRunItem).where(
+            EvaluationRunItem.evaluation_run_id == lease.run_id,
+            EvaluationRunItem.item_index == item_index,
+        )
+    )
+    if run_item is None:
+        raise RuntimeError("Agent evaluation row checkpoint is missing.")
+    run_item.agent_backend_run_id = backend_run_id
+    run_item.status = EvaluationRunItemStatus.TARGET_RUNNING
+    _touch_execution_lease(session, lease)
+    session.commit()
+
+
+def _persist_agent_target_checkpoint(
+    *,
+    session: Session,
+    lease: EvaluationRunLease,
+    tenant_id: str,
+    dataset_item: EvaluationDatasetInput,
+    backend_run_id: str,
+    binding_id: str | None,
+    agent_item: AgentEvaluationItem | None,
+    target_error: str | None,
+) -> str | None:
+    _assert_execution_lease(session, lease)
+    run_item = session.scalar(
+        select(EvaluationRunItem).where(
+            EvaluationRunItem.evaluation_run_id == lease.run_id,
+            EvaluationRunItem.item_index == dataset_item.index,
+        )
+    )
+    if run_item is None:
+        raise RuntimeError("Agent evaluation row checkpoint is missing.")
+    run_item.status = EvaluationRunItemStatus.TARGET_COMPLETED
+    run_item.agent_backend_run_id = backend_run_id
+    run_item.agent_workspace_binding_id = binding_id
+    run_item.inputs = json.dumps(dataset_item.inputs, ensure_ascii=False)
+    run_item.expected_output = dataset_item.serialize_expected_output()
+    run_item.actual_output = agent_item.output if agent_item is not None else None
+    run_item.target_result_json = agent_item.model_dump_json() if agent_item is not None else None
+    run_item.error = target_error
+    retired_binding_id = (
+        AgentWorkspaceService.retire_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=binding_id,
+        )
+        if binding_id
+        else None
+    )
+    _touch_execution_lease(session, lease)
+    session.commit()
+    return retired_binding_id
+
+
+def _enqueue_retired_agent_binding(tenant_id: str, binding_id: str) -> None:
+    try:
+        enqueue_agent_resource_collection(tenant_id=tenant_id, binding_ids=(binding_id,))
+    except Exception:
+        logger.exception("Failed to enqueue Agent evaluation binding %s for collection", binding_id)
+
+
+def _retire_agent_binding(tenant_id: str, binding_id: str) -> None:
+    try:
+        with session_factory.create_session() as cleanup_session:
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=cleanup_session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+            )
+            cleanup_session.commit()
+        if retired_binding_id is not None:
+            _enqueue_retired_agent_binding(tenant_id, retired_binding_id)
+    except Exception:
+        logger.exception("Failed to retire Agent evaluation binding %s", binding_id)
+
+
+def _agent_target_node_info(run_data: EvaluationRunData) -> NodeInfo:
+    for metric in run_data.default_metrics:
+        if metric.node_info_list:
+            return metric.node_info_list[0]
+    return NodeInfo(node_id=run_data.target_id, type="agent", title="Agent")
+
+
+def _evaluate_agent_row(
+    *,
+    session: Session,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+    agent_item: AgentEvaluationItem | None,
+    target_error: str | None,
+    lease: EvaluationRunLease,
+) -> None:
+    dataset_item = run_data.input_list[0]
+    node_info = _agent_target_node_info(run_data)
+    if target_error is not None or agent_item is None:
+        result = EvaluationItemResult(
+            index=dataset_item.index,
+            actual_output=agent_item.output if agent_item is not None else None,
+            error=f"Target execution failed: {target_error or 'Agent target result is missing.'}",
+        )
+    else:
+        try:
+            evaluated = evaluation_instance.evaluate_agent(
+                [agent_item],
+                [metric.metric for metric in run_data.default_metrics],
+                run_data.evaluation_model_provider,
+                run_data.evaluation_model,
+                run_data.tenant_id,
+            )
+            if not evaluated:
+                raise RuntimeError("Agent evaluator returned no result.")
+            result = evaluated[0].model_copy(
+                update={
+                    "index": dataset_item.index,
+                    "actual_output": agent_item.output,
+                    "metadata": {
+                        **evaluated[0].metadata,
+                        "agent_trace_source": "agent_v2",
+                        "agent_trace_warnings": agent_item.trajectory.warnings if agent_item.trajectory else [],
+                    },
+                }
+            )
+            for metric in result.metrics:
+                metric.node_info = node_info
+        except Exception as exc:
+            logger.exception("Failed Agent V2 metrics for evaluation row %s", dataset_item.index)
+            result = EvaluationItemResult(
+                index=dataset_item.index,
+                actual_output=agent_item.output,
+                error=f"Agent evaluation failed: {exc}",
+            )
+
+    results = [result]
+    if run_data.judgment_config:
+        results = _apply_judgment(results, run_data.judgment_config)
+    results = [_with_overall_score(item) for item in results]
+    _persist_results(session, lease, results, [dataset_item])
 
 
 def _resume_workflow_rows(
@@ -1236,22 +1680,37 @@ def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) ->
     """Fail the run only while this invocation still owns it."""
     try:
         session.rollback()
-        session.execute(
-            update(EvaluationRun)
-            .where(
-                EvaluationRun.id == lease.run_id,
-                EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                EvaluationRun.execution_token == lease.token,
-            )
-            .values(
-                status=EvaluationRunStatus.FAILED,
-                execution_token=None,
-                heartbeat_at=None,
-                error=error[:2000],
-                completed_at=naive_utc_now(),
-            )
+        run_identity = session.execute(
+            select(EvaluationRun.tenant_id, EvaluationRun.target_type).where(EvaluationRun.id == lease.run_id)
+        ).one_or_none()
+        result = cast(
+            CursorResult[Any],
+            session.execute(
+                update(EvaluationRun)
+                .where(
+                    EvaluationRun.id == lease.run_id,
+                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                    EvaluationRun.execution_token == lease.token,
+                )
+                .values(
+                    status=EvaluationRunStatus.FAILED,
+                    execution_token=None,
+                    heartbeat_at=None,
+                    error=error[:2000],
+                    completed_at=naive_utc_now(),
+                )
+            ),
         )
         session.commit()
+        if (
+            result.rowcount == 1
+            and run_identity is not None
+            and EvaluationTargetType(run_identity.target_type) == EvaluationTargetType.AGENTS
+        ):
+            EvaluationService._stop_agent_runs(
+                tenant_id=run_identity.tenant_id,
+                evaluation_run_id=lease.run_id,
+            )
     except Exception:
         logger.exception("Failed to mark run %s as failed", lease.run_id)
 

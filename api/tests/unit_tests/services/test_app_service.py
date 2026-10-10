@@ -857,6 +857,9 @@ class TestAgentAppType:
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.SystemFeatureService"),
             patch(
+                "services.evaluation_service.EvaluationService.stage_target_evaluation_cleanup"
+            ) as mock_evaluation_cleanup,
+            patch(
                 "services.app_service.remove_app_and_related_data_task.delay",
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
             ),
@@ -893,6 +896,12 @@ class TestAgentAppType:
         assert persisted_agent.status == AgentStatus.ARCHIVED
         assert persisted_agent.archived_by == account_id
         assert persisted_agent.archived_at is not None
+        mock_evaluation_cleanup.assert_called_once_with(
+            session=sqlite_session,
+            tenant_id=app.tenant_id,
+            target_type="agents",
+            target_id=backing_agent.id,
+        )
         persisted_workflow_binding = sqlite_session.get(WorkflowAgentNodeBinding, workflow_binding.id)
         assert persisted_workflow_binding is not None
         assert persisted_workflow_binding.agent_id == backing_agent.id

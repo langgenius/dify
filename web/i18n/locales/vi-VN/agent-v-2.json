@@ -371,6 +371,7 @@
   "agentDetail.sections.access": "Điểm truy cập",
   "agentDetail.sections.access-config": "Quyền truy cập tài nguyên",
   "agentDetail.sections.configure": "Cấu hình",
+  "agentDetail.sections.evaluation": "Đánh giá",
   "agentDetail.sections.logs": "Nhật ký",
   "agentDetail.sections.monitoring": "Giám sát",
   "agentDetail.title": "Tác nhân",

@@ -371,6 +371,7 @@
   "agentDetail.sections.access": "จุดเข้าถึง",
   "agentDetail.sections.access-config": "การเข้าถึงทรัพยากร",
   "agentDetail.sections.configure": "กําหนดค่า",
+  "agentDetail.sections.evaluation": "การประเมิน",
   "agentDetail.sections.logs": "บันทึก",
   "agentDetail.sections.monitoring": "การมอนิเตอร์",
   "agentDetail.title": "ตัวแทน",

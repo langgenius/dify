@@ -41,14 +41,21 @@ type AgentDetailNavItem = {
   href: string
   icon: string
   activeIcon: string
+  requiresPublishedAgent?: boolean
 }
-
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
     icon: 'i-custom-vender-agent-v2-configure',
     activeIcon: 'i-custom-vender-agent-v2-configure-active',
+  },
+  {
+    labelKey: 'agentDetail.sections.evaluation',
+    href: getAgentDetailPath(agentId, 'evaluation'),
+    icon: 'i-ri-flask-line',
+    activeIcon: 'i-ri-flask-fill',
+    requiresPublishedAgent: true,
   },
   {
     labelKey: 'agentDetail.sections.access',
@@ -245,6 +252,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
+            disabled={item.requiresPublishedAgent && agent?.access_ready !== true}
           />
         ))}
       </nav>

@@ -460,6 +460,7 @@ class EvaluationRunData(BaseModel):
     target_type: str
     target_id: str
     target_workflow_version_id: str | None = None
+    target_agent_config_snapshot_id: str | None = None
     evaluation_framework: EvaluationFrameworkEnum = EvaluationFrameworkEnum.RAGAS
     evaluation_model_provider: str
     evaluation_model: str

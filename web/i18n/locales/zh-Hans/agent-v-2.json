@@ -371,6 +371,7 @@
   "agentDetail.sections.access": "访问入口",
   "agentDetail.sections.access-config": "访问权限",
   "agentDetail.sections.configure": "配置",
+  "agentDetail.sections.evaluation": "评估",
   "agentDetail.sections.logs": "日志",
   "agentDetail.sections.monitoring": "监控",
   "agentDetail.title": "Agent",

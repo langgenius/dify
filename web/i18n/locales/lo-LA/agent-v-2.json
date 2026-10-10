@@ -371,6 +371,7 @@
   "agentDetail.sections.access": "ຈຸດເຂົ້າເຖິງ",
   "agentDetail.sections.access-config": "ການເຂົ້າເຖິງຊັບພະຍາກອນ",
   "agentDetail.sections.configure": "ຕັ້ງຄ່າ",
+  "agentDetail.sections.evaluation": "ການປະເມີນ",
   "agentDetail.sections.logs": "ບັນທຶກ (Logs)",
   "agentDetail.sections.monitoring": "ການຕິດຕາມ",
   "agentDetail.title": "ຕົວແທນ (Agent)",

@@ -27,6 +27,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from models.agent import Agent
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -513,6 +514,121 @@ def test_validate_config_rejects_agent_v2(monkeypatch: pytest.MonkeyPatch) -> No
             target_id="app-1",
             data=config,
         )
+
+
+def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = SimpleNamespace(agent_name="Research Agent")
+    resolve_target = MagicMock(return_value=target)
+    monkeypatch.setattr(
+        "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
+        resolve_target,
+    )
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    monkeypatch.setattr(
+        EvaluationService,
+        "get_supported_metrics",
+        MagicMock(return_value=["task_completion"]),
+    )
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="task_completion",
+                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+            )
+        ],
+    )
+
+    EvaluationService.validate_evaluation_config(
+        session=MagicMock(),
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        data=config,
+    )
+
+    resolve_target.assert_called_once()
+
+    unsupported = config.model_copy(
+        update={
+            "default_metrics": [
+                DefaultMetric(
+                    metric="tool_call_accuracy",
+                    node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+                )
+            ]
+        }
+    )
+    with pytest.raises(ValueError, match="not supported for Agent V2"):
+        EvaluationService.validate_evaluation_config(
+            session=MagicMock(),
+            tenant_id="tenant-1",
+            target_type="agents",
+            target_id="agent-1",
+            data=unsupported,
+        )
+
+
+def test_validate_agent_target_rejects_customized_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
+        MagicMock(return_value=SimpleNamespace(agent_name="Research Agent")),
+    )
+    config = EvaluationConfigData(
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        )
+    )
+
+    with pytest.raises(ValueError, match="not supported for Agent V2 targets"):
+        EvaluationService.validate_evaluation_config(
+            session=MagicMock(),
+            tenant_id="tenant-1",
+            target_type="agents",
+            target_id="agent-1",
+            data=config,
+        )
+
+
+def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        EvaluationService,
+        "get_console_supported_metrics",
+        MagicMock(
+            return_value=[
+                "task_completion",
+                "trajectory_quality",
+                "tool_selection_correctness",
+                "tool_argument_correctness",
+            ]
+        ),
+    )
+    agent = Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent")
+
+    metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
+        agent,
+        "agents",
+        MagicMock(),
+    )
+
+    assert [metric.metric for metric in metrics] == [
+        "task_completion",
+        "trajectory_quality",
+        "tool_selection_correctness",
+        "tool_argument_correctness",
+    ]
+    expected_node = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
+    assert all(metric.node_info_list == [expected_node] for metric in metrics)
 
 
 def test_agent_node_discovery_includes_legacy_agent_and_excludes_agent_v2() -> None:
@@ -1050,6 +1166,41 @@ def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.Monkey
     assert run.heartbeat_at is None
 
 
+def test_cancel_agent_run_stops_backend_without_touching_workflow_tasks(monkeypatch: pytest.MonkeyPatch) -> None:
+    run = SimpleNamespace(
+        id="run-1",
+        status="running",
+        total_items=2,
+        celery_task_id="celery-1",
+        execution_token="40000000-0000-0000-0000-000000000001",
+        heartbeat_at=naive_utc_now(),
+        completed_at=None,
+        progress_rate=0.4,
+    )
+    session = MagicMock()
+    monkeypatch.setattr(EvaluationService, "get_evaluation_run_detail", MagicMock(return_value=run))
+    stop_agent_runs = MagicMock()
+    stop_workflow_tasks = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_stop_agent_runs", stop_agent_runs)
+    monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_workflow_tasks)
+    celery_control = MagicMock()
+    monkeypatch.setattr("celery.current_app.control", celery_control)
+
+    EvaluationService.cancel_evaluation_run(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        run_id="run-1",
+    )
+
+    stop_agent_runs.assert_called_once_with(tenant_id="tenant-1", evaluation_run_id="run-1")
+    stop_workflow_tasks.assert_not_called()
+    celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
+    assert run.execution_token is None
+    assert run.heartbeat_at is None
+
+
 def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1179,6 +1330,60 @@ def test_stage_target_cleanup_deletes_result_file_after_target_deletion_commits(
     sqlite_session.commit()
 
     storage_delete.assert_called_once_with("evaluation_results/tenant/result.xlsx")
+
+
+def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = "10000000-0000-0000-0000-000000000010"
+    target_id = "10000000-0000-0000-0000-000000000100"
+    run = EvaluationRun(
+        id="10000000-0000-0000-0000-000000000021",
+        tenant_id=tenant_id,
+        target_type="agents",
+        target_id=target_id,
+        target_agent_config_snapshot_id="10000000-0000-0000-0000-000000000022",
+        evaluation_config_id="10000000-0000-0000-0000-000000000001",
+        config_snapshot="{}",
+        status=EvaluationRunStatus.RUNNING,
+        celery_task_id="celery-task-1",
+        total_items=1,
+        created_by="10000000-0000-0000-0000-000000001000",
+    )
+    item = EvaluationRunItem(
+        id="10000000-0000-0000-0000-000000000023",
+        evaluation_run_id=run.id,
+        item_index=1,
+        status=EvaluationRunItemStatus.TARGET_RUNNING,
+        agent_backend_run_id="backend-run-1",
+        agent_workspace_binding_id="10000000-0000-0000-0000-000000000024",
+    )
+    sqlite_session.add_all([run, item])
+    sqlite_session.commit()
+    stop_agent_checkpoints = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_stop_agent_checkpoints", stop_agent_checkpoints)
+    celery_control = MagicMock()
+    monkeypatch.setattr("celery.current_app.control", celery_control)
+
+    EvaluationService.stage_target_evaluation_cleanup(
+        session=sqlite_session,
+        tenant_id=tenant_id,
+        target_type="agents",
+        target_id=target_id,
+    )
+    sqlite_session.flush()
+
+    stop_agent_checkpoints.assert_not_called()
+    celery_control.revoke.assert_not_called()
+
+    sqlite_session.commit()
+
+    stop_agent_checkpoints.assert_called_once_with(
+        tenant_id=tenant_id,
+        checkpoints=[("backend-run-1", "10000000-0000-0000-0000-000000000024")],
+    )
+    celery_control.revoke.assert_called_once_with("celery-task-1", terminate=False)
 
 
 def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Session) -> None:
@@ -1363,6 +1568,87 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
         )
 
 
+def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant = Tenant(name="Agent Evaluation Tenant")
+    tenant.id = "30000000-0000-0000-0000-000000000110"
+    run_request = EvaluationRunSnapshot(
+        file_id="30000000-0000-0000-0000-000000000120",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="task_completion",
+                node_info_list=[
+                    NodeInfo(
+                        node_id="30000000-0000-0000-0000-000000000130",
+                        type="agent",
+                        title="Research Agent",
+                    )
+                ],
+            )
+        ],
+        evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
+        dataset_input_types={"query": "string"},
+    )
+    run = EvaluationRun(
+        id="30000000-0000-0000-0000-000000000121",
+        tenant_id=tenant.id,
+        target_type="agents",
+        target_id="30000000-0000-0000-0000-000000000130",
+        target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000140",
+        evaluation_config_id="30000000-0000-0000-0000-000000000150",
+        config_snapshot=run_request.model_dump_json(),
+        status=EvaluationRunStatus.FAILED,
+        dataset_file_id=run_request.file_id,
+        total_items=1,
+        progress_rate=0.05,
+        error="heartbeat lease expired",
+        created_by="30000000-0000-0000-0000-000000000160",
+    )
+    checkpoint = EvaluationRunItem(
+        evaluation_run_id=run.id,
+        item_index=1,
+        status=EvaluationRunItemStatus.TARGET_RUNNING,
+        inputs='{"query": "first"}',
+        agent_backend_run_id="backend-run-old",
+        agent_workspace_binding_id="30000000-0000-0000-0000-000000000170",
+    )
+    sqlite_session.add_all([tenant, run, checkpoint])
+    sqlite_session.commit()
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    stop_agent_checkpoints = MagicMock()
+    monkeypatch.setattr(EvaluationService, "_stop_agent_checkpoints", stop_agent_checkpoints)
+    apply_async = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
+
+    retried = EvaluationService.retry_evaluation_run(
+        session=sqlite_session,
+        tenant_id=tenant.id,
+        target_type="agents",
+        target_id=run.target_id,
+        run_id=run.id,
+        dataset_file_content=b"index,query\n1,first\n",
+        dataset_filename="dataset.csv",
+    )
+
+    assert retried.status == EvaluationRunStatus.PENDING
+    assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is None
+    stop_agent_checkpoints.assert_called_once_with(
+        tenant_id=tenant.id,
+        checkpoints=[("backend-run-old", "30000000-0000-0000-0000-000000000170")],
+    )
+    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert dispatched_payload["target_agent_config_snapshot_id"] == run.target_agent_config_snapshot_id
+
+
 def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     session.scalar.return_value = "tenant-1"
@@ -1423,6 +1709,53 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
     dispatched_payload = dispatch_kwargs["args"][0]
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
     assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello", "enabled": True}
+
+
+def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = MagicMock()
+    session.scalar.return_value = "tenant-1"
+    session.query.return_value.filter_by.return_value.filter.return_value.count.return_value = 0
+
+    def assign_run_id(model: object) -> None:
+        if isinstance(model, EvaluationRun):
+            model.id = "run-1"
+
+    session.add.side_effect = assign_run_id
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_configured_framework",
+        MagicMock(return_value=EvaluationFrameworkEnum.DEEPEVAL),
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr(
+        EvaluationService,
+        "save_evaluation_config",
+        MagicMock(return_value=SimpleNamespace(id="config-1")),
+    )
+    pin_agent = MagicMock(return_value=("snapshot-7", [{"variable": "query", "type": "string"}]))
+    monkeypatch.setattr(EvaluationService, "_pin_target_agent", pin_agent)
+    apply_async = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
+
+    run = EvaluationService.start_evaluation_run(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        account_id="account-1",
+        dataset_file_content=b"index,query\n1,hello\n",
+        dataset_filename="dataset.csv",
+        run_request=EvaluationRunRequest(file_id="file-1", evaluation_model="model"),
+    )
+
+    assert run.target_workflow_version_id is None
+    assert run.target_agent_config_snapshot_id == "snapshot-7"
+    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert dispatched_payload["target_workflow_version_id"] is None
+    assert dispatched_payload["target_agent_config_snapshot_id"] == "snapshot-7"
+    assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello"}
 
 
 def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest.MonkeyPatch) -> None:

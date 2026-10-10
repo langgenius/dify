@@ -35,6 +35,11 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/app/components/app-sidebar/nav-link', () => ({
+  default: ({ disabled, href, name }: { disabled?: boolean; href: string; name: string }) =>
+    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
+}))
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -210,6 +215,33 @@ describe('AgentDetailSection', () => {
     expect(
       screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('links published Agents with test-and-run access to evaluation', () => {
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
+  })
+
+  it('disables evaluation until the Agent has a published snapshot', () => {
+    mocks.queryData = createAgent({ access_ready: false })
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides evaluation without test-and-run permission', () => {
+    mocks.queryData = createAgent({ permission_keys: [AgentPermission.Preview] })
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 })
 

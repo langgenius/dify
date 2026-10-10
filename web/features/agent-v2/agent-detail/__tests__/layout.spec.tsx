@@ -50,7 +50,7 @@ describe('AgentDetailLayout', () => {
     location.pathname = '/agents/agent-1/configure'
   })
 
-  it.each(['configure', 'access', 'logs', 'monitoring', 'access-config'])(
+  it.each(['configure', 'evaluation', 'access', 'logs', 'monitoring', 'access-config'])(
     'renders the authorized %s page and its document title',
     (section) => {
       location.pathname = `/agents/agent-1/${section}`
@@ -60,7 +60,7 @@ describe('AgentDetailLayout', () => {
     },
   )
 
-  it.each(['configure', 'logs', 'monitoring', 'access-config'])(
+  it.each(['configure', 'evaluation', 'logs', 'monitoring', 'access-config'])(
     'blocks direct navigation to %s for a viewer',
     async (section) => {
       location.pathname = `/agents/agent-1/${section}`
@@ -69,6 +69,16 @@ describe('AgentDetailLayout', () => {
       await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/access'))
     },
   )
+
+  it('redirects unpublished Agent evaluation back to configure', async () => {
+    location.pathname = '/agents/agent-1/evaluation'
+    const { wrapper, queryClient } = setup()
+    queryClient.setQueryData(detailKey, createAgentFixture({ access_ready: false }))
+    render(content, { wrapper })
+
+    expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/configure'))
+  })
 
   it('unmounts protected content when resource permissions are revoked', async () => {
     const { wrapper, queryClient } = setup()

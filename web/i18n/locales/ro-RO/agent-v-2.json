@@ -371,6 +371,7 @@
   "agentDetail.sections.access": "Punct de acces",
   "agentDetail.sections.access-config": "Acces la resurse",
   "agentDetail.sections.configure": "Configurează",
+  "agentDetail.sections.evaluation": "Evaluare",
   "agentDetail.sections.logs": "Jurnale",
   "agentDetail.sections.monitoring": "Monitorizare",
   "agentDetail.title": "Agent",
