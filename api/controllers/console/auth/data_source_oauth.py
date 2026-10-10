@@ -2,9 +2,8 @@ import logging
 from http import HTTPStatus
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 from uuid import UUID
-
-from flask import redirect
 from flask_restx import Resource
+from flask import redirect
 from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
@@ -106,7 +105,7 @@ class OAuthDataSource(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Authorization URL or internal setup success",
-        console_ns.models[OAuthDataSourceResponse.__name__],
+        console_basemodel[OAuthDataSourceResponse.__name__],
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider")
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
@@ -135,7 +134,7 @@ class OAuthDataSourceCallback(Resource):
     @console_ns.doc(params={"provider": "Data source provider name (notion)"})
     @console_ns.doc(params=query_params_from_model(OAuthDataSourceCallbackQuery))
     @console_ns.response(
-        HTTPStatus.FOUND, "Redirect to console with result", console_ns.models[RedirectResponse.__name__]
+        HTTPStatus.FOUND, "Redirect to console with result", console_basemodel[RedirectResponse.__name__]
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider")
     def get(self, provider: str):
@@ -160,7 +159,7 @@ class OAuthDataSourceBinding(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Data source binding success",
-        console_ns.models[OAuthDataSourceBindingResponse.__name__],
+        console_basemodel[OAuthDataSourceBindingResponse.__name__],
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider or code")
     @console_account_admission()
@@ -192,7 +191,7 @@ class OAuthDataSourceSync(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Data source sync success",
-        console_ns.models[OAuthDataSourceSyncResponse.__name__],
+        console_basemodel[OAuthDataSourceSyncResponse.__name__],
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider or sync failed")
     @console_account_admission()
