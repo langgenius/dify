@@ -194,3 +194,191 @@ def test_native_aggregator_selector_changes_require_approval_only_when_final_acc
     assert bool(reasons) is (effect == "switch")
     assert risk.level == ("high" if effect == "switch" else "low")
     assert (graph, intents) == before
+
+
+@pytest.mark.parametrize(
+    ("graph", "path", "original", "replacement"),
+    [
+        (
+            _graph("list-operator", variable=["s", "public_items"]),
+            "variable",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+        (
+            _graph("iteration", iterator_selector=["s", "public_items"]),
+            "iterator_selector",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+        (
+            _graph("iteration", output_selector=["s", "public_items"]),
+            "output_selector",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+        (
+            _graph("agent", agent_parameters={"query": {"type": "variable", "value": ["s", "public_items"]}}),
+            "agent_parameters.query.value",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+        (
+            _graph("agent", agent_parameters={"query": {"type": "constant", "value": ["s", "public_items"]}}),
+            "agent_parameters.query.type",
+            "constant",
+            "variable",
+        ),
+    ],
+    ids=["list-source", "iteration-input", "iteration-output", "agent-source", "agent-access-activation"],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_native_data_access_requires_approval_for_final_selector_or_activation_changes(
+    graph, path, original, replacement, effect
+):
+    """Native selector fields and Agent binding modes must override a low model verdict."""
+    from services.dify_builder.mutation_policy import sensitive_change_reasons
+
+    intents = [_set(path, original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set(path, original))
+    intents.append(_set("title", "Corrected node"))
+    before = deepcopy((graph, intents))
+
+    risk = fix._shape_risk(intents, graph, Risk(level="low"))
+    reasons = sensitive_change_reasons(graph, intents)
+
+    assert risk.level == ("high" if effect == "switch" else "low")
+    assert bool(reasons) is (effect == "switch")
+    assert (graph, intents) == before
+
+
+@pytest.mark.parametrize("input_type", ["constant", "mixed"])
+@pytest.mark.parametrize(
+    ("original", "replacement", "sensitive"),
+    [
+        ("old prompt", "fixed prompt", False),
+        (["s", "public_items"], ["s", "private_items"], False),
+        (["conversation", "public_items"], ["conversation", "private_items"], False),
+        ("Use {{#s.public_items#}}", "Use {{#s.private_items#}}", True),
+        ("Use {{#s.public_items#}}", "Corrected prompt using {{#s.public_items#}}", False),
+    ],
+    ids=[
+        "ordinary-prompt",
+        "static-source-looking-list",
+        "static-conversation-looking-list",
+        "actual-template-binding",
+        "unchanged-template-binding",
+    ],
+)
+def test_agent_literal_inputs_preserve_static_repairs_and_protect_actual_template_access(
+    input_type, original, replacement, sensitive
+):
+    graph = _graph("agent", agent_parameters={"query": {"type": input_type, "value": original}})
+
+    risk = fix._shape_risk([_set("agent_parameters.query.value", replacement)], graph, Risk(level="low"))
+
+    assert risk.level == ("high" if sensitive else "low")
+
+
+def test_agent_constant_to_mixed_with_static_value_does_not_activate_selector_access():
+    graph = _graph("agent", agent_parameters={"query": {"type": "constant", "value": ["s", "public_items"]}})
+
+    assert fix._shape_risk([_set("agent_parameters.query.type", "mixed")], graph, Risk(level="low")).level == "low"
+
+
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_agent_native_memory_access_is_reviewed_by_final_effect(effect):
+    graph = _graph("agent", memory=None)
+    memory = {"window": {"enabled": False, "size": 10}}  # runtime reads history when memory is present
+    intents = [_set("memory", None if effect == "identical" else memory)]
+    if effect == "reverted":
+        intents.append(_set("memory", None))
+    intents.append(_set("title", "Corrected agent"))
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == ("high" if effect == "switch" else "low")
+
+
+@pytest.mark.parametrize(
+    ("enabled", "auto", "input_type", "path", "original", "replacement", "sensitive"),
+    [
+        (True, 0, "variable", "value.value", ["s", "public_items"], ["s", "private_items"], True),
+        (True, 1, "variable", "auto", 1, 0, True),
+        (False, 0, "variable", "enabled", False, True, True),
+        (True, 0, "constant", "value.type", "constant", "variable", True),
+        (False, 0, "variable", "value.value", ["s", "public_items"], ["s", "private_items"], False),
+        (True, 1, "variable", "value.value", ["s", "public_items"], ["s", "private_items"], False),
+        (True, 0, "constant", "value.value", ["s", "public_items"], ["s", "private_items"], False),
+        (False, 1, "variable", "auto", 1, 0, False),
+    ],
+    ids=[
+        "manual-source",
+        "auto-activates",
+        "enabled-activates",
+        "type-activates",
+        "disabled-source",
+        "automatic-source",
+        "literal-source",
+        "disabled-auto-metadata",
+    ],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_agent_native_tool_access_metadata_controls_selector_projection(
+    enabled, auto, input_type, path, original, replacement, sensitive, effect
+):
+    tool = {
+        "enabled": enabled,
+        "provider_name": "provider-a",
+        "tool_name": "search",
+        "parameters": {"query": {"auto": auto, "value": {"type": input_type, "value": ["s", "public_items"]}}},
+    }
+    graph = _graph("agent", agent_parameters={"dynamic_tools": {"type": "constant", "value": [tool]}})
+    prefix = "agent_parameters.dynamic_tools.value.0"
+    native_path = prefix + (".enabled" if path == "enabled" else ".parameters.query." + path)
+    intents = [_set(native_path, original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set(native_path, original))
+    before = deepcopy((graph, intents))
+
+    risk = fix._shape_risk(intents, graph, Risk(level="low"))
+
+    assert risk.level == ("high" if sensitive and effect == "switch" else "low")
+    assert (graph, intents) == before
+
+
+def test_list_filter_enabled_metadata_is_an_ordinary_configuration_repair():
+    graph = _graph("list-operator", variable=["s", "public_items"], filter_by={"enabled": False})
+
+    assert fix._shape_risk([_set("filter_by.enabled", True)], graph, Risk(level="low")).level == "low"
+
+
+@pytest.mark.parametrize(
+    ("path", "original", "replacement"),
+    [
+        ("provider", "provider-a", "provider-b"),
+        ("model", "model-a", "model-b"),
+        ("completion_params.max_tokens", 100, 10000),
+    ],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_agent_model_selector_under_dynamic_parameter_name_requires_review(path, original, replacement, effect):
+    graph = _graph(
+        "agent",
+        agent_parameters={
+            "dynamic_engine": {
+                "type": "constant",
+                "value": {
+                    "provider": "provider-a",
+                    "model": "model-a",
+                    "mode": "chat",
+                    "completion_params": {"max_tokens": 100},
+                },
+            },
+        },
+    )
+    native_path = "agent_parameters.dynamic_engine.value." + path
+    intents = [_set(native_path, original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set(native_path, original))
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == ("high" if effect == "switch" else "low")
