@@ -41,6 +41,7 @@ _ACCESS_KEYS = frozenset(
         "value_selector",
         "query_variable_selector",
         "query_attachment_selector",
+        "index_chunk_variable_selector",
         "conversation_variables",
         "retrieval_mode",
         "single_retrieval_config",
@@ -56,6 +57,8 @@ _NODE_FIELDS: dict[str, dict[str, tuple[str, ...]]] = {
         "HTTP target or authentication": ("url", "method", "authorization", "headers", "params", "ssl_verify"),
     },
     BuiltinNodeTypes.LLM: {"data access": ("context", "memory", "vision")},
+    BuiltinNodeTypes.PARAMETER_EXTRACTOR: {"data access": ("query", "memory", "vision")},
+    BuiltinNodeTypes.QUESTION_CLASSIFIER: {"data access": ("memory", "vision")},
     BuiltinNodeTypes.LIST_OPERATOR: {"data access": ("variable",)},
     BuiltinNodeTypes.ITERATION: {"data access": ("iterator_selector", "output_selector")},
     BuiltinNodeTypes.AGENT: {"data access": ("memory",)},
@@ -89,6 +92,13 @@ def _sensitive_values(data: dict[str, Any]) -> dict[str, dict[tuple[str, ...], A
                 remember(category, (key,), data[key])
     if "type" in data:
         remember("node type", ("type",), data["type"])
+
+    if data.get("type") == BuiltinNodeTypes.LOOP:
+        variables = data.get("loop_variables")
+        if isinstance(variables, list):
+            for index, variable in enumerate(variables):
+                if isinstance(variable, dict) and variable.get("value_type") == "variable":
+                    remember("data access", ("loop_variables", str(index), "value"), variable.get("value"))
 
     if data.get("type") == BuiltinNodeTypes.AGENT:
         parameters = data.get("agent_parameters")
@@ -140,7 +150,17 @@ def _sensitive_values(data: dict[str, Any]) -> dict[str, dict[tuple[str, ...], A
                 and path[0] == "agent_parameters"
                 and value.get("type") in ("constant", "mixed")
             )
+            literal_loop_input = (
+                data.get("type") == BuiltinNodeTypes.LOOP
+                and len(path) == 2
+                and path[0] == "loop_variables"
+                and value.get("value_type") == "constant"
+            )
             for key, item in value.items():
+                # Native Loop constants are literal segments: neither selector
+                # arrays nor template-looking text access the variable pool.
+                if literal_loop_input and key == "value":
+                    continue
                 child_path = (*path, key)
                 if key in _MODEL_KEYS:
                     remember("model configuration", child_path, item)

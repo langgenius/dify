@@ -468,6 +468,148 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
             "agent_parameters.dynamic_engine.value.completion_params.max_tokens",
             10000,
         ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "query",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "memory",
+            {"window": {"enabled": False, "size": 10}},
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "memory.window.size",
+            10,
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "vision.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "vision.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "loop",
+                "start_node_id": "child",
+                "loop_count": 2,
+                "break_conditions": [],
+                "logical_operator": "and",
+                "loop_variables": [
+                    {
+                        "label": "items",
+                        "var_type": "array[string]",
+                        "value_type": "variable",
+                        "value": ["s", "public_items"],
+                    }
+                ],
+            },
+            "loop_variables.0.value",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "loop",
+                "start_node_id": "child",
+                "loop_count": 2,
+                "break_conditions": [],
+                "logical_operator": "and",
+                "loop_variables": [
+                    {
+                        "label": "items",
+                        "var_type": "array[string]",
+                        "value_type": "constant",
+                        "value": ["s", "public_items"],
+                    }
+                ],
+            },
+            "loop_variables.0.value_type",
+            "variable",
+        ),
+        (
+            {
+                "type": "knowledge-index",
+                "chunk_structure": "text_model",
+                "index_chunk_variable_selector": ["s", "public_items"],
+            },
+            "index_chunk_variable_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "memory",
+            {"window": {"enabled": False, "size": 10}},
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "memory.window.size",
+            10,
+        ),
     ],
     ids=[
         "list-source",
@@ -481,13 +623,23 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
         "agent-tool-enabled",
         "agent-model-provider",
         "agent-model-cost",
+        "extractor-query",
+        "extractor-history-presence",
+        "classifier-history-scope",
+        "extractor-vision-activation",
+        "classifier-vision-activation",
+        "loop-source",
+        "loop-access-activation",
+        "index-chunk-source",
+        "classifier-history-presence",
+        "extractor-history-scope",
     ],
 )
 def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypatch, data, path, value):
     """Real native preflight accepts the repair; Fix must still require approval.
 
-    The Iteration fixture establishes accepted candidate/configuration behavior,
-    not execution of the container's child workflow.
+    Container and model/index fixtures establish accepted candidate/configuration
+    behavior, not runtime child execution, history reads, model calls or indexing.
     """
     from datetime import datetime
 
@@ -506,13 +658,13 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
         ],
         "edges": [{"id": "s-n", "source": "s", "target": "n"}, {"id": "n-e", "source": "n", "target": "e"}],
     }
-    if data["type"] == "iteration":
+    if data["type"] in ("iteration", "loop"):
         graph["nodes"].append(
             {
                 "id": "child",
-                "type": "custom-iteration-start",
+                "type": "custom-" + data["type"] + "-start",
                 "parentId": "n",
-                "data": {"type": "iteration-start", "title": "Child start"},
+                "data": {"type": data["type"] + "-start", "title": "Child start"},
             }
         )
     payload = json.dumps(
@@ -550,6 +702,7 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
     out = runner.advance(session.id, Turn(actor=actor))
     assert out.current_state == PcState.FIX_AWAIT_APPROVAL
     assert port.graph == graph
+    assert port.applied == []
 
     out = runner.advance(session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor))
 
