@@ -604,6 +604,8 @@ describe('FeaturesTrigger', () => {
           message: '"Answer" ← "Producer"',
         })
       })
+      // The warning replaces the success message; one publish shows one toast.
+      expect(toastMocks.call).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     })
 
     it('should publish workflow and update related stores when validation passes', async () => {

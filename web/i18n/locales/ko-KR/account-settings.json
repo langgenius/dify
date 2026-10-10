@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "이 액세스 토큰을 안전한 곳에 보관하세요. 나중에 다시 볼 수 없습니다. 토큰을 가진 사람은 누구나 Difyctl로 허용된 리소스를 찾고 접근할 수 있습니다. 토큰을 잃어버리면 새 토큰을 만들고 기존 토큰을 폐기하세요.",
   "resourceAccessToken.deleteDescription": "액세스 토큰이 즉시 비활성화됩니다. 이 토큰을 사용하는 요청은 거부되며 진행 중인 작업이 중단되거나 실패할 수 있습니다. 삭제한 뒤에는 토큰을 보거나 변경할 수 없습니다.",
   "resourceAccessToken.deleteTitle": "액세스 토큰을 삭제할까요?",
-  "resourceAccessToken.deleted": "액세스 토큰을 삭제했습니다",
   "resourceAccessToken.done": "완료",
   "resourceAccessToken.editTitle": "액세스 토큰 편집",
   "resourceAccessToken.empty": "아직 액세스 토큰이 없습니다",

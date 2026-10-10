@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "फ़ाइल हटा दी गई.",
   "skillManagement.detail.deleteVersionConfirm": "यह संस्करण हटाएं?",
   "skillManagement.detail.deleteVersionFailed": "संस्करण हटाने में विफल.",
-  "skillManagement.detail.deleteVersionSuccess": "संस्करण हटा दिया गया.",
   "skillManagement.detail.downloadFile": "डाउनलोड फ़ाइल",
   "skillManagement.detail.draft": "ड्राफ्ट",
   "skillManagement.detail.editVersionInfo": "संस्करण की जानकारी संपादित करें",

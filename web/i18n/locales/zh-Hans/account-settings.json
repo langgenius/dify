@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "请将此访问令牌保存在安全的地方，你将无法再次查看它。任何持有此令牌的人都可以使用 Difyctl 发现并访问此令牌授权的资源。如果丢失，请创建新令牌并撤销旧令牌。",
   "resourceAccessToken.deleteDescription": "此访问令牌将立即停用。使用此令牌的请求会被拒绝，可能导致正在运行的任务中断或失败。删除后，你将无法再查看或修改此令牌。",
   "resourceAccessToken.deleteTitle": "删除访问令牌？",
-  "resourceAccessToken.deleted": "访问令牌已删除",
   "resourceAccessToken.done": "完成",
   "resourceAccessToken.editTitle": "编辑访问令牌",
   "resourceAccessToken.empty": "暂无访问令牌",

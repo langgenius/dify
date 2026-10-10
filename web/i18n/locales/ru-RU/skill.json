@@ -69,7 +69,6 @@
   "skillManagement.detail.deleteFileSuccess": "Файл удален.",
   "skillManagement.detail.deleteVersionConfirm": "Удалить эту версию?",
   "skillManagement.detail.deleteVersionFailed": "Не удалось удалить версию.",
-  "skillManagement.detail.deleteVersionSuccess": "Версия удалена.",
   "skillManagement.detail.downloadFile": "Скачать файл",
   "skillManagement.detail.draft": "Черновик",
   "skillManagement.detail.editVersionInfo": "Редактировать информацию о версии",

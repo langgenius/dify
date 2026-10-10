@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Berkas dihapus.",
   "skillManagement.detail.deleteVersionConfirm": "Hapus versi ini?",
   "skillManagement.detail.deleteVersionFailed": "Gagal menghapus versi.",
-  "skillManagement.detail.deleteVersionSuccess": "Versi dihapus.",
   "skillManagement.detail.downloadFile": "Unduh berkas",
   "skillManagement.detail.draft": "Draf",
   "skillManagement.detail.editVersionInfo": "Mengedit info versi",

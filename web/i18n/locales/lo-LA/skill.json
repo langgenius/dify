@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "ລຶບໄຟລ໌ແລ້ວ.",
   "skillManagement.detail.deleteVersionConfirm": "ລຶບເວີຊັນນີ້ບໍ?",
   "skillManagement.detail.deleteVersionFailed": "ລົ້ມເຫລວໃນການລຶບເວີຊັນ.",
-  "skillManagement.detail.deleteVersionSuccess": "ເວີຊັນຖືກລຶບ.",
   "skillManagement.detail.downloadFile": "ດາວໂຫຼດໄຟລ໌",
   "skillManagement.detail.draft": "ສະບັບຮ່າງ",
   "skillManagement.detail.editVersionInfo": "ແກ້ໄຂຂໍ້ມູນເວີຊັນ",

@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "檔案已刪除。",
   "skillManagement.detail.deleteVersionConfirm": "刪除這個版本？",
   "skillManagement.detail.deleteVersionFailed": "版本刪除失敗。",
-  "skillManagement.detail.deleteVersionSuccess": "版本已刪除。",
   "skillManagement.detail.downloadFile": "下载文件",
   "skillManagement.detail.draft": "草稿",
   "skillManagement.detail.editVersionInfo": "編輯版本信息",

@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Dosya silindi.",
   "skillManagement.detail.deleteVersionConfirm": "Bu sürüm silinsin mi?",
   "skillManagement.detail.deleteVersionFailed": "Sürüm silinemedi.",
-  "skillManagement.detail.deleteVersionSuccess": "Sürüm silindi.",
   "skillManagement.detail.downloadFile": "Dosyayı indir",
   "skillManagement.detail.draft": "Taslak",
   "skillManagement.detail.editVersionInfo": "Sürüm bilgilerini düzenle",

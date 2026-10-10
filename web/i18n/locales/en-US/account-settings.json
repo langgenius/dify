@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Save this access token in a secure place—you won’t be able to view it again. Anyone who has it can use Difyctl to discover and access the resource authorized by this token. If you lose it, create a new token and revoke the old one.",
   "resourceAccessToken.deleteDescription": "The Access token will be disabled immediately. Calls using this token will be rejected, which may cause the task that is using the access token to interrupt or fail. Once deleted, you will no longer be able to view or modify this Access token.",
   "resourceAccessToken.deleteTitle": "Delete access token ?",
-  "resourceAccessToken.deleted": "Access token deleted",
   "resourceAccessToken.done": "Done",
   "resourceAccessToken.editTitle": "Edit access token",
   "resourceAccessToken.empty": "No access tokens yet",

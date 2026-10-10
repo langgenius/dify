@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Bestand verwijderd.",
   "skillManagement.detail.deleteVersionConfirm": "Deze versie verwijderen?",
   "skillManagement.detail.deleteVersionFailed": "Kan de versie niet verwijderen.",
-  "skillManagement.detail.deleteVersionSuccess": "Versie verwijderd.",
   "skillManagement.detail.downloadFile": "Bestand downloaden",
   "skillManagement.detail.draft": "Concept",
   "skillManagement.detail.editVersionInfo": "Versie-informatie bewerken",

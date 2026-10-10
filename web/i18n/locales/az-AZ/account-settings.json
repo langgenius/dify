@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Bu giriş tokenini təhlükəsiz yerdə saxlayın; onu bir daha görə bilməyəcəksiniz. Tokenə sahib olan hər kəs Difyctl vasitəsilə icazə verilmiş resursları tapa və onlara daxil ola bilər. İtirsəniz, yeni token yaradın və köhnəsini ləğv edin.",
   "resourceAccessToken.deleteDescription": "Giriş tokeni dərhal deaktiv ediləcək. Bu tokenlə edilən sorğular rədd olunacaq və davam edən tapşırıqlar dayana və ya uğursuz ola bilər. Silindikdən sonra tokenə baxa və onu dəyişə bilməyəcəksiniz.",
   "resourceAccessToken.deleteTitle": "Giriş tokeni silinsin?",
-  "resourceAccessToken.deleted": "Giriş tokeni silindi",
   "resourceAccessToken.done": "Hazırdır",
   "resourceAccessToken.editTitle": "Giriş tokenini redaktə et",
   "resourceAccessToken.empty": "Hələ giriş tokeni yoxdur",

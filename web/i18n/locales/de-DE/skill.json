@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Datei gelöscht.",
   "skillManagement.detail.deleteVersionConfirm": "Diese Version löschen?",
   "skillManagement.detail.deleteVersionFailed": "Die Version konnte nicht gelöscht werden.",
-  "skillManagement.detail.deleteVersionSuccess": "Version gelöscht.",
   "skillManagement.detail.downloadFile": "Datei herunterladen",
   "skillManagement.detail.draft": "Entwurf",
   "skillManagement.detail.editVersionInfo": "Versionsinformationen bearbeiten",

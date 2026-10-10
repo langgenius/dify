@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Fayl silindi.",
   "skillManagement.detail.deleteVersionConfirm": "Bu versiya silinsin?",
   "skillManagement.detail.deleteVersionFailed": "Versiyanı silmək mümkün olmadı.",
-  "skillManagement.detail.deleteVersionSuccess": "Versiya silindi.",
   "skillManagement.detail.downloadFile": "Faylı yüklə",
   "skillManagement.detail.draft": "Qaralama",
   "skillManagement.detail.editVersionInfo": "Versiya məlumatlarını redaktə et",

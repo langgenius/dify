@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "파일이 삭제되었습니다.",
   "skillManagement.detail.deleteVersionConfirm": "이 버전을 삭제하시겠습니까?",
   "skillManagement.detail.deleteVersionFailed": "버전을 삭제하지 못했습니다.",
-  "skillManagement.detail.deleteVersionSuccess": "버전이 삭제되었습니다.",
   "skillManagement.detail.downloadFile": "파일 다운로드",
   "skillManagement.detail.draft": "초안",
   "skillManagement.detail.editVersionInfo": "버전 정보 편집",

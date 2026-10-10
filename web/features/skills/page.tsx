@@ -304,7 +304,6 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.deleteSuccess']))
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },

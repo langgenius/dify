@@ -71,7 +71,6 @@
   "skillManagement.detail.deleteFileSuccess": "تم حذف الملف.",
   "skillManagement.detail.deleteVersionConfirm": "هل تريد حذف هذا الإصدار؟",
   "skillManagement.detail.deleteVersionFailed": "فشل في حذف الإصدار.",
-  "skillManagement.detail.deleteVersionSuccess": "تم حذف الإصدار.",
   "skillManagement.detail.downloadFile": "تنزيل الملف",
   "skillManagement.detail.draft": "مسودة",
   "skillManagement.detail.editVersionInfo": "تعديل معلومات الإصدار",

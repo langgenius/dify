@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Po dovoljenjih vlog",
   "accessRule.deleteDescription": "To pravilo za dostop bo trajno izbrisano in odstranjeno s seznama avtorizacij vira.",
   "accessRule.deleteTitle": "Izbrisati \"{{name}}\"?",
-  "accessRule.deleted": "Pravilo za dostop uspešno izbrisano",
   "accessRule.exceptionPermissionFor": "Izjemno dovoljenje za {{name}}",
   "accessRule.expandSection": "Razširi {{title}}",
   "accessRule.maintainer": "Vzdrževalec",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" je dodeljen {{count}} članom. Ali želite, da nova kopija vloge vključuje iste člane?",
   "role.copyMembersLoading": "Nalaganje dodelitev članov...",
   "role.copyMembersTitle": "Kopirati dodelitve članov?",
-  "role.created": "Vloga uspešno ustvarjena",
   "role.deleteDescription": "Ta vloga bo trajno izbrisana in odstranjena iz vseh članov ali pravil za dostop, ki jo uporabljajo.",
   "role.deleteTitle": "Izbrisati \"{{name}}\"?",
-  "role.deleted": "Vloga uspešno izbrisana",
-  "role.duplicated": "Vloga uspešno podvojena",
   "role.groups.builtin": "Sistemske vloge",
   "role.groups.custom": "Vloge po meri",
   "role.loading": "Nalaganje vlog...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Brez opisa",
   "role.noMatchingRoles": "Ni ujemajočih se vlog",
   "role.searchPlaceholder": "Išči vloge...",
-  "role.updated": "Vloga uspešno posodobljena",
   "role.workspaceRoles.description": "Ustvarite vloge in določite, kaj lahko vsaka vloga počne v tem delovnem prostoru.",
   "role.workspaceRoles.title": "Vloge delovnega prostora"
 }
