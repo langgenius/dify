@@ -320,6 +320,248 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
     assert selectors == [["source-b", "output"]]
 
 
+@pytest.mark.parametrize(
+    ("data", "path", "value"),
+    [
+        (
+            {
+                "type": "list-operator",
+                "variable": ["s", "public_items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "extract_by": {"enabled": False},
+                "limit": {"enabled": False},
+            },
+            "variable",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "iteration",
+                "start_node_id": "child",
+                "iterator_selector": ["s", "public_items"],
+                "output_selector": ["s", "public_items"],
+            },
+            "iterator_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "iteration",
+                "start_node_id": "child",
+                "iterator_selector": ["s", "public_items"],
+                "output_selector": ["s", "public_items"],
+            },
+            "output_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {"type": "agent", "agent_parameters": {"query": {"type": "variable", "value": ["s", "public_items"]}}},
+            "agent_parameters.query.value",
+            ["s", "private_items"],
+        ),
+        (
+            {"type": "agent", "agent_parameters": {"query": {"type": "constant", "value": ["s", "public_items"]}}},
+            "agent_parameters.query.type",
+            "variable",
+        ),
+        ({"type": "agent", "memory": None}, "memory", {"window": {"enabled": False, "size": 10}}),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": True,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 0, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.parameters.query.value.value",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": True,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 1, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.parameters.query.auto",
+            0,
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": False,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 0, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_engine": {
+                        "type": "constant",
+                        "value": {
+                            "provider": "provider-a",
+                            "model": "model-a",
+                            "mode": "chat",
+                            "completion_params": {"max_tokens": 100},
+                        },
+                    }
+                },
+            },
+            "agent_parameters.dynamic_engine.value.provider",
+            "provider-b",
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_engine": {
+                        "type": "constant",
+                        "value": {
+                            "provider": "provider-a",
+                            "model": "model-a",
+                            "mode": "chat",
+                            "completion_params": {"max_tokens": 100},
+                        },
+                    }
+                },
+            },
+            "agent_parameters.dynamic_engine.value.completion_params.max_tokens",
+            10000,
+        ),
+    ],
+    ids=[
+        "list-source",
+        "iteration-input",
+        "iteration-output",
+        "agent-source",
+        "agent-access-activation",
+        "agent-memory",
+        "agent-tool-source",
+        "agent-tool-auto",
+        "agent-tool-enabled",
+        "agent-model-provider",
+        "agent-model-cost",
+    ],
+)
+def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypatch, data, path, value):
+    """Real native preflight accepts the repair; Fix must still require approval.
+
+    The Iteration fixture establishes accepted candidate/configuration behavior,
+    not execution of the container's child workflow.
+    """
+    from datetime import datetime
+
+    from core.dify_builder.handlers_fix import fix_registry
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.runner import Env, Runner
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "n", "data": {"title": "Node", **deepcopy(data)}},
+            {"id": "e", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [{"id": "s-n", "source": "s", "target": "n"}, {"id": "n-e", "source": "n", "target": "e"}],
+    }
+    if data["type"] == "iteration":
+        graph["nodes"].append(
+            {
+                "id": "child",
+                "type": "custom-iteration-start",
+                "parentId": "n",
+                "data": {"type": "iteration-start", "title": "Child start"},
+            }
+        )
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "n", "path": path, "value": value}}],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"n","root_cause":"wrong data source","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
+    repo.save_run(session.id, Run(id="failed-run", kind="original-failed", status="failed", immutable=True))
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    _, context = repo.get_session(session.id)
+    assert len(context.staged_repair) == 1  # accepted native candidate, not an empty no-fix refusal
+    assert context.staged_repair[0].args == {"node_id": "n", "path": path, "value": value}
+    assert port.graph == graph
+    assert port.applied == []
+    out = runner.advance(session.id, Turn(actor=actor))
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert port.graph == graph
+
+    out = runner.advance(session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    expected = deepcopy(graph)
+    target = expected["nodes"][1]["data"]
+    for component in path.split(".")[:-1]:
+        target = target[int(component)] if isinstance(target, list) else target[component]
+    target[path.split(".")[-1]] = value
+    assert port.graph == expected
+
+
 # Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
 # written.
 _HTTP_GRAPH = {
