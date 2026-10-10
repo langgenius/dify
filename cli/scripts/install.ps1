@@ -161,8 +161,8 @@ function Invoke-Main {
         }
         else {
             Write-Host 'verify: run "difyctl version"'
+            Write-SkillHint
         }
-        Write-SkillHint
     }
     finally {
         Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

@@ -59,7 +59,9 @@ function Install-DifyctlBinary([string]$dlUrl, [string]$sha, [string]$version, [
     Write-Host "$installDir is not on your PATH. Add it with:"
     Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$installDir;`$env:PATH`", 'User')"
   }
-  Write-SkillHint
+  else {
+    Write-SkillHint
+  }
 }
 
 function Install-DifyctlR2 {
