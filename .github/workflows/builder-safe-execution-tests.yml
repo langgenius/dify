@@ -43,13 +43,47 @@ jobs:
           cache-dependency-glob: api/uv.lock
       - run: uv sync --project api --dev --locked
       - name: Real native persistence, PostgreSQL races and migration gate
-        run: >-
-          uv run --project api --no-sync pytest -p no:benchmark --no-cov --timeout=360
-          api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py
-          api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py
-          --junitxml=builder-safe-execution.xml
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --kill-after=30s 20m uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-safe-execution.log
+          import pytest
+
+
+          class ImmediateFailureReport:
+              def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
+                  if report.failed:
+                      print(f"\nFAILED {report.nodeid} [{report.when}]", flush=True)
+                      print(report.longreprtext, flush=True)
+                      for heading, content in report.sections:
+                          print(f"\n{heading}\n{content}", flush=True)
+
+
+          raise SystemExit(
+              pytest.main(
+                  [
+                      "-p",
+                      "no:benchmark",
+                      "--no-cov",
+                      "-vv",
+                      "-x",
+                      "--tb=long",
+                      "--timeout=360",
+                      "--timeout-method=thread",
+                      "-o",
+                      "faulthandler_timeout=120",
+                      "api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py",
+                      "api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py",
+                      "--junitxml=builder-safe-execution.xml",
+                  ],
+                  plugins=[ImmediateFailureReport()],
+              )
+          )
+          PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: builder-safe-execution-native-postgres
-          path: builder-safe-execution.xml
+          path: |
+            builder-safe-execution.xml
+            builder-safe-execution.log
