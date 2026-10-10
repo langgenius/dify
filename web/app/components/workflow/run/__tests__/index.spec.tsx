@@ -6,11 +6,14 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
 
-const { mockFetchRunDetail, mockFetchTracingList, mockToastError } = vi.hoisted(() => ({
-  mockFetchRunDetail: vi.fn(),
-  mockFetchTracingList: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+const { mockFetchRunDetail, mockFetchTracingList, mockToastError, mockRequest } = vi.hoisted(
+  () => ({
+    mockFetchRunDetail: vi.fn(),
+    mockFetchTracingList: vi.fn(),
+    mockToastError: vi.fn(),
+    mockRequest: vi.fn(),
+  }),
+)
 
 const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
@@ -20,6 +23,11 @@ const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
 vi.mock('@/service/log', () => ({
   fetchRunDetail: (...args: unknown[]) => mockFetchRunDetail(...args),
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mockRequest,
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -208,6 +216,39 @@ describe('RunPanel', () => {
     expect(within(tracingPanel).getByText('Trace Node')).toBeInTheDocument()
     expect(screen.queryByRole('tabpanel', { name: 'runLog.detail' })).not.toBeInTheDocument()
     await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
+  })
+
+  it('loads nested workflow-tool executions for the inspected app and run', async () => {
+    const user = userEvent.setup()
+    mockFetchTracingList.mockResolvedValue({
+      data: [
+        createTracingNode({
+          node_type: BlockEnum.Tool,
+          expand: true,
+          extras: { workflow_tool: true, icon: { content: '✅', background: '#fff' } },
+        }),
+      ],
+    } satisfies NodeTracingListResponse)
+    mockRequest.mockResolvedValue(Response.json({ data: [] }))
+
+    renderWorkflowComponent(
+      <RunPanel
+        appId="inspected-app"
+        activeTab="TRACING"
+        runDetailUrl="/apps/inspected-app/workflow-runs/run-1"
+        tracingListUrl="/apps/inspected-app/workflow-runs/run-1/node-executions"
+      />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+    await screen.findByText('common.noData')
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/apps/inspected-app/workflow-runs/run-1/node-executions/trace-1/children',
+      ),
+      expect.anything(),
+      expect.anything(),
+    )
   })
 
   it('reports run-detail and tracing failures through toast.error', async () => {
