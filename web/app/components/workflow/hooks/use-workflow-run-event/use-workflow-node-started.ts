@@ -25,11 +25,12 @@ export const useWorkflowNodeStarted = () => {
       const currentIndex = workflowRunningData?.tracing?.findIndex(
         (item) => item.node_id === data.node_id,
       )
-      if (currentIndex && currentIndex > -1) {
+      if (currentIndex !== undefined && currentIndex > -1) {
         setWorkflowRunningData(
           produce(workflowRunningData!, (draft) => {
             draft.tracing![currentIndex] = {
               ...data,
+              extras: { ...draft.tracing![currentIndex]!.extras, ...data.extras },
               status: NodeRunningStatus.Running,
             }
           }),
