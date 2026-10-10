@@ -38,8 +38,9 @@
 - Create `api/core/dify_builder/execution_policy.py`: immutable schema, canonical digests, raw admission and recorder protocol.
 - Create `api/services/dify_builder/execution_policy_service.py`: owner snapshot, preparation, claim and append, server fixture stamping.
 - Modify `api/models/dify_builder.py`, `api/core/dify_builder/models.py`, `api/services/dify_builder/repository.py`, `api/services/dify_builder/serde.py`, `api/core/dify_builder/contract.py` for optional fixture persistence.
-- Modify `api/services/dify_builder/service.py`, `api/core/dify_builder/ports.py`, `handlers_build.py`, `handlers_edit.py`, `handlers_fix.py`, `api/services/dify_builder/dify_port.py` and relevant test fakes ONLY for shared strict fixture ingestion/server-stamp (run launch changes belong Task 2).
+- Modify `api/services/dify_builder/service.py`, `api/services/dify_builder/wiring.py` (narrow injected synchronous safe fixture-stamp callback), `api/core/dify_builder/ports.py`, `handlers_build.py`, `handlers_edit.py`, `handlers_fix.py`, `api/services/dify_builder/dify_port.py` and relevant test fakes ONLY for shared strict fixture ingestion/server-stamp (run launch changes belong Task 2).
 - Add Alembic `add_builder_execution_requests` migration from current single head, no historical backfill.
+- Extend existing `api/tasks/remove_app_and_related_data_task.py` and its focused unit tests narrowly for tenant/app-scoped cleanup of the new sidecar, reusing existing bounded deletion ownership; no legacy Builder lifecycle refactor or new sweeping job.
 - Tests: new `api/tests/unit_tests/core/dify_builder/test_execution_policy.py`, `api/tests/unit_tests/services/dify_builder/test_execution_policy_service.py`; existing serde/repository/service/action/three-handler tests. CI-owned migration/PG locking tests added with native integration Task 4.
 
 **Exact interfaces produced**
@@ -132,11 +133,11 @@ stamp_http_fixtures(app_id: str, actor: Actor, *, base_app_revision: str,
 
 **Concrete state/schema decisions**
 - IDs <=128 UTF-8 characters; graph bounded to <=128 nodes, fixture bodies <=65,536 bytes, fixtures <=128, observations <=4,096 per request. Existing application retention owns sidecar retention, no global sweeping job. Digests SHA256 canonical finite UTF-8 JSON (no `default=str`); context_digest hashes all context fields except itself. Fixture order canonical by node_id; graph arrays keep order.
-- TestInput fixture JSON absent means no fixtures; explicit malformed/null/object submission invalid. Shared decoder after full authorization validates fixture list, strips/overrides client source to user_sample (reject generated_sample impersonation), produces immutable models. Source absent is user_sample; trusted internal generators can supply generated_sample through a separate internal owner, not action payload. Pydantic parse diagnostics must not echo bodies.
+- TestInput fixture JSON absent means no fixtures; explicit malformed/null/object submission invalid. Shared decoder after full authorization validates fixture list, strips/overrides client source to user_sample (reject generated_sample impersonation), produces immutable models. An injected service/wiring stamp callback rejects stale/malformed samples synchronously before enqueue and without broad planning revision resolution; the handler revalidates the SAME submitted revision before save. Source absent is user_sample; trusted internal generators can supply generated_sample through a separate internal owner, not action payload. Pydantic parse diagnostics must not echo bodies.
 - Strict body UTF-8 and finite JSON; reject duplicate/unknown/unused/wrong-version nodes, bool status, lone surrogates, extra header/file fields.
 - Raw snapshot uses `_environment_variables`, `_conversation_variables`, raw app tracing, actual standard kind and features; reject malformed/nonobject/nonempty variables BEFORE execution_revision/key access. Known empty/disabled native feature defaults pass; enabled/unknown forms refuse. No broad planning-secret audit claim.
 - Scalar raw values reject nested/list/files/nonfinite even undeclared; bind effective inputs supplied by existing native normalization in Task 2. Node config digest is canonical raw node data with only absent version normalized to '1'. Exact implementation binding initially StartNode v1, EndNode v1, HttpRequestNode v1; inspect actual imported fully qualified Start/End identities, no invented path. Linear standard graph only, no container/cycle/branch/unreachable effects.
-- New sidecar stores immutable context JSON/hash, all owner IDs, state prepared/running/sealed, native run/task IDs, append JSON, completion fingerprint/summary, created/sealed timestamps. Unique launch claim is state transition under `SELECT FOR UPDATE`, duplicate same-context claim still rejects. Append verifies running/fullcontext/run/task/node/impl/fixture/profile; repeated observation ID rejects, each capability attempt unique. No external I/O in transaction. No seal implementation until authoritative native rows are integrated in Task 4.
+- New sidecar stores immutable context JSON/hash, all owner IDs, state prepared/running/sealed, native run/task IDs, append JSON, completion fingerprint/summary, created/sealed timestamps. Unique launch claim is state transition under `SELECT FOR UPDATE`, duplicate same-context claim still rejects. Append verifies running/fullcontext/run/task/node/impl/fixture/profile; repeated observation ID rejects, each capability attempt unique. Observation implementation_version is '<fully-qualified concrete class>:1', distinct from fixture/binding node_version='1'; fixture_digest is whole-set context.fixture_digest. No external I/O in transaction. No seal implementation until authoritative native rows are integrated in Task 4.
 
 - [ ] Write failing typed/body/lineage/owner/state tests. Real existing SQLite fixtures only unit tests; do not claim PG race proof. Pin false source-mode inference and strict provenance:
 ```python
@@ -164,7 +165,7 @@ Concrete test helper `prepare_inputs` must call actual service using owned sessi
 - Builder `run_draft(..., *, session_id: str, test_input_id: str, on_workflow_event=...) -> Run`; it always calls `prepare`.
 - `builder_execution: BuilderExecutionContext | None = None` explicit internal keyword on AppGenerateService/generator overloads and optional typed field on AppGenerateEntity/DifyRunContext/AppExecutionParams. None means ordinary non-Builder invocation only.
 - `_init_graph(..., builder_execution: BuilderExecutionContext | None = None, execution_recorder: BuilderExecutionRecorder | None = None)`; recorder protocol is `record(BuilderExecutionObservation) -> None`, supplied by policy service. Context with absent recorder fails closed.
-- `RestrictedAdmissionSnapshot(BaseModel)`: app_mode: str, graph: dict[str, Any], input_schema: list[dict[str, Any]], features: dict[str, Any], has_environment_variables: bool, has_conversation_variables: bool, has_external_tracing: bool, workflow_kind: str. The service builds this from raw metadata without decrypting.
+- `RestrictedAdmissionSnapshot(BaseModel)`: app_mode: str, graph: dict[str, Any], input_schema: dict[str, Any], features: dict[str, Any], has_environment_variables: bool, has_conversation_variables: bool, has_external_tracing: bool, workflow_kind: str. The service builds this from raw metadata without decrypting. The input_schema mapping is the existing `start_schema(graph)` owner's output, matching Task 1's produced interface.
 - `admit_raw_execution_metadata(snapshot: RestrictedAdmissionSnapshot) -> None` runs before revision/key resolution; `admit_restricted_workflow(context: BuilderExecutionContext, snapshot: RestrictedAdmissionSnapshot) -> None` adds bound graph/fixture checks afterward. Both are pure functions in the domain module; do not import ORM into core.
 
 **Binding propagation/normalization corrections**
@@ -261,6 +262,7 @@ return HttpResponse(status_code=fixture.status_code,
 - Modify `api/core/dify_builder/models.py`, `contract.py`, `verification.py`, Build/Edit/Fix handlers.
 - Modify `api/services/dify_builder/dify_port.py`, `repository.py`, `serde.py`, `run_mapping.py` only where evidence attachment is owned.
 - Extend `api/tests/unit_tests/services/dify_builder/test_run_mapping.py`, `test_serde.py`, `test_engine_on_sql_repo.py` and `api/tests/unit_tests/core/dify_builder/test_verification.py`; create `api/tests/unit_tests/core/dify_builder/test_execution_evidence.py`.
+- Create scoped `.github/workflows/builder-safe-execution-tests.yml` for CI-owned new native/PG gates, then extend its actual-sandbox job in Task 6. Trigger on authorized `build/dify-builder` pushes (narrow paths) and workflow_dispatch, read-only contents permission; no fake provider/service credentials.
 
 **Interfaces**
 - `RunVerification.execution_evidence: ExecutionEvidenceSummary | None` defaults to None for old records without backfill.
@@ -327,7 +329,7 @@ return CodeExecutor.execute_workflow_code_template(
 **Files**
 - Create `api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py`.
 - Create `api/tests/test_containers_integration_tests/core/helper/test_builder_sandbox_isolation.py` and scoped test-owned canary fixtures/config.
-- Use existing `.github/workflows/api-tests.yml:206` api-integration owner and its `--start-middleware` fixture; changes must be scoped to the sandbox conformance job/config. Integration pytest stays CI-owned; root conducts explicitly authorized actual local/Dev E2E after review, preserving ordinary services.
+- Reuse `.github/workflows/api-tests.yml:206` api-integration setup/`--start-middleware` owner via the scoped builder-safe-execution workflow introduced in Task 4; changes must be scoped to the new native/sandbox conformance gates/config. Do not treat AgentRuntime sandbox CI as this owner. Integration pytest stays CI-owned; root conducts explicitly authorized actual local/Dev E2E after review, preserving ordinary services.
 
 **Interfaces**
 - Existing native `DifyWorkflowPort.run_draft` plus admitted server profile; no new executor.
