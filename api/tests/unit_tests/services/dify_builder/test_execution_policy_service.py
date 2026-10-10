@@ -359,6 +359,35 @@ def test_raw_tracing_refusal_in_prepare_and_fixture_stamp_precedes_revision(owne
         service.stamp_http_fixtures(app.id, actor, base_app_revision="a" * 64, fixtures=())
 
 
+@pytest.mark.parametrize("boundary", ["snapshot", "prepare", "stamp"])
+@pytest.mark.parametrize(
+    "malformed_graph",
+    [
+        {"nodes": None, "edges": []},
+        {"nodes": [None], "edges": []},
+        {"nodes": [{"id": "start", "data": "private"}], "edges": []},
+        {"nodes": [{"id": "start", "data": {"type": "start", "variables": "private"}}], "edges": []},
+        {"nodes": [{"id": "start", "data": {"type": "start", "variables": [None]}}], "edges": []},
+    ],
+)
+def test_malformed_snapshot_refusal_is_sanitized_before_revision(owned, monkeypatch, malformed_graph, boundary):
+    factory, actor, app, workflow, sid, tid = owned
+    workflow.graph = json.dumps(malformed_graph)
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = workflow.graph
+    module = service_module()
+    monkeypatch.setattr(module, "execution_revision", lambda *_args: pytest.fail("malformed draft accessed revision"))
+    service = module.BuilderExecutionPolicyService(factory)
+    invoke = {
+        "snapshot": lambda: module.restricted_admission_snapshot(workflow, app),
+        "prepare": lambda: prepare_inputs(owned),
+        "stamp": lambda: service.stamp_http_fixtures(app.id, actor, base_app_revision="a" * 64, fixtures=()),
+    }[boundary]
+    with pytest.raises(policy().BuilderExecutionPolicyError, match="invalid_graph_metadata") as error:
+        invoke()
+    assert "private" not in str(error.value)
+
+
 def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(owned):
     from models.dify_builder import DifyBuilderExecutionRequest
 
