@@ -100,9 +100,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_message_contents
 
-    def run(
-        self, session: Session, message: Message, query: str, **kwargs: Any
-    ) -> Generator[LLMResultChunk, None, None]:
+    def run(self, session: Session, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk]:
         """
         Run FunctionCall agent application
         """
@@ -175,7 +173,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 "created_by": CreditUsageCreatedBy.APP,
             }
 
-            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
+            chunks: Union[Generator[LLMResultChunk], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,

@@ -43,7 +43,7 @@ def _workflow_yaml(*, version: str = CURRENT_DSL_VERSION, name: str = "My App") 
 
 
 @pytest.fixture
-def external_deps() -> Generator[dict[str, object], None, None]:
+def external_deps() -> Generator[dict[str, object]]:
     """Stub the heavy collaborators an import/export touches (model runtime,
     workflow sync, dependency analysis, enterprise hooks) while leaving the DSL
     service and DB writes real."""

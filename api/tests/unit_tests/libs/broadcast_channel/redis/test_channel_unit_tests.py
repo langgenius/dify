@@ -260,9 +260,7 @@ class TestRedisSubscription:
         return pubsub
 
     @pytest.fixture
-    def subscription(
-        self, mock_pubsub: MagicMock, mock_redis_client: MagicMock
-    ) -> Generator[_RedisSubscription, None, None]:
+    def subscription(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock) -> Generator[_RedisSubscription]:
         """Create a _RedisSubscription instance for testing."""
         subscription = _RedisSubscription(
             client=mock_redis_client,
@@ -689,7 +687,7 @@ class TestRedisShardedSubscription:
     @pytest.fixture
     def sharded_subscription(
         self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient
-    ) -> Generator[_RedisShardedSubscription, None, None]:
+    ) -> Generator[_RedisShardedSubscription]:
         """Create a _RedisShardedSubscription instance for testing."""
         subscription = _RedisShardedSubscription(
             client=mock_redis_client,

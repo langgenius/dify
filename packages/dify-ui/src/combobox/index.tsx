@@ -26,6 +26,7 @@ type ComboboxProps<
 > = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+type ComboboxOpenChangeEventDetails = BaseCombobox.Root.OpenChangeEventDetails
 
 function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
   props: ComboboxProps<Value, Multiple, Item>,
@@ -39,7 +40,7 @@ const useComboboxFilter = BaseCombobox.useFilter
 const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
 type ComboboxSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 
 type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
@@ -139,7 +140,7 @@ const comboboxInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -533,6 +534,7 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxOpenChangeEventDetails,
   ComboboxPopupProps,
   ComboboxPortalProps,
   ComboboxPositionerProps,

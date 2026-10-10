@@ -6,6 +6,12 @@ Prefer the primitive's data attributes for state styling, such as `data-checked:
 `data-disabled:`. Use its CSS variables for exposed dynamic values, such as popup anchor width
 and available height. Do not mirror primitive state in React solely to style it.
 
+Field validity has three states: `data-valid`, `data-invalid`, or neither before validation.
+`not-data-invalid` includes the unvalidated state; it is not equivalent to `data-valid`. Preserve
+existing interaction variants when adding error styles so call-site overrides keep merging.
+Disabled surfaces take precedence over invalid and read-only appearance. Keep invalid state and
+error associations intact while limiting error colors to enabled controls.
+
 Where supported by the upstream part, `className(state)` and `style(state)` read that part's state.
 At call sites, before using a callback or React state to calculate styles, check whether data attributes or CSS
 variables already express the requirement. When direct state access is needed, add a short comment

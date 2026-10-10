@@ -148,7 +148,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return reason
 
     @override
-    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -175,7 +175,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.graph_init_params.workflow_id
         workflow_run_id = get_system_text(

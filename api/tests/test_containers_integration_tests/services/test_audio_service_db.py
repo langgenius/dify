@@ -105,7 +105,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
     """Integration tests for AudioService.transcript_tts message-ID lookup via real DB."""
 
     @pytest.fixture(autouse=True)
-    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None]:
         """Track rows created by shared helpers that commit, then clean up after the test.
 
         The shared console helpers (create_console_account_and_tenant, create_console_app)
