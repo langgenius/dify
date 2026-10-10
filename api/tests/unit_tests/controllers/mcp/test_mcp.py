@@ -3,21 +3,22 @@
 from __future__ import annotations
 
 import json
+import time
 import types
 from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import controllers.mcp.mcp as module
 import pytest
 from flask import Flask, Response
-from pydantic import ValidationError
-
-import controllers.mcp.mcp as module
 from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
+from pydantic import ValidationError
+from sqlalchemy.pool import StaticPool
 from tests.unit_tests.model_factories import make_end_user
 
 
@@ -25,6 +26,12 @@ from tests.unit_tests.model_factories import make_end_user
 def app() -> Iterator[Flask]:
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    # One shared connection so the tools/call worker session sees rows committed
+    # on the request session, including from a second thread.
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "connect_args": {"check_same_thread": False},
+        "poolclass": StaticPool,
+    }
     db.init_app(app)
 
     with app.app_context():
@@ -729,3 +736,103 @@ class TestMCPProtocolVersionNegotiationApi:
         result = response.get_json()["result"]
         assert "structuredContent" not in result
         assert result["content"][0]["text"] == "test answer"
+
+
+class TestMCPToolCallKeepAlive:
+    """tools/call streams SSE keep-alives when the client accepts event-stream."""
+
+    def _persist_chat_app(self) -> None:
+        app_model = _app(module.AppMode.CHAT, with_model_config=True)
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        end_user = _end_user()
+        db.session.add(app_model)
+        db.session.add(server)
+        db.session.add(end_user)
+        db.session.commit()
+
+    def _post_stream(self, flask_app: Flask, headers: dict[str, str]) -> tuple[Response, str]:
+        fake_payload(_tools_call_payload())
+        api = module.MCPAppApi()
+        post_fn = unwrap(api.post)
+        with flask_app.test_request_context(headers=headers):
+            response = post_fn("server-1")
+            body = response.get_data(as_text=True)
+        return response, body
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_tools_call_streams_keepalive_then_result(self, mock_app_generate, app):
+        self._persist_chat_app()
+
+        def _slow_generate(**_kwargs):
+            time.sleep(0.12)
+            return {"answer": "test answer"}
+
+        mock_app_generate.generate.side_effect = _slow_generate
+        original_interval = module.TOOL_CALL_SSE_KEEPALIVE_SECONDS
+        module.TOOL_CALL_SSE_KEEPALIVE_SECONDS = 0.04
+        try:
+            response, body = self._post_stream(
+                app,
+                headers={
+                    "Accept": "application/json, text/event-stream",
+                    "MCP-Protocol-Version": "2025-06-18",
+                },
+            )
+        finally:
+            module.TOOL_CALL_SSE_KEEPALIVE_SECONDS = original_interval
+
+        assert response.status_code == 200
+        assert response.mimetype == "text/event-stream"
+        assert response.headers["Cache-Control"] == "no-cache, no-transform"
+        assert response.headers["X-Accel-Buffering"] == "no"
+        assert body.count(": keep-alive") >= 2
+        message = body.split("event: message\ndata: ", 1)[1].strip()
+        payload = json.loads(message)
+        assert payload["id"] == 1
+        assert payload["result"]["content"][0]["text"] == "test answer"
+        assert payload["result"]["structuredContent"] == {"answer": "test answer"}
+
+    def test_tools_call_without_sse_accept_stays_json(self, app):
+        self._persist_chat_app()
+        api = module.MCPAppApi()
+        with patch("core.mcp.server.streamable_http.AppGenerateService") as mock_app_generate:
+            mock_app_generate.generate.return_value = {"answer": "test answer"}
+            fake_payload(_tools_call_payload())
+            post_fn = unwrap(api.post)
+            with app.test_request_context(headers={"MCP-Protocol-Version": "2025-06-18"}):
+                response = post_fn("server-1")
+
+        assert response.mimetype == "application/json"
+        assert response.get_json()["result"]["content"][0]["text"] == "test answer"
+
+    def test_dead_worker_ends_the_stream_with_jsonrpc_error(self, app):
+        self._persist_chat_app()
+
+        class _DeadThread:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def start(self) -> None:
+                return None
+
+            def is_alive(self) -> bool:
+                return False
+
+        original_interval = module.TOOL_CALL_SSE_KEEPALIVE_SECONDS
+        module.TOOL_CALL_SSE_KEEPALIVE_SECONDS = 0.01
+        try:
+            with patch.object(module.threading, "Thread", _DeadThread):
+                response, body = self._post_stream(
+                    app,
+                    headers={"Accept": "application/json, text/event-stream"},
+                )
+        finally:
+            module.TOOL_CALL_SSE_KEEPALIVE_SECONDS = original_interval
+
+        assert response.mimetype == "text/event-stream"
+        assert ": keep-alive" in body
+        message = body.split("event: message\ndata: ", 1)[1].strip()
+        payload = json.loads(message)
+        assert payload["id"] == 1
+        assert payload["error"]["code"] == module.mcp_types.INTERNAL_ERROR
+        assert "stopped before producing a result" in payload["error"]["message"]
