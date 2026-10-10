@@ -4,10 +4,12 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -29,8 +31,9 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
+from graphon.entities.base_node_data import DefaultValueType
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from graphon.graph_events import (
     GraphRunAbortedEvent,
     GraphRunPausedEvent,
@@ -132,6 +135,48 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+
+    def test_ordinary_init_graph_keeps_python_mode_typed_serialization(self, monkeypatch: pytest.MonkeyPatch):
+        runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id="app")
+        runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+        raw_graph = {
+            "nodes": [
+                {
+                    "id": "http",
+                    "data": {
+                        "type": "http-request",
+                        "error_strategy": "default-value",
+                        "default_value": [{"type": "number", "key": "status_code", "value": 599}],
+                        "undeclared_metadata": {"nested": [1]},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+        original = deepcopy(raw_graph)
+        captured = {}
+
+        def capture_context(**kwargs):
+            captured["graph"] = kwargs["graph_init_context"].graph_config
+            return Mock()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context", capture_context
+        )
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: Mock())
+        runner._init_graph(
+            graph_config=raw_graph,
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            root_node_id="http",
+        )
+        data = captured["graph"]["nodes"][0]["data"]
+        assert data["error_strategy"] is ErrorStrategy.DEFAULT_VALUE
+        assert data["default_value"][0]["type"] is DefaultValueType.NUMBER
+        assert data["undeclared_metadata"] == {"nested": [1]}
+        assert raw_graph == original
+        assert type(raw_graph["nodes"][0]["data"]["error_strategy"]) is str
 
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")

@@ -203,7 +203,10 @@ class WorkflowBasedAppRunner:
         """
         if builder_execution is not None and (execution_recorder is None or not execution_recorder.healthy):
             raise BuilderExecutionPolicyError("missing_execution_recorder")
-        graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
+        if builder_execution is None:
+            graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
+        # Restricted factory admission must inspect the original JSON, including
+        # extras, before Graph.init introduces typed node data.
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
