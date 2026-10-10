@@ -3,7 +3,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
 import { fileIsUploaded } from '../utils'
@@ -26,7 +26,7 @@ const FileImageItem = ({
 }: FileImageItemProps) => {
   const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, url, name } = file
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [preview, setPreview] = useState({ url: '', open: false })
   const download_url = url ? `${url}&as_attachment=true` : base64Url
   const image = (
     <FileImageRender
@@ -44,7 +44,7 @@ const FileImageItem = ({
             type="button"
             aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
             className="block border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => setImagePreviewUrl(base64Url || url || '')}
+            onClick={() => setPreview({ url: base64Url || url || '', open: true })}
           >
             {image}
           </button>
@@ -101,8 +101,13 @@ const FileImageItem = ({
           </div>
         )}
       </div>
-      {imagePreviewUrl && canPreview && (
-        <ImagePreview title={name} url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
+      {preview.url && canPreview && (
+        <ImagePreview
+          title={name}
+          url={preview.url}
+          open={preview.open}
+          onOpenChange={(open) => setPreview((current) => ({ ...current, open }))}
+        />
       )}
     </>
   )

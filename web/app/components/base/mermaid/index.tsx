@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import { Theme } from '@/types/app'
 import {
   cleanUpSvgCode,
@@ -123,7 +123,7 @@ const Flowchart = (props: FlowchartProps) => {
   const [isLoading, setIsLoading] = useState(true)
   const renderTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [errMsg, setErrMsg] = useState('')
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [imagePreview, setImagePreview] = useState({ url: '', open: false })
 
   /**
    * Renders Mermaid chart
@@ -433,7 +433,7 @@ const Flowchart = (props: FlowchartProps) => {
   const handlePreviewClick = async () => {
     if (!svgString) return
     const base64 = await svgToBase64(svgString)
-    setImagePreviewUrl(base64)
+    setImagePreview({ url: base64, open: true })
   }
 
   const toggleTheme = () => {
@@ -583,11 +583,12 @@ const Flowchart = (props: FlowchartProps) => {
         </div>
       )}
 
-      {imagePreviewUrl && (
+      {imagePreview.url && (
         <ImagePreview
           title="mermaid_chart"
-          url={imagePreviewUrl}
-          onCancel={() => setImagePreviewUrl('')}
+          url={imagePreview.url}
+          open={imagePreview.open}
+          onOpenChange={(open) => setImagePreview((previous) => ({ ...previous, open }))}
         />
       )}
     </div>

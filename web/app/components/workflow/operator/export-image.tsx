@@ -12,7 +12,7 @@ import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds, useReactFlow } from 'reactflow'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks/use-workflow'
@@ -23,8 +23,7 @@ const ExportImage = memo(() => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
 
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [previewTitle, setPreviewTitle] = useState('')
+  const [preview, setPreview] = useState({ url: '', title: '', open: false })
   const knowledgeName = useStore((s) => s.knowledgeName)
   const appName = useStore((s) => s.appName)
   const isReadOnly = getNodesReadOnly()
@@ -130,8 +129,7 @@ const ExportImage = memo(() => {
         const fileName = `${filename}.${type}`
 
         if (currentWorkflow) {
-          setPreviewUrl(dataUrl)
-          setPreviewTitle(fileName)
+          setPreview({ url: dataUrl, title: fileName, open: true })
         }
 
         downloadUrl({ url: dataUrl, fileName })
@@ -212,8 +210,13 @@ const ExportImage = memo(() => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {previewUrl && (
-        <ImagePreview url={previewUrl} title={previewTitle} onCancel={() => setPreviewUrl('')} />
+      {preview.url && (
+        <ImagePreview
+          url={preview.url}
+          title={preview.title}
+          open={preview.open}
+          onOpenChange={(open) => setPreview((previous) => ({ ...previous, open }))}
+        />
       )}
     </>
   )

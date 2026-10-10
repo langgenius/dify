@@ -391,87 +391,21 @@ describe('FileInAttachmentItem', () => {
     expect(screen.getByText(/noext/))!.toBeInTheDocument()
   })
 
-  it('should show image preview with empty url when url is undefined', () => {
+  it('does not preview a local thumbnail until the attachment has a remote URL', () => {
     render(
       <FileInAttachmentItem
         file={createFile({
           supportFileType: 'image',
           url: undefined,
-          base64Url: undefined,
+          base64Url: 'data:image/png;base64,abc',
         })}
         canPreview
       />,
     )
 
-    const buttons = screen.getAllByRole('button')
-    // Click the eye preview button
-    fireEvent.click(buttons[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.view document.pdf' }))
 
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should download with empty url when both url and base64Url are undefined', async () => {

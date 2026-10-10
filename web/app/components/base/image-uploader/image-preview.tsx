@@ -1,4 +1,10 @@
-import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogPopup,
+  DialogPortal,
+} from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
@@ -11,7 +17,8 @@ import { downloadBlob } from '@/utils/download'
 type ImagePreviewProps = {
   url: string
   title: string
-  onCancel: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onPrev?: () => void
   onNext?: () => void
 }
@@ -49,7 +56,12 @@ const fetchImageAsPng = async (url: string): Promise<Blob> => {
   }
 }
 
-function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePreviewProps) {
+function ImagePreviewContent({
+  url,
+  title,
+  onPrev,
+  onNext,
+}: Omit<ImagePreviewProps, 'open' | 'onOpenChange'>) {
   const previewRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'workflow'])
   const [scale, setScale] = useState(1)
@@ -319,14 +331,12 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
         <Tooltip>
           <TooltipTrigger
             render={
-              <button
-                type="button"
+              <DialogClose
                 aria-label={cancelLabel}
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
-                onClick={onCancel}
               >
                 <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />
-              </button>
+              </DialogClose>
             }
           />
           <TooltipContent>{cancelLabel}</TooltipContent>
@@ -336,20 +346,12 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
   )
 }
 
-function ImagePreview(props: ImagePreviewProps) {
+export function ImagePreview({ open, onOpenChange, ...props }: ImagePreviewProps) {
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) props.onCancel()
-      }}
-      disablePointerDismissal
-    >
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogPortal>
         <ImagePreviewContent {...props} />
       </DialogPortal>
     </Dialog>
   )
 }
-
-export default ImagePreview

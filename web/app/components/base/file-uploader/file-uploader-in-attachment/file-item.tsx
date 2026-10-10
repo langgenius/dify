@@ -6,7 +6,7 @@ import { RiDeleteBinLine, RiDownloadLine, RiEyeLine } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PreviewMode } from '@/app/components/base/features/types'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
@@ -36,7 +36,7 @@ const FileInAttachmentItem = ({
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [preview, setPreview] = useState({ url: '', open: false })
   return (
     <>
       <div
@@ -99,7 +99,7 @@ const FileInAttachmentItem = ({
             <IconButton
               aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
               className="mr-1"
-              onClick={() => setImagePreviewUrl(url || '')}
+              onClick={() => setPreview({ url: url || '', open: true })}
             >
               <RiEyeLine aria-hidden="true" className="size-4" />
             </IconButton>
@@ -117,8 +117,13 @@ const FileInAttachmentItem = ({
           )}
         </div>
       </div>
-      {imagePreviewUrl && canPreview && (
-        <ImagePreview title={name} url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
+      {preview.url && canPreview && (
+        <ImagePreview
+          title={name}
+          url={preview.url}
+          open={preview.open}
+          onOpenChange={(open) => setPreview((current) => ({ ...current, open }))}
+        />
       )}
     </>
   )

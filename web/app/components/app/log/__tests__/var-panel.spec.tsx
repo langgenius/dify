@@ -1,15 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import VarPanel from '../var-panel'
-
-vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ url, title, onCancel }: { url: string; title: string; onCancel: () => void }) => (
-    <div data-testid="image-preview" data-url={url} data-title={title}>
-      <button onClick={onCancel} data-testid="close-preview">
-        Close
-      </button>
-    </div>
-  ),
-}))
 
 describe('VarPanel', () => {
   const defaultProps = {
@@ -142,44 +133,29 @@ describe('VarPanel', () => {
       expect(thumbnail).toHaveStyle({ backgroundImage: 'url(https://example.com/image1.jpg)' })
     })
 
-    it('should open image preview when thumbnail is clicked', () => {
-      const propsWithFiles = {
-        ...defaultProps,
-        message_files: ['https://example.com/image1.jpg'],
-      }
-
-      const { container } = render(<VarPanel {...propsWithFiles} />)
-
-      const thumbnail = container.querySelector('[style*="background-image"]')
-      fireEvent.click(thumbnail!)
-
-      expect(screen.getByTestId('image-preview')).toBeInTheDocument()
-      expect(screen.getByTestId('image-preview')).toHaveAttribute(
-        'data-url',
-        'https://example.com/image1.jpg',
-      )
+    it('opens the named image preview from its keyboard thumbnail', async () => {
+      const user = userEvent.setup()
+      const url = 'https://example.com/image1.jpg'
+      render(<VarPanel {...defaultProps} message_files={[url]} />)
+      const thumbnail = screen.getByRole('button', { name: /common.imageGallery.previewImage/ })
+      await user.tab()
+      expect(thumbnail).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(screen.getByRole('dialog', { name: url })).toBeInTheDocument()
+      expect(screen.getByRole('img', { name: url })).toHaveAttribute('src', url)
     })
 
-    it('should close image preview when close button is clicked', () => {
-      const propsWithFiles = {
-        ...defaultProps,
-        message_files: ['https://example.com/image1.jpg'],
-      }
-
-      const { container } = render(<VarPanel {...propsWithFiles} />)
-
-      // Open preview
-      const thumbnail = container.querySelector('[style*="background-image"]')
-      fireEvent.click(thumbnail!)
-
-      expect(screen.getByTestId('image-preview')).toBeInTheDocument()
-
-      // Close preview
-      act(() => {
-        fireEvent.click(screen.getByTestId('close-preview'))
-      })
-
-      expect(screen.queryByTestId('image-preview')).not.toBeInTheDocument()
+    it('closes the preview and allows the same image to reopen', async () => {
+      const user = userEvent.setup()
+      const url = 'https://example.com/image1.jpg'
+      render(<VarPanel {...defaultProps} message_files={[url]} />)
+      const thumbnail = screen.getByRole('button', { name: /common.imageGallery.previewImage/ })
+      await user.click(thumbnail)
+      expect(screen.getByRole('dialog', { name: url })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await user.click(thumbnail)
+      expect(screen.getByRole('img', { name: url })).toHaveAttribute('src', url)
     })
   })
 

@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import s from './style.module.css'
 
 type Props = Readonly<{
@@ -32,8 +32,8 @@ const getWidthStyle = (imgNum: number) => {
 
 const ImageGallery: FC<Props> = ({ srcs, onPreviewOpenChange }) => {
   const { t } = useTranslation(['common'])
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const isPreviewOpen = Boolean(imagePreviewUrl)
+  const [preview, setPreview] = useState({ url: '', open: false })
+  const isPreviewOpen = preview.open
 
   // Synchronize embedding surfaces with the preview's lifetime, including
   // navigation that unmounts the gallery before the preview is dismissed.
@@ -67,7 +67,7 @@ const ImageGallery: FC<Props> = ({ srcs, onPreviewOpenChange }) => {
               index: index + 1,
               total: imgNum,
             })}
-            onClick={() => setImagePreviewUrl(src)}
+            onClick={() => setPreview({ url: src, open: true })}
           >
             <img
               className={s.image}
@@ -79,8 +79,13 @@ const ImageGallery: FC<Props> = ({ srcs, onPreviewOpenChange }) => {
           </button>
         ),
       )}
-      {imagePreviewUrl && (
-        <ImagePreview url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} title="" />
+      {preview.url && (
+        <ImagePreview
+          url={preview.url}
+          open={preview.open}
+          onOpenChange={(open) => setPreview((current) => ({ ...current, open }))}
+          title=""
+        />
       )}
     </div>
   )
