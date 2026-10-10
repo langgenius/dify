@@ -1,16 +1,17 @@
+import type { CommandConstructor } from '@/plugins/commands/command'
+import type { CommandTree } from '@/plugins/commands/registry'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, normalize, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
-import { callOptionsSchema } from '@/call/flags'
 import { commandTree } from '@/commands/tree.generated'
+import { parseCatalog } from '@/plugins/catalog'
 import { HELP_WORD } from '@/plugins/commands/command'
+import { mergeTrees, nodeAt } from '@/plugins/commands/registry'
 import { GLOBAL_INPUT } from '@/plugins/global-flags'
-import { RESERVED_FLAGS } from '@/plugins/ops/command'
+import { opsTree } from '@/plugins/ops/tree'
 import { propertiesOf } from '@/protocol/shape'
-import { flagFor } from '@/util/flag-name'
-
-type CatalogOp = { kind: string; input?: { properties?: Record<string, unknown> } }
+import { propertyFor } from '@/util/flag-name'
 
 const SKILL_DIR = fileURLToPath(new URL('../../../skills/difyctl/', import.meta.url))
 const CATALOG = fileURLToPath(new URL('../fixtures/catalog.json', import.meta.url))
@@ -29,7 +30,6 @@ const CODE_COMMAND = /^difyctl (.+)$/
 const PIPE = ' | '
 const FLAG = /(?:^|\s)--([a-z][a-z0-9-]*)/g
 const PLACEHOLDER = /^<[^>]+>$/
-const BUILTIN_ROOTS = new Set(['help'])
 const WORD = /^[a-z_]+(?:-[a-z_]+)*$/
 const DOTTED_ID = /^[a-z_]+(?:\.[a-z_]+)+$/
 const SPAN = /`([^`]+)`/g
@@ -89,52 +89,35 @@ function fencedCommands(body: string): string[] {
     .filter((span): span is string => span !== undefined)
 }
 
-function commandWords(span: string): string[] {
+function leadingWords(span: string): string[] {
   const words: string[] = []
   for (const word of span.split(' ')) {
     if (!WORD.test(word)) break
-    words.push(word.replaceAll('-', '_'))
+    words.push(word)
   }
   return words
 }
 
-function isLocal(words: readonly string[]): boolean {
-  if (BUILTIN_ROOTS.has(words[0] as string)) return true
-  let node: { subcommands?: Record<string, unknown> } | undefined = { subcommands: commandTree }
-  for (const word of words) {
-    node = node?.subcommands?.[word] as typeof node
-    if (node === undefined) return false
-  }
-  return true
-}
-
-function isOpOrNamespace(words: readonly string[], ops: readonly string[]): boolean {
-  const full = words.join('.')
-  return ops.includes(full) || ops.some((op) => op.startsWith(`${full}.`))
-}
-
 /**
- * The ops a command line names: the exact op, or — when a `<placeholder>` follows a
- * namespace — every op one word below it.
+ * The commands a line names: the exact command, or — when a `<placeholder>` follows a
+ * group — every command one word below it.
  */
-function opsNamed(span: string, words: readonly string[], ops: readonly string[]): string[] {
-  const full = words.join('.')
-  if (ops.includes(full)) return [full]
-  const next = span.split(' ')[words.length] ?? ''
-  if (!PLACEHOLDER.test(next)) return []
-  return ops.filter((op) => op.startsWith(`${full}.`) && op.split('.').length === words.length + 1)
+function commandsNamed(tree: CommandTree, span: string, words: readonly string[]) {
+  const node = nodeAt(tree, words)
+  if (node === undefined) return []
+  if (node.command !== undefined) return [node.command]
+  if (!PLACEHOLDER.test(span.split(' ')[words.length] ?? '')) return []
+  return Object.values(node.subcommands)
+    .map((child) => child.command)
+    .filter((command): command is CommandConstructor => command !== undefined)
 }
 
-function flagsOf(op: CatalogOp): Set<string> {
-  const fields = Object.keys(op.input?.properties ?? {}).filter(
-    (name) => !RESERVED_FLAGS.includes(name),
-  )
-  const options = Object.keys(propertiesOf(callOptionsSchema(op.kind)))
-  return new Set([...fields, ...options, ...GLOBAL_FLAGS].map(flagFor))
+function flagsOf(command: CommandConstructor): string[] {
+  return [...Object.keys(propertiesOf(command.flags())), ...GLOBAL_FLAGS]
 }
 
 function typedFlags(span: string): string[] {
-  return [...(span.split(PIPE)[0] as string).matchAll(FLAG)].map((m) => m[1] as string)
+  return [...(span.split(PIPE)[0] as string).matchAll(FLAG)].map((m) => propertyFor(m[1] as string))
 }
 
 describe('skills/difyctl tree', async () => {
@@ -144,10 +127,9 @@ describe('skills/difyctl tree', async () => {
       all.map(async (d) => [d, await readFile(join(SKILL_DIR, d), 'utf8')] as const),
     ),
   )
-  const catalog = (
-    JSON.parse(await readFile(CATALOG, 'utf8')) as { ops: Record<string, CatalogOp> }
-  ).ops
+  const catalog = parseCatalog(await readFile(CATALOG)).ops
   const ops = Object.keys(catalog)
+  const { tree } = mergeTrees(commandTree, opsTree(catalog))
   const depth = depths(text)
   const commands = [...text].flatMap(([doc, body]) => [
     ...[...body.matchAll(COMMAND)].map((m) => ({ doc, span: m[1] as string })),
@@ -187,22 +169,23 @@ describe('skills/difyctl tree', async () => {
 
   it('every difyctl command exists locally or in the catalog', () => {
     for (const { doc, span } of commands) {
-      const words = commandWords(span)
+      const words = leadingWords(span)
       if (words.length === 0) {
         expect(span, `${doc}: difyctl ${span} names no command`).toMatch(NON_WORD_START)
         continue
       }
-      expect(isLocal(words) || isOpOrNamespace(words, ops), `${doc}: difyctl ${span}`).toBe(true)
+      const found = words[0] === HELP_WORD || nodeAt(tree, words) !== undefined
+      expect(found, `${doc}: difyctl ${span}`).toBe(true)
     }
   })
 
-  it('every flag on an op command is a field of that op or a CLI flag', () => {
+  it('every flag on a command is one that command parses', () => {
     for (const { doc, span } of commands) {
-      const named = opsNamed(span, commandWords(span), ops)
+      const named = commandsNamed(tree, span, leadingWords(span))
       if (named.length === 0) continue
-      const allowed = new Set(named.flatMap((id) => [...flagsOf(catalog[id] as CatalogOp)]))
+      const allowed = new Set(named.flatMap(flagsOf))
       for (const flag of typedFlags(span))
-        expect(allowed.has(flag), `${doc}: difyctl ${span}: --${flag}`).toBe(true)
+        expect(allowed.has(flag), `${doc}: difyctl ${span}: ${flag}`).toBe(true)
     }
   })
 
