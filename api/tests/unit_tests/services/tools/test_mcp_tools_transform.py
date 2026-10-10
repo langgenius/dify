@@ -1,5 +1,6 @@
 """Test cases for MCP tool transformation functionality."""
 
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -15,13 +16,13 @@ from services.tools.tools_transform_service import ToolTransformService
 
 
 @pytest.fixture
-def mock_user():
+def mock_user() -> Account:
     """Provides a real mapped account returned by the provider lookup."""
     return Account(name="Test User", email="user@example.com")
 
 
 @pytest.fixture
-def mock_provider(mock_user, mocker: MockerFixture):
+def mock_provider(mock_user: Account, mocker: MockerFixture) -> MCPToolProvider:
     """Provides a mock MCPToolProvider with a loaded user."""
     provider = MCPToolProvider(
         name="Test Provider",
@@ -37,7 +38,7 @@ def mock_provider(mock_user, mocker: MockerFixture):
 
 
 @pytest.fixture
-def mock_provider_no_user(mocker: MockerFixture):
+def mock_provider_no_user(mocker: MockerFixture) -> MCPToolProvider:
     """Provides a mock MCPToolProvider with no user."""
     provider = MCPToolProvider(
         name="Test Provider",
@@ -53,7 +54,7 @@ def mock_provider_no_user(mocker: MockerFixture):
 
 
 @pytest.fixture
-def mock_provider_full(mock_user, mocker: MockerFixture):
+def mock_provider_full(mock_user: Account, mocker: MockerFixture) -> MCPToolProvider:
     """Provides a fully configured mock MCPToolProvider for detailed tests."""
     provider = MCPToolProvider(
         name="Test MCP Provider",
@@ -68,22 +69,14 @@ def mock_provider_full(mock_user, mocker: MockerFixture):
         sse_read_timeout=300,
     )
     provider.id = "provider-id-123"
-    provider.provider_icon = "icon.png"
-    provider.masked_server_url = "https://*****.com/mcp"
-    provider.masked_headers = {"Authorization": "Bearer *****"}
-    provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
-
-    # Mock timestamp
-    mock_updated_at = Mock()
-    mock_updated_at.timestamp.return_value = 1234567890
-    provider.updated_at = mock_updated_at
+    provider.updated_at = datetime.fromtimestamp(1234567890, UTC)
 
     mocker.patch.object(provider, "load_user", return_value=mock_user)
     return provider
 
 
 @pytest.fixture
-def sample_mcp_tools():
+def sample_mcp_tools() -> dict[str, MCPTool]:
     """Provides sample MCP tools for testing."""
     return {
         "simple": MCPTool(
@@ -109,7 +102,7 @@ def sample_mcp_tools():
 class TestMCPToolTransform:
     """Test cases for MCP tool transformation methods."""
 
-    def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider):
+    def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider: MCPToolProvider) -> None:
         """Test that mcp_tool_to_user_tool handles None description correctly."""
         # Create MCP tools with None description
         tools = [
@@ -149,7 +142,7 @@ class TestMCPToolTransform:
         assert result[1].description.en_US == ""
         assert result[1].description.zh_Hans == ""
 
-    def test_mcp_tool_to_user_tool_with_description(self, mock_provider):
+    def test_mcp_tool_to_user_tool_with_description(self, mock_provider: MCPToolProvider) -> None:
         """Test that mcp_tool_to_user_tool handles normal description correctly."""
         # Create MCP tools with description
         tools = [
@@ -170,7 +163,7 @@ class TestMCPToolTransform:
         assert result[0].description.en_US == "This is a test tool that does something useful"
         assert result[0].description.zh_Hans == "This is a test tool that does something useful"
 
-    def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user):
+    def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user: MCPToolProvider) -> None:
         """Test that mcp_tool_to_user_tool handles None user correctly."""
         # Create MCP tool
         tools = [MCPTool(name="tool1", description="Test tool", inputSchema={"type": "object", "properties": {}})]
@@ -182,7 +175,9 @@ class TestMCPToolTransform:
         assert len(result) == 1
         assert result[0].author == "Anonymous"
 
-    def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools):
+    def test_mcp_tool_to_user_tool_with_complex_schema(
+        self, mock_provider: MCPToolProvider, sample_mcp_tools: dict[str, MCPTool]
+    ) -> None:
         """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
         # Use complex tool from fixtures
         tools = [sample_mcp_tools["complex"]]
@@ -197,7 +192,7 @@ class TestMCPToolTransform:
         # The actual parameter conversion is handled by convert_mcp_schema_to_parameter
         # which should be tested separately
 
-    def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self):
+    def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self) -> None:
         """Nullable object schemas should keep the object parameter type."""
         schema = {
             "type": "object",
@@ -216,7 +211,7 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.OBJECT
         assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-    def test_convert_mcp_schema_to_parameter_preserves_oneof_object_type(self):
+    def test_convert_mcp_schema_to_parameter_preserves_oneof_object_type(self) -> None:
         """Nullable oneOf object schemas should keep the object parameter type."""
         schema = {
             "type": "object",
@@ -235,7 +230,7 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.OBJECT
         assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-    def test_convert_mcp_schema_to_parameter_handles_null_type(self):
+    def test_convert_mcp_schema_to_parameter_handles_null_type(self) -> None:
         """Schemas with only a null type should fall back to string."""
         schema = {
             "type": "object",
@@ -254,7 +249,7 @@ class TestMCPToolTransform:
         assert "null_prop_list" in param_map
         assert param_map["null_prop_list"].type == ToolParameter.ToolParameterType.STRING
 
-    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self):
+    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self) -> None:
         """Property-level allOf with multiple object items should still resolve to object."""
         schema = {
             "type": "object",
@@ -288,7 +283,7 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.OBJECT
         assert result[0].input_schema == schema["properties"]["config"]
 
-    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type(self):
+    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type(self) -> None:
         """Composed property schemas should keep the object parameter type."""
         schema = {
             "type": "object",
@@ -310,7 +305,7 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.OBJECT
         assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-    def test_convert_mcp_schema_to_parameter_limits_recursive_schema_depth(self):
+    def test_convert_mcp_schema_to_parameter_limits_recursive_schema_depth(self) -> None:
         """Self-referential composed schemas should stop resolving after the configured max depth."""
         recursive_property: dict[str, object] = {"description": "Recursive schema"}
         recursive_property["anyOf"] = [recursive_property]
@@ -328,7 +323,9 @@ class TestMCPToolTransform:
         assert result[0].type == ToolParameter.ToolParameterType.STRING
         assert result[0].input_schema is None
 
-    def test_mcp_provider_to_user_provider_minimal_response(self, mock_provider_full, mocker: MockerFixture):
+    def test_mcp_provider_to_user_provider_minimal_response(
+        self, mock_provider_full: MCPToolProvider, mocker: MockerFixture
+    ) -> None:
         """Test mcp_provider_to_user_provider with a response that omits optional fields."""
         # Set tools data with null description
         mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
@@ -343,12 +340,12 @@ class TestMCPToolTransform:
             "provider_icon": "icon.png",
             "masked_headers": {"Authorization": "Bearer *****"},
             "updated_at": 1234567890,
-            "labels": [],
+            "labels": list[str](),
             "author": "Test User",
             "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
             "icon": "icon.png",
             "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-            "masked_credentials": {},
+            "masked_credentials": dict[str, str](),
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
@@ -364,7 +361,9 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == ""  # Should handle None description
 
-    def test_mcp_provider_to_user_provider_full_response(self, mock_provider_full, mocker: MockerFixture):
+    def test_mcp_provider_to_user_provider_full_response(
+        self, mock_provider_full: MCPToolProvider, mocker: MockerFixture
+    ) -> None:
         """Test mcp_provider_to_user_provider with configuration and sensitive fields."""
         # Set tools data with description
         mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
@@ -379,14 +378,14 @@ class TestMCPToolTransform:
             "provider_icon": "icon.png",
             "masked_headers": {"Authorization": "Bearer *****"},
             "updated_at": 1234567890,
-            "labels": [],
+            "labels": list[str](),
             "configuration": {"timeout": "30", "sse_read_timeout": "300"},
             "original_headers": {"Authorization": "Bearer secret-token"},
             "author": "Test User",
             "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
             "icon": "icon.png",
             "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-            "masked_credentials": {},
+            "masked_credentials": dict[str, str](),
         }
         mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
@@ -403,7 +402,7 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"
 
-    def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider):
+    def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider: MCPToolProvider) -> None:
         """Tools where the server returned ``title: null`` should fall back to the tool name.
 
         Regression test for langgenius/dify#42453: Exa's MCP server returns
@@ -436,7 +435,7 @@ class TestMCPToolTransform:
         assert result[1].label.en_US == "get_content"
         assert result[1].label.zh_Hans == "get_content"
 
-    def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider):
+    def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider: MCPToolProvider) -> None:
         """When the server provides a non-null title, it should be used for the label."""
         tools = [
             MCPTool(

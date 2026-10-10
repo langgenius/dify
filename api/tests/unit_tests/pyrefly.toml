@@ -812,7 +812,6 @@ project-excludes = [
   "services/test_workflow_service.py",
   "services/tools/test_api_tools_manage_service.py",
   "services/tools/test_builtin_tools_manage_service.py",
-  "services/tools/test_mcp_tools_transform.py",
   "services/tools/test_tool_labels_service.py",
   "services/tools/test_tools_manage_service.py",
   "services/tools/test_tools_transform_service.py",
