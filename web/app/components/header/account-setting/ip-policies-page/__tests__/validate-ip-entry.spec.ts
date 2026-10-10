@@ -5,7 +5,6 @@ import {
   IP_POLICY_CIDR_MAX_COUNT,
   IP_POLICY_NAME_MAX_LENGTH,
   isSameIpAddress,
-  toAllowedCidr,
   validateIpEntry,
 } from '../validate-ip-entry'
 
@@ -140,19 +139,29 @@ describe('collectIpAddresses', () => {
   })
 })
 
-describe('toAllowedCidr', () => {
-  it('appends /32 to bare IPv4 addresses and /128 to bare IPv6 addresses', () => {
-    expect(toAllowedCidr('203.0.113.42')).toBe('203.0.113.42/32')
-    expect(toAllowedCidr('::1')).toBe('::1/128')
-    expect(toAllowedCidr('10.0.0.0/8')).toBe('10.0.0.0/8')
-  })
-})
-
 describe('collectAllowedCidrs', () => {
-  it('normalizes submitted entries to CIDR notation', () => {
-    expect(collectAllowedCidrs([' 203.0.113.42 ', '', '10.0.0.0/8'])).toEqual([
-      '203.0.113.42/32',
+  it('preserves address spelling and order while trimming and dropping blank rows', () => {
+    expect(
+      collectAllowedCidrs([
+        ' 192.168.1.1 ',
+        '',
+        '10.0.0.0/8',
+        '2001:db8::1',
+        '2001:0DB8:0000:0000:0000:0000:0000:0001',
+        '::ffff:203.0.113.42',
+        '203.0.113.42/32',
+        '2001:db8::2/128',
+        '10.2.3.4/8',
+      ]),
+    ).toEqual([
+      '192.168.1.1',
       '10.0.0.0/8',
+      '2001:db8::1',
+      '2001:0DB8:0000:0000:0000:0000:0000:0001',
+      '::ffff:203.0.113.42',
+      '203.0.113.42/32',
+      '2001:db8::2/128',
+      '10.2.3.4/8',
     ])
   })
 })
