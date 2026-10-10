@@ -1,6 +1,5 @@
 import logging
 from http import HTTPStatus
-from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
@@ -10,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.fields import SimpleResultResponse, TextFileResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
@@ -96,27 +95,6 @@ class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
         return uuid_value(value)
 
 
-class FeedbackExportQuery(BaseModel):
-    from_source: Literal["user", "admin"] | None = Field(default=None, description="Filter by feedback source")
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Filter by rating")
-    has_comment: bool | None = Field(default=None, description="Only include feedback with comments")
-    start_date: str | None = Field(default=None, description="Start date (YYYY-MM-DD)")
-    end_date: str | None = Field(default=None, description="End date (YYYY-MM-DD)")
-    format: Literal["csv", "json"] = Field(default="csv", description="Export format")
-
-    @field_validator("has_comment", mode="before")
-    @classmethod
-    def parse_bool(cls, value: bool | str | None) -> bool | None:
-        if isinstance(value, bool) or value is None:
-            return value
-        lowered = value.lower()
-        if lowered in {"true", "1", "yes", "on"}:
-            return True
-        if lowered in {"false", "0", "no", "off"}:
-            return False
-        raise ValueError("has_comment must be a boolean value")
-
-
 class AnnotationCountResponse(ResponseModel):
     count: int = Field(description="Number of annotations")
 
@@ -139,7 +117,6 @@ register_schema_models(
     console_ns,
     ChatMessagesQuery,
     MessageFeedbackPayload,
-    FeedbackExportQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -148,7 +125,6 @@ register_response_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
     SimpleResultResponse,
-    TextFileResponse,
 )
 
 
@@ -352,50 +328,6 @@ class AgentMessageSuggestedQuestionApi(Resource):
         return _get_message_suggested_questions(
             context=context, app_id=app_id, app_mode=AppMode.AGENT, message_id=message_id
         )
-
-
-@console_ns.route("/apps/<uuid:app_id>/feedbacks/export")
-class MessageFeedbackExportApi(Resource):
-    @console_ns.doc("export_feedbacks")
-    @console_ns.doc(description="Export user feedback data for Google Sheets")
-    @console_ns.response(
-        200,
-        "Feedback data exported successfully",
-        console_ns.models[TextFileResponse.__name__],
-    )
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(FeedbackExportQuery)})
-    @console_ns.response(400, "Invalid parameters")
-    @console_ns.response(500, "Internal server error")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
-    @model_validate(FeedbackExportQuery)
-    def get(self, req_data: FeedbackExportQuery, app_model: App):
-
-        # Import the service function
-        from services.feedback_service import FeedbackService
-
-        try:
-            export_data = FeedbackService.export_feedbacks(
-                app_model.id,
-                session=db.session(),
-                from_source=req_data.from_source,
-                rating=req_data.rating,
-                has_comment=req_data.has_comment,
-                start_date=req_data.start_date,
-                end_date=req_data.end_date,
-                format_type=req_data.format,
-            )
-            return export_data
-
-        except ValueError as e:
-            logger.exception("Parameter validation error in feedback export")
-            return {"error": f"Parameter validation error: {str(e)}"}, 400
-        except Exception as e:
-            logger.exception("Error exporting feedback data")
-            raise InternalServerError(str(e))
 
 
 @console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
