@@ -1,0 +1,19 @@
+nodes:
+- id: start
+  data:
+    type: start
+    variables:
+    - variable: text
+      label: Text
+      type: text-input
+- id: end
+  data:
+    type: end
+    outputs:
+    - variable: out
+      value_selector:
+      - start
+      - text
+edges:
+- source: start
+  target: end

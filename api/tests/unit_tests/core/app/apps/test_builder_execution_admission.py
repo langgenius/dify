@@ -92,17 +92,20 @@ def test_celery_refuses_marker_before_logging_or_initialization(monkeypatch):
 
 @pytest.mark.parametrize("entry", ["constructor", "classmethod", "runner"])
 @pytest.mark.parametrize("has_recorder", [True, False])
-def test_factory_refuses_restricted_before_live_adapters(monkeypatch, entry, has_recorder):
+def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, has_recorder):
     import time
 
     import core.workflow.node_factory as module
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-    from core.dify_builder.execution_policy import admitted_node_bindings
+    from core.dify_builder.execution_policy import admitted_node_bindings, context_digest, fixture_digest
     from graphon.entities.graph_init_params import GraphInitParams
     from graphon.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.dify_builder.test_execution_policy import graph, snapshot
 
-    marker = context().model_copy(update={"admitted_nodes": admitted_node_bindings(snapshot())})
+    marker = context().model_copy(
+        update={"admitted_nodes": admitted_node_bindings(snapshot()), "fixture_digest": fixture_digest("a" * 64, ())}
+    )
+    marker = marker.model_copy(update={"context_digest": context_digest(marker)})
     live = MagicMock(side_effect=AssertionError("live construction forbidden"))
     monkeypatch.setattr(module, "build_dify_model_access", live)
     params = GraphInitParams(
@@ -125,9 +128,9 @@ def test_factory_refuses_restricted_before_live_adapters(monkeypatch, entry, has
     def construct():
         recorder = MagicMock(healthy=True) if has_recorder else None
         if entry == "constructor":
-            module.DifyNodeFactory(params, state, execution_recorder=recorder)
+            return module.DifyNodeFactory(params, state, execution_recorder=recorder)
         elif entry == "classmethod":
-            module.DifyNodeFactory.from_graph_init_context(
+            return module.DifyNodeFactory.from_graph_init_context(
                 graph_init_context=module.DifyGraphInitContext(
                     workflow_id="workflow", graph_config=graph(), run_context=params.run_context, call_depth=0
                 ),
@@ -138,7 +141,7 @@ def test_factory_refuses_restricted_before_live_adapters(monkeypatch, entry, has
             from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 
             runner = WorkflowBasedAppRunner(queue_manager=MagicMock(), app_id="app")
-            runner._init_graph(
+            return runner._init_graph(
                 graph_config=graph(),
                 graph_runtime_state=state,
                 workflow_id="workflow",
@@ -150,9 +153,12 @@ def test_factory_refuses_restricted_before_live_adapters(monkeypatch, entry, has
                 execution_recorder=recorder,
             )
 
-    reason = "restricted_capabilities_unavailable" if has_recorder else "missing_execution_recorder"
-    with pytest.raises(BuilderExecutionPolicyError, match=reason):
-        construct()
+    if has_recorder:
+        result = construct()
+        assert result is not None
+    else:
+        with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
+            construct()
     live.assert_not_called()
 
 

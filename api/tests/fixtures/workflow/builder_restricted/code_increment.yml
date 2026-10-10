@@ -1,0 +1,31 @@
+# Reserved for Task 5: unavailable without verified network-disabled-v1.
+nodes:
+  - id: start
+    data:
+      type: start
+      variables:
+        - variable: n
+          label: Number
+          type: number
+  - id: code
+    data:
+      type: code
+      code_language: python3
+      code: 'def main(n): return {"result": n + 1}'
+      variables:
+        - variable: n
+          value_selector: [start, n]
+      outputs:
+        result:
+          type: number
+  - id: end
+    data:
+      type: end
+      outputs:
+        - variable: out
+          value_selector: [code, result]
+edges:
+  - source: start
+    target: code
+  - source: code
+    target: end
