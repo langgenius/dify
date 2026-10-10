@@ -31,7 +31,7 @@ import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
 import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
 import { AgentSettingDialog } from '@/app/components/app/configuration/config/agent/agent-setting'
-import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
+import { SelectDataSet } from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
@@ -224,8 +224,8 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
           </AlertDialog>
 
           <SelectDataSet
-            isShow={isShowSelectDataSet}
-            onClose={onCloseSelectDataSet}
+            open={isShowSelectDataSet}
+            onOpenChange={(open) => !open && onCloseSelectDataSet()}
             selectedIds={selectedIds}
             onSelect={onSelectDataSets}
           />

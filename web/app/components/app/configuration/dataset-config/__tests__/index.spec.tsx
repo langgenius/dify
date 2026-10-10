@@ -113,7 +113,7 @@ vi.mock('../card-item', () => ({
 }))
 
 vi.mock('../params-config', () => ({
-  default: ({ disabled, selectedDatasets }: any) => (
+  ParamsConfig: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
       Params ({selectedDatasets.length})
     </button>

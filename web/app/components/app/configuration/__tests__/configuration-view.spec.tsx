@@ -5,10 +5,15 @@ import type { InstallBundleCompleteCallback } from '@/app/components/plugins/ins
 import type { Plugin } from '@/app/components/plugins/types'
 import type ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
@@ -36,10 +41,6 @@ vi.mock(
     default: () => <div data-testid="model-parameter-modal" />,
   }),
 )
-
-vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () => ({
-  default: () => <div data-testid="select-dataset" />,
-}))
 
 vi.mock('@/app/components/app/configuration/config-prompt/conversation-history/edit-modal', () => ({
   default: () => <div data-testid="history-modal" />,
@@ -439,5 +440,50 @@ describe('ConfigurationView', () => {
     render(<ConfigurationView {...createViewModel()} />)
 
     expect(pluginDependencyOnInstallComplete).toBeUndefined()
+  })
+  it('closes the actual dataset selection dialog through its standard controlled callback', async () => {
+    const client = createTestQueryClient()
+    seedCurrentWorkspaceQuery(client)
+    seedWorkspacePermissionsQuery(client)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (!url.includes('/datasets?')) throw new Error(`Unexpected request: ${url}`)
+      return Response.json({ data: [], page: 1, limit: 20, total: 0, has_more: false })
+    })
+    function SelectionView() {
+      const [open, setOpen] = React.useState(true)
+      return (
+        <ConfigurationView
+          {...createViewModel({
+            isShowSelectDataSet: open,
+            onCloseSelectDataSet: () => setOpen(false),
+          })}
+        />
+      )
+    }
+    const result = render(
+      <QueryClientTestProvider queryClient={client}>
+        <SelectionView />
+      </QueryClientTestProvider>,
+    )
+    try {
+      const user = userEvent.setup()
+      expect(
+        screen.getByRole('dialog', { name: 'appDebug.feature.dataSet.selectTitle' }),
+      ).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'appDebug.feature.dataSet.selectTitle' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'appDebug.orchestrate' }),
+      ).toBeInTheDocument()
+    } finally {
+      result.unmount()
+      client.clear()
+      fetchSpy.mockRestore()
+    }
   })
 })

@@ -3,11 +3,16 @@ import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { RiEqualizer2Line } from '@remixicon/react'
-import { memo, useEffect, useState } from 'react'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { useContextSelector } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -24,15 +29,27 @@ type ParamsConfigProps = {
   disabled?: boolean
   selectedDatasets: DataSet[]
 }
-const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
+function ParamsConfigForm({
+  selectedDatasets,
+  open,
+}: Pick<ParamsConfigProps, 'selectedDatasets'> & { open: boolean }) {
   const { t } = useTranslation(['appDebug', 'common', 'dataset'])
-  const { datasetConfigs, setDatasetConfigs, rerankSettingModalOpen, setRerankSettingModalOpen } =
-    useContext(ConfigContext)
+  const datasetConfigs = useContextSelector(ConfigContext, (context) => context.datasetConfigs)
+  const setDatasetConfigs = useContextSelector(
+    ConfigContext,
+    (context) => context.setDatasetConfigs,
+  )
+  const setRerankSettingModalOpen = useContextSelector(
+    ConfigContext,
+    (context) => context.setRerankSettingModalOpen,
+  )
+  const [sourceConfigs, setSourceConfigs] = useState(datasetConfigs)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
 
-  useEffect(() => {
+  if (open && sourceConfigs !== datasetConfigs) {
+    setSourceConfigs(datasetConfigs)
     setTempDataSetConfigs(datasetConfigs)
-  }, [datasetConfigs])
+  }
 
   const {
     modelList: rerankModelList,
@@ -103,53 +120,66 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
   }
 
   return (
-    <div>
-      <Button
-        variant="ghost"
-        size="small"
-        className={cn('h-7', rerankSettingModalOpen && 'bg-components-button-ghost-bg-hover')}
-        onClick={() => {
-          setRerankSettingModalOpen(true)
-        }}
-        disabled={disabled}
-      >
-        <RiEqualizer2Line className="size-3.5" />
+    <form
+      noValidate
+      onSubmit={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        event.stopPropagation()
+        handleSave()
+      }}
+    >
+      <DialogTitle className="sr-only">
         {t(($) => $.retrievalSettings, { ns: 'dataset' })}
-      </Button>
-      {rerankSettingModalOpen && (
-        <Dialog
-          open={rerankSettingModalOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              setRerankSettingModalOpen(false)
-            }
-          }}
-        >
-          <DialogContent className="w-full max-w-120 border-none text-left align-middle sm:min-w-132">
-            <ConfigContent
-              datasetConfigs={tempDataSetConfigs}
-              onChange={handleSetTempDataSetConfigs}
-              selectedDatasets={selectedDatasets}
-            />
-
-            <div className="mt-6 flex justify-end">
-              <Button
-                className="mr-2 shrink-0"
-                onClick={() => {
-                  setTempDataSetConfigs(datasetConfigs)
-                  setRerankSettingModalOpen(false)
-                }}
-              >
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button variant="primary" className="shrink-0" onClick={handleSave}>
-                {t(($) => $['operation.save'], { ns: 'common' })}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
+      </DialogTitle>
+      <ConfigContent
+        datasetConfigs={tempDataSetConfigs}
+        onChange={handleSetTempDataSetConfigs}
+        selectedDatasets={selectedDatasets}
+      />
+      <div className="mt-6 flex justify-end">
+        <DialogClose render={<Button className="mr-2 shrink-0" />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button type="submit" variant="primary" className="shrink-0">
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </div>
+    </form>
   )
 }
-export default memo(ParamsConfig)
+
+export const ParamsConfig = memo(({ disabled, selectedDatasets }: ParamsConfigProps) => {
+  const { t } = useTranslation(['dataset'])
+  const rerankSettingModalOpen = useContextSelector(
+    ConfigContext,
+    (context) => context.rerankSettingModalOpen,
+  )
+  const setRerankSettingModalOpen = useContextSelector(
+    ConfigContext,
+    (context) => context.setRerankSettingModalOpen,
+  )
+
+  return (
+    <div>
+      <Dialog open={rerankSettingModalOpen} onOpenChange={setRerankSettingModalOpen}>
+        <DialogTrigger
+          disabled={disabled}
+          render={
+            <Button
+              variant="ghost"
+              size="small"
+              className={cn('h-7', rerankSettingModalOpen && 'bg-components-button-ghost-bg-hover')}
+            />
+          }
+        >
+          <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
+          {t(($) => $.retrievalSettings, { ns: 'dataset' })}
+        </DialogTrigger>
+        <DialogContent className="w-full max-w-120 border-none text-left align-middle sm:min-w-132">
+          <ParamsConfigForm selectedDatasets={selectedDatasets} open={rerankSettingModalOpen} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+})

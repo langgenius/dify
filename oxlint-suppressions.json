@@ -382,16 +382,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/params-config/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/dataset-config/select-dataset/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2
