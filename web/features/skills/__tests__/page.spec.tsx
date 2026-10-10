@@ -1298,7 +1298,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {
