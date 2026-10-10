@@ -10,9 +10,11 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from redis import Redis
+from redis.exceptions import NoPermissionError, ResponseError
 
 from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
+from extensions.redis_names import serialize_redis_name
 from repositories.annotation_import_job_repository import (
     RedisAnnotationImportJobRepository,
     annotation_import_job_owner_key,
@@ -157,6 +159,134 @@ def test_creation_cannot_overwrite_another_owner(store: JobStore, different_owne
     assert store.repository.get(
         tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
     ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
+
+
+@pytest.mark.parametrize("error", [None, "", "模型配置错误：embedding model is unavailable"])
+def test_finish_publishes_terminal_state_and_expiry_and_releases_only_its_slot(
+    store: JobStore, error: str | None
+) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
+    newer_job_id = str(uuid4())
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=newer_job_id, now_ms=200001)
+    other_tenant_id = str(uuid4())
+    other_tenant_key = f"annotation_import_active:{other_tenant_id}"
+    store.redis.zadd(other_tenant_key, {store.job_id: 200000})
+    error_key = f"app_annotation_batch_import_error_msg_{store.job_id}"
+    store.redis.set(error_key, "previous attempt failed")
+
+    store.repository.finish(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, error=error)
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(
+        job_id=store.job_id, job_status="completed" if error is None else "error", error_msg=error or ""
+    )
+    active_key = serialize_redis_name(f"annotation_import_active:{store.tenant_id}", store.prefix)
+    assert store.raw_redis.zscore(active_key, store.job_id) is None
+    assert store.raw_redis.zscore(active_key, newer_job_id) == 200001
+    assert store.raw_redis.zscore(serialize_redis_name(other_tenant_key, store.prefix), store.job_id) == 200000
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=newer_job_id
+    ) == AnnotationImportJob(job_id=newer_job_id, job_status="waiting")
+    assert 0 < store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) <= 600
+    assert 0 < store.redis.ttl(f"app_annotation_batch_import_{store.job_id}") <= 600
+    if error is None:
+        assert store.redis.get(error_key) is None
+    else:
+        assert 0 < store.redis.ttl(error_key) <= 600
+
+
+def test_finish_establishes_owner_and_releases_slot_for_a_legacy_queued_job(store: JobStore) -> None:
+    store.redis.set(f"app_annotation_batch_import_{store.job_id}", "waiting")
+    active_key = f"annotation_import_active:{store.tenant_id}"
+    store.redis.zadd(active_key, {store.job_id: 200000})
+
+    store.repository.finish(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, error="App is no longer available"
+    )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(job_id=store.job_id, job_status="error", error_msg="App is no longer available")
+    assert store.redis.zcard(active_key) == 0
+    assert 0 < store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) <= 600
+
+
+@pytest.mark.parametrize("different_owner", ["tenant", "app"])
+def test_finish_cannot_change_another_owners_job_or_release_slots(
+    store: JobStore, different_owner: Literal["tenant", "app"]
+) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
+    tenant_id = str(uuid4()) if different_owner == "tenant" else store.tenant_id
+    app_id = str(uuid4()) if different_owner == "app" else store.app_id
+    active_key = f"annotation_import_active:{tenant_id}"
+    error_key = f"app_annotation_batch_import_error_msg_{store.job_id}"
+    store.redis.zadd(active_key, {store.job_id: 200000})
+    store.redis.set(error_key, "original error")
+    original_error = store.redis.get(error_key)
+
+    with pytest.raises(RuntimeError, match="already belongs to another app or tenant"):
+        store.repository.finish(tenant_id=tenant_id, app_id=app_id, job_id=store.job_id, error="foreign job failed")
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
+    assert store.raw_redis.zscore(serialize_redis_name(active_key, store.prefix), store.job_id) == 200000
+    owner_active_key = serialize_redis_name(f"annotation_import_active:{store.tenant_id}", store.prefix)
+    assert store.raw_redis.zscore(owner_active_key, store.job_id) == 200000
+    assert store.redis.get(error_key) == original_error
+    assert store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) == -1
+
+
+@pytest.mark.parametrize("release_fails", [False, True])
+@pytest.mark.parametrize("failure", ["ownership", "status"])
+def test_finish_releases_slot_when_job_persistence_fails_and_preserves_the_original_error(
+    store: JobStore, release_fails: bool, failure: Literal["ownership", "status"]
+) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
+    active_key = f"annotation_import_active:{store.tenant_id}"
+    if release_fails:
+        store.redis.set(active_key, "invalid active jobs data")
+    username = f"annotation-import-publish-{uuid4()}"
+    password = str(uuid4())
+    # Real ACL denial fails owner claiming or status publication without replacing repository behavior.
+    denied_commands = ["-eval", "-evalsha"] if failure == "ownership" else ["-setex"]
+    store.raw_redis.acl_setuser(
+        username, enabled=True, passwords=[f"+{password}"], keys=["*"], commands=["+@all", *denied_commands]
+    )
+    try:
+        with Redis(
+            host=dify_config.REDIS_HOST,
+            port=dify_config.REDIS_PORT,
+            db=dify_config.REDIS_DB,
+            username=username,
+            password=password,
+        ) as client:
+            redis = RedisClientWrapper()
+            redis.initialize(client)
+            repository = RedisAnnotationImportJobRepository(redis=redis)
+            with pytest.raises(NoPermissionError):
+                repository.finish(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, error=None)
+    finally:
+        store.raw_redis.acl_deluser(username)
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
+    if not release_fails:
+        assert store.redis.zcard(active_key) == 0
+
+
+def test_finish_reports_slot_release_failure_after_publishing_the_terminal_status(store: JobStore) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
+    store.redis.set(f"annotation_import_active:{store.tenant_id}", "invalid active jobs data")
+
+    with pytest.raises(ResponseError, match="WRONGTYPE"):
+        store.repository.finish(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, error=None)
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(job_id=store.job_id, job_status="completed")
 
 
 def test_active_count_excludes_the_two_minute_boundary_and_is_tenant_scoped(store: JobStore) -> None:

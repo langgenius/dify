@@ -1,21 +1,9 @@
 import logging
 import time
 
-import click
 from celery import shared_task
-from sqlalchemy import select
-from werkzeug.exceptions import NotFound
 
-from core.db.session_factory import session_factory
-from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from core.rag.models.document import Document
-from extensions.ext_redis import redis_client
-from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
-from repositories.annotation_import_job_repository import annotation_import_job_owner_key
 from services.annotation_import_service import AnnotationImportRecord
-from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -24,90 +12,29 @@ logger = logging.getLogger(__name__)
 def batch_import_annotations_task(
     job_id: str, content_list: list[AnnotationImportRecord], app_id: str, tenant_id: str, user_id: str
 ) -> None:
-    """
-    Add annotation to index.
-    :param job_id: job_id
-    :param content_list: content list
-    :param app_id: app id
-    :param tenant_id: tenant id
-    :param user_id: user_id
+    """Import a detached batch and publish its outcome after indexing and SQL finish."""
+    from extensions.ext_application_services import application_services
 
-    """
-    logger.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
+    service = application_services().annotation_imports
     start_at = time.perf_counter()
-    indexing_cache_key = f"app_annotation_batch_import_{job_id}"
-    active_jobs_key = f"annotation_import_active:{tenant_id}"
-
-    with session_factory.create_session() as session:
-        # get app info
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+    logger.info("Import annotation job %s for app %s in tenant %s", job_id, app_id, tenant_id)
+    try:
+        service.execute_import(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            job_id=job_id,
+            account_id=user_id,
+            records=content_list,
         )
-
-        if app:
-            try:
-                documents = []
-                for content in content_list:
-                    annotation = MessageAnnotation(
-                        app_id=app.id, content=content["answer"], question=content["question"], account_id=user_id
-                    )
-                    session.add(annotation)
-                    session.flush()
-
-                    document = Document(
-                        page_content=content["question"],
-                        metadata={"annotation_id": annotation.id, "app_id": app_id, "doc_id": annotation.id},
-                    )
-                    documents.append(document)
-                # if annotation reply is enabled , batch add annotations' index
-                app_annotation_setting = session.scalar(
-                    select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-                )
-
-                if app_annotation_setting:
-                    dataset_collection_binding = (
-                        DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, session, "annotation"
-                        )
-                    )
-                    if not dataset_collection_binding:
-                        raise NotFound("App annotation setting not found")
-                    dataset = Dataset(
-                        id=app_id,
-                        tenant_id=tenant_id,
-                        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-                        embedding_model_provider=dataset_collection_binding.provider_name,
-                        embedding_model=dataset_collection_binding.model_name,
-                        collection_binding_id=dataset_collection_binding.id,
-                    )
-
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
-                    vector.create(documents, duplicate_check=True)
-
-                session.commit()
-                redis_client.setex(indexing_cache_key, 600, "completed")
-                redis_client.expire(annotation_import_job_owner_key(job_id=job_id), 600)
-                end_at = time.perf_counter()
-                logger.info(
-                    click.style(
-                        "Build index successful for batch import annotation: {} latency: {}".format(
-                            job_id, end_at - start_at
-                        ),
-                        fg="green",
-                    )
-                )
-            except Exception as e:
-                session.rollback()
-                redis_client.setex(indexing_cache_key, 600, "error")
-                redis_client.expire(annotation_import_job_owner_key(job_id=job_id), 600)
-                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id}"
-                redis_client.setex(indexing_error_msg_key, 600, str(e))
-                logger.exception("Build index for batch import annotations failed")
-            finally:
-                # Clean up active job tracking to release concurrency slot
-                try:
-                    redis_client.zrem(active_jobs_key, job_id)
-                    logger.debug("Released concurrency slot for job: %s", job_id)
-                except Exception as cleanup_error:
-                    # Log but don't fail if cleanup fails - the job will be auto-expired
-                    logger.warning("Failed to clean up active job tracking for %s: %s", job_id, cleanup_error)
+    except Exception as error:
+        logger.exception("Annotation import job %s failed for app %s in tenant %s", job_id, app_id, tenant_id)
+        service.complete_job(tenant_id=tenant_id, app_id=app_id, job_id=job_id, error=str(error))
+    else:
+        service.complete_job(tenant_id=tenant_id, app_id=app_id, job_id=job_id, error=None)
+        logger.info(
+            "Imported annotation job %s for app %s in tenant %s in %.3fs",
+            job_id,
+            app_id,
+            tenant_id,
+            time.perf_counter() - start_at,
+        )

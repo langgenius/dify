@@ -40,6 +40,7 @@ from repositories.annotation_import_job_repository import (
 )
 from repositories.annotation_repository import AnnotationRepository
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportService
+from services.annotation_reply_index import AnnotationVectorIndex
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_app
@@ -125,7 +126,8 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
     celery.conf.update(task_default_queue=queue, task_ignore_result=True, task_publish_retry=False)
     task = celery.task(name=batch_import_annotations_task.name, shared=False)(batch_import_annotations_task.run)
     service = AnnotationImportService(
-        apps=AnnotationRepository(session_factory=factory),
+        annotations=AnnotationRepository(session_factory=factory),
+        index=AnnotationVectorIndex(session_factory=factory),
         jobs=RedisAnnotationImportJobRepository(redis=redis),
         publish=task.delay,
         quota=_get_annotation_import_quota,

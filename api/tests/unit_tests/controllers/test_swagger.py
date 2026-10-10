@@ -587,7 +587,6 @@ def test_service_schemas_only_document_reachable_not_found_responses(openapi_jso
     paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
 
     for path, method in (
-        ("/apps/annotation-reply/{action}/status/{job_id}", "get"),
         ("/info", "get"),
         ("/meta", "get"),
         ("/parameters", "get"),
@@ -597,6 +596,9 @@ def test_service_schemas_only_document_reachable_not_found_responses(openapi_jso
         assert "404" not in paths[path][method]["responses"]
         assert "400" in paths[path][method]["responses"]
 
+    annotation_status = paths["/apps/annotation-reply/{action}/status/{job_id}"]["get"]["responses"]
+    assert "404" in annotation_status
+    assert "400" in annotation_status
     assert "404" in paths["/workflows/{workflow_id}/run"]["post"]["responses"]
     assert "404" in paths["/chat-messages"]["post"]["responses"]
 

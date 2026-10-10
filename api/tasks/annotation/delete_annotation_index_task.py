@@ -1,45 +1,36 @@
 import logging
 import time
 
-import click
 from celery import shared_task
-
-from core.db.session_factory import session_factory
-from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models.dataset import Dataset
-from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str, collection_binding_id: str):
-    """
-    Async delete annotation index task
-    """
-    logger.info(click.style(f"Start delete app annotation index: {app_id}", fg="green"))
+def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str, collection_binding_id: str) -> None:
+    """Execute a queued index delete, retaining the task payload for rolling upgrades."""
+    from extensions.ext_application_services import application_services
+
     start_at = time.perf_counter()
+    logger.info(
+        "Start annotation index delete for annotation %s in app %s, tenant %s", annotation_id, app_id, tenant_id
+    )
     try:
-        with session_factory.create_session() as session:
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                collection_binding_id, session, "annotation"
-            )
-
-        dataset = Dataset(
-            id=app_id,
+        application_services().annotation_commands.execute_index_delete(
+            annotation_id=annotation_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-            collection_binding_id=dataset_collection_binding.id,
+            app_id=app_id,
+            collection_binding_id=collection_binding_id,
         )
-
-        try:
-            with session_factory.create_session() as session:
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
-            vector.delete_by_metadata_field("annotation_id", annotation_id)
-        except Exception:
-            logger.exception("Delete annotation index failed when annotation deleted.")
-        end_at = time.perf_counter()
-        logger.info(click.style(f"App annotations index deleted : {app_id} latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logger.exception("Annotation deleted index failed")
+        logger.exception(
+            "Annotation index delete failed for annotation %s in app %s, tenant %s", annotation_id, app_id, tenant_id
+        )
+    else:
+        logger.info(
+            "Finished annotation index delete for annotation %s in app %s, tenant %s in %.3fs",
+            annotation_id,
+            app_id,
+            tenant_id,
+            time.perf_counter() - start_at,
+        )

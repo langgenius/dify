@@ -101,6 +101,7 @@ from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
 from services.annotation_query import AnnotationQuery
+from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
@@ -524,16 +525,19 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     annotations = AnnotationRepository(session_factory=database_client)
+    annotation_index = AnnotationVectorIndex(session_factory=database_client)
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
+            index=annotation_index,
             add_index=add_annotation_to_index_task.delay,
             update_index=update_annotation_to_index_task.delay,
             delete_index=delete_annotation_index_task.delay,
         ),
         annotation_queries=annotations,
         annotation_imports=AnnotationImportService(
-            apps=annotations,
+            annotations=annotations,
+            index=annotation_index,
             jobs=RedisAnnotationImportJobRepository(redis=redis),
             publish=batch_import_annotations_task.delay,
             quota=_get_annotation_import_quota,
@@ -546,7 +550,8 @@ def build_application_services(
             ),
         ),
         annotation_reply=AnnotationReplyService(
-            apps=annotations,
+            annotations=annotations,
+            index=annotation_index,
             jobs=RedisAnnotationReplyJobRepository(redis=redis),
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,

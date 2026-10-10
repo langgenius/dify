@@ -40,6 +40,7 @@ from repositories.annotation_reply_job_repository import (
     annotation_reply_job_owner_key,
 )
 from repositories.annotation_repository import AnnotationRepository
+from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyService
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
@@ -127,7 +128,8 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
         celery.task(name=disable_annotation_reply_task.name, shared=False)(disable_annotation_reply_task.run),
     )
     service = AnnotationReplyService(
-        apps=AnnotationRepository(session_factory=factory),
+        annotations=AnnotationRepository(session_factory=factory),
+        index=AnnotationVectorIndex(session_factory=factory),
         jobs=RedisAnnotationReplyJobRepository(redis=redis),
         enable_task=tasks[0].delay,
         disable_task=tasks[1].delay,
@@ -294,7 +296,7 @@ def test_publish_failure_propagates_and_preserves_waiting_job(harness: _Harness,
 
     if action == "enable":
         with pytest.raises(SerializerNotInstalled):
-            harness.service.enable(
+            harness.service.request_enable(
                 tenant_id=harness.target.tenant_id,
                 app_id=harness.target.id,
                 account_id=harness.account.id,
@@ -304,7 +306,7 @@ def test_publish_failure_propagates_and_preserves_waiting_job(harness: _Harness,
             )
     else:
         with pytest.raises(SerializerNotInstalled):
-            harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
+            harness.service.request_disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
 
     keys = list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_owner_*"))
     assert len(keys) == 1
