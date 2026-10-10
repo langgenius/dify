@@ -798,6 +798,7 @@ export type SkillDetailResponse = {
   latest_published_at?: number | null
   latest_published_version_id?: string | null
   latest_published_version_number?: number | null
+  maintainer?: string | null
   name: string
   name_manually_edited?: boolean
   reference_count?: number
@@ -857,6 +858,7 @@ export type SkillResponse = {
   latest_published_at?: number | null
   latest_published_version_id?: string | null
   latest_published_version_number?: number | null
+  maintainer?: string | null
   name: string
   name_manually_edited?: boolean
   reference_count?: number

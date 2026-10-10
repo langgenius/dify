@@ -8,6 +8,7 @@ import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { PermissionKey } from '@/models/access-control'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -21,6 +22,7 @@ export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : 
 const mocks = vi.hoisted(() => ({
   request:
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+  permissionKeys: ['skill.edit', 'skill.delete', 'skill.publish'] as PermissionKey[],
   deleteSkillMutationFn: vi.fn(),
   copyToClipboard: vi.fn(),
   downloadBlob: vi.fn(),
@@ -293,9 +295,21 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('../permissions', () => ({
-  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
-}))
+vi.mock('../permissions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../permissions')>()
+  return {
+    ...actual,
+    useSkillPermissions: () => ({
+      ...actual.getSkillPermissions(mocks.permissionKeys),
+      canDeleteSkill: (maintainer: string | null | undefined) =>
+        actual.getSkillPermissions(mocks.permissionKeys, {
+          currentUserId: 'user-1',
+          resourceMaintainer: maintainer,
+          isRbacEnabled: true,
+        }).canDelete,
+    }),
+  }
+})
 
 vi.mock('../client', () => ({
   fetchSkillArchiveBlob: mocks.fetchSkillArchiveBlob,
@@ -683,6 +697,7 @@ export function getMocks() {
 }
 
 export function resetDetailPageFixture() {
+  mocks.permissionKeys = ['skill.edit', 'skill.delete', 'skill.publish']
   vi.useRealTimers()
   vi.resetAllMocks()
   mocks.request.mockImplementation(async (_url, _init, options) => {
