@@ -139,7 +139,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
     progress.activate("build-understand-goal")
     emit_canvas(env, "reset_build_canvas")
-    analysis = env.agent.analyze_goal(fc.goal_text)
+    analysis = env.agent.analyze_goal(fc.goal_text, reply_language=fc.reply_language or None)
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
     _refine_app_name(env, fc)
