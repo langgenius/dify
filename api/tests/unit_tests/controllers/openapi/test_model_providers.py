@@ -115,14 +115,8 @@ def _custom(current: str | None) -> SimpleNamespace:
 @pytest.mark.parametrize(("current", "switched"), [(None, True), ("other-id", False)])
 def test_new_model_credential_becomes_active_only_when_none_is(current: str | None, switched: bool) -> None:
     configuration = Mock()
-    configuration.create_custom_model_credential.return_value = "new-id"
     configuration.custom_configuration.models = [_custom(current)]
     service = ModelProviderService()
-    with (
-        patch.object(service, "_get_provider_configuration", return_value=configuration),
-        patch.object(service, "switch_active_custom_model_credential") as switch,
-    ):
-        service.create_model_credential(
-            "ws", "langgenius/ollama/ollama", "llm", "llama3", {}, None, activate_if_none=True
-        )
-    assert switch.called is switched
+    with patch.object(service, "_get_provider_configuration", return_value=configuration):
+        service.activate_model_credential_if_none("ws", "langgenius/ollama/ollama", "llm", "llama3", "new-id")
+    assert configuration.switch_custom_model_credential.called is switched

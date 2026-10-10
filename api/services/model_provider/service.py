@@ -621,8 +621,6 @@ class ModelProviderService:
         model: str,
         credentials: dict[str, Any],
         credential_name: str | None,
-        *,
-        activate_if_none: bool = False,
     ) -> str:
         """
         create and save model credentials.
@@ -633,8 +631,6 @@ class ModelProviderService:
         :param model: model name
         :param credentials: model credentials dict
         :param credential_name: credential name
-        :param activate_if_none: also make it the model's active credential when the model has none,
-            as a provider's first credential is
         :return: the new credential's id
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
@@ -644,12 +640,25 @@ class ModelProviderService:
             credentials=credentials,
             credential_name=credential_name,
         )
-        if activate_if_none:
-            refreshed = self._get_provider_configuration(tenant_id, provider).custom_configuration.models
-            current = next((m for m in refreshed if m.model == model and m.model_type == ModelType(model_type)), None)
-            if current is not None and not current.current_credential_id:
-                self.switch_active_custom_model_credential(tenant_id, provider, model_type, model, credential_id)
         return credential_id
+
+    def activate_model_credential_if_none(
+        self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
+    ) -> None:
+        """Make the credential the model's active one when the model has none, as a provider's first credential is."""
+        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        current = next(
+            (
+                m
+                for m in provider_configuration.custom_configuration.models
+                if m.model == model and m.model_type == ModelType(model_type)
+            ),
+            None,
+        )
+        if current is not None and not current.current_credential_id:
+            provider_configuration.switch_custom_model_credential(
+                model_type=ModelType(model_type), model=model, credential_id=credential_id
+            )
 
     def update_model_credential(
         self,

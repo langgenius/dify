@@ -117,25 +117,29 @@ def _provider_write_response(
     configuration = response.custom_configuration
     names = {c.credential_id: c.credential_name for c in configuration.available_credentials or []}
     active = configuration.current_credential_id == credential_id
-    hint = (
-        Hint(
-            summary="Pick a model for your nodes",
-            op=op_of(ModelsApi.get),
-            input={"workspace_id": workspace_id, "provider": response.provider},
+    hints: list[Hint] = []
+    if active:
+        hints.append(
+            Hint(
+                summary="Pick a model for your nodes",
+                op=op_of(ModelsApi.get),
+                input={"workspace_id": workspace_id, "provider": response.provider},
+            )
         )
-        if active
-        else Hint(
-            summary="Another credential is active; replace its values to use these",
-            op=op_of(ModelProviderCredentialApi.patch),
-            input={
-                "workspace_id": workspace_id,
-                "provider": response.provider,
-                "credential_id": configuration.current_credential_id,
-                "credentials": None,
-            },
+    elif configuration.current_credential_id:
+        hints.append(
+            Hint(
+                summary="Another credential is active; replace its values to use these",
+                op=op_of(ModelProviderCredentialApi.patch),
+                input={
+                    "workspace_id": workspace_id,
+                    "provider": response.provider,
+                    "credential_id": configuration.current_credential_id,
+                    "credentials": None,
+                },
+            )
         )
-    )
-    return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=[hint])
+    return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=hints)
 
 
 def _model_write_response(
@@ -371,15 +375,18 @@ class ModelCredentialsApi(Resource):
         returns=(HTTPStatus.CREATED, CredentialWriteResponse, "Credential saved"),
     )
     def post(self, ctx: Context, workspace_id: str, provider: str, *, body: ModelCredentialCreatePayload):
+        service = ModelProviderService()
         with _model_provider_errors():
-            credential_id = ModelProviderService().create_model_credential(
+            credential_id = service.create_model_credential(
                 tenant_id=ctx.workspace.id,
                 provider=provider,
                 model_type=body.model_type.value,
                 model=body.model,
                 credentials=body.credentials,
                 credential_name=body.name,
-                activate_if_none=True,
+            )
+            service.activate_model_credential_if_none(
+                ctx.workspace.id, provider, body.model_type.value, body.model, credential_id
             )
         response = _provider(ctx.workspace.id, provider)
         return _model_write_response(ctx.workspace.id, response, body, credential_id), HTTPStatus.CREATED
