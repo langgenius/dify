@@ -28,6 +28,7 @@ from services.data_migration.entities import (
 )
 from services.data_migration.import_service import ImportRequest, ImportTargetResolver, MigrationImportService
 from services.entities.dsl_entities import ImportStatus
+from services.workflow_service import WorkflowService
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -494,7 +495,11 @@ def test_ensure_workflow_app_is_published_updates_current_workflow(
     app_id = "00000000-0000-0000-0000-000000000001"
     _persist_app(database.session, app_id=app_id)
     publish = Mock(return_value=SimpleNamespace(id="published-workflow"))
-    monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=SimpleNamespace(publish_workflow=publish)))
+    service = SimpleNamespace(publish_workflow=publish)
+    service.publish_app_workflow = lambda **kwargs: WorkflowService.publish_app_workflow(
+        cast(WorkflowService, service), **kwargs
+    )
+    monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=service))
     monkeypatch.setattr(
         import_service,
         "sessionmaker",
