@@ -143,6 +143,20 @@ describe('useAccessPointActions', () => {
     )
   })
 
+  it('reports a successful save when the background detail refresh fails', async () => {
+    mocks.fetchAppDetail.mockRejectedValueOnce(new Error('Refresh failed'))
+    const { result } = renderActions()
+
+    await act(async () => {
+      expect(await result.current.saveSiteConfig(siteConfig)).toBe(true)
+    })
+
+    await waitFor(() => expect(mocks.fetchAppDetail).toHaveBeenCalledOnce())
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith('common.actionMsg.modifiedSuccessfully', {
+      type: 'success',
+    })
+  })
+
   it('keeps site configuration behind Access Point management permission', async () => {
     const { result } = renderActions('app-1', false)
 

@@ -55,11 +55,15 @@ it('updates copy content and removes generated actions when the tone changes', a
   act(() => {
     id = toast('First error', { type: 'error' })
   })
+  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   act(() => {
     toast.update(id, { title: 'Updated error' })
   })
-  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
-  expect(copy).toHaveBeenCalledWith('Updated error')
+  // Updating the card must not remount the focused copy action.
+  const action = screen.getByRole('button', { name: 'common.operation.copyErrorDetails' })
+  expect(action).toHaveFocus()
+  await user.click(action)
+  expect(copy).toHaveBeenLastCalledWith('Updated error')
   act(() => {
     toast.update(id, { type: 'success', title: 'Recovered' })
   })
