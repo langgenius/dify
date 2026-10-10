@@ -5,6 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import providerIcons from './provider-icons.module.css'
 import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
@@ -21,16 +22,16 @@ type Props = Readonly<{
 
 const getIconClassName = (type: TracingProvider) => {
   return {
-    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon-big w-27.75',
-    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon-big w-27.75',
-    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon-big w-31',
-    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon-big w-27.75',
-    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon-big w-[70.700851px]',
-    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon-big w-31',
-    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon-big w-24',
-    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon-big w-16.25',
-    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon-big w-37.5',
-    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon-big w-30',
+    [TracingProvider.arize]: cn(providerIcons.arizeBig, 'w-27.75'),
+    [TracingProvider.phoenix]: cn(providerIcons.phoenixBig, 'w-27.75'),
+    [TracingProvider.langSmith]: cn(providerIcons.langsmithBig, 'w-31'),
+    [TracingProvider.langfuse]: cn(providerIcons.langfuseBig, 'w-27.75'),
+    [TracingProvider.opik]: cn(providerIcons.opikBig, 'w-[70.700851px]'),
+    [TracingProvider.weave]: cn(providerIcons.weaveBig, 'w-31'),
+    [TracingProvider.aliyun]: cn(providerIcons.aliyunBig, 'w-24'),
+    [TracingProvider.mlflow]: cn(providerIcons.mlflowBig, 'w-16.25'),
+    [TracingProvider.databricks]: cn(providerIcons.databricksBig, 'w-37.5'),
+    [TracingProvider.tencent]: cn(providerIcons.tencentBig, 'w-30'),
   }[type]
 }
 

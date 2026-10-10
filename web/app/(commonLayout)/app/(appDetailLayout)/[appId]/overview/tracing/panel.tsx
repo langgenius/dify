@@ -29,6 +29,7 @@ import {
   updateTracingStatus,
 } from '@/service/apps'
 import ConfigButton from './config-button'
+import providerIcons from './provider-icons.module.css'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
 
@@ -71,16 +72,16 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
   const providerIconClassMap: Record<TracingProvider, string> = {
-    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon w-18.5',
-    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon w-18.5',
-    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon w-21',
-    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon w-18.5',
-    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon w-[47.133904px]',
-    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon w-30',
-    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon w-16.25',
-    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon w-11',
-    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon w-25',
-    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon w-20',
+    [TracingProvider.arize]: cn(providerIcons.arize, 'w-18.5'),
+    [TracingProvider.phoenix]: cn(providerIcons.phoenix, 'w-18.5'),
+    [TracingProvider.langSmith]: cn(providerIcons.langsmith, 'w-21'),
+    [TracingProvider.langfuse]: cn(providerIcons.langfuse, 'w-18.5'),
+    [TracingProvider.opik]: cn(providerIcons.opik, 'w-[47.133904px]'),
+    [TracingProvider.weave]: cn(providerIcons.weave, 'w-30'),
+    [TracingProvider.aliyun]: cn(providerIcons.aliyun, 'w-16.25'),
+    [TracingProvider.mlflow]: cn(providerIcons.mlflow, 'w-11'),
+    [TracingProvider.databricks]: cn(providerIcons.databricks, 'w-25'),
+    [TracingProvider.tencent]: cn(providerIcons.tencent, 'w-20'),
   }
   const inUseProviderIconClassName = inUseTracingProvider
     ? providerIconClassMap[inUseTracingProvider]
