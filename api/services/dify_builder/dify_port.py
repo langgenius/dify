@@ -52,6 +52,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import CanvasEvent
+from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.handlers_fix import run_finished_without_output
 from core.dify_builder.input_schema import SYSTEM_QUERY, validate_query
 from core.dify_builder.models import (
@@ -192,6 +193,15 @@ def _sync_graph_only(
 
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
+
+    def stamp_http_fixtures(
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1:
+        from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+
+        return BuilderExecutionPolicyService(_session_factory()).stamp_http_fixtures(
+            app_id, actor, base_app_revision=base_app_revision, fixtures=fixtures
+        )
 
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         """Read mode from the persisted app using the same tenant guard as graphs."""
