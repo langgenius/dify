@@ -16,6 +16,7 @@ from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.workflow.file_access_runtime import attach_file_access_run_grants
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -146,6 +147,7 @@ class WorkflowEntry:
 
         self.command_channel = command_channel
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        attach_file_access_run_grants(graph_runtime_state)
         execution_context = capture_current_context()
         # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
         graph_runtime_state._execution_context = execution_context
@@ -249,8 +251,9 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
-            execution_context=capture_current_context(),
         )
+        attach_file_access_run_grants(graph_runtime_state)
+        graph_runtime_state._execution_context = capture_current_context()
 
         if is_start_node_type(node_type):
             add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
@@ -409,8 +412,9 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
-            execution_context=capture_current_context(),
         )
+        attach_file_access_run_grants(graph_runtime_state)
+        graph_runtime_state._execution_context = capture_current_context()
 
         # init workflow run state
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
