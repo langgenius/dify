@@ -33,7 +33,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent, saved_test_context
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -161,6 +161,10 @@ def test_terminal_review_projects_current_persisted_verification(
         current_state=PcState.FIX_VERIFY,
     )
     repo.create_session(session, DifyBuilderContext(), [])
+    stored, context = repo.get_session(session.id)
+    context.test_input_ref = saved_test_context(repo, session.id).test_input_ref
+    repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    session.version += 1
 
     mod.advance_session(session.id, _act("run_verify", session.version), _ACTOR_DICT, "verify-token")
 

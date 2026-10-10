@@ -465,3 +465,20 @@ def test_verification_roundtrip_and_legacy(repo):
     legacy = Run(kind="verify", status="succeeded")
     repo.save_run(s.id, legacy)
     assert repo.get_run(legacy.id).verification is None
+
+
+def test_fixture_lineage_roundtrip_and_legacy_absence(repo):
+    from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
+    from services.dify_builder.serde import test_input_from_dict
+
+    sample = HttpResponseFixtureV1(
+        node_id="http", source="user_sample", status_code=201, content_type="application/json", body='{"answer":42}'
+    )
+    envelope = HttpFixtureSetV1(execution_revision="a" * 64, fixtures=(sample,))
+    value = TestInput(session_id="session", inputs={"n": 41}, http_fixtures=envelope)
+    repo.save_test_input(value)
+    assert repo.get_test_input(value.id).http_fixtures == envelope
+    old = TestInput(session_id="session", inputs={"n": 41})
+    repo.save_test_input(old)
+    assert repo.get_test_input(old.id).http_fixtures is None
+    assert test_input_from_dict({"inputs": {"n": 41}}).http_fixtures is None

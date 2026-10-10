@@ -40,6 +40,11 @@ from core.dify_builder.contract import (
 )
 from core.dify_builder.contract import Action as UiAction
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
+from core.dify_builder.execution_policy import (
+    BuilderExecutionPolicyError,
+    HttpFixtureSetV1,
+    decode_http_fixture_submission,
+)
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -821,7 +826,9 @@ class DifyBuilderService:
         get_app_revision_fn: Callable[[str, Actor], str] | None = None,
         get_app_name_fn: Callable[[str, Actor], str] | None = None,
         get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
+        stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
     ) -> None:
+        self._stamp_http_fixtures_fn = stamp_http_fixtures_fn
         self._repo = repo
         self._session_lock = session_lock
         self._enqueue_fn = enqueue_fn
@@ -1406,14 +1413,31 @@ class DifyBuilderService:
         access = _app_access_for_action(s.current_state, action.kind)
         if access != AppAccess.EDIT:
             self._authorize_app(s.app_id, actor, access)
+        fixture_revision: str | None = None
+        if action.kind == "provide_testdata" and "http_fixtures" in action.payload:
+            try:
+                fixtures = decode_http_fixture_submission(action.payload["http_fixtures"])
+                if not action.base_app_revision:
+                    raise BuilderExecutionPolicyError("fixture_base_revision_required")
+                if self._stamp_http_fixtures_fn is None:
+                    raise BuilderExecutionPolicyError("fixture_admission_unavailable")
+                envelope = self._stamp_http_fixtures_fn(
+                    s.app_id, actor, base_app_revision=action.base_app_revision, fixtures=fixtures
+                )
+                fixture_revision = envelope.execution_revision
+                # Keep the public action JSON-safe through the native Celery serializer.
+                action.payload = {**action.payload, "http_fixtures": [f.model_dump(mode="json") for f in fixtures]}
+            except BuilderExecutionPolicyError as exc:
+                raise BadRequestError(str(exc)) from None
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
-        current_app_revision = self._get_app_revision(s.app_id, actor)
+        current_app_revision = fixture_revision or self._get_app_revision(s.app_id, actor)
         app_revision_conflicted = bool(
             fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
         )
-        # A testdata submit carries run inputs, never graph edits, so neither
-        # revision gate below applies: a draft that moved while the user was
+        # Input-only testdata keeps its revision exemption. Fixture-bearing
+        # data was already admitted against its exact submitted revision by the
+        # guarded stamp owner above. Neither graph-write gate below applies: a draft that moved while the user was
         # typing changes nothing about the values they typed. This gate is also
         # the one place a human types for tens of seconds -- long enough for the
         # editor's own autosave to land right after Builder wrote the canvas,
