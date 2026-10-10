@@ -619,7 +619,7 @@ def test_get_crawl_url_data_dispatches(monkeypatch: pytest.MonkeyPatch, provider
 
 
 def test_get_firecrawl_url_data_reads_from_storage_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    stored_list = [{"source_url": "https://example.com", "title": "t"}]
+    stored_list = [{"source_url": "https://example.com", "title": "t", "description": None, "markdown": None}]
     stored = json.dumps(stored_list).encode("utf-8")
 
     storage_mock = MagicMock()
@@ -630,8 +630,28 @@ def test_get_firecrawl_url_data_reads_from_storage_when_present(monkeypatch: pyt
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock())
 
     result = WebsiteService._get_firecrawl_url_data("job-1", "https://example.com", "k", {"base_url": "b"})
-    assert result == {"source_url": "https://example.com", "title": "t"}
+    assert result == {
+        "source_url": "https://example.com",
+        "title": "t",
+        "description": None,
+        "markdown": None,
+    }
     assert result is not stored_list[0]
+
+
+def test_get_firecrawl_url_data_rejects_invalid_cached_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A cached blob that is not a list of documents must fail loudly instead of reaching callers."""
+    stored = json.dumps({"source_url": "https://example.com"}).encode("utf-8")
+
+    storage_mock = MagicMock()
+    storage_mock.exists.return_value = True
+    storage_mock.load_once.return_value = stored
+    monkeypatch.setattr(website_service_module, "storage", storage_mock)
+
+    monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock())
+
+    with pytest.raises(ValueError, match="cached crawl data is not valid"):
+        WebsiteService._get_firecrawl_url_data("job-1", "https://example.com", "k", {"base_url": "b"})
 
 
 def test_get_firecrawl_url_data_returns_none_when_storage_empty(monkeypatch: pytest.MonkeyPatch) -> None:

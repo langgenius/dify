@@ -10,7 +10,6 @@ Does NOT touch Message.inputs / Message.user_feedback properties.
 
 import datetime
 import gzip
-import json
 import logging
 import tempfile
 from collections import defaultdict
@@ -20,7 +19,7 @@ from typing import Any, BinaryIO, cast
 
 import orjson
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session
 
@@ -69,6 +68,13 @@ class AppMessageExportStats(BaseModel):
     total_feedbacks: int = 0
 
     model_config = ConfigDict(extra="forbid")
+
+
+class _MessageMetadataModel(BaseModel):
+    """The part of `Message.message_metadata` an export reads."""
+
+    model_config = ConfigDict(extra="ignore")
+    retriever_resources: list[dict[str, JsonValue]] = Field(default_factory=list)
 
 
 class AppMessageExportService:
@@ -285,11 +291,10 @@ class AppMessageExportService:
         retriever_resources: list[Any] = []
         if row.message_metadata:
             try:
-                metadata = json.loads(row.message_metadata)
-                value = metadata.get("retriever_resources", [])
-                if isinstance(value, list):
-                    retriever_resources = value
-            except (json.JSONDecodeError, TypeError):
+                retriever_resources = _MessageMetadataModel.model_validate_json(
+                    row.message_metadata
+                ).retriever_resources
+            except (ValidationError, TypeError):
                 pass
 
         message_id = str(row.id)

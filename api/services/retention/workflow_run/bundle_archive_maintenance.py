@@ -21,12 +21,13 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 import pyarrow.parquet as pq
 import sqlalchemy as sa
 from botocore.exceptions import ClientError, HTTPClientError
 from botocore.exceptions import ConnectionError as BotoCoreConnectionError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
@@ -83,13 +84,18 @@ class BundleManifest(TypedDict):
     object_prefix: str
     workflow_run_count: int
     workflow_node_execution_count: int
-    min_created_at: str
-    max_created_at: str
-    min_run_id: str
-    max_run_id: str
-    archived_at: str
+    # Optional so validation stays at the strength of the previous handwritten check, which
+    # listed only the first thirteen fields as required.
+    min_created_at: NotRequired[str]
+    max_created_at: NotRequired[str]
+    min_run_id: NotRequired[str]
+    max_run_id: NotRequired[str]
+    archived_at: NotRequired[str]
     tables: dict[str, TableManifestEntry]
     run_ids: list[str]
+
+
+_BUNDLE_MANIFEST_ADAPTER = TypeAdapter(BundleManifest)
 
 
 @dataclass(frozen=True)
@@ -754,28 +760,10 @@ class WorkflowRunBundleArchiveMaintenance:
         *,
         object_prefix: str,
     ) -> BundleManifest:
-        loaded = json.loads(manifest_data)
-        if not isinstance(loaded, dict):
-            raise ValueError("manifest.json must be an object")
-        required_fields = {
-            "schema_version",
-            "archive_format",
-            "tenant_id",
-            "tenant_prefix",
-            "year",
-            "month",
-            "shard",
-            "bundle_id",
-            "object_prefix",
-            "workflow_run_count",
-            "workflow_node_execution_count",
-            "tables",
-            "run_ids",
-        }
-        missing_fields = sorted(required_fields - set(loaded))
-        if missing_fields:
-            raise ValueError(f"manifest missing required fields: {', '.join(missing_fields)}")
-        manifest = cast(BundleManifest, loaded)
+        try:
+            manifest = _BUNDLE_MANIFEST_ADAPTER.validate_json(manifest_data)
+        except ValidationError as e:
+            raise ValueError(f"manifest.json is not a valid bundle manifest: {e}") from e
         if manifest["schema_version"] != ARCHIVE_BUNDLE_SCHEMA_VERSION:
             raise ValueError(f"unsupported bundle schema_version: {manifest['schema_version']}")
         if manifest["archive_format"] != ARCHIVE_BUNDLE_FORMAT:
@@ -788,15 +776,10 @@ class WorkflowRunBundleArchiveMaintenance:
             raise ValueError("manifest run_ids count does not match workflow_run_count")
 
         tables = manifest["tables"]
-        if not isinstance(tables, dict):
-            raise ValueError("manifest tables must be an object")
         for table_name in ARCHIVED_TABLES:
             if table_name not in tables:
                 raise ValueError(f"manifest missing table: {table_name}")
             info = tables[table_name]
-            for key in ("row_count", "checksum", "size_bytes", "object_key"):
-                if key not in info:
-                    raise ValueError(f"manifest table {table_name} missing {key}")
             expected_key = f"{object_prefix}/{table_name}.parquet"
             if info["object_key"] != expected_key:
                 raise ValueError(

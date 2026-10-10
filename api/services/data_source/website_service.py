@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import datetime
-import json
 from dataclasses import dataclass
 from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
 from flask_login import current_user
+from pydantic import TypeAdapter, ValidationError
 
 from core.helper import encrypter
 from core.helper.http_client_pooling import get_pooled_http_client
@@ -34,6 +34,9 @@ _adaptive_http_client: httpx.Client = get_pooled_http_client(
         limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
     ),
 )
+
+
+_FIRECRAWL_DOCUMENTS_ADAPTER = TypeAdapter(list[FirecrawlDocumentData])
 
 
 @dataclass
@@ -378,7 +381,10 @@ class WebsiteService:
         if storage.exists(file_key):
             stored_data = storage.load_once(file_key)
             if stored_data:
-                crawl_data = json.loads(stored_data.decode("utf-8"))
+                try:
+                    crawl_data = _FIRECRAWL_DOCUMENTS_ADAPTER.validate_json(stored_data)
+                except ValidationError as e:
+                    raise ValueError(f"cached crawl data is not valid: {file_key}: {e}") from e
         else:
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
             result = firecrawl_app.check_crawl_status(job_id)

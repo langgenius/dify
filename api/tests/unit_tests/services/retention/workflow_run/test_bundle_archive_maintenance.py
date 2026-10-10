@@ -117,6 +117,11 @@ def _manifest(
             "object_prefix": object_prefix,
             "workflow_run_count": len(records["workflow_runs"]),
             "workflow_node_execution_count": len(records["workflow_node_executions"]),
+            "min_created_at": "2025-03-01T00:00:00+00:00",
+            "max_created_at": "2025-03-01T00:00:00+00:00",
+            "min_run_id": "run-min",
+            "max_run_id": "run-max",
+            "archived_at": "2025-03-01T00:00:00+00:00",
             "tables": tables,
             "run_ids": [str(record["id"]) for record in records["workflow_runs"]],
         }
@@ -371,6 +376,57 @@ def test_catalog_manifest_identity_mismatch_fails_closed(
 
     with pytest.raises(ValueError, match="identity does not match catalog"):
         maintenance._build_bundle_reference(storage, entry)
+
+
+def _manifest_payload(entry: ArchiveBundleCatalogEntry) -> dict[str, Any]:
+    """Manifest as a mutable dict, so tests can drop or corrupt single fields."""
+    return cast(dict[str, Any], json.loads(_manifest(entry)))
+
+
+def _load_manifest(entry: ArchiveBundleCatalogEntry, payload: dict[str, Any]) -> BundleManifest:
+    return WorkflowRunBundleArchiveMaintenance._load_and_validate_manifest(
+        json.dumps(payload).encode(),
+        object_prefix=WorkflowRunBundleArchiveMaintenance._catalog_object_prefix(entry),
+    )
+
+
+def test_bundle_manifest_accepts_missing_range_fields() -> None:
+    """The range/audit fields stay optional, matching the previous handwritten check."""
+    entry = _catalog_entry()
+    payload = _manifest_payload(entry)
+    for field in ("min_created_at", "max_created_at", "min_run_id", "max_run_id", "archived_at"):
+        payload.pop(field, None)
+
+    manifest = _load_manifest(entry, payload)
+
+    assert manifest["bundle_id"] == BUNDLE_ID
+
+
+def test_bundle_manifest_rejects_missing_mandatory_field() -> None:
+    entry = _catalog_entry()
+    payload = _manifest_payload(entry)
+    del payload["bundle_id"]
+
+    with pytest.raises(ValueError, match="not a valid bundle manifest"):
+        _load_manifest(entry, payload)
+
+
+def test_bundle_manifest_rejects_mistyped_field() -> None:
+    entry = _catalog_entry()
+    payload = _manifest_payload(entry)
+    payload["year"] = "not-a-year"
+
+    with pytest.raises(ValueError, match="not a valid bundle manifest"):
+        _load_manifest(entry, payload)
+
+
+def test_bundle_manifest_rejects_table_entry_missing_object_key() -> None:
+    entry = _catalog_entry()
+    payload = _manifest_payload(entry)
+    del payload["tables"]["workflow_runs"]["object_key"]
+
+    with pytest.raises(ValueError, match="not a valid bundle manifest"):
+        _load_manifest(entry, payload)
 
 
 def test_bundle_maintenance_locks_the_existing_catalog_row(sqlite_session: Session) -> None:

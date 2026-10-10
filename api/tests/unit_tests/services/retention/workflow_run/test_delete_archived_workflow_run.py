@@ -94,3 +94,18 @@ def test_validate_archive_bundle_rejects_manifest_target_mismatch() -> None:
             app_id="app-1",
             workflow_id="workflow-1",
         )
+
+
+def test_validate_archive_bundle_rejects_invalid_manifest() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", b"[]")
+
+    with pytest.raises(ValueError, match="manifest.json is not a valid archive manifest"):
+        ArchivedWorkflowRunDeletion._validate_archive_bundle(
+            buffer.getvalue(),
+            run_id="run-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+        )
