@@ -9,6 +9,8 @@ difyctl talks to a Dify server. Business commands are not built in: the server p
 
 Always pass `--json`. Help and errors are text on a terminal and JSON in a pipe; `--json` (or `DIFY_OUTPUT=json`) forces JSON. Results and streams are always JSON.
 
+Operations that remove or revoke have no confirmation prompt. Confirm with the human first.
+
 ## Finding what the CLI can do
 
 An operation id is dotted, `run.console_app.chat`, and is typed as words: `difyctl run console_app chat`. Ids come from the server and can change, so look them up instead of assuming them.
@@ -24,11 +26,9 @@ Four views under `help`, covering local commands and server operations as one tr
 
 Not logged in, or the server unreachable, gives the local commands plus one line on stderr.
 
-Operations that remove or revoke have no confirmation prompt. Confirm with the person first.
-
 ## Where to read next
 
 - Read [`references/setup.md`](references/setup.md) to check login or log in, switching server or workspace, or running in a sandbox or CI.
 - Read [`references/operations.md`](references/operations.md) before running any operation: flags, inputs, files, results, hints, errors and exit codes.
 - Read [`references/build-workflow.md`](references/build-workflow.md) when asked to create, change, test or publish a Workflow or Chatflow app.
-- Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the user asks to install or remove a plugin. Prefer an existing tool over an HTTP Request or Code node; the human picks.
+- Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the human asks to install or remove a plugin.

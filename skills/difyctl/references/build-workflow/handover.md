@@ -11,7 +11,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
 
    Fix every item in `issues`. If `tested` fails, run the draft again. Go on only when `ready` is true.
 
-3. Stop at the human gate. Show in plain words: the `changes` against the published version, the `checks`, the acceptance results, the "Changes during build" list, and anything still open. Nothing goes live without a yes.
+3. Stop at the human gate. Show in plain words: the `changes` against the published version, the `checks`, the acceptance results, the "Changes during build" list, and anything still open.
 4. On a yes, publish. Show any `warning` in the result. Then confirm the row whose `id` is the result's `version_id` shows `current: true`:
 
    ```bash
@@ -19,14 +19,14 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
    difyctl get console_app version --app-id <app_id> --json
    ```
 
-5. Settle access. A new app starts with the web app and the Service API on. Ask the human about each one. `--enabled=false` turns a setting off. Agent apps use the `agent` variant of each command.
+5. Settle access. A new app starts with the web app and the Service API on. Ask the human about each one. `--enabled=false` turns a setting off.
    - Web app. When it stays on, give the human the `url` from the result.
 
      ```bash
      difyctl set webapp <mode> --app-id <app_id> --enabled --json
      ```
 
-   - Service API (needs an admin). Warn the human first: with it off, difyctl can't export, test, run, publish or find this app; only import still works. Note the app id first; an admin turns it back on with `--enabled`.
+   - Service API (needs an admin). Warn the human first what turning it off costs (see Limits in `build-workflow.md`), and note the app id.
 
      ```bash
      difyctl set service_api --app-id <app_id> --enabled --json
