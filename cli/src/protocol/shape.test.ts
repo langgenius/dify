@@ -19,6 +19,8 @@ it.each([
   [{ enum: [] }, SHAPE.Json, 'json'],
   [{ type: 'string', enum: [] }, SHAPE.Json, 'json'],
   [{ oneOf: [{ type: 'string' }, { type: 'integer' }] }, SHAPE.Union, 'string | integer'],
+  [{ anyOf: [{ type: 'string' }, { type: 'integer' }] }, SHAPE.Union, 'string | integer'],
+  [{ anyOf: [{ type: 'string' }], oneOf: [{ type: 'integer' }] }, SHAPE.Json, 'json'],
   [{ someFutureKeyword: true }, SHAPE.Json, 'json'],
 ])('%j classifies as %s labelled %s', (schema, shape, label) => {
   const node = shapeOf(schema)

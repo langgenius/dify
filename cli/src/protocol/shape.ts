@@ -19,7 +19,7 @@ export type ShapeNode = Readonly<{
   shape: Shape
   item?: ShapeNode
   values?: readonly string[]
-  options?: readonly ShapeNode[]
+  alternatives?: readonly ShapeNode[]
 }>
 
 type Coercion = (raw: string) => unknown
@@ -88,15 +88,18 @@ const SHAPE_INFO: Readonly<Record<Shape, ShapeInfo>> = {
   [SHAPE.Object]: { label: () => SHAPE.Object, coerce: () => toJson, scalar: false },
   [SHAPE.Json]: { label: () => SHAPE.Json, coerce: () => toJson, scalar: false },
   [SHAPE.Union]: {
-    label: (n) => (n.options ?? []).map(labelOf).join(ALTERNATIVE_SEPARATOR),
+    label: (n) => (n.alternatives ?? []).map(labelOf).join(ALTERNATIVE_SEPARATOR),
     coerce: () => toJson,
     scalar: false,
   },
 }
 
+// One list of branches, from anyOf or oneOf. A schema with both is not one union, so it
+// reads as no alternatives and falls through to its type.
 function alternativesOf(schema: JsonSchema): JsonSchema[] {
-  const branches = schema.anyOf ?? schema.oneOf
-  if (!Array.isArray(branches)) return []
+  const lists = [schema.anyOf, schema.oneOf].filter(Array.isArray)
+  const [branches] = lists
+  if (lists.length !== 1 || branches === undefined) return []
   return branches.filter((b) => isRecord(b) && b.type !== NULL_TYPE) as JsonSchema[]
 }
 
@@ -104,7 +107,8 @@ export function shapeOf(schema: JsonSchema): ShapeNode {
   const alternatives = alternativesOf(schema)
   const [only] = alternatives
   if (alternatives.length === 1 && only !== undefined) return shapeOf(only)
-  if (alternatives.length > 1) return { shape: SHAPE.Union, options: alternatives.map(shapeOf) }
+  if (alternatives.length > 1)
+    return { shape: SHAPE.Union, alternatives: alternatives.map(shapeOf) }
   const type = typeof schema.type === 'string' ? schema.type : undefined
   // An enum with no members names no value at all, so it degrades to json rather than
   // labelling as the empty string.
