@@ -27,15 +27,15 @@ describe('CreateSnippetDialog', () => {
 
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
     const onConfirm = vi.fn()
 
     render(
       <CreateSnippetDialog
-        isOpen
+        open
         selectedGraph={selectedGraph}
         inputFields={inputFields}
-        onClose={onClose}
+        onOpenChange={onOpenChange}
         onConfirm={onConfirm}
       />,
     )
@@ -59,38 +59,52 @@ describe('CreateSnippetDialog', () => {
       graph: selectedGraph,
       input_fields: inputFields,
     })
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
-  it('should disable confirm for blank names and reset fields when cancelled', async () => {
+  it('keeps the edited draft until closing and reads fresh metadata when reopened', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
-
-    render(
-      <CreateSnippetDialog
-        isOpen
-        onClose={onClose}
-        onConfirm={vi.fn()}
-        initialValue={{ name: 'Draft', description: 'Existing description' }}
-      />,
-    )
-
-    const nameInput = screen.getByDisplayValue('Draft')
-    const confirmButton = screen.getByRole('button', { name: 'workflow.snippet.confirm' })
-
-    await user.clear(nameInput)
-    await user.type(nameInput, '   ')
-
-    expect(confirmButton).toBeDisabled()
-
+    const onOpenChange = vi.fn()
+    const props = {
+      onOpenChange,
+      onConfirm: vi.fn(),
+      initialValue: { name: 'Draft', description: 'Existing description' },
+    }
+    const { rerender } = render(<CreateSnippetDialog {...props} open />)
+    const input = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+    await user.clear(input)
+    await user.type(input, '   ')
+    expect(screen.getByRole('button', { name: 'workflow.snippet.confirm' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+    expect(input).toHaveValue('   ')
+    rerender(<CreateSnippetDialog {...props} open={false} />)
+    await waitFor(() => expect(input).not.toBeInTheDocument())
+    rerender(<CreateSnippetDialog {...props} initialValue={{ name: 'Updated source' }} open />)
+    expect(await screen.findByRole('textbox', { name: 'workflow.snippet.nameLabel' })).toHaveValue(
+      'Updated source',
+    )
+    expect(screen.getByRole('textbox', { name: 'workflow.snippet.descriptionLabel' })).toHaveValue(
+      '',
+    )
+  })
 
-    expect(onClose).toHaveBeenCalledTimes(1)
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toHaveValue('')
-      expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toHaveValue('')
-    })
+  it('preserves plain Enter and description newlines without confirming', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(<CreateSnippetDialog open onOpenChange={vi.fn()} onConfirm={onConfirm} />)
+    await user.type(
+      screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' }),
+      'Snippet{Enter}',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'workflow.snippet.descriptionLabel' }),
+      'First{Enter}Second',
+    )
+    expect(screen.getByRole('textbox', { name: 'workflow.snippet.descriptionLabel' })).toHaveValue(
+      'First\nSecond',
+    )
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 
   it('should use default graph and custom dialog labels when optional values are omitted', async () => {
@@ -99,10 +113,10 @@ describe('CreateSnippetDialog', () => {
 
     render(
       <CreateSnippetDialog
-        isOpen
+        open
         title="Save as snippet"
         confirmText="Create now"
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -131,9 +145,9 @@ describe('CreateSnippetDialog', () => {
     const onConfirm = vi.fn()
     const { rerender } = render(
       <CreateSnippetDialog
-        isOpen={false}
+        open={false}
         initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -151,10 +165,10 @@ describe('CreateSnippetDialog', () => {
 
     rerender(
       <CreateSnippetDialog
-        isOpen
+        open
         isSubmitting
         initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -172,9 +186,9 @@ describe('CreateSnippetDialog', () => {
 
     rerender(
       <CreateSnippetDialog
-        isOpen
+        open
         initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -199,12 +213,12 @@ describe('CreateSnippetDialog', () => {
     const onConfirm = vi.fn()
     const props = {
       initialValue: { name: 'Portal snippet' },
-      onClose: vi.fn(),
+      onOpenChange: vi.fn(),
       onConfirm,
     }
-    const { rerender } = render(<CreateSnippetDialog {...props} isOpen={false} />)
+    const { rerender } = render(<CreateSnippetDialog {...props} open={false} />)
     for (let opened = 1; opened <= 2; opened++) {
-      rerender(<CreateSnippetDialog {...props} isOpen />)
+      rerender(<CreateSnippetDialog {...props} open />)
       const input = await screen.findByRole('textbox', { name: 'workflow.snippet.nameLabel' })
       const repeat = new KeyboardEvent('keydown', {
         key: 'Enter',
@@ -219,7 +233,7 @@ describe('CreateSnippetDialog', () => {
       fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
       fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
       expect(onConfirm).toHaveBeenCalledTimes(opened)
-      rerender(<CreateSnippetDialog {...props} isOpen={false} />)
+      rerender(<CreateSnippetDialog {...props} open={false} />)
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
       expect(onConfirm).toHaveBeenCalledTimes(opened)
@@ -230,9 +244,9 @@ describe('CreateSnippetDialog', () => {
     const onConfirm = vi.fn()
     render(
       <CreateSnippetDialog
-        isOpen
+        open
         initialValue={{ name: 'Nested control' }}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -260,13 +274,15 @@ describe('CreateSnippetDialog', () => {
     child.unmount()
   })
 
-  it('should disable form controls while submitting', () => {
+  it('disables editing and Cancel while submitting but preserves header dismissal', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
     render(
       <CreateSnippetDialog
-        isOpen
+        open
         isSubmitting
         initialValue={{ name: 'Submitting snippet' }}
-        onClose={vi.fn()}
+        onOpenChange={onOpenChange}
         onConfirm={vi.fn()}
       />,
     )
@@ -275,5 +291,7 @@ describe('CreateSnippetDialog', () => {
     expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     expectLoadingButton(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
   })
 })

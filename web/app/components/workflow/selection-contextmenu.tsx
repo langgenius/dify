@@ -266,13 +266,12 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const edges = useReactFlowStore((state) => state.edges)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-  const { createSnippetDialog, handleOpenCreateSnippet, isCreateSnippetDialogOpen } =
-    useCreateSnippetFromSelection({
-      edges,
-      environmentVariables,
-      selectedNodes,
-      onClose,
-    })
+  const { createSnippetDialog, handleOpenCreateSnippet } = useCreateSnippetFromSelection({
+    edges,
+    environmentVariables,
+    selectedNodes,
+    onClose,
+  })
   const canCreateSnippet =
     canCreateAndModifySnippets(workspacePermissionKeys) &&
     selectedNodes.every((node) => !unsupportedSnippetNodeTypes.has(node.data.type))
@@ -397,109 +396,111 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
     ],
   )
 
-  if (!isSelectionContextMenu || selectedNodes.length <= 1)
-    return isCreateSnippetDialogOpen ? createSnippetDialog : null
-
   return (
     <>
-      <ContextMenuContent
-        finalFocus={() => {
-          const returnToCanvas = deletingRef.current
-          deletingRef.current = false
-          return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
-        }}
-        className="w-60"
-        sideOffset={4}
-        onKeyDown={(event) => {
-          if (getNodesReadOnly()) return
-          handleWorkflowMenuKeyDown(event, [
-            ['workflow.copy', handleCopyNodes],
-            ['workflow.duplicate', handleDuplicateNodes],
-            ['workflow.delete', handleDeleteNodes],
-          ])
-        }}
-      >
-        {canCreateSnippet && (
-          <>
-            <ContextMenuGroup>
-              <ContextMenuItem
-                className="px-3 text-text-secondary"
-                onClick={handleOpenCreateSnippet}
-              >
-                <span>
-                  {t(($) => $['snippet.createDialogTitle'], {
-                    defaultValue: 'Create Snippet',
-                    ns: 'workflow',
-                  })}
-                </span>
-              </ContextMenuItem>
-            </ContextMenuGroup>
-            <ContextMenuSeparator />
-          </>
-        )}
-        <ContextMenuGroup>
-          <ContextMenuItem
-            className="justify-between px-3 text-text-secondary"
-            onClick={handleCopyNodes}
-          >
-            <span>
-              {t(($) => $['common.copy'], { defaultValue: 'common.copy', ns: 'workflow' })}
-            </span>
-            <ShortcutKbd shortcut="workflow.copy" />
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="justify-between px-3 text-text-secondary"
-            onClick={handleDuplicateNodes}
-          >
-            <span>
-              {t(($) => $['common.duplicate'], {
-                defaultValue: 'common.duplicate',
-                ns: 'workflow',
-              })}
-            </span>
-            <ShortcutKbd shortcut="workflow.duplicate" />
-          </ContextMenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
-          <ContextMenuItem
-            variant="destructive"
-            className="justify-between px-3"
-            onClick={handleDeleteNodes}
-          >
-            <span>
-              {t(($) => $['operation.delete'], { defaultValue: 'operation.delete', ns: 'common' })}
-            </span>
-            <ShortcutKbd shortcut="workflow.delete" />
-          </ContextMenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        {menuSections.map((section, sectionIndex) => (
-          <ContextMenuGroup key={section.titleKey}>
-            {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
-              {t(($) => $[section.titleKey], { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
-            {section.items.map((item) => {
-              return (
+      {isSelectionContextMenu && selectedNodes.length > 1 && (
+        <ContextMenuContent
+          finalFocus={() => {
+            const returnToCanvas = deletingRef.current
+            deletingRef.current = false
+            return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
+          }}
+          className="w-60"
+          sideOffset={4}
+          onKeyDown={(event) => {
+            if (getNodesReadOnly()) return
+            handleWorkflowMenuKeyDown(event, [
+              ['workflow.copy', handleCopyNodes],
+              ['workflow.duplicate', handleDuplicateNodes],
+              ['workflow.delete', handleDeleteNodes],
+            ])
+          }}
+        >
+          {canCreateSnippet && (
+            <>
+              <ContextMenuGroup>
                 <ContextMenuItem
-                  key={item.alignType}
-                  onClick={() => handleAlignNodes(item.alignType)}
+                  className="px-3 text-text-secondary"
+                  onClick={handleOpenCreateSnippet}
                 >
-                  <span
-                    aria-hidden
-                    className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()}
-                  />
-                  {t(($) => $[item.translationKey], {
-                    defaultValue: item.translationKey,
-                    ns: 'workflow',
-                  })}
+                  <span>
+                    {t(($) => $['snippet.createDialogTitle'], {
+                      defaultValue: 'Create Snippet',
+                      ns: 'workflow',
+                    })}
+                  </span>
                 </ContextMenuItem>
-              )
-            })}
+              </ContextMenuGroup>
+              <ContextMenuSeparator />
+            </>
+          )}
+          <ContextMenuGroup>
+            <ContextMenuItem
+              className="justify-between px-3 text-text-secondary"
+              onClick={handleCopyNodes}
+            >
+              <span>
+                {t(($) => $['common.copy'], { defaultValue: 'common.copy', ns: 'workflow' })}
+              </span>
+              <ShortcutKbd shortcut="workflow.copy" />
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="justify-between px-3 text-text-secondary"
+              onClick={handleDuplicateNodes}
+            >
+              <span>
+                {t(($) => $['common.duplicate'], {
+                  defaultValue: 'common.duplicate',
+                  ns: 'workflow',
+                })}
+              </span>
+              <ShortcutKbd shortcut="workflow.duplicate" />
+            </ContextMenuItem>
           </ContextMenuGroup>
-        ))}
-      </ContextMenuContent>
+          <ContextMenuSeparator />
+          <ContextMenuGroup>
+            <ContextMenuItem
+              variant="destructive"
+              className="justify-between px-3"
+              onClick={handleDeleteNodes}
+            >
+              <span>
+                {t(($) => $['operation.delete'], {
+                  defaultValue: 'operation.delete',
+                  ns: 'common',
+                })}
+              </span>
+              <ShortcutKbd shortcut="workflow.delete" />
+            </ContextMenuItem>
+          </ContextMenuGroup>
+          <ContextMenuSeparator />
+          {menuSections.map((section, sectionIndex) => (
+            <ContextMenuGroup key={section.titleKey}>
+              {sectionIndex > 0 && <ContextMenuSeparator />}
+              <ContextMenuGroupLabel>
+                {t(($) => $[section.titleKey], { defaultValue: section.titleKey, ns: 'workflow' })}
+              </ContextMenuGroupLabel>
+              {section.items.map((item) => {
+                return (
+                  <ContextMenuItem
+                    key={item.alignType}
+                    onClick={() => handleAlignNodes(item.alignType)}
+                  >
+                    <span
+                      aria-hidden
+                      className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()}
+                    />
+                    {t(($) => $[item.translationKey], {
+                      defaultValue: item.translationKey,
+                      ns: 'workflow',
+                    })}
+                  </ContextMenuItem>
+                )
+              })}
+            </ContextMenuGroup>
+          ))}
+        </ContextMenuContent>
+      )}
       {createSnippetDialog}
     </>
   )

@@ -32,10 +32,10 @@ type CreateSnippetDialogInitialValue = {
 }
 
 type CreateSnippetDialogProps = {
-  isOpen: boolean
+  open: boolean
   selectedGraph?: SnippetCanvasData
   inputFields?: SnippetInputField[]
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
   title?: string
@@ -49,33 +49,33 @@ const defaultGraph: SnippetCanvasData = {
   viewport: { x: 0, y: 0, zoom: 1 },
 }
 
-export function CreateSnippetDialog({
-  isOpen,
+export function CreateSnippetDialog({ open, onOpenChange, ...props }: CreateSnippetDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPortal>
+        <DialogBackdrop />
+        <CreateSnippetPopup open={open} {...props} />
+      </DialogPortal>
+    </Dialog>
+  )
+}
+
+function CreateSnippetPopup({
+  open,
   selectedGraph,
   inputFields,
-  onClose,
   onConfirm,
   isSubmitting = false,
   title,
   confirmText,
   initialValue,
-}: CreateSnippetDialogProps) {
+}: Omit<CreateSnippetDialogProps, 'onOpenChange'>) {
   const nameInputId = useId()
   const descriptionInputId = useId()
   const { t } = useTranslation(['common', 'workflow'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
-
-  function resetForm() {
-    setName('')
-    setDescription('')
-  }
-
-  function handleClose() {
-    resetForm()
-    onClose()
-  }
 
   function handleConfirm() {
     const trimmedName = name.trim()
@@ -94,103 +94,94 @@ export function CreateSnippetDialog({
   }
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup
-            onKeyDown={(event) => {
-              if (
-                !isOpen ||
-                isSubmitting ||
-                !name.trim() ||
-                event.defaultPrevented ||
-                event.nativeEvent.isComposing ||
-                !(event.target instanceof Node) ||
-                !event.currentTarget.contains(event.target) ||
-                !matchesKeyboardEvent(event.nativeEvent, CREATE_SNIPPET_HOTKEY)
-              )
-                return
-              event.preventDefault()
-              event.stopPropagation()
-              if (event.repeat) return
-              handleConfirm()
-            }}
-            initialFocus={nameInputRef}
-            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-120 -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
+    <DialogPopup
+      onKeyDown={(event) => {
+        if (
+          !open ||
+          isSubmitting ||
+          !name.trim() ||
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target) ||
+          !matchesKeyboardEvent(event.nativeEvent, CREATE_SNIPPET_HOTKEY)
+        )
+          return
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.repeat) return
+        handleConfirm()
+      }}
+      initialFocus={nameInputRef}
+      className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
+    >
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
           >
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute inset-e-6 top-6"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
 
-            <div className="px-6 pt-6 pb-3">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {title || t(($) => $['snippet.createDialogTitle'], { ns: 'workflow' })}
-              </DialogTitle>
-            </div>
+      <div className="px-6 pt-6 pb-3">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {title || t(($) => $['snippet.createDialogTitle'], { ns: 'workflow' })}
+        </DialogTitle>
+      </div>
 
-            <div className="space-y-4 px-6 py-2">
-              <div>
-                <label
-                  htmlFor={nameInputId}
-                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-                >
-                  {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
-                </label>
-                <Input
-                  ref={nameInputRef}
-                  id={nameInputId}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' }) || ''}
-                  disabled={isSubmitting}
-                />
-              </div>
+      <div className="space-y-4 px-6 py-2">
+        <div>
+          <label
+            htmlFor={nameInputId}
+            className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+          >
+            {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
+          </label>
+          <Input
+            ref={nameInputRef}
+            id={nameInputId}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' }) || ''}
+            disabled={isSubmitting}
+          />
+        </div>
 
-              <div>
-                <label
-                  htmlFor={descriptionInputId}
-                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-                >
-                  {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
-                </label>
-                <Textarea
-                  id={descriptionInputId}
-                  className="resize-none"
-                  value={description}
-                  onValueChange={(value) => setDescription(value)}
-                  placeholder={
-                    t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' }) || ''
-                  }
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
+        <div>
+          <label
+            htmlFor={descriptionInputId}
+            className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+          >
+            {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
+          </label>
+          <Textarea
+            id={descriptionInputId}
+            className="resize-none"
+            value={description}
+            onValueChange={(value) => setDescription(value)}
+            placeholder={t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
+            disabled={isSubmitting}
+          />
+        </div>
+      </div>
 
-            <div className="flex items-center justify-end gap-2 px-6 pb-6">
-              <Button disabled={isSubmitting} onClick={handleClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!name.trim()}
-                loading={isSubmitting}
-                onClick={handleConfirm}
-              >
-                {confirmText || t(($) => $['snippet.confirm'], { ns: 'workflow' })}
-              </Button>
-            </div>
-          </DialogPopup>
-        </DialogPortal>
-      </Dialog>
-    </>
+      <div className="flex items-center justify-end gap-2 px-6 pb-6">
+        <DialogClose disabled={isSubmitting} render={<Button />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button
+          variant="primary"
+          disabled={!name.trim()}
+          loading={isSubmitting}
+          onClick={handleConfirm}
+        >
+          {confirmText || t(($) => $['snippet.confirm'], { ns: 'workflow' })}
+        </Button>
+      </div>
+    </DialogPopup>
   )
 }

@@ -326,11 +326,13 @@ export const useCreateSnippetFromSelection = ({
 
   const createSnippetDialog = (
     <CreateSnippetDialog
-      isOpen={isCreateSnippetDialogOpen}
+      open={isCreateSnippetDialogOpen}
       selectedGraph={selectedSnippetGraph}
       inputFields={selectedSnippetInputFields}
       isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
-      onClose={handleCloseCreateSnippet}
+      onOpenChange={(open) => {
+        if (!open) handleCloseCreateSnippet()
+      }}
       onConfirm={handleCreateSnippet}
     />
   )
@@ -338,6 +340,5 @@ export const useCreateSnippetFromSelection = ({
   return {
     createSnippetDialog,
     handleOpenCreateSnippet,
-    isCreateSnippetDialogOpen,
   }
 }

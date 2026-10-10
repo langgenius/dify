@@ -422,6 +422,10 @@ describe('SnippetCard', () => {
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
       expect(mockOnRefresh).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog', { name: 'snippet.editDialogTitle' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })).toHaveValue(
+        'Updated Snippet',
+      )
     })
 
     it('should delete a snippet from the operations menu', async () => {

@@ -247,17 +247,15 @@ const SnippetCard = ({
           )}
         </div>
       </article>
-      {isEditDialogOpen && (
-        <CreateSnippetDialog
-          isOpen={isEditDialogOpen}
-          initialValue={initialValue}
-          title={t(($) => $.editDialogTitle)}
-          confirmText={tCommon(($) => $['operation.save'], { ns: 'common' })}
-          isSubmitting={updateSnippetMutation.isPending}
-          onClose={() => setIsEditDialogOpen(false)}
-          onConfirm={handleUpdateSnippet}
-        />
-      )}
+      <CreateSnippetDialog
+        open={isEditDialogOpen}
+        initialValue={initialValue}
+        title={t(($) => $.editDialogTitle)}
+        confirmText={tCommon(($) => $['operation.save'], { ns: 'common' })}
+        isSubmitting={updateSnippetMutation.isPending}
+        onOpenChange={setIsEditDialogOpen}
+        onConfirm={handleUpdateSnippet}
+      />
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">

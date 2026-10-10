@@ -20,7 +20,8 @@ const mockHandleNodesCopy = vi.fn()
 const mockHandleNodesDuplicate = vi.fn()
 const mockHandleNodesDelete = vi.fn()
 const mockHandleCreateSnippet = vi.fn()
-const mockCreateSnippetDialogRender = vi.fn()
+const mockPostDraft = vi.fn()
+const mockPush = vi.fn()
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['snippets.create_and_modify'] as string[],
 }))
@@ -32,39 +33,21 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-
-  return {
-    useCreateSnippet: () => {
-      const [isOpen, setIsOpen] = React.useState(false)
-
-      return {
-        createSnippetMutation: { isPending: false },
-        handleCloseCreateSnippetDialog: () => setIsOpen(false),
-        handleCreateSnippet: mockHandleCreateSnippet,
-        handleOpenCreateSnippetDialog: () => setIsOpen(true),
-        isCreateSnippetDialogOpen: isOpen,
-        isCreatingSnippet: false,
-      }
+vi.mock('@/service/use-snippets', () => ({
+  useCreateSnippetMutation: () => ({ mutateAsync: mockHandleCreateSnippet, isPending: false }),
+}))
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    snippets: {
+      bySnippetId: {
+        workflows: { draft: { post: (...args: unknown[]) => mockPostDraft(...args) } },
+      },
     },
-  }
-})
-
-vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  CreateSnippetDialog: (props: {
-    isOpen: boolean
-    selectedGraph?: {
-      nodes: Node[]
-      edges: Edge[]
-      viewport: { x: number; y: number; zoom: number }
-    }
-    inputFields?: Array<{ variable: string }>
-  }) => {
-    mockCreateSnippetDialogRender(props)
-
-    return props.isOpen ? <div data-testid="create-snippet-dialog" /> : null
   },
+}))
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('../hooks/use-workflow', async (importOriginal) => {
@@ -156,8 +139,8 @@ describe('SelectionContextmenu', () => {
     mockHandleNodesCopy.mockReset()
     mockHandleNodesDuplicate.mockReset()
     mockHandleNodesDelete.mockReset()
-    mockHandleCreateSnippet.mockReset()
-    mockCreateSnippetDialogRender.mockReset()
+    mockHandleCreateSnippet.mockReset().mockResolvedValue({ id: 'created-snippet' })
+    mockPostDraft.mockResolvedValue({})
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
   })
 
@@ -255,17 +238,22 @@ describe('SelectionContextmenu', () => {
       await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
     )
 
-    expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'workflow.snippet.createDialogTitle' }),
+    ).toBeInTheDocument()
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
-    const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
-    expect(dialogProps.selectedGraph.nodes.map((node: Node) => node.id)).toEqual(['n1', 'n2'])
-    expect(dialogProps.selectedGraph.nodes.every((node: Node) => node.selected === false)).toBe(
-      true,
-    )
-    expect(dialogProps.selectedGraph.edges).toHaveLength(1)
-    expect(dialogProps.selectedGraph.viewport).toEqual({ x: 490, y: 380, zoom: 1 })
-    expect(dialogProps.selectedGraph.edges[0]).toEqual(
+    await userEvent
+      .setup()
+      .type(screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' }), 'Selection')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    await waitFor(() => expect(mockHandleCreateSnippet).toHaveBeenCalledOnce())
+    const payload = mockHandleCreateSnippet.mock.calls[0]![0].body
+    expect(payload.graph.nodes.map((node: Node) => node.id)).toEqual(['n1', 'n2'])
+    expect(payload.graph.nodes.every((node: Node) => node.selected === false)).toBe(true)
+    expect(payload.graph.edges).toHaveLength(1)
+    expect(payload.graph.viewport).toEqual({ x: 490, y: 380, zoom: 1 })
+    expect(payload.graph.edges[0]).toEqual(
       expect.objectContaining({
         source: 'n1',
         target: 'n2',
@@ -325,8 +313,13 @@ describe('SelectionContextmenu', () => {
       await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
     )
 
-    const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
-    expect(dialogProps.inputFields).toEqual([
+    await userEvent
+      .setup()
+      .type(screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' }), 'Selection')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    await waitFor(() => expect(mockHandleCreateSnippet).toHaveBeenCalledOnce())
+    const payload = mockHandleCreateSnippet.mock.calls[0]![0].body
+    expect(payload.input_fields).toEqual([
       {
         label: 'topic',
         variable: 'topic',
@@ -340,14 +333,11 @@ describe('SelectionContextmenu', () => {
         required: true,
       },
     ])
-    expect(dialogProps.selectedGraph.nodes[0].data.prompt_template).toBe(
+    expect(payload.graph.nodes[0].data.prompt_template).toBe(
       'Use {{#start.topic#}} and {{#n2.answer#}}',
     )
-    expect(dialogProps.selectedGraph.nodes[0].data.query_variable_selector).toEqual([
-      'start',
-      'topic',
-    ])
-    expect(dialogProps.selectedGraph.nodes[0].data.env_reference).toBe('{{#start.API_KEY#}}')
+    expect(payload.graph.nodes[0].data.query_variable_selector).toEqual(['start', 'topic'])
+    expect(payload.graph.nodes[0].data.env_reference).toBe('{{#start.API_KEY#}}')
   })
 
   it.each([BlockEnum.Answer, BlockEnum.End, BlockEnum.Start])(

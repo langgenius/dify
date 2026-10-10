@@ -174,17 +174,15 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {isEditDialogOpen && (
-        <CreateSnippetDialog
-          isOpen={isEditDialogOpen}
-          initialValue={initialValue}
-          title={t(($) => $.editDialogTitle)}
-          confirmText={t(($) => $['operation.save'], { ns: 'common' })}
-          isSubmitting={updateSnippetMutation.isPending}
-          onClose={() => setIsEditDialogOpen(false)}
-          onConfirm={handleEditSnippet}
-        />
-      )}
+      <CreateSnippetDialog
+        open={isEditDialogOpen}
+        initialValue={initialValue}
+        title={t(($) => $.editDialogTitle)}
+        confirmText={t(($) => $['operation.save'], { ns: 'common' })}
+        isSubmitting={updateSnippetMutation.isPending}
+        onOpenChange={setIsEditDialogOpen}
+        onConfirm={handleEditSnippet}
+      />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-100">

@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
-import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
+import { ImportSnippetDSLDialog } from '@/app/components/snippets/import-snippet-dsl-dialog'
 
 const SnippetCreateButton = () => {
   const { t } = useTranslation(['snippet'])
@@ -74,23 +74,16 @@ const SnippetCreateButton = () => {
         </PopoverContent>
       </Popover>
 
-      {isCreateDialogOpen && (
-        <CreateSnippetDialog
-          isOpen={isCreateDialogOpen}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsCreateDialogOpen(false)}
-          onConfirm={async (payload) => {
-            await handleCreateSnippet(payload)
-            setIsCreateDialogOpen(false)
-          }}
-        />
-      )}
-      {isImportDialogOpen && (
-        <ImportSnippetDSLDialog
-          isOpen={isImportDialogOpen}
-          onClose={() => setIsImportDialogOpen(false)}
-        />
-      )}
+      <CreateSnippetDialog
+        open={isCreateDialogOpen}
+        isSubmitting={isSubmitting}
+        onOpenChange={setIsCreateDialogOpen}
+        onConfirm={async (payload) => {
+          await handleCreateSnippet(payload)
+          setIsCreateDialogOpen(false)
+        }}
+      />
+      <ImportSnippetDSLDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen} />
     </>
   )
 }
