@@ -257,8 +257,13 @@ describe('PluginAuth', () => {
     await user.click(reuseTab)
 
     expect(
-      screen.getByRole('tabpanel', { name: 'plugin.auth.reuseFromNode' }),
-    ).toBeEmptyDOMElement()
+      within(screen.getByRole('tabpanel', { name: 'plugin.auth.reuseFromNode' })).getByRole(
+        'combobox',
+        {
+          name: 'plugin.auth.reuse.selectNode',
+        },
+      ),
+    ).toBeDisabled()
     expect(screen.queryByRole('button', { name: /key/ })).not.toBeInTheDocument()
     expect(workspaceTab).toBeVisible()
     expect(appUserTab).toBeVisible()
@@ -311,7 +316,9 @@ describe('PluginAuth', () => {
           within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
         ).toBeChecked()
       } else {
-        expect(panel).toBeEmptyDOMElement()
+        expect(
+          within(panel).getByRole('combobox', { name: 'plugin.auth.reuse.selectNode' }),
+        ).toBeDisabled()
       }
       expect(
         screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),

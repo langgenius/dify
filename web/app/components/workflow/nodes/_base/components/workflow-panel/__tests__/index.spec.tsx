@@ -3,6 +3,7 @@ import type { PluginAuthProps } from '@/app/components/plugins/plugin-auth/plugi
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { ReactFlowProvider } from 'reactflow'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
@@ -399,6 +400,18 @@ const createData = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+const renderPanelComponent = (
+  ui: React.ReactElement,
+  options?: Parameters<typeof renderWorkflowComponent>[1],
+) => {
+  const result = renderWorkflowComponent(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactNode) =>
+      result.rerender(<ReactFlowProvider>{nextUi}</ReactFlowProvider>),
+  }
+}
+
 function KeyboardOpenedPanel({ type }: { type: BlockEnum }) {
   const [open, setOpen] = React.useState(false)
   const onKeyDownCapture = useNodeKeyboardInteractions(() => setOpen(true))
@@ -527,7 +540,7 @@ describe('workflow-panel index', () => {
   )
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -572,7 +585,7 @@ describe('workflow-panel index', () => {
   })
 
   it('keeps Authorization inside Settings before the tool configuration', () => {
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <h3>Tool configuration</h3>
       </BasePanel>,
@@ -593,7 +606,7 @@ describe('workflow-panel index', () => {
       ...tool,
       is_team_authorization: false,
     }))
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <h3>Tool configuration</h3>
       </BasePanel>,
@@ -626,7 +639,7 @@ describe('workflow-panel index', () => {
   it('should hide the single-run action when nodes are readonly even with run permission', () => {
     mockNodesReadOnly = true
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -646,7 +659,7 @@ describe('workflow-panel index', () => {
   it('should hide the single-run action when run permission is missing', () => {
     mockCanRun = false
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -666,7 +679,7 @@ describe('workflow-panel index', () => {
   it('should render the special result panel when logs request it', () => {
     mockLogsState.showSpecialResultPanel = true
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -684,7 +697,7 @@ describe('workflow-panel index', () => {
   it('should render last-run content when the tab switches', () => {
     mockLastRunState.tabType = 'lastRun'
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -702,7 +715,7 @@ describe('workflow-panel index', () => {
   it('should render the plain tab layout and allow last-run status updates', async () => {
     mockLastRunState.tabType = 'lastRun'
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-plain" data={createData({ type: 'custom' }) as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -733,7 +746,7 @@ describe('workflow-panel index', () => {
   it('should mark the last run as paused after a running single-run completes', async () => {
     mockLastRunState.tabType = 'lastRun'
 
-    const { rerender } = renderWorkflowComponent(
+    const { rerender } = renderPanelComponent(
       <BasePanel
         id="node-pause"
         data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
@@ -767,7 +780,7 @@ describe('workflow-panel index', () => {
   it('should render custom data source single run form for supported nodes', () => {
     mockLastRunState.isShowSingleRun = true
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData({ type: BlockEnum.DataSource }) as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -786,7 +799,7 @@ describe('workflow-panel index', () => {
     mockLastRunState.isShowSingleRun = true
     mockLastRunState.singleRunParams = {} as ReturnType<typeof createMockSingleRunParams>
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-agent" data={createData({ type: BlockEnum.Agent }) as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -803,7 +816,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should render data source authorization controls and jump to the settings modal', () => {
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel
         id="node-1"
         data={
@@ -833,7 +846,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should react to pending single run actions', () => {
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -851,7 +864,7 @@ describe('workflow-panel index', () => {
 
     expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -886,7 +899,7 @@ describe('workflow-panel index', () => {
       },
     ]
 
-    renderWorkflowComponent(
+    renderPanelComponent(
       <BasePanel
         id="node-1"
         data={createData({ type: BlockEnum.TriggerPlugin, plugin_id: 'plugin-id' }) as never}
@@ -918,7 +931,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should stop a running node and offset when the log modal is visible', () => {
-    const { container, store } = renderWorkflowComponent(
+    const { container, store } = renderPanelComponent(
       <BasePanel
         id="node-1"
         data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
@@ -954,7 +967,7 @@ describe('workflow-panel index', () => {
 
   it('should resize the node panel with the keyboard, persist its width, and allow focus to leave', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(
+    renderPanelComponent(
       <>
         <button>Before panel</button>
         <BasePanel id="node-resize" data={createData() as never}>
@@ -1002,7 +1015,7 @@ describe('workflow-panel index', () => {
     'focuses the node panel once when keyboard selection opens a %s node',
     async (type) => {
       const user = userEvent.setup()
-      const { store } = renderWorkflowComponent(
+      const { store } = renderPanelComponent(
         <>
           <button type="button">Canvas node</button>
           <BasePanel id="node-1" data={createData({ type }) as never}>
@@ -1031,7 +1044,7 @@ describe('workflow-panel index', () => {
   it('should constrain keyboard resizing to the available space and keep unrelated keys untouched', async () => {
     const user = userEvent.setup()
     const onKeyDown = vi.fn()
-    const { store } = renderWorkflowComponent(
+    const { store } = renderPanelComponent(
       <BasePanel id="node-resize" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -1075,7 +1088,7 @@ describe('workflow-panel index', () => {
 
   it('compresses the node panel when the preview grows without replacing the saved node width', async () => {
     localStorage.setItem('workflow-node-panel-width', '600')
-    const { store } = renderWorkflowComponent(
+    const { store } = renderPanelComponent(
       <BasePanel id="node-resize" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -1098,7 +1111,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should compress oversized panel widths', async () => {
-    const { container } = renderWorkflowComponent(
+    const { container } = renderPanelComponent(
       <BasePanel id="node-resize" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,

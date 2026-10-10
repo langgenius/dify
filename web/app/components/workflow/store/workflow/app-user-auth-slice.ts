@@ -4,6 +4,7 @@ import type {
   AppUserAuthErrors,
   AuthorizationTab,
 } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
+import type { ReuseFromNodeReference } from '@/app/components/plugins/plugin-auth/reuse-from-node/model'
 import {
   createAppUserAuthDraft,
   validateAppUserAuth,
@@ -15,6 +16,7 @@ type NodeAuthorizationDraft = {
   authorizationTab: AuthorizationTab
   draft?: AppUserAuthDraft
   errors?: AppUserAuthErrors
+  reuseFromNode?: { source: ReuseFromNodeReference }
 }
 
 export type AppUserAuthSliceShape = {
@@ -24,12 +26,19 @@ export type AppUserAuthSliceShape = {
     provider: string,
     providerId: string,
     tab: AuthorizationTab,
+    options?: { clearReuseFromNode?: boolean },
   ) => void
   setNodeAppUserAuthDraft: (
     nodeId: string,
     provider: string,
     providerId: string,
     draft: AppUserAuthDraft,
+  ) => void
+  setNodeReuseFromNode: (
+    nodeId: string,
+    provider: string,
+    providerId: string,
+    source: ReuseFromNodeReference,
   ) => void
 }
 
@@ -48,7 +57,7 @@ const getNodeAuthorizationDraft = (
 export const createAppUserAuthSlice: StateCreator<AppUserAuthSliceShape> = (set) => ({
   // UI-only drafts must stay outside graph node data and collaboration payloads.
   nodeAuthDrafts: {},
-  setNodeAuthorizationTab: (nodeId, provider, providerId, authorizationTab) =>
+  setNodeAuthorizationTab: (nodeId, provider, providerId, authorizationTab, options) =>
     set((state) => {
       const current = getNodeAuthorizationDraft(state.nodeAuthDrafts, nodeId, provider, providerId)
       return {
@@ -56,6 +65,7 @@ export const createAppUserAuthSlice: StateCreator<AppUserAuthSliceShape> = (set)
           ...state.nodeAuthDrafts,
           [nodeId]: {
             ...current,
+            ...(options?.clearReuseFromNode ? { reuseFromNode: undefined } : {}),
             authorizationTab,
             errors:
               authorizationTab === 'app-user-auth'
@@ -79,6 +89,16 @@ export const createAppUserAuthSlice: StateCreator<AppUserAuthSliceShape> = (set)
             errors:
               current.authorizationTab === 'app-user-auth' ? validateAppUserAuth(draft) : undefined,
           },
+        },
+      }
+    }),
+  setNodeReuseFromNode: (nodeId, provider, providerId, source) =>
+    set((state) => {
+      const current = getNodeAuthorizationDraft(state.nodeAuthDrafts, nodeId, provider, providerId)
+      return {
+        nodeAuthDrafts: {
+          ...state.nodeAuthDrafts,
+          [nodeId]: { ...current, reuseFromNode: { source } },
         },
       }
     }),

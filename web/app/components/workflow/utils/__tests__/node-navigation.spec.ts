@@ -104,6 +104,28 @@ describe('setupNodeSelectionListener', () => {
 })
 
 describe('setupScrollToNodeListener', () => {
+  it.each([{ positionAbsolute: undefined }, { positionAbsolute: { x: 630, y: 440 } }])(
+    'locates a nested source using canvas coordinates: $positionAbsolute',
+    ({ positionAbsolute }) => {
+      const nodes = [
+        { id: 'outer', position: { x: 500, y: 300 } },
+        { id: 'inner', parentId: 'outer', position: { x: 100, y: 100 } },
+        { id: 'source', parentId: 'inner', position: { x: 30, y: 40 }, positionAbsolute },
+      ]
+      const reactflow = { setCenter: vi.fn() }
+      const cleanup = setupScrollToNodeListener(nodes, reactflow)
+
+      scrollToWorkflowNode('source')
+
+      expect(reactflow.setCenter).toHaveBeenCalledExactlyOnceWith(
+        630 + window.innerWidth * 0.25,
+        440 + window.innerHeight * 0.25,
+        { zoom: 1, duration: 800 },
+      )
+      cleanup()
+    },
+  )
+
   it('should call reactflow.setCenter when scroll event targets an existing node', () => {
     const nodes = [{ id: 'n1', position: { x: 100, y: 200 } }]
     const reactflow = { setCenter: vi.fn() }

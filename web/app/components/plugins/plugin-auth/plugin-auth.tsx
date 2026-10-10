@@ -1,4 +1,5 @@
 import type { AppUserAuthDraft, AuthorizationTab } from './app-user-auth/draft'
+import type { ReuseFromNodeProps } from './reuse-from-node'
 import type { PluginPayload } from './types'
 import type { ConnectionSelectorProps } from './workspace-auth/connection-selector'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,6 +24,7 @@ export type PluginAuthProps = {
     draft?: AppUserAuthDraft
     onChange: (draft: AppUserAuthDraft) => void
   }
+  reuseFromNode?: ReuseFromNodeProps
 }
 const authorizationTabClassName =
   'min-h-8 min-w-0 flex-1 justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-2 py-1.5 text-center system-sm-regular wrap-anywhere text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover data-active:border-components-option-card-option-selected-border data-active:bg-components-option-card-option-selected-bg data-active:system-sm-medium data-active:shadow-xs data-active:inset-ring-[0.5px] data-active:inset-ring-components-option-card-option-selected-border'
@@ -35,6 +37,7 @@ const PluginAuth = ({
   authorizationTab,
   onAuthorizationTabChange,
   appUserAuth,
+  reuseFromNode,
 }: PluginAuthProps) => {
   const { t } = useTranslation(['plugin'])
   const labelId = useId()
@@ -123,7 +126,7 @@ const PluginAuth = ({
         )}
       </TabsPanel>
       <TabsPanel value="reuse-from-node" className="px-4 py-2">
-        <ReuseFromNode />
+        <ReuseFromNode {...reuseFromNode} />
       </TabsPanel>
     </Tabs>
   )

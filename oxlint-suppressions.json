@@ -4026,11 +4026,6 @@
       "count": 10
     }
   },
-  "web/app/components/workflow/utils/node-navigation.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/utils/node.ts": {
     "regexp/no-super-linear-backtracking": {
       "count": 1

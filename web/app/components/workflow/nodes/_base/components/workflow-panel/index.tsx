@@ -734,6 +734,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               <ToolAuthorization
                 nodeId={id}
                 providerId={data.provider_id as string}
+                toolIcon={toolIcon}
                 showAuthorizationTabs
                 className="px-4 pb-2"
                 nodeAuth={{

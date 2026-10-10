@@ -2,6 +2,7 @@
  * Node navigation utilities for workflow
  * This module provides functions for node selection, focusing and scrolling in workflow
  */
+import type { Node, ReactFlowInstance } from 'reactflow'
 
 /**
  * Interface for node selection event detail
@@ -77,7 +78,10 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
  * @param reactflow - The ReactFlow instance
  * @returns Cleanup function
  */
-export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => void {
+export function setupScrollToNodeListener(
+  nodes: Pick<Node, 'id' | 'position' | 'positionAbsolute' | 'parentId'>[],
+  reactflow: Pick<ReactFlowInstance, 'setCenter'>,
+): () => void {
   // Event handler for scrolling to node
   const handleScrollToNode = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId } = event.detail
@@ -86,7 +90,20 @@ export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => v
       const node = nodes.find((n) => n.id === nodeId)
       if (node) {
         // Use ReactFlow's fitView API to scroll to the node
-        const nodePosition = { x: node.position.x, y: node.position.y }
+        const nodePosition = { ...(node.positionAbsolute ?? node.position) }
+        // Container children store relative positions before React Flow computes their absolute position.
+        if (!node.positionAbsolute) {
+          let parentId = node.parentId
+          const visited = new Set([node.id])
+          while (parentId && !visited.has(parentId)) {
+            visited.add(parentId)
+            const parent = nodes.find((candidate) => candidate.id === parentId)
+            if (!parent) break
+            nodePosition.x += parent.position.x
+            nodePosition.y += parent.position.y
+            parentId = parent.parentId
+          }
+        }
 
         // Calculate position to place node in top-left area
         // Move the center point right and down to show node in top-left
