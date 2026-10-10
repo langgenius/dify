@@ -204,7 +204,7 @@ it('a description prints its first line only', () => {
 
 it('an op without examples prints a skeleton of its required fields', () => {
   const skeleton = 'difyctl run console_app workflow --app-id <app_id> --inputs <inputs>'
-  expect(workflowRun.examples).toEqual([{ title: 'Required fields', command: skeleton }])
+  expect(workflowRun.examples).toEqual([])
   expect(descriptorView(workflowRun).text(plain)).toContain(skeleton)
 })
 
