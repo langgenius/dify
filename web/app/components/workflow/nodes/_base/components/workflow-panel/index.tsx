@@ -23,7 +23,6 @@ import {
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
-  AuthorizedInNode,
   PluginAuth,
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
@@ -699,27 +698,18 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 <PluginAuth
                   showAuthorizationTabs
                   className="px-4 pb-2"
+                  authorizedFooter={<div className="px-4">{panelTabs}</div>}
+                  nodeAuth={{
+                    credentialId: data.credential_id,
+                    onAuthorizationItemClick: handleAuthorizationItemClick,
+                  }}
                   pluginPayload={{
                     provider: currToolCollection?.name || '',
                     providerType: currToolCollection?.type,
                     category: AuthCategory.tool,
                     detail: currToolCollection as any,
                   }}
-                >
-                  <div className="flex items-center justify-between pr-3 pl-4">
-                    {panelTabs}
-                    <AuthorizedInNode
-                      pluginPayload={{
-                        provider: currToolCollection?.name || '',
-                        providerType: currToolCollection?.type,
-                        category: AuthCategory.tool,
-                        detail: currToolCollection as any,
-                      }}
-                      onAuthorizationItemClick={handleAuthorizationItemClick}
-                      credentialId={data.credential_id}
-                    />
-                  </div>
-                </PluginAuth>
+                />
               )}
               {!!currentDataSource && (
                 <PluginAuthInDataSourceNode

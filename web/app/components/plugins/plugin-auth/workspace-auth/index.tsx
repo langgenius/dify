@@ -1,3 +1,4 @@
+import type { AuthorizedInNodeProps } from '../authorized-in-node'
 import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { PluginPayload } from '../types'
 import { useQueryState } from 'nuqs'
@@ -9,17 +10,20 @@ import {
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import Authorized from '../authorized'
+import AuthorizedInNode from '../authorized-in-node'
 import { AuthCategory } from '../types'
 
 type WorkspaceAuthProps = {
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
+  nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
   showDescription?: boolean
 }
 
 const WorkspaceAuth = ({
   pluginPayload,
   authorization,
+  nodeAuth,
   showDescription = false,
 }: WorkspaceAuthProps) => {
   const { t } = useTranslation(['plugin'])
@@ -41,6 +45,8 @@ const WorkspaceAuth = ({
     (canOAuth || canApiKey)
 
   if (isAuthorized) {
+    if (nodeAuth) return <AuthorizedInNode pluginPayload={pluginPayload} {...nodeAuth} />
+
     return (
       <Authorized
         pluginPayload={pluginPayload}

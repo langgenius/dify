@@ -2973,7 +2973,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {

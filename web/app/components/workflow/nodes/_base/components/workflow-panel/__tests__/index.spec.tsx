@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react'
+import type { AuthorizedInNodeProps } from '@/app/components/plugins/plugin-auth/authorized-in-node'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -249,13 +250,21 @@ vi.mock('../last-run/use-last-run', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  PluginAuth: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  AuthorizedInNode: ({
-    onAuthorizationItemClick,
+  PluginAuth: ({
+    nodeAuth,
+    authorizedFooter,
   }: {
-    onAuthorizationItemClick?: (credentialId: string) => void
+    nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
+    authorizedFooter?: React.ReactNode
   }) => (
-    <button onClick={() => onAuthorizationItemClick?.('credential-1')}>authorized-in-node</button>
+    <div>
+      {nodeAuth && (
+        <button onClick={() => nodeAuth.onAuthorizationItemClick('credential-1')}>
+          authorized-in-node
+        </button>
+      )}
+      {authorizedFooter}
+    </div>
   ),
   PluginAuthInDataSourceNode: ({
     children,

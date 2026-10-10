@@ -6,9 +6,10 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { memo, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Authorized, usePluginAuth } from '.'
+import Authorized from './authorized'
+import { usePluginAuth } from './hooks/use-plugin-auth'
 
-type AuthorizedInNodeProps = {
+export type AuthorizedInNodeProps = {
   pluginPayload: PluginPayload
   onAuthorizationItemClick: (id: string) => void
   credentialId?: string

@@ -1,3 +1,4 @@
+import type { AuthorizedInNodeProps } from './authorized-in-node'
 import type { PluginPayload } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -11,7 +12,8 @@ import WorkspaceAuth from './workspace-auth'
 
 type PluginAuthProps = {
   pluginPayload: PluginPayload
-  children?: React.ReactNode
+  nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
+  authorizedFooter?: React.ReactNode
   className?: string
   showAuthorizationTabs?: boolean
 }
@@ -20,7 +22,8 @@ const authorizationTabClassName =
 
 const PluginAuth = ({
   pluginPayload,
-  children,
+  nodeAuth,
+  authorizedFooter,
   className,
   showAuthorizationTabs = false,
 }: PluginAuthProps) => {
@@ -28,58 +31,62 @@ const PluginAuth = ({
   const labelId = useId()
   const authorization = usePluginAuth(pluginPayload, !!pluginPayload.provider)
 
-  // These children include the workflow panel's own Settings / Last run tabs.
-  // Keep them under that Tabs root rather than nesting them in the auth tabs.
-  if (authorization.isAuthorized && children) return <div>{children}</div>
-
   if (!showAuthorizationTabs) {
     return (
       <div className={cn(!authorization.isAuthorized && className)}>
-        <WorkspaceAuth pluginPayload={pluginPayload} authorization={authorization} />
+        <WorkspaceAuth
+          pluginPayload={pluginPayload}
+          authorization={authorization}
+          nodeAuth={nodeAuth}
+        />
       </div>
     )
   }
 
   return (
-    <Tabs defaultValue="workspace-auth" className="py-2">
-      <div className="space-y-2 px-4 py-2">
-        <div className="flex h-6 items-center gap-0.5">
-          <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
-            {t(($) => $['auth.authorization'], { ns: 'plugin' })}
-          </h3>
-          <Infotip>
-            <InfotipTrigger aria-labelledby={labelId} className="size-4" />
-            <InfotipContent aria-labelledby={labelId}>
-              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
-            </InfotipContent>
-          </Infotip>
+    <>
+      <Tabs defaultValue="workspace-auth" className="py-2">
+        <div className="space-y-2 px-4 py-2">
+          <div className="flex h-6 items-center gap-0.5">
+            <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
+              {t(($) => $['auth.authorization'], { ns: 'plugin' })}
+            </h3>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} className="size-4" />
+              <InfotipContent aria-labelledby={labelId}>
+                {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+              </InfotipContent>
+            </Infotip>
+          </div>
+          <TabsList aria-labelledby={labelId} className="gap-2">
+            <TabsTab value="workspace-auth" className={authorizationTabClassName}>
+              {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
+            </TabsTab>
+            <TabsTab value="app-user-auth" className={authorizationTabClassName}>
+              {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
+            </TabsTab>
+            <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
+              {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
+            </TabsTab>
+          </TabsList>
         </div>
-        <TabsList aria-labelledby={labelId} className="gap-2">
-          <TabsTab value="workspace-auth" className={authorizationTabClassName}>
-            {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
-          </TabsTab>
-          <TabsTab value="app-user-auth" className={authorizationTabClassName}>
-            {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
-          </TabsTab>
-          <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
-            {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
-          </TabsTab>
-        </TabsList>
-      </div>
-      <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
-        <WorkspaceAuth
-          pluginPayload={pluginPayload}
-          authorization={authorization}
-          showDescription
-        />
-      </TabsPanel>
-      <TabsPanel value="app-user-auth" className="px-4 py-2">
-        <AppUserAuth />
-      </TabsPanel>
-      <TabsPanel value="reuse-from-node" className="px-4 py-2">
-        <ReuseFromNode />
-      </TabsPanel>
-    </Tabs>
+        <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
+          <WorkspaceAuth
+            pluginPayload={pluginPayload}
+            authorization={authorization}
+            nodeAuth={nodeAuth}
+            showDescription
+          />
+        </TabsPanel>
+        <TabsPanel value="app-user-auth" className="px-4 py-2">
+          <AppUserAuth />
+        </TabsPanel>
+        <TabsPanel value="reuse-from-node" className="px-4 py-2">
+          <ReuseFromNode />
+        </TabsPanel>
+      </Tabs>
+      {authorization.isAuthorized && authorizedFooter}
+    </>
   )
 }
 
