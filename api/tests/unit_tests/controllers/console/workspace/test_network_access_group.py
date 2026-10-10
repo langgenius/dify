@@ -292,7 +292,7 @@ def test_upstream_error_mapping(status_code: int, expected_exception: type[HTTPE
     ("reason", "expected_message"),
     [
         ("NETWORK_ACCESS_VERSION_CONFLICT", "changed"),
-        ("NETWORK_ACCESS_GROUP_NAME_CONFLICT", "already exists"),
+        ("NETWORK_ACCESS_GROUP_NAME_CONFLICT", "An IP policy with this name already exists."),
         ("NETWORK_ACCESS_GROUP_LIMIT", "reached"),
     ],
 )
@@ -301,6 +301,43 @@ def test_conflict_error_mapping_preserves_safe_actionable_reason(reason: str, ex
     assert isinstance(error, Conflict)
     assert error.description is not None
     assert expected_message in error.description
+
+
+@pytest.mark.parametrize("mutation", ["create", "update"])
+def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(mutation: str) -> None:
+    service = MagicMock()
+    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_GROUP_NAME_CONFLICT")
+    service.create_group.side_effect = upstream_error
+    service.update_group.side_effect = upstream_error
+
+    def invoke_mutation() -> None:
+        if mutation == "create":
+            api = CurrentWorkspaceNetworkAccessGroupsApi()
+            unwrap(api.post)(
+                api,
+                req_data=NetworkAccessGroupCreatePayload(name="Office", allowed_cidrs=["203.0.113.7"]),
+                request_context=_request_context(),
+            )
+        else:
+            detail_api = CurrentWorkspaceNetworkAccessGroupApi()
+            unwrap(detail_api.put)(
+                detail_api,
+                req_data=NetworkAccessGroupUpdatePayload(
+                    name="Office", allowed_cidrs=["203.0.113.7"], expected_version=2
+                ),
+                request_context=_request_context(),
+                group_id=UUID(GROUP_ID),
+            )
+
+    with _application_services(service), pytest.raises(Conflict) as exc_info:
+        invoke_mutation()
+
+    assert exc_info.value.code == 409
+    assert exc_info.value.description == "An IP policy with this name already exists."
+    assert exc_info.value.__cause__ is upstream_error
+    assert upstream_error.reason == "NETWORK_ACCESS_GROUP_NAME_CONFLICT"
+    assert service.create_group.call_count == (1 if mutation == "create" else 0)
+    assert service.update_group.call_count == (1 if mutation == "update" else 0)
 
 
 def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None:
