@@ -4,6 +4,17 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ConsoleHumanInputV2SubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+}
+
+export type ConsoleHumanInputV2SubmitResponse = {
+  [key: string]: unknown
+}
+
 export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
@@ -21,6 +32,24 @@ export type HumanInputFormSubmitPayload = {
 export type ConsoleHumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
+
+export type JsonValue = unknown
+
+export type PostFormHumanInputV2ByFormTokenData = {
+  body: ConsoleHumanInputV2SubmitPayload
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type PostFormHumanInputV2ByFormTokenResponses = {
+  200: ConsoleHumanInputV2SubmitResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenResponse =
+  PostFormHumanInputV2ByFormTokenResponses[keyof PostFormHumanInputV2ByFormTokenResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never

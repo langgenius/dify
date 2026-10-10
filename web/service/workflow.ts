@@ -197,7 +197,14 @@ export const submitHumanInputForm = (
     inputs: Record<string, unknown>
     action: string
   },
+  nodeVersion?: string,
 ) => {
+  if (nodeVersion === '2') {
+    return consoleClient.form.humanInput.v2.byFormToken.post({
+      params: { form_token: token },
+      body: data,
+    })
+  }
   return post(`/form/human_input/${token}`, { body: data })
 }
 

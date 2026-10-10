@@ -229,6 +229,54 @@ describe('useChat – handleSubmitHumanInputForm', () => {
     mockSubmitHumanInputForm.mockResolvedValue({})
   })
 
+  it.each(['1', '2'])('submits a nested answer form through node version %s', async (version) => {
+    mockGetNodes.mockReturnValue([{ id: 'approval-node', type: 'custom', data: { version } }])
+    const previousTree: ChatItemInTree[] = [
+      {
+        id: 'question',
+        content: 'Review this request',
+        isAnswer: false,
+        children: [
+          {
+            id: 'answer',
+            content: '',
+            isAnswer: true,
+            children: [],
+            humanInputFormDataList: [
+              {
+                form_id: 'form',
+                form_token: 'nested-token',
+                node_id: 'approval-node',
+                node_title: 'Approval',
+                form_content: 'Approve this request',
+                inputs: [],
+                actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+                resolved_default_values: {},
+                display_in_ui: true,
+                expiration_time: 2_000_000_000,
+              },
+            ],
+          },
+        ],
+      },
+    ]
+    const { result } = renderHook(() => useChat({}, undefined, previousTree))
+    expect(result.current.chatList.some((item) => item.humanInputFormDataList?.length)).toBe(true)
+
+    await act(async () => {
+      await result.current.handleSubmitHumanInputForm('nested-token', {
+        action: 'approve',
+        inputs: {},
+      })
+    })
+
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'nested-token',
+      { action: 'approve', inputs: {} },
+      version,
+    )
+  })
+
   it('should call submitHumanInputForm with token and data', async () => {
     const { result } = renderHook(() => useChat({}))
 
@@ -239,10 +287,14 @@ describe('useChat – handleSubmitHumanInputForm', () => {
       })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', {
-      inputs: { field: 'value' },
-      action: 'approve',
-    })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'token-123',
+      {
+        inputs: { field: 'value' },
+        action: 'approve',
+      },
+      undefined,
+    )
   })
 })
 

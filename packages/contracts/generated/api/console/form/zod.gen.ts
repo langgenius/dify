@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * ConsoleHumanInputV2SubmitResponse
+ */
+export const zConsoleHumanInputV2SubmitResponse = z.record(z.string(), z.unknown())
+
+/**
  * ConsoleHumanInputFormDefinitionResponse
  */
 export const zConsoleHumanInputFormDefinitionResponse = z.record(z.string(), z.unknown())
@@ -20,6 +25,27 @@ export const zHumanInputFormSubmitPayload = z.object({
  * ConsoleHumanInputFormSubmitResponse
  */
 export const zConsoleHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
+export const zJsonValue = z.unknown()
+
+/**
+ * ConsoleHumanInputV2SubmitPayload
+ */
+export const zConsoleHumanInputV2SubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+export const zPostFormHumanInputV2ByFormTokenBody = zConsoleHumanInputV2SubmitPayload
+
+export const zPostFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Approval accepted
+ */
+export const zPostFormHumanInputV2ByFormTokenResponse = zConsoleHumanInputV2SubmitResponse
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),

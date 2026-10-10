@@ -6,10 +6,14 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ReactFlowProvider } from 'reactflow'
 import {
+  createNode,
   createNodeTracing,
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  renderWorkflowComponent as renderWithWorkflowStore,
+  renderWorkflowFlowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -249,18 +253,19 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('result-panel')).toHaveTextContent(WorkflowRunningStatus.Succeeded)
   })
 
-  it('should render paused human input results and submit pending forms', async () => {
+  it.each([undefined, '2'])('submits paused forms with node version %s', async (version) => {
     const user = userEvent.setup()
     const pausedData = createWorkflowRunningData({
       result: createWorkflowResult({
         status: WorkflowRunningStatus.Paused,
         files: [],
       }),
-      humanInputFormDataList: [createHumanInputFormData()],
+      humanInputFormDataList: [createHumanInputFormData({ form_token: 'form-token' })],
       humanInputFilledFormDataList: [createHumanInputFilledFormData()],
     })
 
-    renderWorkflowComponent(<WorkflowPreview />, {
+    renderWorkflowFlowComponent(<WorkflowPreview />, {
+      nodes: [createNode({ id: 'human-node-1', type: 'default', data: { version } })],
       initialStoreState: {
         workflowRunningData: pausedData,
       },
@@ -270,10 +275,14 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
 
     await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', {
-      inputs: { answer: 'ok' },
-      action: 'approve',
-    })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'form-token',
+      {
+        inputs: { answer: 'ok' },
+        action: 'approve',
+      },
+      version,
+    )
   })
 
   it('should copy successful string output and show a success toast', async () => {

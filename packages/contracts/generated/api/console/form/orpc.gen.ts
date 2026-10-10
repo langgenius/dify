@@ -8,7 +8,34 @@ import {
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
 } from './zod.gen.ts'
+
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+
+export const byFormToken = {
+  post,
+}
+
+export const v2 = {
+  byFormToken,
+}
 
 /**
  * Get human input form definition by form token
@@ -41,7 +68,7 @@ export const get = oc
  * "action": "Approve"
  * }
  */
-export const post = oc
+export const post2 = oc
   .route({
     description:
       'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -60,13 +87,14 @@ export const post = oc
   )
   .output(zPostFormHumanInputByFormTokenResponse)
 
-export const byFormToken = {
+export const byFormToken2 = {
   get,
-  post,
+  post: post2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken2,
 }
 
 export const form = {

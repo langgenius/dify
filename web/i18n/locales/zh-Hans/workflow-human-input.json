@@ -87,7 +87,6 @@
   "nodes.humanInput.userActions.actionIdFormatTip": "操作 ID 必须以字母或下划线开头，后跟字母、数字或下划线",
   "nodes.humanInput.userActions.actionIdTooLong": "操作 ID 不能超过 {{maxLength}} 个字符",
   "nodes.humanInput.userActions.actionNamePlaceholder": "操作名称",
-  "nodes.humanInput.userActions.add": "添加用户操作",
   "nodes.humanInput.userActions.buttonStyle.accent": "强调色",
   "nodes.humanInput.userActions.buttonStyle.default": "默认",
   "nodes.humanInput.userActions.buttonStyle.ghost": "幽灵",

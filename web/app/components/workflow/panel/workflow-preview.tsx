@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore } from 'reactflow'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
@@ -23,6 +23,7 @@ import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
 const WorkflowPreview = () => {
+  const canvasStore = useStoreApi()
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
@@ -98,9 +99,14 @@ const WorkflowPreview = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      await submitHumanInputForm(formToken, formData)
+      const form = humanInputFormDataList?.find((item) => item.form_token === formToken)
+      const node = canvasStore
+        .getState()
+        .getNodes()
+        .find((item) => item.id === form?.node_id)
+      await submitHumanInputForm(formToken, formData, node?.data.version)
     },
-    [],
+    [canvasStore, humanInputFormDataList],
   )
 
   const handleOpenTracingTab = useCallback(() => {

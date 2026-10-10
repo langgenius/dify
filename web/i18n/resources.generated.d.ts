@@ -6142,7 +6142,6 @@ export default interface Resources {
     'nodes.humanInput.userActions.actionIdFormatTip': 'Action ID must start with a letter or underscores, followed by letters, numbers, or underscores'
     'nodes.humanInput.userActions.actionIdTooLong': 'Action ID must be {{maxLength}} characters or less'
     'nodes.humanInput.userActions.actionNamePlaceholder': 'Action Name'
-    'nodes.humanInput.userActions.add': 'Add user action'
     'nodes.humanInput.userActions.buttonStyle.accent': 'Accent'
     'nodes.humanInput.userActions.buttonStyle.default': 'Default'
     'nodes.humanInput.userActions.buttonStyle.ghost': 'Ghost'
