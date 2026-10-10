@@ -1,5 +1,6 @@
 """Annotation writes followed by index tasks after the database transaction closes."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -11,6 +12,14 @@ class AnnotationWriteResult:
     """A missing binding means annotation reply is disabled, so no index task is needed."""
 
     annotation: AnnotationRecord
+    collection_binding_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationDeletionResult:
+    """Only matched IDs need index cleanup; no binding means annotation reply is disabled."""
+
+    annotation_ids: tuple[str, ...]
     collection_binding_id: str | None
 
 
@@ -40,6 +49,14 @@ class AnnotationWriteStore(Protocol):
 
     def delete(self, *, tenant_id: str, app_id: str, annotation_id: str) -> str | None:
         """Delete the annotation and hit history; return its index binding, or None when reply is disabled."""
+        ...
+
+    def delete_many(self, *, tenant_id: str, app_id: str, annotation_ids: Sequence[str]) -> AnnotationDeletionResult:
+        """Delete matching annotations and histories atomically; empty IDs delete nothing."""
+        ...
+
+    def clear(self, *, tenant_id: str, app_id: str) -> AnnotationDeletionResult:
+        """Delete all annotations and their histories for this app, retaining its settings."""
         ...
 
 
@@ -132,4 +149,24 @@ class AnnotationCommandService:
                 app_id=app_id,
                 tenant_id=tenant_id,
                 collection_binding_id=binding_id,
+            )
+
+    def delete_many(self, *, tenant_id: str, app_id: str, annotation_ids: Sequence[str]) -> None:
+        result = self._annotations.delete_many(tenant_id=tenant_id, app_id=app_id, annotation_ids=annotation_ids)
+        self._delete_indexes(tenant_id=tenant_id, app_id=app_id, result=result)
+
+    def clear(self, *, tenant_id: str, app_id: str) -> None:
+        result = self._annotations.clear(tenant_id=tenant_id, app_id=app_id)
+        self._delete_indexes(tenant_id=tenant_id, app_id=app_id, result=result)
+
+    def _delete_indexes(self, *, tenant_id: str, app_id: str, result: AnnotationDeletionResult) -> None:
+        if result.collection_binding_id is None:
+            return
+        # Persistence has committed and closed its session before publishing any task.
+        for annotation_id in result.annotation_ids:
+            self._delete_index(
+                annotation_id=annotation_id,
+                app_id=app_id,
+                tenant_id=tenant_id,
+                collection_binding_id=result.collection_binding_id,
             )

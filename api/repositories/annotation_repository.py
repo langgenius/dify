@@ -1,5 +1,7 @@
 """Bounded, tenant-scoped annotation persistence returning detached records."""
 
+from collections.abc import Sequence
+from itertools import batched
 from typing import override
 
 from sqlalchemy import delete, func, or_, select
@@ -11,7 +13,7 @@ from models.dataset import DatasetCollectionBinding
 from models.enums import AppStatus
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from repositories.app.console_repository import find_console_app
-from services.annotation_command_service import AnnotationWriteResult, AnnotationWriteStore
+from services.annotation_command_service import AnnotationDeletionResult, AnnotationWriteResult, AnnotationWriteStore
 from services.annotation_query import (
     AnnotationAppNotFoundError,
     AnnotationEmbeddingModel,
@@ -210,6 +212,49 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore):
             )
             session.delete(annotation)
             return self._binding_id(session, app_id=app_id)
+
+    @override
+    def delete_many(self, *, tenant_id: str, app_id: str, annotation_ids: Sequence[str]) -> AnnotationDeletionResult:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            matching_ids: list[str] = []
+            for batch in batched(dict.fromkeys(annotation_ids), 500):
+                matching_ids.extend(
+                    session.scalars(
+                        select(MessageAnnotation.id).where(
+                            MessageAnnotation.app_id == app_id, MessageAnnotation.id.in_(batch)
+                        )
+                    )
+                )
+            self._delete_annotations(session, app_id=app_id, annotation_ids=matching_ids)
+            return AnnotationDeletionResult(
+                annotation_ids=tuple(matching_ids), collection_binding_id=self._binding_id(session, app_id=app_id)
+            )
+
+    @override
+    def clear(self, *, tenant_id: str, app_id: str) -> AnnotationDeletionResult:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotation_ids = tuple(
+                session.scalars(select(MessageAnnotation.id).where(MessageAnnotation.app_id == app_id))
+            )
+            self._delete_annotations(session, app_id=app_id, annotation_ids=annotation_ids)
+            return AnnotationDeletionResult(
+                annotation_ids=annotation_ids, collection_binding_id=self._binding_id(session, app_id=app_id)
+            )
+
+    @staticmethod
+    def _delete_annotations(session: Session, *, app_id: str, annotation_ids: Sequence[str]) -> None:
+        # Bound SQL parameters without splitting the annotation/history transaction.
+        for batch in batched(annotation_ids, 500):
+            session.execute(
+                delete(AppAnnotationHitHistory).where(
+                    AppAnnotationHitHistory.app_id == app_id, AppAnnotationHitHistory.annotation_id.in_(batch)
+                )
+            )
+            session.execute(
+                delete(MessageAnnotation).where(MessageAnnotation.app_id == app_id, MessageAnnotation.id.in_(batch))
+            )
 
     @staticmethod
     def _record(annotation: MessageAnnotation) -> AnnotationRecord:

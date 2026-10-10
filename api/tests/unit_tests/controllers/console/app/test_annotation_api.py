@@ -1,39 +1,4 @@
-from __future__ import annotations
-
-from inspect import unwrap
-from unittest.mock import Mock, patch
-
-import pytest
-from flask import Flask
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
-
 from controllers.console.app import annotation as annotation_module
-from models.account import Account
-from models.model import App, AppMode, IconType
-from services.app_ref_service import AppRef
-from tests.unit_tests.model_factories import make_account
-
-
-def _persist_app(session: Session) -> App:
-    app = App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Annotation app",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="chat",
-        icon_background="#ffffff",
-        enable_site=False,
-        enable_api=True,
-    )
-    session.add(app)
-    session.commit()
-    return app
-
-
-def _account() -> Account:
-    return make_account(name="Owner", email="owner@example.com")
 
 
 def test_annotation_reply_payload_valid():
@@ -123,39 +88,3 @@ def test_annotation_file_payload_valid():
     """Test AnnotationFilePayload with valid message ID."""
     payload = annotation_module.AnnotationFilePayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.message_id == "550e8400-e29b-41d4-a716-446655440000"
-
-
-def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant(sqlite_session: Session):
-    _persist_app(sqlite_session)
-    with (
-        patch.object(
-            annotation_module,
-            "current_account_with_tenant",
-            return_value=(_account(), "tenant-2"),
-        ),
-    ):
-        with pytest.raises(NotFound):
-            annotation_module._get_app_ref(sqlite_session, "app-1")
-
-
-class TestConsoleAnnotationRefBoundaries:
-    def test_batch_delete_uses_app_ref(self, app: Flask, sqlite_session: Session):
-        api = annotation_module.AnnotationApi()
-        handler = unwrap(api.delete)
-        delete_mock = Mock()
-        _persist_app(sqlite_session)
-
-        with (
-            app.test_request_context("/?annotation_id=ann-1&annotation_id=ann-2", method="DELETE"),
-            patch.object(
-                annotation_module,
-                "current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch.object(annotation_module.AppAnnotationService, "delete_app_annotations_in_batch", delete_mock),
-        ):
-            response, status = handler(api, sqlite_session, "app-1")
-
-        assert response == ""
-        assert status == 204
-        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"], sqlite_session)

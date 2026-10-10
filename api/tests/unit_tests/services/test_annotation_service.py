@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
@@ -395,48 +395,6 @@ class TestAppAnnotationServiceDirectManipulation:
             assert [observer.get(AppAnnotationHitHistory, history.id) for history in histories] == [None, None]
         task.delay.assert_called_once_with(annotation.id, app.id, TENANT_ID, setting.collection_binding_id)
 
-    def test_batch_delete_returns_zero_without_matching_rows(
-        self, sqlite_session: Session, current_user: Account
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        _persist_annotation(sqlite_session, other_app, annotation_id="ann-1")
-
-        result = AppAnnotationService.delete_app_annotations_in_batch(_app_ref(app), ["ann-1"], sqlite_session)
-
-        assert result == {"deleted_count": 0}
-
-    def test_batch_delete_scopes_rows_and_histories(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        current_user: Account,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        annotation1 = _persist_annotation(sqlite_session, app, annotation_id="ann-1")
-        annotation2 = _persist_annotation(sqlite_session, app, annotation_id="ann-2")
-        decoy = _persist_annotation(sqlite_session, other_app, annotation_id="ann-3")
-        history1 = _persist_history(sqlite_session, app, annotation1, history_id="history-1")
-        history2 = _persist_history(sqlite_session, app, annotation2, history_id="history-2")
-        decoy_history = _persist_history(sqlite_session, other_app, decoy, history_id="history-3")
-        setting = _persist_setting(sqlite_session, app)
-
-        with patch.object(annotation_service_module, "delete_annotation_index_task") as task:
-            result = AppAnnotationService.delete_app_annotations_in_batch(
-                _app_ref(app), [annotation1.id, annotation2.id, decoy.id], sqlite_session
-            )
-
-        assert result == {"deleted_count": 2}
-        with sqlite_session_factory() as observer:
-            assert [observer.get(MessageAnnotation, item.id) for item in (annotation1, annotation2)] == [None, None]
-            assert [observer.get(AppAnnotationHitHistory, item.id) for item in (history1, history2)] == [None, None]
-            assert observer.get(MessageAnnotation, decoy.id) is not None
-            assert observer.get(AppAnnotationHitHistory, decoy_history.id) is not None
-        assert task.delay.call_count == 2
-        task.delay.assert_any_call(annotation1.id, app.id, TENANT_ID, setting.collection_binding_id)
-        task.delay.assert_any_call(annotation2.id, app.id, TENANT_ID, setting.collection_binding_id)
-
 
 class TestAppAnnotationServiceBatchImport:
     @staticmethod
@@ -707,46 +665,3 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         assert result["score_threshold"] == 0.7
         assert result["embedding_model"] == {}
-
-
-class TestAppAnnotationServiceClearAll:
-    def test_clear_all_deletes_only_app_rows_and_enqueues_indexes(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        current_user: Account,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        annotations = [
-            _persist_annotation(sqlite_session, app, annotation_id="ann-1"),
-            _persist_annotation(sqlite_session, app, annotation_id="ann-2"),
-        ]
-        histories = [
-            _persist_history(sqlite_session, app, annotations[0], history_id="history-1"),
-            _persist_history(sqlite_session, app, annotations[1], history_id="history-2"),
-        ]
-        decoy = _persist_annotation(sqlite_session, other_app, annotation_id="decoy")
-        decoy_history = _persist_history(sqlite_session, other_app, decoy, history_id="decoy-history")
-        setting = _persist_setting(sqlite_session, app)
-
-        with patch.object(annotation_service_module, "delete_annotation_index_task") as task:
-            result = AppAnnotationService.clear_all_annotations(app.id, sqlite_session)
-
-        assert result == {"result": "success"}
-        with sqlite_session_factory() as observer:
-            assert [observer.get(MessageAnnotation, item.id) for item in annotations] == [None, None]
-            assert [observer.get(AppAnnotationHitHistory, item.id) for item in histories] == [None, None]
-            assert observer.get(MessageAnnotation, decoy.id) is not None
-            assert observer.get(AppAnnotationHitHistory, decoy_history.id) is not None
-        assert task.delay.call_count == 2
-        for annotation in annotations:
-            task.delay.assert_any_call(annotation.id, app.id, TENANT_ID, setting.collection_binding_id)
-
-    def test_clear_all_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.clear_all_annotations(app.id, sqlite_session)
-
-        assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == 0

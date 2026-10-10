@@ -13,7 +13,8 @@ from celery import Celery, Task
 from celery.signals import before_task_publish
 from kombu.exceptions import SerializerNotInstalled
 from kombu.simple import SimpleQueue
-from sqlalchemy import Connection, event
+from sqlalchemy import Connection, event, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from models.model import App, AppAnnotationSetting, MessageAnnotation
@@ -25,7 +26,8 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tests.unit_tests.model_factories import make_app
 
-type Operation = Literal["upsert", "update", "delete"]
+type Operation = Literal["upsert", "update", "delete", "delete_many", "clear"]
+type BulkOperation = Literal["delete_many", "clear"]
 
 
 @dataclass
@@ -60,7 +62,14 @@ class _Harness:
                 question="",
                 answer="updated answer",
             ).id
-        self.service.delete(tenant_id=self.app.tenant_id, app_id=self.app.id, annotation_id=self.annotation.id)
+        if operation == "delete":
+            self.service.delete(tenant_id=self.app.tenant_id, app_id=self.app.id, annotation_id=self.annotation.id)
+        elif operation == "delete_many":
+            self.service.delete_many(
+                tenant_id=self.app.tenant_id, app_id=self.app.id, annotation_ids=[self.annotation.id]
+            )
+        else:
+            self.service.clear(tenant_id=self.app.tenant_id, app_id=self.app.id)
         return self.annotation.id
 
 
@@ -120,7 +129,7 @@ def _enable(harness: _Harness) -> None:
         )
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete"])
+@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
 def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close(
     harness: _Harness, operation: Operation
 ) -> None:
@@ -136,8 +145,8 @@ def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close
         "tenant_id": harness.app.tenant_id,
         "collection_binding_id": harness.binding_id,
     }
-    task_index = {"upsert": 0, "update": 1, "delete": 2}[operation]
-    if operation == "delete":
+    task_index = {"upsert": 0, "update": 1, "delete": 2, "delete_many": 2, "clear": 2}[operation]
+    if operation in {"delete", "delete_many", "clear"}:
         assert annotation_id not in saved
     else:
         expected_kwargs["question"] = "new question" if operation == "upsert" else "updated answer"
@@ -152,7 +161,7 @@ def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close
             messages.get(block=False)
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete"])
+@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
 def test_disabled_annotation_reply_does_not_publish(harness: _Harness, operation: Operation) -> None:
     harness.apply(operation)
     assert harness.publications == []
@@ -171,7 +180,7 @@ def test_rejected_write_does_not_publish(harness: _Harness) -> None:
     ]
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete"])
+@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
 def test_publish_failure_propagates_without_rolling_back_committed_write(
     harness: _Harness, operation: Operation
 ) -> None:
@@ -191,3 +200,94 @@ def test_publish_failure_propagates_without_rolling_back_committed_write(
         assert record.content == "updated answer"
     else:
         assert records == ()
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+def test_bulk_deletion_publishes_once_per_matched_annotation_after_every_row_is_deleted(
+    harness: _Harness, operation: BulkOperation
+) -> None:
+    _enable(harness)
+    second = MessageAnnotation(
+        app_id=harness.app.id, question="second", content="answer", account_id=harness.annotation.account_id
+    )
+    other_app = make_app(app_id=str(uuid4()), tenant_id=harness.app.tenant_id)
+    foreign = MessageAnnotation(
+        app_id=other_app.id, question="foreign", content="answer", account_id=harness.annotation.account_id
+    )
+    with harness.factory.begin() as session:
+        session.add_all([second, other_app, foreign])
+
+    if operation == "delete_many":
+        harness.service.delete_many(
+            tenant_id=harness.app.tenant_id,
+            app_id=harness.app.id,
+            annotation_ids=[harness.annotation.id, second.id, harness.annotation.id, foreign.id, str(uuid4())],
+        )
+    else:
+        harness.service.clear(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
+
+    assert harness.publications == [(True, ()), (True, ())]
+    assert [row.id for row in harness.repository.get_all(tenant_id=other_app.tenant_id, app_id=other_app.id)] == [
+        foreign.id
+    ]
+    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
+        published_ids: list[str] = []
+        for _ in range(2):
+            message = messages.get(block=False)
+            assert message.headers["task"] == harness.tasks[2].name
+            assert message.payload[0] == []
+            kwargs = message.payload[1]
+            published_ids.append(kwargs["annotation_id"])
+            assert kwargs == {
+                "annotation_id": kwargs["annotation_id"],
+                "app_id": harness.app.id,
+                "tenant_id": harness.app.tenant_id,
+                "collection_binding_id": harness.binding_id,
+            }
+            message.ack()
+        assert sorted(published_ids) == sorted([harness.annotation.id, second.id])
+        with pytest.raises(Empty):
+            messages.get(block=False)
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+def test_bulk_deletion_without_matches_does_not_publish(harness: _Harness, operation: BulkOperation) -> None:
+    _enable(harness)
+    if operation == "delete_many":
+        harness.service.delete_many(
+            tenant_id=harness.app.tenant_id, app_id=harness.app.id, annotation_ids=[str(uuid4())]
+        )
+    else:
+        with harness.factory.begin() as session:
+            annotation = session.get_one(MessageAnnotation, harness.annotation.id)
+            session.delete(annotation)
+        harness.service.clear(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
+    assert harness.publications == []
+    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
+        with pytest.raises(Empty):
+            messages.get(block=False)
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+def test_failed_bulk_transaction_does_not_publish_index_deletions(harness: _Harness, operation: BulkOperation) -> None:
+    _enable(harness)
+    with harness.factory.begin() as session:
+        session.execute(
+            text(
+                "CREATE TRIGGER reject_annotation_delete BEFORE DELETE ON message_annotations "
+                "BEGIN SELECT RAISE(ABORT, 'delete rejected'); END"
+            )
+        )
+    try:
+        with pytest.raises(IntegrityError, match="delete rejected"):
+            harness.apply(operation)
+        assert harness.publications == []
+        assert [
+            row.id for row in harness.repository.get_all(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
+        ] == [harness.annotation.id]
+        with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
+            with pytest.raises(Empty):
+                messages.get(block=False)
+    finally:
+        with harness.factory.begin() as session:
+            session.execute(text("DROP TRIGGER reject_annotation_delete"))

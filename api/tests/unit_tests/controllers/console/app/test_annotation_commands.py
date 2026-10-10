@@ -21,13 +21,13 @@ from models.account import AccountStatus, TenantAccountJoin
 from models.enums import ConversationFromSource
 from models.model import AppAnnotationHitHistory, Message, MessageAnnotation
 from tests.unit_tests.controllers.console.app import test_annotation_queries
-from tests.unit_tests.controllers.console.app.test_annotation_queries import _Harness, _history
+from tests.unit_tests.controllers.console.app.test_annotation_queries import _annotation, _Harness, _history
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
 
 query_harness = test_annotation_queries.harness
 
-type _Operation = Literal["create", "update", "delete"]
-_OPERATIONS: tuple[_Operation, ...] = ("create", "update", "delete")
+type _Operation = Literal["create", "update", "delete", "delete_many", "clear"]
+_OPERATIONS: tuple[_Operation, ...] = ("create", "update", "delete", "delete_many", "clear")
 
 
 @pytest.fixture
@@ -48,12 +48,21 @@ def _request(
     payload: dict[str, object] | None = None,
     app_id: str | None = None,
     annotation_id: str | None = None,
+    annotation_ids: list[str] | None = None,
     authenticated: bool = True,
     csrf: bool = True,
 ) -> TestResponse:
     path = f"/apps/{app_id or harness.target.id}/annotations"
-    if operation != "create":
+    if operation in {"update", "delete"}:
         path += f"/{annotation_id or harness.annotation.id}"
+    query = (
+        [
+            ("annotation_id", value)
+            for value in (annotation_ids if annotation_ids is not None else [harness.annotation.id])
+        ]
+        if operation == "delete_many"
+        else None
+    )
     client = harness.app.test_client()
     token = generate_csrf_token(harness.account.id)
     headers = {HEADER_NAME_CSRF_TOKEN: token} if csrf else {}
@@ -68,7 +77,11 @@ def _request(
     event.listen(Session, "before_commit", record_commit)
     try:
         response = client.open(
-            path, method="DELETE" if operation == "delete" else "POST", json=payload, headers=headers
+            path,
+            method="POST" if operation in {"create", "update"} else "DELETE",
+            json=payload,
+            query_string=query,
+            headers=headers,
         )
     finally:
         event.remove(Session, "before_commit", record_commit)
@@ -339,7 +352,10 @@ def test_write_roles_are_preserved(harness: _Harness, operation: _Operation, rol
     response = _request(harness, operation, payload={"question": "Question", "answer": "Answer"})
 
     if TenantAccountRole.is_editing_role(role):
-        assert response.status_code == {"create": 201, "update": 200, "delete": 204}[operation]
+        assert (
+            response.status_code
+            == {"create": 201, "update": 200, "delete": 204, "delete_many": 204, "clear": 204}[operation]
+        )
     else:
         assert response.status_code == 403
         assert response.get_json()["code"] == "forbidden"
@@ -369,6 +385,108 @@ def test_single_annotation_writes_keep_app_edit_rbac_declaration() -> None:
         annotation_module.AnnotationUpdateDeleteApi.post,
         annotation_module.AnnotationUpdateDeleteApi.delete,
     ):
-        [check] = getattr(view, RBAC_CHECKS_ATTR)
+        [check] = vars(view)[RBAC_CHECKS_ATTR]
         assert check.scene == RBACPermission.APP_EDIT
         assert isinstance(check.locator, PlainApp)
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+def test_batch_deletion_preserves_foreign_app_rows_and_unrelated_history(
+    harness: _Harness, operation: _Operation
+) -> None:
+    selected = _annotation(harness, index=1)
+    unselected = _annotation(harness, index=2)
+    foreign_app = make_app(app_id=str(uuid4()), tenant_id=harness.target.tenant_id)
+    foreign = _annotation(harness, index=3, app_id=foreign_app.id)
+    owned_history = _history(harness, index=0)
+    selected_history = _history(harness, index=1)
+    selected_history.annotation_id = selected.id
+    unselected_history = _history(harness, index=2)
+    unselected_history.annotation_id = unselected.id
+    foreign_history = _history(harness, index=3, app_id=foreign_app.id)
+    foreign_history.annotation_id = foreign.id
+    foreign_linked_history = _history(harness, index=4, app_id=foreign_app.id)
+    orphan_history = _history(harness, index=5)
+    orphan_history.annotation_id = str(uuid4())
+    with harness.factory.begin() as session:
+        session.add_all(
+            [
+                foreign_app,
+                selected,
+                unselected,
+                foreign,
+                owned_history,
+                selected_history,
+                unselected_history,
+                foreign_history,
+                foreign_linked_history,
+                orphan_history,
+            ]
+        )
+
+    response = _request(
+        harness,
+        operation,
+        annotation_ids=[harness.annotation.id, selected.id, selected.id, foreign.id, str(uuid4())],
+    )
+
+    assert response.status_code == 204
+    expected_annotations = {foreign.id}
+    expected_histories = {foreign_history.id, foreign_linked_history.id, orphan_history.id}
+    if operation == "delete_many":
+        expected_annotations.add(unselected.id)
+        expected_histories.add(unselected_history.id)
+    assert {row.id for row in _annotations(harness)} == expected_annotations
+    with harness.factory() as session:
+        assert set(session.scalars(select(AppAnnotationHitHistory.id))) == expected_histories
+
+
+@pytest.mark.parametrize("values", [[""], ["missing"], ["", "missing"]])
+def test_batch_deletion_with_no_matching_ids_does_not_clear_annotations(harness: _Harness, values: list[str]) -> None:
+    history = _history(harness, index=0)
+    with harness.factory.begin() as session:
+        session.add(history)
+
+    response = _request(harness, "delete_many", annotation_ids=values)
+
+    assert response.status_code == 204
+    assert [row.id for row in _annotations(harness)] == [harness.annotation.id]
+    with harness.factory() as session:
+        assert session.get(AppAnnotationHitHistory, history.id) is not None
+
+
+def test_batch_deletion_accepts_empty_strings_alongside_valid_ids(harness: _Harness) -> None:
+    response = _request(harness, "delete_many", annotation_ids=["", harness.annotation.id, ""])
+
+    assert response.status_code == 204
+    assert _annotations(harness) == []
+
+
+@pytest.mark.parametrize("invalid", [" ", "\t", "\n"])
+def test_batch_deletion_rejects_whitespace_before_any_write(harness: _Harness, invalid: str) -> None:
+    history = _history(harness, index=0)
+    with harness.factory.begin() as session:
+        session.add(history)
+
+    response = _request(harness, "delete_many", annotation_ids=[harness.annotation.id, invalid])
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "bad_request",
+        "message": "annotation_ids are required if the parameter is provided.",
+    }
+    assert [row.id for row in _annotations(harness)] == [harness.annotation.id]
+    with harness.factory() as session:
+        assert session.get(AppAnnotationHitHistory, history.id) is not None
+
+
+def test_clearing_an_already_empty_app_is_idempotent(harness: _Harness) -> None:
+    assert _request(harness, "clear").status_code == 204
+    assert _request(harness, "clear").status_code == 204
+    assert _annotations(harness) == []
+
+
+def test_batch_delete_keeps_app_management_rbac_declaration() -> None:
+    [check] = vars(annotation_module.AnnotationApi.delete)[RBAC_CHECKS_ATTR]
+    assert check.scene == RBACPermission.APP_CREATE_AND_MANAGEMENT
+    assert isinstance(check.locator, PlainApp)

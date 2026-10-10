@@ -3,11 +3,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from sqlite3 import SQLITE_LIMIT_VARIABLE_NUMBER
+from sqlite3 import Connection as SQLiteConnection
 from typing import Literal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Connection, event, func, inspect, select, text
+from sqlalchemy import Connection, Engine, event, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
@@ -24,12 +26,12 @@ from models.model import (
     MessageAnnotation,
 )
 from repositories.annotation_repository import AnnotationRepository
-from services.annotation_command_service import AnnotationWriteResult
+from services.annotation_command_service import AnnotationDeletionResult, AnnotationWriteResult
 from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError, AnnotationRecord
 from services.errors.message import MessageNotExistsError
 
-Operation = Literal["upsert", "update", "delete"]
-OPERATIONS: tuple[Operation, ...] = ("upsert", "update", "delete")
+Operation = Literal["upsert", "update", "delete", "delete_many", "clear"]
+OPERATIONS: tuple[Operation, ...] = ("upsert", "update", "delete", "delete_many", "clear")
 CREATED_AT = datetime(2026, 1, 1)
 
 
@@ -145,7 +147,7 @@ def _write(
     app_id: str,
     account_id: str,
     annotation_id: str,
-) -> AnnotationWriteResult | str | None:
+) -> AnnotationWriteResult | AnnotationDeletionResult | str | None:
     if operation == "upsert":
         return repository.upsert(
             tenant_id=tenant_id,
@@ -163,7 +165,11 @@ def _write(
             question="New question",
             answer="New answer",
         )
-    return repository.delete(tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id)
+    if operation == "delete":
+        return repository.delete(tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id)
+    if operation == "delete_many":
+        return repository.delete_many(tenant_id=tenant_id, app_id=app_id, annotation_ids=[annotation_id])
+    return repository.clear(tenant_id=tenant_id, app_id=app_id)
 
 
 @pytest.mark.parametrize("enabled", [True, False])
@@ -418,7 +424,7 @@ def test_writes_keep_workflow_backing_apps_visible(
     )
     sqlite_session.expire_all()
     stored = sqlite_session.scalar(select(MessageAnnotation).where(MessageAnnotation.id == annotation_id))
-    if operation == "delete":
+    if operation in ("delete", "delete_many", "clear"):
         assert stored is None
     elif operation == "update":
         assert stored is not None
@@ -557,7 +563,7 @@ def test_write_sessions_close_and_roll_back_database_failures(
 ) -> None:
     history = _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=annotation.id)
     if fail:
-        sql_operation = {"upsert": "INSERT", "update": "UPDATE", "delete": "DELETE"}[operation]
+        sql_operation = {"upsert": "INSERT", "update": "UPDATE"}.get(operation, "DELETE")
         sqlite_session.execute(
             text(
                 f"CREATE TRIGGER reject_annotation_write BEFORE {sql_operation} ON message_annotations "
@@ -619,3 +625,138 @@ def test_write_sessions_close_and_roll_back_database_failures(
         assert (annotation.question, annotation.content) == ("Old question", "Old answer")
         assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == 1
         assert history.annotation_id == annotation.id
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+@pytest.mark.parametrize("enabled", [True, False])
+def test_bulk_delete_scopes_actual_ids_histories_and_binding_to_app(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    scope: Scope,
+    annotation: MessageAnnotation,
+    operation: Literal["delete_many", "clear"],
+    enabled: bool,
+) -> None:
+    annotations = [
+        MessageAnnotation(app_id=app.id, question="Question", content="Answer", account_id=scope.account.id)
+        for app in (scope.app, scope.app, scope.other_app, scope.foreign_app)
+    ]
+    sqlite_session.add_all(annotations)
+    sqlite_session.flush()
+    selected, unselected, same_workspace, foreign_workspace = annotations
+    _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=annotation.id)
+    _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=selected.id)
+    unselected_history = _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=unselected.id)
+    retained_histories = [
+        _history(sqlite_session, scope, app_id=scope.other_app.id, annotation_id=same_workspace.id),
+        _history(sqlite_session, scope, app_id=scope.foreign_app.id, annotation_id=foreign_workspace.id),
+        _history(sqlite_session, scope, app_id=scope.other_app.id, annotation_id=annotation.id),
+        _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=str(uuid4())),
+    ]
+    _setting(sqlite_session, scope, app_id=scope.other_app.id)
+    binding_id = _setting(sqlite_session, scope, app_id=scope.app.id) if enabled else None
+    sqlite_session.commit()
+    requested_ids = [annotation.id, selected.id, annotation.id, same_workspace.id, foreign_workspace.id, str(uuid4())]
+    expected_deleted = {annotation.id, selected.id}
+    expected_retained = {same_workspace.id, foreign_workspace.id}
+    expected_histories = {history.id for history in retained_histories}
+    if operation == "delete_many":
+        expected_retained.add(unselected.id)
+        expected_histories.add(unselected_history.id)
+        result = repository.delete_many(
+            tenant_id=scope.app.tenant_id, app_id=scope.app.id, annotation_ids=requested_ids
+        )
+    else:
+        expected_deleted.add(unselected.id)
+        result = repository.clear(tenant_id=scope.app.tenant_id, app_id=scope.app.id)
+    assert set(result.annotation_ids) == expected_deleted
+    assert len(result.annotation_ids) == len(expected_deleted)
+    assert result.collection_binding_id == binding_id
+    assert set(sqlite_session.scalars(select(MessageAnnotation.id))) == expected_retained
+    assert set(sqlite_session.scalars(select(AppAnnotationHitHistory.id))) == expected_histories
+    assert sqlite_session.scalar(select(func.count()).select_from(AppAnnotationSetting)) == (2 if enabled else 1)
+
+
+@pytest.mark.parametrize("requested_ids", [[], [str(uuid4())]])
+def test_delete_many_with_no_matching_ids_does_not_clear_annotations(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    scope: Scope,
+    annotation: MessageAnnotation,
+    requested_ids: list[str],
+) -> None:
+    history = _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=annotation.id)
+    binding_id = _setting(sqlite_session, scope, app_id=scope.app.id)
+    sqlite_session.commit()
+    result = repository.delete_many(tenant_id=scope.app.tenant_id, app_id=scope.app.id, annotation_ids=requested_ids)
+    assert result == AnnotationDeletionResult(annotation_ids=(), collection_binding_id=binding_id)
+    assert list(sqlite_session.scalars(select(MessageAnnotation.id))) == [annotation.id]
+    assert list(sqlite_session.scalars(select(AppAnnotationHitHistory.id))) == [history.id]
+
+
+def test_clear_empty_app_keeps_other_app_annotations_and_settings(
+    repository: AnnotationRepository, sqlite_session: Session, scope: Scope, annotation: MessageAnnotation
+) -> None:
+    annotation.app_id = scope.other_app.id
+    binding_id = _setting(sqlite_session, scope, app_id=scope.app.id)
+    sqlite_session.commit()
+    result = repository.clear(tenant_id=scope.app.tenant_id, app_id=scope.app.id)
+    assert result == AnnotationDeletionResult(annotation_ids=(), collection_binding_id=binding_id)
+    assert list(sqlite_session.scalars(select(MessageAnnotation.id))) == [annotation.id]
+    assert sqlite_session.scalar(select(AppAnnotationSetting.collection_binding_id)) == binding_id
+
+
+@pytest.mark.parametrize("operation", ["delete_many", "clear"])
+@pytest.mark.parametrize("fail", [False, True])
+def test_large_bulk_delete_respects_sql_parameter_limit_and_rolls_back_all_batches(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    scope: Scope,
+    operation: Literal["delete_many", "clear"],
+    fail: bool,
+) -> None:
+    annotations = [
+        MessageAnnotation(app_id=scope.app.id, question="Question", content="Answer", account_id=scope.account.id)
+        for _ in range(1100)
+    ]
+    sqlite_session.add_all(annotations)
+    sqlite_session.flush()
+    for annotation in annotations:
+        _history(sqlite_session, scope, app_id=scope.app.id, annotation_id=annotation.id)
+    if fail:
+        sqlite_session.execute(
+            text(
+                "CREATE TRIGGER reject_last_annotation_delete BEFORE DELETE ON message_annotations "
+                "WHEN (SELECT COUNT(*) FROM message_annotations WHERE app_id = OLD.app_id) = 1 "
+                "BEGIN SELECT RAISE(ABORT, 'last annotation delete rejected'); END"
+            )
+        )
+    sqlite_session.commit()
+    annotation_ids = [annotation.id for annotation in annotations]
+    with sqlite_engine.connect() as connection:
+        driver_connection = connection.connection.driver_connection
+        assert isinstance(driver_connection, SQLiteConnection)
+        # Exercise the database's real limit instead of assuming the local SQLite build uses 999.
+        previous_limit = driver_connection.setlimit(SQLITE_LIMIT_VARIABLE_NUMBER, 999)
+        try:
+            repository = AnnotationRepository(session_factory=sessionmaker(bind=connection))
+
+            def delete_annotations() -> AnnotationDeletionResult:
+                if operation == "delete_many":
+                    return repository.delete_many(
+                        tenant_id=scope.app.tenant_id, app_id=scope.app.id, annotation_ids=annotation_ids
+                    )
+                return repository.clear(tenant_id=scope.app.tenant_id, app_id=scope.app.id)
+
+            if fail:
+                with pytest.raises(IntegrityError, match="last annotation delete rejected"):
+                    delete_annotations()
+            else:
+                result = delete_annotations()
+                assert set(result.annotation_ids) == set(annotation_ids)
+            assert not connection.in_transaction()
+        finally:
+            driver_connection.setlimit(SQLITE_LIMIT_VARIABLE_NUMBER, previous_limit)
+    expected_count = len(annotation_ids) if fail else 0
+    assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == expected_count
+    assert sqlite_session.scalar(select(func.count()).select_from(AppAnnotationHitHistory)) == expected_count

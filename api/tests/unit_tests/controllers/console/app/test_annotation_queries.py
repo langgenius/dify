@@ -548,6 +548,6 @@ def test_all_read_routes_keep_app_layout_rbac_declaration() -> None:
         annotation_module.AnnotationHitHistoryListApi,
         annotation_module.AnnotationExportApi,
     ):
-        [check] = getattr(resource.get, RBAC_CHECKS_ATTR)
+        [check] = vars(resource.get)[RBAC_CHECKS_ATTR]
         assert check.scene == RBACPermission.APP_VIEW_LAYOUT
         assert isinstance(check.locator, PlainApp)

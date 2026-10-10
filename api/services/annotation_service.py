@@ -3,7 +3,7 @@ import uuid
 from typing import TypedDict
 
 import pandas as pd
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
@@ -16,7 +16,7 @@ from libs.pagination import paginate_query
 from models.account import Account
 from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
-from services.app_ref_service import AnnotationRef, AppRef
+from services.app_ref_service import AnnotationRef
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
@@ -274,51 +274,6 @@ class AppAnnotationService:
             )
 
     @classmethod
-    def delete_app_annotations_in_batch(cls, app_ref: AppRef, annotation_ids: list[str], session: Session):
-        # Fetch annotations and their settings in a single query
-        annotations_to_delete = session.execute(
-            select(MessageAnnotation, AppAnnotationSetting)
-            .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .where(
-                MessageAnnotation.id.in_(annotation_ids),
-                MessageAnnotation.app_id == app_ref.app_id,
-            )
-        ).all()
-
-        if not annotations_to_delete:
-            return {"deleted_count": 0}
-
-        # Step 1: Extract IDs for bulk operations
-        annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
-
-        # Step 2: Bulk delete hit histories in a single query
-        session.execute(
-            delete(AppAnnotationHitHistory).where(
-                AppAnnotationHitHistory.app_id == app_ref.app_id,
-                AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete),
-            )
-        )
-
-        # Step 3: Trigger async tasks for search index deletion
-        for annotation, annotation_setting in annotations_to_delete:
-            if annotation_setting:
-                delete_annotation_index_task.delay(
-                    annotation.id, app_ref.app_id, app_ref.tenant_id, annotation_setting.collection_binding_id
-                )
-
-        # Step 4: Bulk delete annotations in a single query
-        delete_result = session.execute(
-            delete(MessageAnnotation).where(
-                MessageAnnotation.id.in_(annotation_ids_to_delete),
-                MessageAnnotation.app_id == app_ref.app_id,
-            )
-        )
-        deleted_count = getattr(delete_result, "rowcount", 0)
-
-        session.commit()
-        return {"deleted_count": deleted_count}
-
-    @classmethod
     def batch_import_app_annotations(cls, app_id: str, file: FileStorage, session: Session):
         """
         Batch import annotations from CSV file with enhanced security checks.
@@ -556,39 +511,3 @@ class AppAnnotationService:
                 "score_threshold": annotation_setting.score_threshold,
                 "embedding_model": {},
             }
-
-    @classmethod
-    def clear_all_annotations(cls, app_id: str, session: Session):
-        _, current_tenant_id = current_account_with_tenant()
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            raise NotFound("App not found")
-
-        # if annotation reply is enabled, delete annotation index
-        app_annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-        )
-
-        annotations_iter = session.scalars(
-            select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)
-        ).yield_per(100)
-        for annotation in annotations_iter:
-            hit_histories_iter = session.scalars(
-                select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation.id)
-            ).yield_per(100)
-            for annotation_hit_history in hit_histories_iter:
-                session.delete(annotation_hit_history)
-
-            # if annotation reply is enabled, delete annotation index
-            if app_annotation_setting:
-                delete_annotation_index_task.delay(
-                    annotation.id, app_id, current_tenant_id, app_annotation_setting.collection_binding_id
-                )
-
-            session.delete(annotation)
-
-        session.commit()
-        return {"result": "success"}

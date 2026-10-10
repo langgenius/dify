@@ -5,9 +5,7 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import NoFileUploadedError, NotFoundError, TooManyFilesError
 from controllers.common.rbac import PlainApp, RBACCheck
@@ -41,28 +39,16 @@ from fields.annotation_fields import (
 )
 from fields.base import ResponseModel
 from libs.helper import dump_response, uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from models.model import App
 from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
 from services.annotation_service import (
     AppAnnotationService,
     EnableAnnotationArgs,
     UpdateAnnotationSettingArgs,
 )
-from services.app_ref_service import AppRef, AppRefService
 from services.errors.message import MessageNotExistsError
-
-
-def _get_app_ref(session: Session, app_id: str) -> AppRef:
-    _, current_tenant_id = current_account_with_tenant()
-    app = session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-    )
-    if app is None:
-        raise NotFound("App not found")
-    return AppRefService.create_app_ref(app)
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -379,34 +365,29 @@ class AnnotationApi(Resource):
             raise NotFoundError("Message Not Exists.") from exc
         return dump_response(Annotation, annotation), HTTPStatus.CREATED
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()))
-    @console_ns.response(204, "Annotations deleted successfully")
-    @with_session
-    def delete(self, session: Session, app_id: UUID):
-
-        # Use request.args.getlist to get annotation_ids array directly
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()),),
+    )
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Annotations deleted successfully")
+    def delete(self, context: RequestContext, app_id: UUID) -> tuple[str | dict[str, str], HTTPStatus]:
         annotation_ids = request.args.getlist("annotation_id")
-
-        # If annotation_ids are provided, handle batch deletion
-        if annotation_ids:
-            # Check if any annotation_ids contain empty strings or invalid values
-            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
-                return {
-                    "code": "bad_request",
-                    "message": "annotation_ids are required if the parameter is provided.",
-                }, 400
-
-            app_ref = _get_app_ref(session, str(app_id))
-            AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids, session)
-            return "", 204
-        # If no annotation_ids are provided, handle clearing all annotations
-        else:
-            AppAnnotationService.clear_all_annotations(str(app_id), session)
-            return "", 204
+        if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
+            return {
+                "code": "bad_request",
+                "message": "annotation_ids are required if the parameter is provided.",
+            }, HTTPStatus.BAD_REQUEST
+        try:
+            commands = application_services().annotation_commands
+            if annotation_ids:
+                commands.delete_many(
+                    tenant_id=context.active_workspace_id, app_id=str(app_id), annotation_ids=annotation_ids
+                )
+            else:
+                commands.clear(tenant_id=context.active_workspace_id, app_id=str(app_id))
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
