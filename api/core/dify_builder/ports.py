@@ -76,7 +76,7 @@ class DifyBuilderAgent(Protocol):
 
     # -- Build cognition --
 
-    def analyze_goal(self, goal_text: str) -> dict[str, Any]: ...
+    def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, Any]: ...
 
     # Short human title for a prompt-created app. Returns the raw proposal; the
     # service layer normalizes and stores it.

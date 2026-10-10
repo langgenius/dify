@@ -1,7 +1,8 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { CancelledError, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -198,9 +199,15 @@ export const useWorkflowInit = () => {
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
+    const publishedWorkflowQuery = appWorkflowQueryOptions(appDetail.id)
+    const initialPublishedDataUpdateCount =
+      queryClient.getQueryState(publishedWorkflowQuery.queryKey)?.dataUpdateCount ?? 0
+    const initialPublication = workflowStore.getState()
+    const initialPublishedAt = initialPublication.publishedAt
+    const initialLastPublishedHasUserInput = initialPublication.lastPublishedHasUserInput
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
       fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
-      queryClient.query(appWorkflowQueryOptions(appDetail.id)),
+      queryClient.query(publishedWorkflowQuery),
     ])
 
     if (nodesDefaultConfigsResult.status === 'fulfilled') {
@@ -218,16 +225,38 @@ export const useWorkflowInit = () => {
       console.error(nodesDefaultConfigsResult.reason)
     }
 
-    if (publishedWorkflowResult.status === 'fulfilled') {
-      const publishedWorkflow = publishedWorkflowResult.value
+    if (
+      publishedWorkflowResult.status === 'rejected' &&
+      !(publishedWorkflowResult.reason instanceof CancelledError)
+    )
+      console.error(publishedWorkflowResult.reason)
+    const currentPublication = workflowStore.getState()
+    if (
+      currentPublication.publishedAt !== initialPublishedAt ||
+      currentPublication.lastPublishedHasUserInput !== initialLastPublishedHasUserInput
+    )
+      return
+
+    const cacheHasNewResult =
+      (queryClient.getQueryState(publishedWorkflowQuery.queryKey)?.dataUpdateCount ?? 0) >
+      initialPublishedDataUpdateCount
+    const cachedPublishedWorkflow = cacheHasNewResult
+      ? queryClient.getQueryData<WorkflowResponse | null>(publishedWorkflowQuery.queryKey)
+      : undefined
+    const publishedWorkflow =
+      cachedPublishedWorkflow !== undefined
+        ? cachedPublishedWorkflow
+        : publishedWorkflowResult.status === 'fulfilled'
+          ? publishedWorkflowResult.value
+          : undefined
+    if (publishedWorkflow !== undefined) {
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
       const graph = publishedWorkflow?.graph
       const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : undefined
       const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : undefined
       workflowStore.getState().setLastPublishedHasUserInput(hasConnectedUserInput(nodes, edges))
     } else {
-      console.error(publishedWorkflowResult.reason)
-      workflowStore.getState().setLastPublishedHasUserInput(false)
+      if (!currentPublication.publishedAt) currentPublication.setLastPublishedHasUserInput(false)
     }
   }, [workflowStore, appDetail, queryClient])
 

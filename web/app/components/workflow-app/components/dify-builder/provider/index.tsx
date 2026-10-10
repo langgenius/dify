@@ -3,12 +3,15 @@
 import type { ReactNode } from 'react'
 import type { SessionRunEvents } from '../session/types'
 import type { DifyBuilderCanvasNode } from '../utils'
-import { useQuery } from '@tanstack/react-query'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
@@ -50,8 +53,54 @@ const DifyBuilderProviderContent = ({
     }),
   )
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
+  const setPublishedAt = useStore((state) => state.setPublishedAt)
+  const setLastPublishedHasUserInput = useStore((state) => state.setLastPublishedHasUserInput)
+  const queryClient = useQueryClient()
+  const publicationRequestIdRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      publicationRequestIdRef.current += 1
+    },
+    [appId],
+  )
+
+  const onPublishWorkflow = useCallback(() => {
+    if (!appId) return
+    const requestId = ++publicationRequestIdRef.current
+    const publishedQuery = appWorkflowQueryOptions(appId)
+    void queryClient
+      .cancelQueries({ queryKey: publishedQuery.queryKey, exact: true })
+      .then(() => {
+        if (requestId !== publicationRequestIdRef.current) return null
+        return queryClient.query({ ...publishedQuery, staleTime: 0 })
+      })
+      .then((publishedWorkflow) => {
+        if (requestId !== publicationRequestIdRef.current || !publishedWorkflow) return
+        setPublishedAt(publishedWorkflow.created_at)
+        const graph = publishedWorkflow.graph
+        const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : []
+        const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : []
+        const startNodeIds = nodes
+          .filter((node) => node?.data?.type === BlockEnum.Start)
+          .map((node) => node.id)
+        setLastPublishedHasUserInput(edges.some((edge) => startNodeIds.includes(edge.source)))
+      })
+      .catch((error) => {
+        console.warn('[dify-builder] refresh published workflow failed', error)
+      })
+  }, [appId, queryClient, setLastPublishedHasUserInput, setPublishedAt])
+
+  const onResetPublication = useCallback(() => {
+    publicationRequestIdRef.current += 1
+  }, [])
+
   const runEvents = useDifyBuilderRunEvents(appId)
-  const canvasEvents = useDifyBuilderCanvasEvents(onFocusCanvas)
+  const canvasEvents = useDifyBuilderCanvasEvents(
+    onFocusCanvas,
+    onPublishWorkflow,
+    onResetPublication,
+  )
   const sessionEvents = useMemo<SessionRunEvents>(
     () => ({
       ...runEvents,

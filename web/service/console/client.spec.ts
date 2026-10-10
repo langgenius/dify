@@ -537,6 +537,123 @@ describe('consoleQuery transport context', () => {
   })
 })
 
+describe('console browser error logging', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not log a caller-cancelled response body read after JSON headers', async () => {
+    const caller = new AbortController()
+    let markBodyRead: (() => void) | undefined
+    const bodyReadStarted = new Promise<void>((resolve) => {
+      markBodyRead = resolve
+    })
+    let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined
+    const body = new ReadableStream<Uint8Array>(
+      {
+        start(controller) {
+          bodyController = controller
+        },
+        pull() {
+          markBodyRead?.()
+        },
+      },
+      { highWaterMark: 0 },
+    )
+    const request = vi.fn().mockImplementation(async (_url, _init, options) => {
+      const outgoing = options.request as Request
+      outgoing.signal.addEventListener(
+        'abort',
+        () => {
+          bodyController?.error(new DOMException('The operation was aborted.', 'AbortError'))
+        },
+        { once: true },
+      )
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const query = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+
+    const result = query.queryFn({ signal: caller.signal } as QueryFunctionContext)
+    await bodyReadStarted
+    caller.abort()
+
+    await expect(result).rejects.toMatchObject({ cause: { name: 'AbortError' } })
+    expect(caller.signal.aborted).toBe(true)
+    expect(errorLog).not.toHaveBeenCalled()
+  })
+
+  it('logs malformed JSON response bodies', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response('{broken', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const query = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+
+    await expect(
+      query.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).rejects.toMatchObject({ cause: { name: 'SyntaxError' } })
+    expect(errorLog).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    {
+      name: 'direct caller cancellation',
+      error: new DOMException('The operation was aborted.', 'AbortError'),
+      abortCaller: true,
+      expectedLogs: 0,
+    },
+    {
+      name: 'AbortError without caller cancellation',
+      error: new DOMException('The operation was aborted.', 'AbortError'),
+      abortCaller: false,
+      expectedLogs: 1,
+    },
+    {
+      name: 'unrelated failure after caller cancellation',
+      error: new Error('Provider unavailable'),
+      abortCaller: true,
+      expectedLogs: 1,
+    },
+    {
+      name: 'unrelated wrapper with an AbortError cause',
+      error: new Error('Provider unavailable', {
+        cause: new DOMException('The operation was aborted.', 'AbortError'),
+      }),
+      abortCaller: true,
+      expectedLogs: 1,
+    },
+  ])('logs only genuine errors for $name', async ({ error, abortCaller, expectedLogs }) => {
+    const caller = new AbortController()
+    const request = vi.fn().mockImplementation(async () => {
+      if (abortCaller) caller.abort()
+      throw error
+    })
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const query = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' } },
+    })
+
+    await expect(query.queryFn({ signal: caller.signal } as QueryFunctionContext)).rejects.toBe(
+      error,
+    )
+    expect(errorLog).toHaveBeenCalledTimes(expectedLogs)
+  })
+})
+
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
 describe('normalizeConsoleOpenAPIURL', () => {
   it('should serialize repeated-only query arrays as repeated params', () => {

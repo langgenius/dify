@@ -38,6 +38,8 @@ def analyze_goal(
     model,
     goal_text: str,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
 ) -> dict[str, Any]:
     if model is None:
         return _degraded_form(goal_text)
@@ -52,7 +54,22 @@ def analyze_goal(
         f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
         '"options": ["..."]}], "values": {"<key>": <default>}}.'
-    ) + llm.json_language_instruction("field labels and values")
+    )
+    if reply_language:
+        system += (
+            f" Write human-facing field labels, descriptions, hints, placeholders, select options, and generated "
+            f"defaults in the session reply language (BCP-47: {reply_language}). Keep JSON keys, field keys, "
+            "and field type enums in English. Preserve literal business values supplied in the goal, including "
+            "names, currencies, URLs, and credentials. For each select field, the default value must exactly match "
+            "one of its options."
+        )
+    else:
+        system += (
+            " Write human-facing field labels, descriptions, hints, placeholders, select options, and generated "
+            "defaults in the same language as the user's input. Keep JSON keys, field keys, and field type "
+            "enums in English. Preserve literal business values supplied in the goal. For each select field, "
+            "the default value must exactly match one of its options."
+        )
     try:
         data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
     except Exception:

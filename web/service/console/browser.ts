@@ -23,7 +23,21 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         silent: options.context.silent,
       })
     },
-    interceptors: [onError((error) => console.error(error))],
+    interceptors: [
+      onError((error, options) => {
+        if (options.signal?.aborted && error instanceof Error) {
+          if (error.name === 'AbortError') return
+          if (
+            error.message ===
+              'Cannot parse response body, please check the response body and content-type.' &&
+            error.cause instanceof Error &&
+            error.cause.name === 'AbortError'
+          )
+            return
+        }
+        console.error(error)
+      }),
+    ],
   })
 }
 

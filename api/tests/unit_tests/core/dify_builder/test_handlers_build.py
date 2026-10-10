@@ -1,5 +1,6 @@
 """Tests for the Build-flow handlers + build_registry() (Slice 2)."""
 
+import json
 import logging
 from datetime import datetime
 
@@ -83,7 +84,7 @@ def test_capability_check_renders_agent_fields():
     from core.dify_builder.handlers_build import handle_capability_check
 
     env, _ = _new_env()
-    env.agent.analyze_goal = lambda _g: {
+    env.agent.analyze_goal = lambda _g, *, reply_language=None: {  # noqa: ARG005
         "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
         "values": {"categories": "billing, refunds"},
     }
@@ -92,6 +93,59 @@ def test_capability_check_renders_agent_fields():
     result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
     assert result.context.form_fields == [{"key": "categories", "label": "Categories", "type": "text"}]
     assert result.context.requirements == {"categories": "billing, refunds"}
+
+
+@pytest.mark.parametrize("reply_language", ["en", "es-ES", ""])
+def test_capability_check_binds_session_language_in_requirement_prompt(reply_language):
+    from core.dify_builder.handlers_build import handle_capability_check
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+
+    class _Message:
+        def get_text_content(self):
+            return json.dumps(
+                {
+                    "fields": [
+                        {"key": "reporting_currency", "label": "Reporting currency", "type": "text"},
+                        {
+                            "key": "report_period",
+                            "label": "Report period",
+                            "type": "select",
+                            "options": ["Monthly", "Quarterly", "Yearly"],
+                        },
+                    ],
+                    "values": {"reporting_currency": "USD", "report_period": "Monthly"},
+                }
+            )
+
+    class _Model:
+        def __init__(self):
+            self.prompts = []
+
+        def invoke_llm(self, *, prompt_messages, model_parameters, stop, stream):  # noqa: ARG002
+            self.prompts.append(prompt_messages)
+            return type("Result", (), {"message": _Message()})()
+
+    model = _Model()
+    agent = LlmBuilderAgent("tenant-1")
+    agent.model_or_none = lambda: model
+    env, _ = _new_env(agent=agent)
+    fc = DifyBuilderContext(
+        goal_text="Create a sales report in USD with a monthly reporting period",
+        reply_language=reply_language,
+    )
+
+    result = handle_capability_check(env, Turn(actor=_actor()), _session(), fc)
+
+    assert len(model.prompts) == 1
+    system = model.prompts[0][0].content
+    if reply_language:
+        assert f"BCP-47: {reply_language}" in system
+    else:
+        assert "same language as the user's input" in system
+    assert "select options" in system
+    assert "JSON keys" in system
+    assert result.context.requirements == {"reporting_currency": "USD", "report_period": "Monthly"}
+    assert result.context.form_fields[1]["options"] == ["Monthly", "Quarterly", "Yearly"]
 
 
 def test_capability_check_automatically_advances_to_goal_analysis():

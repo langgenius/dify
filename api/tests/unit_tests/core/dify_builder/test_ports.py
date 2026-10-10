@@ -113,7 +113,7 @@ class _StubAgent:
     def generate_mock_inputs(self, _schema, _prior_failed):
         return {}
 
-    def analyze_goal(self, _goal_text):
+    def analyze_goal(self, _goal_text, *, reply_language=None):  # noqa: ARG002
         return {}
 
     def propose_app_name(self, _goal_text, _requirements):
