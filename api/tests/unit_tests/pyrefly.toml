@@ -135,7 +135,6 @@ project-excludes = [
   "controllers/inner_api/plugin/test_agent_config.py",
   "controllers/inner_api/plugin/test_plugin.py",
   "controllers/inner_api/plugin/test_plugin_wraps.py",
-  "controllers/inner_api/test_auth_wraps.py",
   "controllers/inner_api/test_knowledge_retrieval.py",
   "controllers/inner_api/test_mail.py",
   "controllers/inner_api/test_runtime_credentials.py",
