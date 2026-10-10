@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Nhập khóa bí mật ứng dụng khách",
   "auth.appUser.configureClient": "Cấu hình ứng dụng khách OAuth",
   "auth.appUser.connectionDescription": "Mô tả kết nối",
-  "auth.appUser.connectionDescriptionHint": "Mô tả này được hiển thị làm tiêu đề khi người dùng ứng dụng được yêu cầu kết nối tài khoản. Tối đa 50 ký tự.",
+  "auth.appUser.connectionDescriptionHint": "Giải thích cho người dùng lý do cần ủy quyền. Thông báo này xuất hiện trong yêu cầu kết nối trên ứng dụng web.",
   "auth.appUser.connectionDescriptionPlaceholder": "Ví dụ: Tìm kho mã nguồn cho nghiên cứu của bạn",
   "auth.appUser.customClient": "Ứng dụng khách tùy chỉnh",
   "auth.appUser.customClientDescription": "Sử dụng ứng dụng OAuth của riêng bạn. Nhập ID và khóa bí mật ứng dụng khách của ứng dụng đó.",

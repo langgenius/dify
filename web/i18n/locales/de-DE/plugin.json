@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Client-Secret eingeben",
   "auth.appUser.configureClient": "OAuth-Client konfigurieren",
   "auth.appUser.connectionDescription": "Verbindungsbeschreibung",
-  "auth.appUser.connectionDescriptionHint": "Diese Beschreibung wird als Titel angezeigt, wenn App-Benutzer aufgefordert werden, ihr Konto zu verbinden. Maximal 50 Zeichen.",
+  "auth.appUser.connectionDescriptionHint": "Erkläre den Benutzern, warum eine Autorisierung erforderlich ist. Diese Nachricht wird bei der Verbindungsanfrage in der Web-App angezeigt.",
   "auth.appUser.connectionDescriptionPlaceholder": "Z. B. Repositorys für Ihre Recherche finden",
   "auth.appUser.customClient": "Benutzerdefinierter Client",
   "auth.appUser.customClientDescription": "Verwenden Sie Ihre eigene OAuth-App. Geben Sie ihre Client-ID und ihr Client-Secret ein.",

@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Vnesite skrivnost odjemalca",
   "auth.appUser.configureClient": "Nastavi odjemalca OAuth",
   "auth.appUser.connectionDescription": "Opis povezave",
-  "auth.appUser.connectionDescriptionHint": "Ta opis se prikaže kot naslov, ko so uporabniki aplikacije pozvani k povezavi svojega računa. Največ 50 znakov.",
+  "auth.appUser.connectionDescriptionHint": "Uporabnikom pojasnite, zakaj je potrebna avtorizacija. To sporočilo se prikaže med zahtevo za povezavo v spletni aplikaciji.",
   "auth.appUser.connectionDescriptionPlaceholder": "Npr. poišči repozitorije za svojo raziskavo",
   "auth.appUser.customClient": "Odjemalec po meri",
   "auth.appUser.customClientDescription": "Uporabite svojo aplikacijo OAuth. Vnesite njen ID in skrivnost odjemalca.",

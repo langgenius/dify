@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "راز کلاینت را وارد کنید",
   "auth.appUser.configureClient": "پیکربندی کلاینت OAuth",
   "auth.appUser.connectionDescription": "توضیحات اتصال",
-  "auth.appUser.connectionDescriptionHint": "هنگامی که از کاربران برنامه خواسته می‌شود حساب خود را متصل کنند، این توضیحات به‌عنوان عنوان نمایش داده می‌شود. حداکثر ۵۰ نویسه.",
+  "auth.appUser.connectionDescriptionHint": "به کاربران توضیح دهید چرا مجوزدهی لازم است. این پیام هنگام درخواست اتصال در برنامه وب نمایش داده می‌شود.",
   "auth.appUser.connectionDescriptionPlaceholder": "مثلاً یافتن مخزن‌ها برای پژوهش شما",
   "auth.appUser.customClient": "کلاینت سفارشی",
   "auth.appUser.customClientDescription": "از برنامه OAuth خود استفاده کنید. شناسه و راز کلاینت آن را وارد کنید.",

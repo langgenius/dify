@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "İstemci Gizli Anahtarını girin",
   "auth.appUser.configureClient": "OAuth İstemcisini Yapılandır",
   "auth.appUser.connectionDescription": "Bağlantı açıklaması",
-  "auth.appUser.connectionDescriptionHint": "Bu açıklama, uygulama kullanıcılarından hesaplarını bağlamaları istendiğinde başlık olarak gösterilir. En fazla 50 karakter.",
+  "auth.appUser.connectionDescriptionHint": "Kullanıcılara yetkilendirmenin neden gerekli olduğunu açıklayın. Bu mesaj, web uygulamasındaki bağlantı isteği sırasında görünür.",
   "auth.appUser.connectionDescriptionPlaceholder": "Ör. araştırmanız için depolar bulun",
   "auth.appUser.customClient": "Özel istemci",
   "auth.appUser.customClientDescription": "Kendi OAuth uygulamanızı kullanın. İstemci Kimliğini ve İstemci Gizli Anahtarını girin.",

@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "क्लाइंट सीक्रेट दर्ज करें",
   "auth.appUser.configureClient": "OAuth क्लाइंट कॉन्फ़िगर करें",
   "auth.appUser.connectionDescription": "कनेक्शन का विवरण",
-  "auth.appUser.connectionDescriptionHint": "जब ऐप के उपयोगकर्ताओं से अपना खाता जोड़ने के लिए कहा जाता है, तो यह विवरण शीर्षक के रूप में दिखाया जाता है। अधिकतम 50 अक्षर।",
+  "auth.appUser.connectionDescriptionHint": "उपयोगकर्ताओं को समझाएँ कि प्राधिकरण की आवश्यकता क्यों है। यह संदेश वेब ऐप में कनेक्शन अनुरोध के दौरान दिखाई देता है।",
   "auth.appUser.connectionDescriptionPlaceholder": "उदा. अपने शोध के लिए रिपॉज़िटरी खोजें",
   "auth.appUser.customClient": "कस्टम क्लाइंट",
   "auth.appUser.customClientDescription": "अपना OAuth ऐप इस्तेमाल करें। उसका क्लाइंट ID और क्लाइंट सीक्रेट दर्ज करें।",

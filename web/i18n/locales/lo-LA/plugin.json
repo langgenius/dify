@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "ປ້ອນລະຫັດລັບໄຄລເອັນ",
   "auth.appUser.configureClient": "ຕັ້ງຄ່າໄຄລເອັນ OAuth",
   "auth.appUser.connectionDescription": "ຄຳອະທິບາຍການເຊື່ອມຕໍ່",
-  "auth.appUser.connectionDescriptionHint": "ຄຳອະທິບາຍນີ້ຈະສະແດງເປັນຫົວຂໍ້ເມື່ອຂໍໃຫ້ຜູ້ໃຊ້ແອັບເຊື່ອມຕໍ່ບັນຊີຂອງຕົນ. ສູງສຸດ 50 ຕົວອັກສອນ.",
+  "auth.appUser.connectionDescriptionHint": "ອະທິບາຍໃຫ້ຜູ້ໃຊ້ເຂົ້າໃຈວ່າເປັນຫຍັງຈຶ່ງຕ້ອງມີການອະນຸຍາດ. ຂໍ້ຄວາມນີ້ຈະສະແດງໃນລະຫວ່າງການຮ້ອງຂໍການເຊື່ອມຕໍ່ໃນເວັບແອັບ.",
   "auth.appUser.connectionDescriptionPlaceholder": "ຕົວຢ່າງ: ຊອກຫາຄັງລະຫັດສຳລັບການຄົ້ນຄວ້າຂອງທ່ານ",
   "auth.appUser.customClient": "ໄຄລເອັນກຳນົດເອງ",
   "auth.appUser.customClientDescription": "ໃຊ້ແອັບ OAuth ຂອງທ່ານເອງ. ປ້ອນ ID ໄຄລເອັນ ແລະ ລະຫັດລັບໄຄລເອັນຂອງແອັບ.",

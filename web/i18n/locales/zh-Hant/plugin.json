@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "輸入用戶端密鑰",
   "auth.appUser.configureClient": "設定 OAuth 用戶端",
   "auth.appUser.connectionDescription": "連線說明",
-  "auth.appUser.connectionDescriptionHint": "要求應用程式使用者連接帳號時，此說明將作為標題顯示。最多 50 個字元。",
+  "auth.appUser.connectionDescriptionHint": "向使用者說明為何需要授權。此訊息會在網頁應用程式的連線請求中顯示。",
   "auth.appUser.connectionDescriptionPlaceholder": "例如：尋找研究所需的程式碼儲存庫",
   "auth.appUser.customClient": "自訂用戶端",
   "auth.appUser.customClientDescription": "使用你自己的 OAuth 應用程式。輸入其用戶端 ID 和用戶端密鑰。",

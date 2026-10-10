@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "クライアントシークレットを入力",
   "auth.appUser.configureClient": "OAuth クライアントを設定",
   "auth.appUser.connectionDescription": "接続の説明",
-  "auth.appUser.connectionDescriptionHint": "アプリユーザーにアカウントの接続を求める際、この説明がタイトルとして表示されます。最大 50 文字。",
+  "auth.appUser.connectionDescriptionHint": "認可が必要な理由をユーザーに説明してください。このメッセージは、Web アプリで接続をリクエストする際に表示されます。",
   "auth.appUser.connectionDescriptionPlaceholder": "例：研究に必要なリポジトリを検索",
   "auth.appUser.customClient": "カスタムクライアント",
   "auth.appUser.customClientDescription": "独自の OAuth アプリを使用します。クライアント ID とクライアントシークレットを入力してください。",

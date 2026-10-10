@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "클라이언트 시크릿 입력",
   "auth.appUser.configureClient": "OAuth 클라이언트 설정",
   "auth.appUser.connectionDescription": "연결 설명",
-  "auth.appUser.connectionDescriptionHint": "앱 사용자에게 계정 연결을 요청할 때 이 설명이 제목으로 표시됩니다. 최대 50자입니다.",
+  "auth.appUser.connectionDescriptionHint": "사용자에게 권한 부여가 필요한 이유를 설명하세요. 이 메시지는 웹 앱에서 연결을 요청할 때 표시됩니다.",
   "auth.appUser.connectionDescriptionPlaceholder": "예: 연구에 필요한 저장소 찾기",
   "auth.appUser.customClient": "사용자 지정 클라이언트",
   "auth.appUser.customClientDescription": "자신의 OAuth 앱을 사용합니다. 클라이언트 ID와 클라이언트 시크릿을 입력하세요.",

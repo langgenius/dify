@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Introdu secretul clientului",
   "auth.appUser.configureClient": "Configurează clientul OAuth",
   "auth.appUser.connectionDescription": "Descrierea conexiunii",
-  "auth.appUser.connectionDescriptionHint": "Această descriere este afișată ca titlu atunci când utilizatorilor aplicației li se cere să își conecteze contul. Maximum 50 de caractere.",
+  "auth.appUser.connectionDescriptionHint": "Explicați utilizatorilor de ce este necesară autorizarea. Acest mesaj apare în timpul solicitării de conectare în aplicația web.",
   "auth.appUser.connectionDescriptionPlaceholder": "De ex., găsește depozite pentru cercetarea ta",
   "auth.appUser.customClient": "Client personalizat",
   "auth.appUser.customClientDescription": "Folosește propria aplicație OAuth. Introdu ID-ul și secretul clientului.",

@@ -3850,7 +3850,7 @@ export default interface Resources {
     'auth.appUser.clientSecretPlaceholder': 'Enter Client Secret'
     'auth.appUser.configureClient': 'Configure OAuth Client'
     'auth.appUser.connectionDescription': 'Connection description'
-    'auth.appUser.connectionDescriptionHint': 'This description is shown as the title when app users are asked to connect their account. Maximum 50 characters.'
+    'auth.appUser.connectionDescriptionHint': 'Explain to users why authorization is required. This message appears during the web app connection request.'
     'auth.appUser.connectionDescriptionPlaceholder': 'e.g. Find repositories for your research'
     'auth.appUser.customClient': 'Custom client'
     'auth.appUser.customClientDescription': 'Use your own OAuth app. Enter its Client ID and Client Secret.'

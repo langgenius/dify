@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Wprowadź sekret klienta",
   "auth.appUser.configureClient": "Skonfiguruj klienta OAuth",
   "auth.appUser.connectionDescription": "Opis połączenia",
-  "auth.appUser.connectionDescriptionHint": "Ten opis jest wyświetlany jako tytuł, gdy użytkownicy aplikacji są proszeni o połączenie swojego konta. Maksymalnie 50 znaków.",
+  "auth.appUser.connectionDescriptionHint": "Wyjaśnij użytkownikom, dlaczego autoryzacja jest wymagana. Ta wiadomość pojawia się podczas żądania połączenia w aplikacji internetowej.",
   "auth.appUser.connectionDescriptionPlaceholder": "Np. znajdź repozytoria do swoich badań",
   "auth.appUser.customClient": "Niestandardowy klient",
   "auth.appUser.customClientDescription": "Użyj własnej aplikacji OAuth. Wprowadź jej identyfikator klienta i sekret klienta.",

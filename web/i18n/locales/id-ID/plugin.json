@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Masukkan Rahasia Klien",
   "auth.appUser.configureClient": "Konfigurasi Klien OAuth",
   "auth.appUser.connectionDescription": "Deskripsi koneksi",
-  "auth.appUser.connectionDescriptionHint": "Deskripsi ini ditampilkan sebagai judul saat pengguna aplikasi diminta menghubungkan akun mereka. Maksimal 50 karakter.",
+  "auth.appUser.connectionDescriptionHint": "Jelaskan kepada pengguna mengapa otorisasi diperlukan. Pesan ini muncul saat permintaan koneksi di aplikasi web.",
   "auth.appUser.connectionDescriptionPlaceholder": "Misalnya, cari repositori untuk riset Anda",
   "auth.appUser.customClient": "Klien kustom",
   "auth.appUser.customClientDescription": "Gunakan aplikasi OAuth Anda sendiri. Masukkan ID Klien dan Rahasia Klien aplikasi tersebut.",

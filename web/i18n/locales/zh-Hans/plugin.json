@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "输入客户端密钥",
   "auth.appUser.configureClient": "配置 OAuth 客户端",
   "auth.appUser.connectionDescription": "连接说明",
-  "auth.appUser.connectionDescriptionHint": "要求应用用户连接账号时，此说明将作为标题显示。最多 50 个字符。",
+  "auth.appUser.connectionDescriptionHint": "向用户说明为何需要授权。此消息会在 Web 应用的连接请求中显示。",
   "auth.appUser.connectionDescriptionPlaceholder": "例如：查找研究所需的代码仓库",
   "auth.appUser.customClient": "自定义客户端",
   "auth.appUser.customClientDescription": "使用你自己的 OAuth 应用。输入其客户端 ID 和客户端密钥。",

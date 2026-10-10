@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "أدخل سر العميل",
   "auth.appUser.configureClient": "إعداد عميل OAuth",
   "auth.appUser.connectionDescription": "وصف الاتصال",
-  "auth.appUser.connectionDescriptionHint": "يظهر هذا الوصف كعنوان عندما يُطلب من مستخدمي التطبيق ربط حساباتهم. الحد الأقصى 50 حرفًا.",
+  "auth.appUser.connectionDescriptionHint": "اشرح للمستخدمين سبب الحاجة إلى التفويض. تظهر هذه الرسالة أثناء طلب الاتصال في تطبيق الويب.",
   "auth.appUser.connectionDescriptionPlaceholder": "مثال: البحث عن مستودعات لأبحاثك",
   "auth.appUser.customClient": "عميل مخصص",
   "auth.appUser.customClientDescription": "استخدم تطبيق OAuth الخاص بك. أدخل معرّف العميل وسر العميل الخاصين به.",

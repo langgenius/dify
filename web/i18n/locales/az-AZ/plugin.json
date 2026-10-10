@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Müştəri sirrini daxil edin",
   "auth.appUser.configureClient": "OAuth müştərisini konfiqurasiya et",
   "auth.appUser.connectionDescription": "Bağlantı təsviri",
-  "auth.appUser.connectionDescriptionHint": "Tətbiq istifadəçilərindən hesablarını qoşmaq istənildikdə bu təsvir başlıq kimi göstərilir. Maksimum 50 simvol.",
+  "auth.appUser.connectionDescriptionHint": "İstifadəçilərə avtorizasiyanın niyə tələb olunduğunu izah edin. Bu mesaj veb tətbiqdə bağlantı sorğusu zamanı göstərilir.",
   "auth.appUser.connectionDescriptionPlaceholder": "Məsələn, araşdırmanız üçün repozitoriyalar tapın",
   "auth.appUser.customClient": "Fərdi müştəri",
   "auth.appUser.customClientDescription": "Öz OAuth tətbiqinizdən istifadə edin. Onun müştəri ID-sini və müştəri sirrini daxil edin.",

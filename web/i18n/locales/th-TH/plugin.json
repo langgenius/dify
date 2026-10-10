@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "ป้อนข้อมูลลับไคลเอนต์",
   "auth.appUser.configureClient": "กำหนดค่าไคลเอนต์ OAuth",
   "auth.appUser.connectionDescription": "คำอธิบายการเชื่อมต่อ",
-  "auth.appUser.connectionDescriptionHint": "คำอธิบายนี้จะแสดงเป็นชื่อเมื่อขอให้ผู้ใช้แอปเชื่อมต่อบัญชีของตนเอง สูงสุด 50 อักขระ",
+  "auth.appUser.connectionDescriptionHint": "อธิบายให้ผู้ใช้ทราบว่าเหตุใดจึงต้องมีการอนุญาต ข้อความนี้จะปรากฏเมื่อมีคำขอเชื่อมต่อในเว็บแอป",
   "auth.appUser.connectionDescriptionPlaceholder": "เช่น ค้นหาคลังโค้ดสำหรับการวิจัยของคุณ",
   "auth.appUser.customClient": "ไคลเอนต์แบบกำหนดเอง",
   "auth.appUser.customClientDescription": "ใช้แอป OAuth ของคุณเอง ป้อน ID ไคลเอนต์และข้อมูลลับไคลเอนต์ของแอป",

@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Voer het clientgeheim in",
   "auth.appUser.configureClient": "OAuth-client configureren",
   "auth.appUser.connectionDescription": "Verbindingsbeschrijving",
-  "auth.appUser.connectionDescriptionHint": "Deze beschrijving wordt als titel weergegeven wanneer app-gebruikers worden gevraagd hun account te koppelen. Maximaal 50 tekens.",
+  "auth.appUser.connectionDescriptionHint": "Leg gebruikers uit waarom autorisatie nodig is. Dit bericht wordt weergegeven tijdens het verbindingsverzoek in de webapp.",
   "auth.appUser.connectionDescriptionPlaceholder": "Bijv. repositories zoeken voor je onderzoek",
   "auth.appUser.customClient": "Aangepaste client",
   "auth.appUser.customClientDescription": "Gebruik je eigen OAuth-app. Voer de client-ID en het clientgeheim in.",

@@ -16,7 +16,7 @@
   "auth.appUser.clientSecretPlaceholder": "Введіть секрет клієнта",
   "auth.appUser.configureClient": "Налаштувати клієнт OAuth",
   "auth.appUser.connectionDescription": "Опис підключення",
-  "auth.appUser.connectionDescriptionHint": "Цей опис відображається як заголовок, коли користувачам застосунку пропонують підключити обліковий запис. Не більше 50 символів.",
+  "auth.appUser.connectionDescriptionHint": "Поясніть користувачам, чому потрібна авторизація. Це повідомлення відображається під час запиту на підключення у вебзастосунку.",
   "auth.appUser.connectionDescriptionPlaceholder": "Наприклад, знайти репозиторії для дослідження",
   "auth.appUser.customClient": "Власний клієнт",
   "auth.appUser.customClientDescription": "Використовуйте власний застосунок OAuth. Введіть його ID клієнта та секрет клієнта.",
