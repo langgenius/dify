@@ -1008,57 +1008,6 @@ class TestAnnotationService:
         db_session_with_containers.refresh(annotation_setting)
         assert annotation_setting.score_threshold == 0.9
 
-    def test_export_annotation_list_by_app_id_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful export of annotation list by app ID.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create multiple annotations
-        annotations = []
-        for i in range(3):
-            annotation_args = {
-                "question": f"Question {i}: {fake.sentence()}",
-                "answer": f"Answer {i}: {fake.text(max_nb_chars=200)}",
-            }
-            annotation = AppAnnotationService.insert_app_annotation_directly(
-                annotation_args, app.id, session=db_session_with_containers
-            )
-            annotations.append(annotation)
-
-        # Export annotation list
-        exported_annotations = AppAnnotationService.export_annotation_list_by_app_id(app.id, db_session_with_containers)
-
-        # Verify results
-        assert len(exported_annotations) == 3
-
-        # Verify all annotations belong to the correct app and are ordered by created_at desc
-        for i, annotation in enumerate(exported_annotations):
-            assert annotation.app_id == app.id
-            assert annotation.account_id == account.id
-            if i > 0:
-                # Verify descending order (newer first)
-                assert annotation.created_at <= exported_annotations[i - 1].created_at
-
-    def test_export_annotation_list_by_app_id_app_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test export of annotation list when app is not found.
-        """
-        fake = Faker()
-        non_existent_app_id = fake.uuid4()
-
-        # Mock random current user to avoid dependency issues
-        self._mock_current_user(mock_external_service_dependencies, fake.uuid4(), fake.uuid4())
-
-        # Try to export annotation list with non-existent app
-        with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.export_annotation_list_by_app_id(non_existent_app_id, db_session_with_containers)
-
     def test_insert_app_annotation_directly_with_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

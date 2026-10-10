@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -27,6 +27,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
@@ -411,23 +412,32 @@ class AnnotationExportApi(Resource):
     @console_ns.doc(description="Export all annotations for an app with CSV injection protection")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotations exported successfully",
         console_ns.models[AnnotationExportList.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    def get(self, session: Session, app_id: UUID):
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id), session)
-        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, context: RequestContext, app_id: UUID) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        try:
+            annotations = application_services().annotation_queries.get_all(
+                tenant_id=context.active_workspace_id, app_id=str(app_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        result = AnnotationExportList.model_validate({"data": annotations})
+        # The client turns this JSON into CSV; escape only the detached response.
+        for annotation in result.data:
+            if annotation.question:
+                annotation.question = CSVSanitizer.sanitize_value(annotation.question)
+            if annotation.answer:
+                annotation.answer = CSVSanitizer.sanitize_value(annotation.answer)
         return (
-            AnnotationExportList(data=annotation_models).model_dump(mode="json"),
-            200,
+            dump_response(AnnotationExportList, result),
+            HTTPStatus.OK,
             {
                 "Content-Type": "application/json; charset=utf-8",
                 "X-Content-Type-Options": "nosniff",

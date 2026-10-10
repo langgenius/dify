@@ -936,11 +936,9 @@ class TestConversationServiceMessageAnnotation:
         mock_add_task.delay.assert_not_called()
 
 
-class TestConversationServiceExport:
+class TestConversationServiceRetrieval:
     """
-    Test conversation export/retrieval operations.
-
-    Tests retrieving conversation data for export purposes.
+    Test conversation and message retrieval operations.
     """
 
     def test_get_conversation_success(self, db_session_with_containers: Session):
@@ -978,35 +976,6 @@ class TestConversationServiceExport:
                 user=user,
                 session=db_session_with_containers,
             )
-
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_export_annotation_list(self, mock_current_account, db_session_with_containers: Session):
-        """Test exporting all annotations for an app."""
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        annotations = [
-            MessageAnnotation(
-                app_id=app_model.id,
-                conversation_id=None,
-                message_id=None,
-                question=f"Question {i}",
-                content=f"Content {i}",
-                account_id=account.id,
-            )
-            for i in range(10)
-        ]
-        db_session_with_containers.add_all(annotations)
-        db_session_with_containers.commit()
-
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, db_session_with_containers)
-
-        # Assert
-        assert len(result) == 10
 
     def test_get_message_success(self, db_session_with_containers: Session):
         """Test successful retrieval of a message."""

@@ -34,8 +34,8 @@ from models.dataset import DatasetCollectionBinding
 from models.model import AppAnnotationHitHistory, AppAnnotationSetting, DifySetup, MessageAnnotation
 from tests.unit_tests.model_factories import make_account, make_app
 
-type _Endpoint = Literal["count", "list", "setting", "history"]
-_ENDPOINTS: tuple[_Endpoint, ...] = ("count", "list", "setting", "history")
+type _Endpoint = Literal["count", "list", "setting", "history", "export"]
+_ENDPOINTS: tuple[_Endpoint, ...] = ("count", "list", "setting", "history", "export")
 _TIME = datetime(2026, 1, 2, 3, 4, 5)
 
 
@@ -64,6 +64,7 @@ class _Harness:
             "list": f"{prefix}/annotations",
             "setting": f"{prefix}/annotation-setting",
             "history": f"{prefix}/annotations/{annotation_id or self.annotation.id}/hit-histories",
+            "export": f"{prefix}/annotations/export",
         }
         client = self.app.test_client()
         token = generate_csrf_token(self.account.id)
@@ -83,6 +84,8 @@ class _Harness:
             event.remove(Session, "before_commit", record_commit)
         assert not commits
         assert response.headers["Content-Type"] == "application/json"
+        if endpoint == "export" and response.status_code == 200:
+            assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert int(response.headers["Content-Length"]) == len(response.data)
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
         return response
@@ -147,6 +150,7 @@ def harness(
     api = ExternalApi(blueprint)
     api.add_resource(annotation_module.MessageAnnotationCountApi, "/apps/<uuid:app_id>/annotations/count")
     api.add_resource(annotation_module.AnnotationApi, "/apps/<uuid:app_id>/annotations")
+    api.add_resource(annotation_module.AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
     api.add_resource(annotation_module.AppAnnotationSettingDetailApi, "/apps/<uuid:app_id>/annotation-setting")
     api.add_resource(
         annotation_module.AnnotationHitHistoryListApi,
@@ -267,6 +271,74 @@ def test_list_keyword_is_literal_case_insensitive_and_searches_answers(harness: 
     body = harness.get("list", query={"keyword": "50%_case\\"}).get_json()
     assert body["total"] == 2
     assert [row["id"] for row in body["data"]] == [answer.id, question.id]
+
+
+def test_export_returns_all_owned_annotations_in_descending_time_order(harness: _Harness) -> None:
+    rows = [_annotation(harness, index=index) for index in range(1, 102)]
+    other_app = make_app(app_id=str(uuid4()), tenant_id=harness.target.tenant_id)
+    foreign_workspace = Tenant(name="Other annotation workspace")
+    foreign_app = make_app(app_id=str(uuid4()), tenant_id=foreign_workspace.id)
+    with harness.factory.begin() as session:
+        session.add_all(
+            [
+                *rows,
+                other_app,
+                foreign_workspace,
+                foreign_app,
+                _annotation(harness, index=102, app_id=other_app.id),
+                _annotation(harness, index=103, app_id=foreign_app.id),
+            ]
+        )
+
+    response = harness.get("export", query={"page": 2, "limit": 1, "keyword": "not present"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "data": [
+            {
+                "id": row.id,
+                "question": row.question,
+                "answer": row.content,
+                "hit_count": row.hit_count,
+                "created_at": int(row.created_at.timestamp()),
+            }
+            for row in [*reversed(rows), harness.annotation]
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("=1+1", "'=1+1"),
+        ("+SUM(A1:A2)", "'+SUM(A1:A2)"),
+        ("-2", "'-2"),
+        ("@SUM(A1:A2)", "'@SUM(A1:A2)"),
+        ("\tformula", "'\tformula"),
+        ("\rformula", "'\rformula"),
+        ("", ""),
+        ("普通文本", "普通文本"),
+    ],
+)
+def test_export_sanitizes_question_and_answer_without_persisting_changes(
+    harness: _Harness, value: str, expected: str
+) -> None:
+    with harness.factory.begin() as session:
+        session.execute(
+            update(MessageAnnotation)
+            .where(MessageAnnotation.id == harness.annotation.id)
+            .values(question=value, content=value)
+        )
+
+    response = harness.get("export")
+
+    assert response.status_code == 200
+    [item] = response.get_json()["data"]
+    assert item["question"] == item["answer"] == expected
+    with harness.factory() as session:
+        stored = session.get(MessageAnnotation, harness.annotation.id)
+        assert stored is not None
+        assert stored.question == stored.content == value
 
 
 @pytest.mark.parametrize("endpoint", ["list", "history"])
@@ -436,7 +508,7 @@ def test_workflow_only_backing_app_is_hidden_only_from_count(harness: _Harness, 
             )
         )
     _error(harness.get("count"), status=404, code="app_not_found", message="App not found.")
-    for endpoint in ("list", "setting", "history"):
+    for endpoint in ("list", "setting", "history", "export"):
         assert harness.get(endpoint).status_code == 200
 
 
@@ -462,6 +534,8 @@ def test_empty_owned_app_returns_complete_empty_shape(harness: _Harness, endpoin
         assert response.get_json() == {"count": 0}
     elif endpoint in {"list", "history"}:
         assert response.get_json() == {"data": [], "has_more": False, "page": 1, "limit": 20, "total": 0}
+    elif endpoint == "export":
+        assert response.get_json() == {"data": []}
     else:
         assert response.get_json() == {"enabled": False, "id": None, "score_threshold": None, "embedding_model": None}
 
@@ -472,6 +546,7 @@ def test_all_read_routes_keep_app_layout_rbac_declaration() -> None:
         annotation_module.AnnotationApi,
         annotation_module.AppAnnotationSettingDetailApi,
         annotation_module.AnnotationHitHistoryListApi,
+        annotation_module.AnnotationExportApi,
     ):
         [check] = getattr(resource.get, RBAC_CHECKS_ATTR)
         assert check.scene == RBACPermission.APP_VIEW_LAYOUT

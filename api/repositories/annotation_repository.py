@@ -75,6 +75,26 @@ class AnnotationRepository(AnnotationQuery):
             )
 
     @override
+    def get_all(self, *, tenant_id: str, app_id: str) -> tuple[AnnotationRecord, ...]:
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotations = session.scalars(
+                select(MessageAnnotation)
+                .where(MessageAnnotation.app_id == app_id)
+                .order_by(MessageAnnotation.created_at.desc())
+            )
+            return tuple(
+                AnnotationRecord(
+                    id=annotation.id,
+                    question=annotation.question,
+                    content=annotation.content,
+                    hit_count=annotation.hit_count,
+                    created_at=annotation.created_at,
+                )
+                for annotation in annotations
+            )
+
+    @override
     def get_setting(self, *, tenant_id: str, app_id: str) -> AnnotationSettingRecord:
         with self._session_factory() as session:
             self._require_app(session, tenant_id=tenant_id, app_id=app_id)

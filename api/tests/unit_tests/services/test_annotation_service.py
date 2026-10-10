@@ -370,7 +370,7 @@ class TestAppAnnotationServiceEnableDisable:
         task.delay.assert_called_once_with("uuid-2", "app-1", TENANT_ID)
 
 
-class TestAppAnnotationServiceListAndExport:
+class TestAppAnnotationServiceList:
     def test_list_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
@@ -411,21 +411,6 @@ class TestAppAnnotationServiceListAndExport:
 
         assert total == 1
         assert [item.id for item in items] == [expected.id]
-
-    def test_export_sanitizes_and_scopes_rows(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        first = _persist_annotation(sqlite_session, app, annotation_id="ann-1", question="=cmd", content="+1")
-        second = _persist_annotation(sqlite_session, app, annotation_id="ann-2", question="@bad", content="-2")
-        _persist_annotation(sqlite_session, other_app, annotation_id="decoy", question="=decoy")
-
-        result = AppAnnotationService.export_annotation_list_by_app_id(app.id, sqlite_session)
-
-        assert {annotation.id for annotation in result} == {first.id, second.id}
-        assert {(annotation.question, annotation.content) for annotation in result} == {
-            ("'=cmd", "'+1"),
-            ("'@bad", "'-2"),
-        }
 
 
 class TestAppAnnotationServiceDirectManipulation:

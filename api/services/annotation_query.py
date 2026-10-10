@@ -74,6 +74,10 @@ class AnnotationQuery(Protocol):
         self, *, tenant_id: str, app_id: str, page: int, limit: int, keyword: str
     ) -> AnnotationPage[AnnotationRecord]: ...
 
+    def get_all(self, *, tenant_id: str, app_id: str) -> tuple[AnnotationRecord, ...]:
+        """Read all annotations for export, retaining their original text."""
+        ...
+
     def get_setting(self, *, tenant_id: str, app_id: str) -> AnnotationSettingRecord: ...
 
     def get_hit_history_page(

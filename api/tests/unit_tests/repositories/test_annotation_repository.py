@@ -26,8 +26,8 @@ from services.annotation_query import (
 )
 
 CREATED_AT = datetime(2026, 10, 1, 12)
-Operation = Literal["count", "page", "setting", "history"]
-OPERATIONS: tuple[Operation, ...] = ("count", "page", "setting", "history")
+Operation = Literal["count", "page", "all", "setting", "history"]
+OPERATIONS: tuple[Operation, ...] = ("count", "page", "all", "setting", "history")
 
 
 @dataclass(frozen=True)
@@ -127,6 +127,8 @@ def _query(
         return repository.count(tenant_id=tenant_id, app_id=app_id)
     if operation == "page":
         return repository.get_page(tenant_id=tenant_id, app_id=app_id, page=1, limit=20, keyword="")
+    if operation == "all":
+        return repository.get_all(tenant_id=tenant_id, app_id=app_id)
     if operation == "setting":
         return repository.get_setting(tenant_id=tenant_id, app_id=app_id)
     return repository.get_hit_history_page(
@@ -136,6 +138,7 @@ def _query(
 
 def test_empty_results(repository: AnnotationRepository, sqlite_session: Session, scope: Scope) -> None:
     assert repository.count(tenant_id=scope.app.tenant_id, app_id=scope.app.id) == 0
+    assert repository.get_all(tenant_id=scope.app.tenant_id, app_id=scope.app.id) == ()
     page = repository.get_page(tenant_id=scope.app.tenant_id, app_id=scope.app.id, page=1, limit=20, keyword="")
     assert page == AnnotationPage(data=(), page=1, limit=20, total=0)
     assert not page.has_more
@@ -159,6 +162,30 @@ def test_count_includes_annotations_without_messages_and_excludes_other_apps(
     _annotation(sqlite_session, scope, app_id=scope.foreign_app.id)
     sqlite_session.commit()
     assert repository.count(tenant_id=scope.app.tenant_id, app_id=scope.app.id) == 2
+
+
+def test_get_all_is_unpaginated_app_scoped_and_keeps_unsanitized_text(
+    repository: AnnotationRepository, sqlite_session: Session, scope: Scope
+) -> None:
+    annotations = [
+        _annotation(
+            sqlite_session,
+            scope,
+            question="=1+1",
+            content="+answer",
+            created_at=CREATED_AT + timedelta(seconds=index),
+        )
+        for index in range(101)
+    ]
+    _annotation(sqlite_session, scope, app_id=scope.other_app.id)
+    _annotation(sqlite_session, scope, app_id=scope.foreign_app.id)
+    sqlite_session.commit()
+
+    records = repository.get_all(tenant_id=scope.app.tenant_id, app_id=scope.app.id)
+
+    assert [record.id for record in records] == [annotation.id for annotation in reversed(annotations)]
+    assert all(record.question == "=1+1" and record.content == "+answer" for record in records)
+    assert all(record.hit_count == 7 for record in records)
 
 
 def test_page_orders_ties_by_id_and_preserves_raw_question(
@@ -290,6 +317,9 @@ def test_only_count_hides_workflow_backing_apps(
         repository.count(tenant_id=scope.app.tenant_id, app_id=scope.app.id)
     page = repository.get_page(tenant_id=scope.app.tenant_id, app_id=scope.app.id, page=1, limit=20, keyword="")
     assert [record.id for record in page.data] == [annotation.id]
+    assert [record.id for record in repository.get_all(tenant_id=scope.app.tenant_id, app_id=scope.app.id)] == [
+        annotation.id
+    ]
     assert not repository.get_setting(tenant_id=scope.app.tenant_id, app_id=scope.app.id).enabled
     assert (
         repository.get_hit_history_page(
@@ -442,8 +472,8 @@ def test_read_sessions_close_without_writes_and_return_detached_values(
         event.remove(sqlite_session_factory, "after_begin", record_session)
         event.remove(sqlite_session_factory, "before_commit", record_commit)
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
-    assert len(sessions) == 4
-    assert len({id(session) for session in sessions}) == 4
+    assert len(sessions) == len(OPERATIONS)
+    assert len({id(session) for session in sessions}) == len(OPERATIONS)
     assert all(not session.in_transaction() and not session.identity_map for session in sessions)
     assert not commits
     assert statements
@@ -455,3 +485,6 @@ def test_read_sessions_close_without_writes_and_return_detached_values(
             assert all(inspect(record, raiseerr=False) is None for record in result.data)
         elif isinstance(result, AnnotationSettingRecord):
             assert result.embedding_model == AnnotationEmbeddingModel(None, None)
+        elif isinstance(result, tuple):
+            assert result
+            assert all(isinstance(record, AnnotationRecord) for record in result)

@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
-from core.helper.csv_sanitizer import CSVSanitizer
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -246,39 +245,6 @@ class AppAnnotationService:
             )
         annotations = paginate_query(stmt, session=session, page=page, per_page=limit, max_per_page=100)
         return annotations.items, annotations.total or 0
-
-    @classmethod
-    def export_annotation_list_by_app_id(cls, app_id: str, session: Session):
-        """
-        Export all annotations for an app with CSV injection protection.
-
-        Sanitizes question and content fields to prevent formula injection attacks
-        when exported to CSV format.
-        """
-        # get app info
-        _, current_tenant_id = current_account_with_tenant()
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            raise NotFound("App not found")
-        annotations = session.scalars(
-            select(MessageAnnotation)
-            .where(MessageAnnotation.app_id == app_id)
-            .order_by(MessageAnnotation.created_at.desc())
-        ).all()
-
-        # Sanitize CSV-injectable fields to prevent formula injection
-        for annotation in annotations:
-            # Sanitize question field if present
-            if annotation.question:
-                annotation.question = CSVSanitizer.sanitize_value(annotation.question)
-            # Sanitize content field (answer)
-            if annotation.content:
-                annotation.content = CSVSanitizer.sanitize_value(annotation.content)
-
-        return annotations
 
     @classmethod
     def insert_app_annotation_directly(
