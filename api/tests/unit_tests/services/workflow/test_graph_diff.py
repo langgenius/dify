@@ -1,8 +1,6 @@
-import json
 from collections.abc import Mapping, Sequence
 
-from libs import helper
-from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, graph_hash
+from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows
 from services.workflow.node_defaults import fill_graph
 
 
@@ -51,11 +49,6 @@ def test_edges_features_and_env() -> None:
     assert diff.edges_added == ["a → b (source)"]
     assert diff.features_changed is True
     assert diff.env_added == ["J"]
-
-
-def test_graph_hash_matches_workflow_unique_hash() -> None:
-    graph: dict[str, object] = {"nodes": [A], "edges": []}
-    assert graph_hash(graph) == helper.generate_text_hash(json.dumps({"graph": graph}, sort_keys=True))
 
 
 def test_defaults_filled_by_import_are_not_changes() -> None:

@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
-from libs import helper
 from services.workflow.node_defaults import fill_node_data
 
 _DATA_UI_KEYS: Final = frozenset({"selected", "_connectedSourceHandleIds", "_connectedTargetHandleIds"})
-
-
-def graph_hash(graph: Mapping[str, Any]) -> str:
-    """Same hash as Workflow.unique_hash, so a run's stored graph can be compared to the draft."""
-    return helper.generate_text_hash(json.dumps({"graph": graph}, sort_keys=True))
 
 
 @dataclass(frozen=True)
@@ -82,6 +75,12 @@ def _edges(graph: Mapping[str, Any]) -> set[str]:
         for e in graph.get("edges") or []
         if isinstance(e, Mapping)
     }
+
+
+def same_graph(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
+    """Whether two graphs run the same; the editor's layout and selection state don't count."""
+    old, new = _nodes(a), _nodes(b)
+    return old.keys() == new.keys() and all(_data(old[i]) == _data(new[i]) for i in old) and _edges(a) == _edges(b)
 
 
 def diff_workflows(published: WorkflowSnapshot | None, draft: WorkflowSnapshot) -> WorkflowDiff:

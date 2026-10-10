@@ -8,9 +8,11 @@ from dataclasses import dataclass
 from types import UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 
@@ -27,6 +29,22 @@ EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
     BuiltinNodeTypes.HUMAN_INPUT: {"delivery_methods": [], "user_actions": [], "inputs": []},
     BuiltinNodeTypes.DATASOURCE: {"datasource_parameters": {}},
 }
+
+
+class HumanInputNodeSpec(HumanInputNodeData):
+    """Human-input data as the editor saves it; the run parses delivery methods beside the node data."""
+
+    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
+
+
+# Graphon keeps these node data opaque; Dify parses them with its own model when the node runs.
+_DIFY_NODE_DATA: Final[Mapping[str, type[BaseModel]]] = {
+    BuiltinNodeTypes.HUMAN_INPUT: HumanInputNodeSpec,
+}
+
+
+def node_data_type(node_type: str, node_class: type[Node]) -> type[BaseModel]:
+    return _DIFY_NODE_DATA.get(node_type) or node_class._get_node_data_type()
 
 
 _LEGACY_IF_CASE_ID: Final = "true"
@@ -79,9 +97,9 @@ def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
     return {**filled, **value}
 
 
-def complete_sub_models(node_class: type[Node], data: Mapping[str, Any]) -> dict[str, Any]:
+def complete_sub_models(model: type[BaseModel], data: Mapping[str, Any]) -> dict[str, Any]:
     """Add the keys each sub-object's model defaults; keys already present win."""
-    fields = node_class._get_node_data_type().model_fields
+    fields = model.model_fields
     completed = dict(data)
     for key, value in data.items():
         field = fields.get(key)
@@ -105,7 +123,7 @@ def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
         data = normalize(data)
     filled = {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
     node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
-    return complete_sub_models(node_class, filled) if node_class else filled
+    return complete_sub_models(node_data_type(node_type, node_class), filled) if node_class else filled
 
 
 def fill_graph(graph: Mapping[str, Any]) -> dict[str, Any]:

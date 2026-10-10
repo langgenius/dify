@@ -13,7 +13,8 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - Requirement ids (`R1`, `R2`, …) from the spec run through the plan, the build and the final report.
 - One writer per draft at a time.
 - Nothing goes live without the human's yes.
-- Superpowers, visual tools and subagents are optional. Use them when you have them; the phases work without them.
+- **Report problems; never work around them.** When something blocks the agreed design, stop and tell the human what you found and the options. Examples: a tool that isn't configured, a missing credential or plugin, a requirement a node can't meet, a check you can't pass. Never swap in a substitute on your own: an HTTP Request or Code node in place of a tool, prompt text in place of a knowledge base, a dropped or weakened requirement.
+- **Every change from the approved spec or plan needs the human's yes before you build it.** List each one: what changes, why, and what it costs. "Use defaults" or "go" approves only the options you already showed with your recommendation. It never approves a substitute you didn't show.
 
 ## Read next
 

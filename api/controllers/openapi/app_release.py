@@ -26,7 +26,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models import AppMode, WorkflowRunTriggeredFrom
 from models.workflow import Workflow
 from services.workflow.graph_check import check_graph
-from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, graph_hash
+from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, same_graph
 from services.workflow_service import WorkflowService
 
 _DRAFT_TEST_OPS: Final = {
@@ -77,7 +77,7 @@ class ReleaseCheckApi(Resource):
         tested = (
             last is not None
             and last.status == WorkflowExecutionStatus.SUCCEEDED
-            and graph_hash(last.graph_dict) == draft.unique_hash
+            and same_graph(last.graph_dict, draft.graph_dict)
         )
         published = service.get_published_workflow(ctx.app, session=ctx.session)
         diff = diff_workflows(_snapshot(published) if published else None, _snapshot(draft))

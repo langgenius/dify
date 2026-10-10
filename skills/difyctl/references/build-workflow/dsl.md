@@ -1,201 +1,39 @@
 # App DSL
 
-## Contents
-
-- Where things go
-- What import refuses
-- Tool node
-- Minimal Workflow
-- Minimal Chatflow
-
-This is the shape of an exported draft. Values vary. Both examples below are trimmed from real fixtures in the Dify repo.
+Start from an export of the app's draft: a new app's export is a valid empty skeleton. Keep its `version`, `kind`, `features`, `environment_variables` and `conversation_variables`.
 
 ## Where things go
 
-- Top level: `version`, `kind: app`, `app` (name, mode, icon), `dependencies`, `workflow`.
-- Keep the `version` your export gave you. The examples below show an older one.
 - `app.mode` is `workflow` for a Workflow app and `advanced-chat` for a Chatflow app.
-- `workflow.graph.nodes[]`: `{id, type: custom, data: {type, title, ...}, position: {x, y}}`. `data.type` is the node type. The rest of `data` comes from `difyctl describe node_type --node-type <type>`.
-- Set each node's `data.version` to the `version` that `describe node_type` returns. The trimmed examples below leave `data.version` out; always add it.
-- `workflow.graph.edges[]`: `{id, source, target, sourceHandle: source, targetHandle: target, data: {sourceType, targetType}}`.
-- Branch nodes use another `sourceHandle`:
-  - if-else: each case's `case_id` (the first case is usually `true`), plus `false` for the else branch;
+- `workflow.graph.nodes[]`: `{id, type: custom, data: {type, title, version, ...}, position: {x, y}}`. The rest of `data`, and `version`, come from `difyctl describe node_type --node-type <type>`.
+- `workflow.graph.edges[]`: `{id, source, target, sourceHandle, targetHandle: target}`. `sourceHandle` is `source`, except on branch nodes:
+  - if-else: each case's `case_id`, plus `false` for else;
   - question classifier: each class's `id`;
-  - a node with `error_strategy: fail-branch`: `source` for success, `fail-branch` for failure.
-- `workflow.features`, `workflow.environment_variables`, `workflow.conversation_variables`: keep what the export gave you.
+  - human input: each `user_actions` id, plus `__timeout`;
+  - `error_strategy: fail-branch`: `source` for success, `fail-branch` for failure.
+- Give every branch an edge, including `false` and `__timeout`.
+- End node output names must be unique across all End nodes.
 - A node id is any unique string. Never change the id of an existing node.
-- Read another node's output as `{{#<node_id>.<var>#}}` in text fields. In `value_selector` write `[<node_id>, <var>]`.
-- An LLM node's `model.provider` and `model.name` must name a model set up in the workspace. Use the one the plan names. If the plan names none, ask the human.
+- Read another node's output as `{{#<node_id>.<var>#}}` in text, and `[<node_id>, <var>]` in a `value_selector`.
+- An LLM node's `model` is the `node_model` of a row from `difyctl get model --model-type llm`, as the plan names it.
+- A knowledge-retrieval node starts from a row's `node_data` in `difyctl get knowledge_base`.
 - Never put secret values in the DSL.
+- Don't use `datasource` or `knowledge-index` nodes. They belong to knowledge pipelines.
 - An import over an existing app copies the YAML's `app.name`, description and icon onto the app.
-
-## What import refuses
-
-`difyctl check console_app dsl` and the import run the same check. Each issue has a `severity`. An `error` stops the import. These are the error codes:
-
-- `graph_invalid`: the graph is missing or is not a valid graph.
-- `mode_incompatible`: the node does not fit the app mode. No `answer` node in a Workflow app. No `end` node and no trigger nodes in a Chatflow app.
-- `unknown_node_type`: `data.type` is not a node type the server knows.
-- `node_data_invalid`: a node's `data` does not match its type. The `loc` names the field.
-- `edge_endpoint_missing`: an edge's `source` or `target` is not a node id.
-- `branch_handle_invalid`: an edge's `sourceHandle` is not one of the node's branches.
-- `reference_missing`: a `{{#node_id.var#}}` or `value_selector` points to a node that does not exist.
-- `container_start_missing`: a loop or iteration has no start node.
-
-A `warning` does not stop the import. Publish refuses it on Enterprise, and runs fail on it everywhere. Fix it before hand-over:
-
-- `resource_unavailable`: the YAML names a model, tool or plugin that the workspace does not have.
-
-Don't use `datasource` or `knowledge-index` nodes. They belong to knowledge pipelines.
-
-Import fills empty containers for you: Start `variables`, tool parameter maps and similar. It never fills in a model, classes or a prompt. Write those yourself. An old if-else condition becomes a `true` case.
+- Import fills empty containers, such as Start `variables` and tool parameter maps. It never fills in a model, classes or a prompt.
 
 ## Tool node
 
 - Start from the tool's `node_data` in `difyctl get tool`. Put it in the node's `data` as it is.
 - Keep `tool_node_version: "2"`. Every value in `tool_parameters` and `tool_configurations` stays `{type, value}`.
-- Fill every `null` value. A constant is `{type: constant, value: …}`. Text with references is `{type: mixed, value: "{{#node_id.var#}}"}`. A single variable is `{type: variable, value: [node_id, var]}`.
+- Fill every `null` value: `{type: constant, value: …}`, `{type: mixed, value: "{{#node_id.var#}}"}`, or `{type: variable, value: [node_id, var]}`.
 - Leave out `credential_id`; the workspace's default credential is used.
 
-## Minimal Workflow
+## The check
 
-Start wired to End. Source: `api/tests/fixtures/workflow/simple_passthrough_workflow.yml`, a real console export, trimmed.
+`difyctl check console_app dsl` and the import run the same check. Each issue has a `code`, a `severity`, a `node_id`, a `loc` that points to the field, and a `message`.
 
-```yaml
-version: 0.3.1
-kind: app
-app:
-  name: echo
-  mode: workflow
-  icon: 🤖
-  icon_background: '#FFEAD5'
-  description: ''
-  use_icon_as_answer_icon: false
-dependencies: []
-workflow:
-  conversation_variables: []
-  environment_variables: []
-  features:
-    file_upload: { enabled: false }
-    opening_statement: ''
-    retriever_resource: { enabled: true }
-    sensitive_word_avoidance: { enabled: false }
-    speech_to_text: { enabled: false }
-    suggested_questions: []
-    suggested_questions_after_answer: { enabled: false }
-    text_to_speech: { enabled: false, language: '', voice: '' }
-  graph:
-    nodes:
-      - id: '1754154032319'
-        type: custom
-        position: { x: 30, y: 227 }
-        data:
-          type: start
-          title: Start
-          desc: ''
-          variables:
-            - {
-                variable: query,
-                label: query,
-                type: text-input,
-                required: true,
-                max_length: null,
-                options: [],
-              }
-      - id: '1754154034161'
-        type: custom
-        position: { x: 334, y: 227 }
-        data:
-          type: end
-          title: End
-          desc: ''
-          outputs:
-            - { variable: query, value_type: string, value_selector: ['1754154032319', query] }
-    edges:
-      - id: 1754154032319-source-1754154034161-target
-        type: custom
-        source: '1754154032319'
-        sourceHandle: source
-        target: '1754154034161'
-        targetHandle: target
-        data: { sourceType: start, targetType: end }
-```
-
-## Minimal Chatflow
-
-Start, then an LLM, then Answer. Source: `api/tests/fixtures/workflow/basic_chatflow.yml`, trimmed. The fixture leaves the model empty; fill in `provider` and `name`.
-
-```yaml
-version: 0.3.1
-kind: app
-app:
-  name: basic_chatflow
-  mode: advanced-chat
-  icon: 🤖
-  icon_background: '#FFEAD5'
-  description: Simple chatflow contains only 1 LLM node.
-  use_icon_as_answer_icon: false
-dependencies: []
-workflow:
-  conversation_variables: []
-  environment_variables: []
-  features:
-    file_upload: {}
-    opening_statement: ''
-    retriever_resource: { enabled: true }
-    sensitive_word_avoidance: { enabled: false }
-    speech_to_text: { enabled: false }
-    suggested_questions: []
-    suggested_questions_after_answer: { enabled: false }
-    text_to_speech: { enabled: false, language: '', voice: '' }
-  graph:
-    nodes:
-      - id: '1755189262236'
-        type: custom
-        position: { x: 80, y: 282 }
-        data:
-          type: start
-          title: Start
-          desc: ''
-          variables: []
-      - id: llm
-        type: custom
-        position: { x: 380, y: 282 }
-        data:
-          type: llm
-          title: LLM
-          desc: ''
-          context: { enabled: false, variable_selector: [] }
-          memory:
-            query_prompt_template: '{{#sys.query#}}'
-            window: { enabled: false, size: 10 }
-          model:
-            provider: ''
-            name: ''
-            mode: chat
-            completion_params: { temperature: 0.7 }
-          prompt_template:
-            - { role: system, text: '' }
-          variables: []
-          vision: { enabled: false }
-      - id: answer
-        type: custom
-        position: { x: 680, y: 282 }
-        data:
-          type: answer
-          title: Answer
-          desc: ''
-          answer: '{{#llm.text#}}'
-          variables: []
-    edges:
-      - id: 1755189262236-llm
-        source: '1755189262236'
-        sourceHandle: source
-        target: llm
-        targetHandle: target
-      - id: llm-answer
-        source: llm
-        sourceHandle: source
-        target: answer
-        targetHandle: target
-```
+- An `error` stops the import. Fix it by its `loc`.
+- A `warning` does not stop the import, but the release check fails on it. Fix it, or report it to the human:
+  - `resource_unavailable`: a model, tool or plugin the workspace lacks. Runs fail on it.
+  - `branch_unconnected`: a branch with no edge. A run that takes it stops there.

@@ -114,7 +114,10 @@ it('resume with no pending login reports the saved login', async () => {
 it('resume with no pending login and no saved login is not_logged_in', async () => {
   const w = await testContext({ login: false, argv: ['login', '--resume'] })
   worlds.push(w)
-  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'not_logged_in',
+    message: `not logged in: no login saved in ${w.dir}; DIFY_CONFIG_DIR picks this folder`,
+  })
 })
 
 it('resume with no pending login and the token gone is not_logged_in', async () => {
@@ -150,3 +153,27 @@ it('a new login drops a pending --no-wait login', async () => {
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(existsSync(pendingFile)).toBe(false)
 })
+
+it.each([[[]], [['--server', '  ']]])(
+  'refuses to start without a server, keeping a pending login',
+  async (flags) => {
+    const seed = await testContext({ login: false })
+    worlds.push(seed)
+    const pendingPath = join(seed.dir, PENDING_FILE_NAME)
+    writeFileSync(
+      pendingPath,
+      `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: kept\n`,
+    )
+    const w = await testContext({
+      login: false,
+      argv: ['login', '--no-wait', ...flags],
+      reuseDirOf: seed,
+    })
+    worlds.push(w)
+    await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+      code: 'usage_missing_arg',
+      hint: 'ask the user which server; Dify Cloud is https://cloud.dify.ai',
+    })
+    expect(existsSync(pendingPath)).toBe(true)
+  },
+)

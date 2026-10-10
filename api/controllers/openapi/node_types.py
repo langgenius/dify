@@ -7,6 +7,7 @@ from http import HTTPStatus
 from typing import Any
 
 from flask_restx import Resource
+from pydantic import BaseModel
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -14,16 +15,15 @@ from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
 from controllers.openapi.auth.context import Context
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
-from graphon.nodes.base.node import Node
-from services.workflow.node_defaults import complete_sub_models
+from services.workflow.node_defaults import complete_sub_models, node_data_type
 from services.workflow_service import WorkflowService
 
 
-def _complete_default_config(node_class: type[Node], default_config: Mapping[str, Any]) -> dict[str, Any]:
+def _complete_default_config(model: type[BaseModel], default_config: Mapping[str, Any]) -> dict[str, Any]:
     config = default_config.get("config")
     if not isinstance(config, Mapping):
         return dict(default_config)
-    return {**default_config, "config": complete_sub_models(node_class, config)}
+    return {**default_config, "config": complete_sub_models(model, config)}
 
 
 @openapi_ns.route("/node-types")
@@ -58,9 +58,10 @@ class NodeTypeDetailApi(Resource):
         node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
         if node_class is None:
             raise NodeTypeNotFound()
+        model = node_data_type(node_type, node_class)
         return NodeTypeDetailResponse(
             type=node_type,
             version=node_class.version(),
-            schema=node_class._get_node_data_type().model_json_schema(),
-            default_config=_complete_default_config(node_class, WorkflowService().get_default_block_config(node_type)),
+            schema=model.model_json_schema(),
+            default_config=_complete_default_config(model, WorkflowService().get_default_block_config(node_type)),
         )

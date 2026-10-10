@@ -13,11 +13,12 @@ from pydantic import ValidationError
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from graphon.nodes.base.node import Node
 from models import AppMode
-from services.workflow.node_defaults import fill_node_data
+from services.workflow.node_defaults import fill_node_data, node_data_type
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +44,16 @@ class IssueCode(StrEnum):
     BRANCH_HANDLE_INVALID = "branch_handle_invalid"
     REFERENCE_MISSING = "reference_missing"
     CONTAINER_START_MISSING = "container_start_missing"
+    OUTPUT_NAME_DUPLICATE = "output_name_duplicate"
+    BRANCH_UNCONNECTED = "branch_unconnected"
     RESOURCE_UNAVAILABLE = "resource_unavailable"
 
     @property
     def severity(self) -> IssueSeverity:
-        return IssueSeverity.WARNING if self is IssueCode.RESOURCE_UNAVAILABLE else IssueSeverity.ERROR
+        return IssueSeverity.WARNING if self in _WARNING_CODES else IssueSeverity.ERROR
+
+
+_WARNING_CODES: Final = frozenset({IssueCode.BRANCH_UNCONNECTED, IssueCode.RESOURCE_UNAVAILABLE})
 
 
 @dataclass(frozen=True)
@@ -114,7 +120,8 @@ def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
             )
             continue
         try:
-            node_class.validate_node_data(adapt_node_config_for_graph({"id": node_id, "data": data})["data"])
+            adapted = adapt_node_config_for_graph({"id": node_id, "data": data})["data"]
+            node_data_type(node_type, node_class).model_validate(adapted)
         except ValidationError as error:
             for problem in error.errors(include_url=False, include_input=False, include_context=False):
                 yield GraphIssue(
@@ -155,6 +162,11 @@ def _handles(data: Mapping[str, Any]) -> frozenset[str] | None:
             if not isinstance(classes, list):
                 return None
             return frozenset({str(c.get("id")) for c in classes if isinstance(c, Mapping)} | extra)
+        case BuiltinNodeTypes.HUMAN_INPUT:
+            actions = data.get("user_actions") or []
+            if not isinstance(actions, list):
+                return None
+            return frozenset({str(a.get("id")) for a in actions if isinstance(a, Mapping)} | {TIMEOUT_HANDLE} | extra)
         case _:
             return None
 
@@ -179,6 +191,45 @@ def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 f"sourceHandle {handle!r} is not a branch of {edge.get('source')!r}; use one of {sorted(valid)}",
                 str(edge.get("source")),
                 ("edges", edge_id, "sourceHandle"),
+            )
+
+
+def _unconnected_branch_issues(graph: _Graph) -> Iterable[GraphIssue]:
+    for node_id, node in graph.nodes.items():
+        handles = _handles(_data(node))
+        if handles is None:
+            continue
+        used = {str(e.get("sourceHandle", _SOURCE_HANDLE)) for e in graph.edges if e.get("source") == node_id}
+        for handle in sorted(handles - used):
+            yield GraphIssue(
+                IssueCode.BRANCH_UNCONNECTED,
+                f"Branch {handle!r} of {node_id!r} has no edge; a run that takes it stops there",
+                node_id,
+                ("nodes", node_id),
+            )
+
+
+def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
+    """End nodes share one set of workflow outputs, so the console refuses to publish a name used twice."""
+    places: dict[str, list[tuple[str, int]]] = {}
+    for node_id, node in graph.nodes.items():
+        data = _data(node)
+        outputs = data.get("outputs")
+        if data.get("type") != BuiltinNodeTypes.END or not isinstance(outputs, list):
+            continue
+        for index, output in enumerate(outputs):
+            name = str(output.get("variable") or "").strip() if isinstance(output, Mapping) else ""
+            if name:
+                places.setdefault(name, []).append((node_id, index))
+    for name, found in places.items():
+        if len(found) < 2:
+            continue
+        for node_id, index in found:
+            yield GraphIssue(
+                IssueCode.OUTPUT_NAME_DUPLICATE,
+                f"Output {name!r} is used by more than one End node output; output names must be unique",
+                node_id,
+                ("nodes", node_id, "data", "outputs", index, "variable"),
             )
 
 
@@ -207,6 +258,8 @@ _CHECKS: Final[Mapping[str, Callable[[_Graph], Iterable[GraphIssue]]]] = {
     "app mode": _mode_issues,
     "node data": _node_issues,
     "edge": _edge_issues,
+    "branch": _unconnected_branch_issues,
+    "output name": _output_name_issues,
     "reference": _reference_issues,
 }
 

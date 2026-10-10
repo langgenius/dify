@@ -654,7 +654,7 @@ class DslCheckPayload(BaseModel):
 
 class DslIssueRow(BaseModel):
     code: str
-    severity: str = Field(description="error: import refuses it; warning: import allows it, publish does not")
+    severity: str = Field(description="error: import refuses it; warning: import allows it, the release check does not")
     node_id: str | None
     loc: list[str | int]
     message: str

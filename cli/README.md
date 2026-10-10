@@ -58,7 +58,7 @@ difyctl has no built-in business commands. Every operation the server publishes 
 | `delete cache`             | Delete the local server catalog cache                  |
 | `install skills <dir>`     | Write the difyctl skill into a skills root (`--from`)  |
 
-`login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job. In a sandbox it adds `--no-keyring` and sets `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
+`login` needs `--server`; there is no default server. It blocks until the browser approval arrives. An agent uses `--no-wait` instead: it gives the user the URL and code, then runs `login --resume` after the user approves. If it sets `DIFY_CONFIG_DIR`, it sets it on every call.
 
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
@@ -85,7 +85,7 @@ The same files install through the Vercel skills installer: `npx skills add lang
 
 `get config [key]` prints the whole local config or one key; `set config <key> <value>` and `unset config <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
 
-Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
+Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one. On Linux without a DBus session (`DBUS_SESSION_BUS_ADDRESS` unset), the keychain would only hold the token until the session ends, so difyctl uses `tokens.yml` there too; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
 
 | Env var             | Effect                                                      |
 | ------------------- | ----------------------------------------------------------- |

@@ -1,93 +1,63 @@
 # Build phase
 
-## Contents
-
-- Before the first slice
-- Each slice
-- When something fails
-- Plan changes during build
-- Building with subagents
-
-In the commands below, `<mode>` is `workflow` for a Workflow app and `advanced_chat` for a Chatflow app.
+Start only when the human approved the plan and chose how to build. `<mode>` is `workflow` for a Workflow app and `advanced_chat` for a Chatflow app.
 
 ## Before the first slice
 
-Check two things: the human approved the plan, and the human chose how to build.
+When you change an existing app, skip creating it and the skeleton slice. Start from the current draft.
 
-When you change an existing app, skip creating it and skip the skeleton slice. Start from the current draft: `app.yml` from the first export.
-
-Create the app once:
+Otherwise create the app once, and write its `app_id` into `plan.md`:
 
 ```bash
-difyctl create console_app workflow --name "<name>" --json
-difyctl create console_app advanced_chat --name "<name>" --json
+difyctl create console_app <mode> --name "<name>" --json
 ```
 
-Write the `app_id` into the header of `plan.md`. A new app already has an empty draft, so you can export it straight away.
-
-Work on this one app for the whole build. Change it by importing over its draft. Never make copies.
+Build this one app; never make copies.
 
 ## Each slice
 
-1. Export the draft. The result is `{"data": "<yaml>", "draft_hash": "<hash>"}`. Keep `draft_hash`. On the first slice, also save `data` as `app.yml`.
+1. Export the draft. Keep `draft_hash`. Save `data` as `app.yml` on the first slice.
 
    ```bash
-   difyctl export console_app dsl --app-id <app_id> --json | jq -r .draft_hash
-   difyctl export console_app dsl --app-id <app_id> --json | jq -r .data > difyctl/<app-slug>/app.yml
+   difyctl export console_app dsl --app-id <app_id> --json
    ```
 
-2. Write the slice's nodes and edges into `app.yml` by converting the node table. Make no new decisions here. Read [dsl.md](dsl.md) for where things go in the YAML.
-3. Check the YAML before every import. The check lists every problem at once, so you fix them in one pass:
+2. Write the slice's nodes and edges into `app.yml` from the node table. Make no new decisions. Read [dsl.md](dsl.md).
+3. Check the YAML. Fix every `error` by its `loc` and check again until `valid` is true.
 
    ```bash
    jq -Rs '{yaml_content: .}' difyctl/<app-slug>/app.yml |
      difyctl check console_app dsl --app-id <app_id> --input @- --json
    ```
 
-   - Each issue has a `code`, a `severity` (`error` or `warning`), a `node_id` and a `loc` that points to the field. Fix every `error` by its `loc`, then check again. Read `warning` issues and decide.
-   - Go on when `valid` is true.
-
-4. Import over the draft with that `draft_hash`:
+4. Import over the draft. Always send the YAML through stdin.
 
    ```bash
    jq -Rs '{yaml_content: .}' difyctl/<app-slug>/app.yml |
      difyctl import console_app dsl --app-id <app_id> --mode yaml-content --draft-hash <draft_hash> --input @- --json
    ```
 
-   - Send the YAML through stdin with `--input @-`, as above. Do not pass it as `--yaml-content "$(cat …)"`: a large file breaks the command line.
-   - A failed import exits 1 with an error envelope on stderr that carries the server's message. If the code is `dsl_invalid`, the `details` hold the same issues as the check. Fix them by `loc`. For any other failure, stop and show the human the message.
-   - If the draft changed since your export, the server's message says to export again. Someone else changed the draft. Export again, show the human the difference, and never overwrite it.
-   - A successful import prints a result. Check its `status`. Go on only when it is `completed`. On `completed-with-warnings`, stop and read `warnings`.
-   - `pending` means the DSL version differs from the server's, and the draft has not changed. Show the human `imported_dsl_version` and `current_dsl_version`. If they agree, run `difyctl confirm console_app dsl_import --import-id <id> --json` with the result's `id`.
-   - Each import changes the hash. Export again before the next import.
-   - Read [dsl.md](dsl.md) for what else an import changes.
+   - `completed`: go on. Export again before the next import; the hash changed.
+   - `completed-with-warnings`: stop and read `warnings`.
+   - `pending`: the DSL version differs from the server's. Show the human both versions. On a yes, run `difyctl confirm console_app dsl_import --import-id <id> --json`.
+   - `dsl_invalid`: fix the issues in `details` by `loc`.
+   - The draft changed since your export: someone else edited it. Export again, show the human the difference, and never overwrite it.
+   - Any other failure: stop and show the human the message.
 
-5. Test each new node alone with the plan's inputs. Fix it, import again, test again.
+5. Test each new node alone. It reuses the last full run's values; override them with `--inputs`, keyed `#<node_id>.<var>#`. Give a file variable a local file with `--files '{"<variable>": "<path>"}'`.
 
    ```bash
-   difyctl test node workflow --app-id <app_id> --node-id <node_id> --inputs '{"#<node_id>.<var>#": "<value>"}' --json
-   difyctl test node advanced_chat --app-id <app_id> --node-id <node_id> --query "<message>" --json
+   difyctl test node <mode> --app-id <app_id> --node-id <node_id> --inputs '{"#<node_id>.<var>#": "<value>"}' --json
    ```
 
-   A node test reuses the values the last full draft run saved. Override any value the node reads with `--inputs`, keyed `#<node_id>.<var>#`. To give a file variable a local file, pass `--files '{"<variable>": "<path>"}'`.
-
-6. Run the whole draft on the slice's acceptance cases. Check each result with the case's check type.
+6. Run the whole draft on the slice's acceptance cases; check each by its check type. Chatflow also takes `--query "<message>"`. Leave out `--inputs` when the start node has no variables.
 
    ```bash
-   difyctl test console_app workflow --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
-   difyctl test console_app advanced_chat --app-id <app_id> --query "<message>" --inputs '{"<var>": "<value>"}' --json
-   ```
-
-   Pass `--inputs` when the start node declares variables. Leave it out when there are none.
-
-   Record the run ids. List the latest draft runs with:
-
-   ```bash
-   difyctl get run --app-id <app_id> --triggered-from debugging --limit 5 --json
+   difyctl test console_app <mode> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
    ```
 
 7. Review the slice against the plan, and the YAML against the node table.
-8. Tick the slice in `plan.md` and add its run ids. The ticked list is the progress record. A new session resumes at the first unticked slice.
+8. Tick the slice in `plan.md` with its run ids. A new session resumes at the first unticked slice.
 
 ## When something fails
 
@@ -97,23 +67,14 @@ Find the node that failed and what it received:
 difyctl get run node --app-id <app_id> --run-id <run_id> --json
 ```
 
-The plan is the source of truth. If a fix changes a decision (a prompt, a condition, a node type), update the plan first, then the YAML.
+A fix that changes the plan or spec follows the next section.
 
-## Plan changes during build
+## Changes to the plan or spec
 
-You decide every plan change that does not touch the spec. For each one:
+Never build a change first and report it later. For each change:
 
-1. Update the plan.
-2. Log it under "Changes during build": what changed, why, and what it costs if wrong.
-
-The human reviews that list at hand over.
-
-Stop and ask the human when a change touches the spec: a requirement, an acceptance case, a resource or the mode.
-
-## Building with subagents
-
-- Give one slice at a time to a fresh subagent. Pass it the slice text, the file paths and the `app_id`.
-- The subagent runs steps 1 to 6. A reviewer subagent runs step 7.
-- Never run two subagents on one app at the same time. Their imports would collide on the draft hash.
+1. Stop and tell the human what changes, why, and what it costs.
+2. On a yes, update the plan (and the spec, if it changes), then the YAML.
+3. Log it under "Changes during build" with when the human approved it.
 
 The build phase never publishes.
