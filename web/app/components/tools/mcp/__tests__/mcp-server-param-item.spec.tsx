@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import MCPServerParamItem from '../mcp-server-param-item'
+import { MCPServerParamItem } from '../mcp-server-param-item'
 
 describe('MCPServerParamItem', () => {
   const defaultProps = {
@@ -156,4 +157,23 @@ describe('MCPServerParamItem', () => {
       expect(onChange).toHaveBeenCalledWith('你好世界 🌍')
     })
   })
+})
+
+it('uses the variable name when no label exists and keeps the pending value readonly', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <MCPServerParamItem
+      data={{ variable: 'question' }}
+      value="Retained text"
+      onChange={onChange}
+      readOnly
+    />,
+  )
+  const input = screen.getByRole('textbox', { name: 'question' })
+  await user.click(input)
+  await user.keyboard('discarded')
+  expect(input).toHaveFocus()
+  expect(input).toHaveValue('Retained text')
+  expect(onChange).not.toHaveBeenCalled()
 })

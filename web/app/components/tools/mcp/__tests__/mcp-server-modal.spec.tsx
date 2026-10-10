@@ -1,383 +1,206 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps } from 'react'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import MCPServerModal from '../mcp-server-modal'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MCPServerModal } from '../mcp-server-modal'
 
-// Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useCreateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
-  }),
-  useUpdateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
-  }),
-  useInvalidateMCPServerDetail: () => vi.fn(),
+const { post, put } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post,
+  put,
 }))
 
-describe('MCPServerModal', () => {
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
+const detail: MCPServerDetail = {
+  id: 'server-1',
+  server_code: 'server-code',
+  status: 'active',
+  description: 'Server description',
+  parameters: { question: 'Existing question', removed: 'No longer exposed' },
+}
+const latestParams = [{ variable: 'question', label: 'Question', type: 'string' }]
 
-  const defaultProps = {
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: Error) => void
+  const promise = new Promise<T>((complete, fail) => {
+    resolve = complete
+    reject = fail
+  })
+  return { promise, resolve, reject }
+}
+
+function setup(overrides: Partial<ComponentProps<typeof MCPServerModal>> = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const props: ComponentProps<typeof MCPServerModal> = {
     appID: 'app-123',
-    show: true,
-    onHide: vi.fn(),
+    open: true,
+    onOpenChange: vi.fn(),
+    latestParams,
+    ...overrides,
   }
+  const renderModal = (nextProps = props) => (
+    <QueryClientProvider client={queryClient}>
+      <MCPServerModal {...nextProps} />
+    </QueryClientProvider>
+  )
+  const result = render(renderModal())
+  return {
+    ...result,
+    props,
+    queryClient,
+    rerenderModal: (nextProps: typeof props) => result.rerender(renderModal(nextProps)),
+  }
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+beforeEach(() => {
+  post.mockReset().mockResolvedValue({ result: 'success' })
+  put.mockReset().mockResolvedValue({ result: 'success' })
+})
+
+it('uses the app description for creation and keeps Enter as multiline input rather than submit', async () => {
+  const user = userEvent.setup()
+  setup({ appInfo: { description: 'App description' } })
+  const dialog = screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' })
+  const description = within(dialog).getByRole('textbox', {
+    name: 'tools.mcp.server.modal.description',
   })
+  expect(description).toHaveValue('App description')
+  await user.clear(description)
+  expect(
+    within(dialog).getByRole('button', { name: 'tools.mcp.server.modal.confirm' }),
+  ).toBeDisabled()
+  await user.type(description, 'First line{Enter}Second line')
+  await user.type(within(dialog).getByRole('textbox', { name: 'Question' }), 'First{Enter}Second')
+  expect(description).toHaveValue('First line\nSecond line')
+  expect(within(dialog).getByRole('textbox', { name: 'Question' })).toHaveValue('First\nSecond')
+  expect(post).not.toHaveBeenCalled()
+})
 
-  describe('Rendering', () => {
-    it('should render add title when no data is provided', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
-    })
-
-    it('should render edit title when data is provided', () => {
-      const mockData = {
-        id: 'server-1',
-        description: 'Existing description',
-        parameters: {},
-      } as unknown as MCPServerDetail
-
-      render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.editTitle'))!.toBeInTheDocument()
-    })
-
-    it('should render description label', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.description'))!.toBeInTheDocument()
-    })
-
-    it('should render required indicator', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('*'))!.toBeInTheDocument()
-    })
-
-    it('should render description textarea', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea)!.toBeInTheDocument()
-    })
-
-    it('should render cancel button', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
-    })
-
-    it('should render confirm button in add mode', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.confirm'))!.toBeInTheDocument()
-    })
-
-    it('should render save button in edit mode', () => {
-      const mockData = {
-        id: 'server-1',
-        description: 'Existing description',
-        parameters: {},
-      } as unknown as MCPServerDetail
-
-      render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.save'))!.toBeInTheDocument()
-    })
-
-    it('should render close icon', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('button', { name: /operation\.close/ }))!.toBeInTheDocument()
-    })
+it('preserves create whitespace omission while filtering undefined or missing variables', async () => {
+  const user = userEvent.setup()
+  const { props } = setup({
+    latestParams: [
+      ...latestParams,
+      { variable: 'untouched', label: 'Untouched' },
+      { label: 'No variable' },
+    ],
   })
+  await user.type(
+    screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' }),
+    '   ',
+  )
+  await user.type(screen.getByRole('textbox', { name: 'Question' }), 'temporary')
+  await user.clear(screen.getByRole('textbox', { name: 'Question' }))
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' }))
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith('apps/app-123/server', {
+      body: { parameters: { question: '' } },
+    }),
+  )
+  expect(screen.queryByRole('textbox', { name: 'No variable' })).not.toBeInTheDocument()
+  await waitFor(() => expect(props.onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+})
 
-  describe('Parameters Section', () => {
-    it('should not render parameters section when no latestParams', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.queryByText('tools.mcp.server.modal.parameters')).not.toBeInTheDocument()
-    })
+it('preserves update whitespace and filters removed parameters without changing the server identity', async () => {
+  const user = userEvent.setup()
+  const { props } = setup({ data: detail, appInfo: { description: 'Fallback' } })
+  expect(
+    screen.getByRole('dialog', { name: 'tools.mcp.server.modal.editTitle' }),
+  ).toBeInTheDocument()
+  const description = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
+  expect(description).toHaveValue(detail.description)
+  await user.clear(description)
+  await user.type(description, '   ')
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith('apps/app-123/server', {
+      body: { id: detail.id, description: '   ', parameters: { question: 'Existing question' } },
+    }),
+  )
+  expect(post).not.toHaveBeenCalled()
+  await waitFor(() => expect(props.onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+})
 
-    it('should render parameters section when latestParams is provided', () => {
-      const latestParams = [{ variable: 'param1', label: 'Parameter 1', type: 'string' }]
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText('tools.mcp.server.modal.parameters'))!.toBeInTheDocument()
+it.each(['create', 'update'] as const)(
+  'locks a pending %s session and preserves both drafts for retry after rejection',
+  async (mode) => {
+    const user = userEvent.setup()
+    const first = deferred<unknown>()
+    const retry = deferred<unknown>()
+    const mutation = mode === 'create' ? post : put
+    mutation.mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise)
+    const { props } = setup({ data: mode === 'update' ? detail : undefined })
+    const dialog = screen.getByRole('dialog')
+    const description = within(dialog).getByRole('textbox', {
+      name: 'tools.mcp.server.modal.description',
     })
+    const parameter = within(dialog).getByRole('textbox', { name: 'Question' })
+    await user.clear(description)
+    await user.type(description, 'Retry description')
+    await user.clear(parameter)
+    await user.type(parameter, 'Retry parameter')
+    const submit = within(dialog).getByRole('button', {
+      name: mode === 'create' ? 'tools.mcp.server.modal.confirm' : 'tools.mcp.modal.save',
+    })
+    await user.click(submit)
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1))
+    expect(submit).toHaveFocus()
+    expect(description).toHaveAttribute('readonly')
+    expect(parameter).toHaveAttribute('readonly')
+    expect(within(dialog).getByRole('button', { name: 'tools.mcp.modal.cancel' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+    await user.keyboard('{Enter}{Escape}')
+    expect(mutation).toHaveBeenCalledTimes(1)
+    expect(props.onOpenChange).not.toHaveBeenCalled()
+    await act(async () => first.reject(new Error('Request failed')))
+    await waitFor(() => expect(description).not.toHaveAttribute('readonly'))
+    expect(description).toHaveValue('Retry description')
+    expect(parameter).toHaveValue('Retry parameter')
+    expect(props.onOpenChange).not.toHaveBeenCalled()
+    await user.click(submit)
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(2))
+    expect(mutation.mock.calls[1]).toEqual(mutation.mock.calls[0])
+    await act(async () => retry.resolve({ result: 'success' }))
+    await waitFor(() => expect(props.onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+  },
+)
 
-    it('should render parameters tip', () => {
-      const latestParams = [{ variable: 'param1', label: 'Parameter 1', type: 'string' }]
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText('tools.mcp.server.modal.parametersTip'))!.toBeInTheDocument()
-    })
-
-    it('should render parameter items', () => {
-      const latestParams = [
-        { variable: 'param1', label: 'Parameter 1', type: 'string' },
-        { variable: 'param2', label: 'Parameter 2', type: 'number' },
-      ]
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Parameter 2'))!.toBeInTheDocument()
-    })
+it('discards a cancelled session and reads fresh source values on reopening the same owner', async () => {
+  const user = userEvent.setup()
+  const { props, rerenderModal } = setup({ data: detail })
+  const input = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
+  await user.clear(input)
+  await user.type(input, 'Discard this')
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+  expect(props.onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+  rerenderModal({ ...props, open: false })
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  rerenderModal({
+    ...props,
+    data: {
+      ...detail,
+      description: 'Latest description',
+      parameters: { question: 'Latest parameter' },
+    },
   })
+  expect(
+    await screen.findByRole('textbox', { name: 'tools.mcp.server.modal.description' }),
+  ).toHaveValue('Latest description')
+  expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('Latest parameter')
+  expect(post).not.toHaveBeenCalled()
+  expect(put).not.toHaveBeenCalled()
+})
 
-  describe('Form Interactions', () => {
-    it('should update description when typing', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'New description' } })
-
-      expect(textarea)!.toHaveValue('New description')
-    })
-
-    it('should call onHide when cancel button is clicked', () => {
-      const onHide = vi.fn()
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      const cancelButton = screen.getByText('tools.mcp.modal.cancel')
-      fireEvent.click(cancelButton)
-
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onHide when close icon is clicked', () => {
-      const onHide = vi.fn()
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
-      expect(onHide).toHaveBeenCalled()
-    })
-
-    it('should call onHide when the dialog requests close', () => {
-      const onHide = vi.fn()
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable confirm button when description is empty', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      expect(confirmButton)!.toBeDisabled()
-    })
-
-    it('should enable confirm button when description is filled', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'Valid description' } })
-
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      expect(confirmButton).not.toBeDisabled()
-    })
-  })
-
-  describe('Edit Mode', () => {
-    const mockData = {
-      id: 'server-1',
-      description: 'Existing description',
-      parameters: { param1: 'existing value' },
-    } as unknown as MCPServerDetail
-
-    it('should populate description with existing value', () => {
-      render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea)!.toHaveValue('Existing description')
-    })
-
-    it('should populate parameters with existing values', () => {
-      const latestParams = [{ variable: 'param1', label: 'Parameter 1', type: 'string' }]
-      render(<MCPServerModal {...defaultProps} data={mockData} latestParams={latestParams} />, {
-        wrapper: createWrapper(),
-      })
-
-      const paramInput = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
-      expect(paramInput)!.toHaveValue('existing value')
-    })
-  })
-
-  describe('Form Submission', () => {
-    it('should submit form with description', async () => {
-      const onHide = vi.fn()
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'Test description' } })
-
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onHide).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('With App Info', () => {
-    it('should use appInfo description as default when no data', () => {
-      const appInfo = { description: 'App default description' }
-      render(<MCPServerModal {...defaultProps} appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea)!.toHaveValue('App default description')
-    })
-
-    it('should prefer data description over appInfo description', () => {
-      const appInfo = { description: 'App default description' }
-      const mockData = {
-        id: 'server-1',
-        description: 'Data description',
-        parameters: {},
-      } as unknown as MCPServerDetail
-
-      render(<MCPServerModal {...defaultProps} data={mockData} appInfo={appInfo} />, {
-        wrapper: createWrapper(),
-      })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      expect(textarea)!.toHaveValue('Data description')
-    })
-  })
-
-  describe('Not Shown State', () => {
-    it('should not render modal content when show is false', () => {
-      render(<MCPServerModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
-      expect(screen.queryByText('tools.mcp.server.modal.addTitle')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Update Mode Submission', () => {
-    it('should submit update when data is provided', async () => {
-      const onHide = vi.fn()
-      const mockData = {
-        id: 'server-1',
-        description: 'Existing description',
-        parameters: { param1: 'value1' },
-      } as unknown as MCPServerDetail
-
-      render(<MCPServerModal {...defaultProps} data={mockData} onHide={onHide} />, {
-        wrapper: createWrapper(),
-      })
-
-      // Change description
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'Updated description' } })
-
-      // Click save button
-      const saveButton = screen.getByText('tools.mcp.modal.save')
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(onHide).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Parameter Handling', () => {
-    it('should update parameter value when changed', async () => {
-      const latestParams = [
-        { variable: 'param1', label: 'Parameter 1', type: 'string' },
-        { variable: 'param2', label: 'Parameter 2', type: 'string' },
-      ]
-
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} />, {
-        wrapper: createWrapper(),
-      })
-
-      // Fill description first
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'Test description' } })
-
-      // Get all parameter inputs
-      const paramInputs = screen.getAllByPlaceholderText(
-        'tools.mcp.server.modal.parametersPlaceholder',
-      )
-
-      // Change the first parameter value
-      fireEvent.change(paramInputs[0]!, { target: { value: 'new param value' } })
-
-      expect(paramInputs[0])!.toHaveValue('new param value')
-    })
-
-    it('should submit with parameter values', async () => {
-      const onHide = vi.fn()
-      const latestParams = [{ variable: 'param1', label: 'Parameter 1', type: 'string' }]
-
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} onHide={onHide} />, {
-        wrapper: createWrapper(),
-      })
-
-      // Fill description
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: 'Test description' } })
-
-      // Fill parameter
-      const paramInput = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
-      fireEvent.change(paramInput, { target: { value: 'param value' } })
-
-      // Submit
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onHide).toHaveBeenCalled()
-      })
-    })
-
-    it('should ignore parameters without variables when rendering and submitting', async () => {
-      const onHide = vi.fn()
-      const latestParams = [{ label: 'Missing variable', type: 'string' }]
-
-      render(<MCPServerModal {...defaultProps} latestParams={latestParams} onHide={onHide} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.queryByText('Missing variable')).not.toBeInTheDocument()
-
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder'),
-        {
-          target: { value: 'Test description' },
-        },
-      )
-      fireEvent.click(screen.getByText('tools.mcp.server.modal.confirm'))
-
-      await waitFor(() => {
-        expect(onHide).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle empty description submission', async () => {
-      const onHide = vi.fn()
-      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
-
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
-      fireEvent.change(textarea, { target: { value: '' } })
-
-      // Button should be disabled
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
-      expect(confirmButton)!.toBeDisabled()
-    })
-  })
+it('notifies an idle dismissal from Close or Escape without submitting', async () => {
+  const user = userEvent.setup()
+  const { props } = setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(props.onOpenChange).toHaveBeenCalledWith(false)
+  await user.keyboard('{Escape}')
+  expect(props.onOpenChange).toHaveBeenCalledTimes(2)
+  expect(post).not.toHaveBeenCalled()
 })
