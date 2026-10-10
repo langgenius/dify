@@ -382,3 +382,133 @@ def test_agent_model_selector_under_dynamic_parameter_name_requires_review(path,
         intents.append(_set(native_path, original))
 
     assert fix._shape_risk(intents, graph, Risk(level="low")).level == ("high" if effect == "switch" else "low")
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config", "path", "original", "replacement"),
+    [
+        (
+            "parameter-extractor",
+            {"query": ["s", "public_items"]},
+            "query",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+        ("parameter-extractor", {"memory": None}, "memory", None, {"window": {"enabled": False, "size": 10}}),
+        ("question-classifier", {"memory": {"window": {"enabled": False, "size": 1}}}, "memory.window.size", 1, 10),
+        ("question-classifier", {"memory": None}, "memory", None, {"window": {"enabled": False, "size": 10}}),
+        ("parameter-extractor", {"memory": {"window": {"enabled": False, "size": 1}}}, "memory.window.size", 1, 10),
+        (
+            "parameter-extractor",
+            {"vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}}},
+            "vision.enabled",
+            False,
+            True,
+        ),
+        (
+            "question-classifier",
+            {"vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}}},
+            "vision.enabled",
+            False,
+            True,
+        ),
+        (
+            "knowledge-index",
+            {"index_chunk_variable_selector": ["s", "public_items"]},
+            "index_chunk_variable_selector",
+            ["s", "public_items"],
+            ["s", "private_items"],
+        ),
+    ],
+    ids=[
+        "extractor-query",
+        "extractor-history-presence",
+        "classifier-history-scope",
+        "classifier-history-presence",
+        "extractor-history-scope",
+        "extractor-vision-activation",
+        "classifier-vision-activation",
+        "index-chunk-source",
+    ],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_native_model_and_index_access_requires_review_of_final_effect(
+    node_type, config, path, original, replacement, effect
+):
+    from services.dify_builder.mutation_policy import sensitive_change_reasons
+
+    graph = _graph(node_type, instruction="old prompt", **config)
+    intents = [_set(path, original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set(path, original))
+    intents.append(_set("instruction", "Corrected prompt"))
+    before = deepcopy((graph, intents))
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == ("high" if effect == "switch" else "low")
+    assert bool(sensitive_change_reasons(graph, intents)) is (effect == "switch")
+    assert (graph, intents) == before
+
+
+@pytest.mark.parametrize("node_type", ["parameter-extractor", "question-classifier"])
+def test_native_model_instruction_repair_preserves_unchanged_access_configuration(node_type):
+    config = {
+        "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+        "query" if node_type == "parameter-extractor" else "query_variable_selector": ["s", "public_items"],
+        "memory": {"window": {"enabled": False, "size": 10}},
+        "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+        "instruction": "old prompt",
+    }
+    graph = _graph(node_type, **config)
+    intents = list(starmap(_set, config.items())) + [_set("instruction", "Corrected prompt")]
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == "low"
+
+
+@pytest.mark.parametrize(
+    ("input_type", "path", "original", "replacement", "sensitive"),
+    [
+        ("variable", "value", ["s", "public_items"], ["s", "private_items"], True),
+        ("constant", "value_type", "constant", "variable", True),
+        ("constant", "value", ["s", "public_items"], ["s", "private_items"], False),
+        ("constant", "value", ["conversation", "public_items"], ["conversation", "private_items"], False),
+        ("constant", "value", "old prompt", "Corrected prompt", False),
+        ("constant", "value", "Use {{#s.public_items#}}", "Use {{#s.private_items#}}", False),
+    ],
+    ids=[
+        "loop-source",
+        "loop-access-activation",
+        "loop-static-list",
+        "loop-static-conversation-list",
+        "loop-static-prose",
+        "loop-literal-template",
+    ],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_native_loop_typed_inputs_project_active_access_only(
+    input_type, path, original, replacement, sensitive, effect
+):
+    from services.dify_builder.mutation_policy import sensitive_change_reasons
+
+    graph = _graph(
+        "loop",
+        loop_variables=[
+            {
+                "label": "items",
+                "var_type": "string" if path == "value" and isinstance(original, str) else "array[string]",
+                "value_type": input_type,
+                "value": original if path == "value" else ["s", "public_items"],
+            }
+        ],
+    )
+    native_path = "loop_variables.0." + path
+    intents = [_set(native_path, original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set(native_path, original))
+    intents.append(_set("title", "Corrected loop"))
+    before = deepcopy((graph, intents))
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == (
+        "high" if sensitive and effect == "switch" else "low"
+    )
+    assert bool(sensitive_change_reasons(graph, intents)) is (sensitive and effect == "switch")
+    assert (graph, intents) == before
