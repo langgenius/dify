@@ -42,10 +42,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/app/configuration/config-prompt/conversation-history/edit-modal', () => ({
-  default: () => <div data-testid="history-modal" />,
-}))
-
 vi.mock('@/app/components/base/features/new-feature-panel', () => ({
   default: () => <div data-testid="feature-panel" />,
 }))
@@ -310,6 +306,27 @@ describe('ConfigurationView', () => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(false)
     pluginDependencyOnInstallComplete = undefined
+  })
+
+  it('routes history prefix saving and cancellation through the actual dialog', () => {
+    const onSaveHistory = vi.fn()
+    const onCloseHistoryModal = vi.fn()
+    render(
+      <ConfigurationView
+        {...createViewModel({ isShowHistoryModal: true, onSaveHistory, onCloseHistoryModal })}
+      />,
+    )
+    const input = screen.getByRole('textbox', {
+      name: 'appDebug.feature.conversationHistory.editModal.userPrefix',
+    })
+    fireEvent.change(input, { target: { value: 'member' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSaveHistory).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ user_prefix: 'member' }),
+    )
+    expect(onCloseHistoryModal).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onCloseHistoryModal).toHaveBeenCalledOnce()
   })
 
   it('should render a loading state before configuration data is ready', () => {

@@ -30,7 +30,7 @@ import { useModalContext } from '@/context/modal-context'
 import { AppModeEnum } from '@/types/app'
 import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
-import EditModal from './config-modal'
+import { ConfigModal } from './config-modal'
 import SelectVarType from './select-var-type'
 import VarItem from './var-item'
 
@@ -101,6 +101,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const { eventEmitter } = useEventEmitterContextContext()
 
   const hasVar = promptVariables.length > 0
+  const editButtonRef = React.useRef<HTMLButtonElement>(null)
   const [currIndex, setCurrIndex] = useState<number>(-1)
   const currItem = currIndex !== -1 ? promptVariables[currIndex] : null
   const currItemToEdit = useMemo(() => {
@@ -254,7 +255,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     [dataSets.length, didRemoveVar, mode, promptVariables, showDeleteContextVarModal],
   )
 
-  const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
+  const [
+    isShowEditModal,
+    { setTrue: showEditModal, setFalse: hideEditModal, set: setEditModalOpen },
+  ] = useBoolean(false)
 
   const handleConfig = useCallback(
     ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
@@ -361,6 +365,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                   label={name}
                   required={!!required}
                   type={type}
+                  editButtonRef={currIndex === getItemKey(index) ? editButtonRef : undefined}
                   onEdit={() =>
                     handleConfig({
                       type,
@@ -381,19 +386,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         </div>
       )}
 
-      {isShowEditModal && (
-        <EditModal
-          payload={currItemToEdit!}
-          isShow={isShowEditModal}
-          onClose={hideEditModal}
-          onConfirm={(item) => {
-            const isValid = updatePromptVariableItem(item)
-            if (!isValid) return
-            hideEditModal()
-          }}
-          varKeys={promptVariables.map((v) => v.key)}
-        />
-      )}
+      <ConfigModal
+        payload={currItemToEdit ?? undefined}
+        open={isShowEditModal}
+        onOpenChange={setEditModalOpen}
+        finalFocus={editButtonRef}
+        onConfirm={(item) => {
+          const isValid = updatePromptVariableItem(item)
+          if (!isValid) return
+          hideEditModal()
+        }}
+      />
 
       <AlertDialog
         open={isShowDeleteContextVarModal}

@@ -1,166 +1,91 @@
 import type { StartNodeType } from '../types'
-import type { InputVar } from '@/app/components/workflow/types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { renderWorkflowFlowComponent } from '../../../__tests__/workflow-test-env'
+import { BlockEnum, InputVarType } from '../../../types'
 import Panel from '../panel'
 
-const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockConfigVarModal = vi.hoisted(() => vi.fn())
-const mockRemoveEffectVarConfirm = vi.hoisted(() => vi.fn())
+function StartPanelOwner() {
+  const node = useNodes<StartNodeType>().find((node) => node.id === 'start-node')
+  if (!node) return null
+  return (
+    <>
+      <Panel id={node.id} data={node.data} panelProps={{} as PanelProps} />
+      <output aria-label="Start fields">{JSON.stringify(node.data.variables)}</output>
+    </>
+  )
+}
 
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
-  __esModule: true,
-  default: (props: {
-    isShow: boolean
-    onClose: () => void
-    onConfirm: (payload: InputVar) => void
-  }) => {
-    mockConfigVarModal(props)
-    return props.isShow ? (
-      <button
-        type="button"
-        onClick={() =>
-          props.onConfirm({
-            label: 'Locale',
-            variable: 'locale',
-            type: InputVarType.textInput,
-            required: false,
-          })
-        }
-      >
-        confirm-add-var
-      </button>
-    ) : null
-  },
-}))
-
-vi.mock('../../_base/components/remove-effect-var-confirm', () => ({
-  __esModule: true,
-  default: (props: { isShow: boolean; onConfirm: () => void; onCancel: () => void }) => {
-    mockRemoveEffectVarConfirm(props)
-    return props.isShow ? <div>remove-confirm</div> : null
-  },
-}))
-
-const createData = (overrides: Partial<StartNodeType> = {}): StartNodeType => ({
+const initialData: StartNodeType = {
+  type: BlockEnum.Start,
   title: 'Start',
   desc: '',
-  type: BlockEnum.Start,
-  variables: [],
-  ...overrides,
+  variables: [
+    {
+      variable: 'query',
+      label: 'Query',
+      type: InputVarType.textInput,
+      required: false,
+      max_length: 48,
+    },
+  ],
+}
+
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (url.includes('/default-model?')) return Response.json({ data: null })
+    if (
+      url.includes('/spec/schema-definitions') ||
+      /\/tools\/(?:builtin|api|workflow|mcp)$/.test(url)
+    )
+      return Response.json([])
+    if (url.includes('/variables')) return Response.json({ data: [] })
+    throw new Error(`Unexpected request: ${url}`)
+  })
+})
+afterEach(() => vi.restoreAllMocks())
+
+function renderPanel(readOnly = false) {
+  return renderWorkflowFlowComponent(<StartPanelOwner />, {
+    nodes: [{ id: 'start-node', position: { x: 0, y: 0 }, data: initialData }],
+    edges: [],
+    initialStoreState: { canvasReadOnly: readOnly },
+    hooksStoreProps: { doSyncWorkflowDraft: vi.fn() },
+  })
+}
+
+it('keeps duplicate input open, then accepts the field into the actual Start node and closes', async () => {
+  const user = userEvent.setup()
+  renderPanel()
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }),
+  )
+  const variable = screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })
+  const label = screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })
+  await user.type(variable, 'query')
+  await user.clear(label)
+  await user.type(label, 'Another label')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(JSON.parse(screen.getByLabelText('Start fields').textContent!)).toHaveLength(1)
+  await user.clear(variable)
+  await user.type(variable, 'locale')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(JSON.parse(screen.getByLabelText('Start fields').textContent!)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ variable: 'locale', label: 'Another label' }),
+    ]),
+  )
 })
 
-describe('StartPanel', () => {
-  const showAddVarModal = vi.fn()
-  const hideAddVarModal = vi.fn()
-  const handleAddVariable = vi.fn()
-  const handleVarListChange = vi.fn()
-  const hideRemoveVarConfirm = vi.fn()
-  const onRemoveVarConfirm = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    handleAddVariable.mockReturnValue(true)
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      isChatMode: true,
-      inputs: createData(),
-      isShowAddVarModal: false,
-      showAddVarModal,
-      handleAddVariable,
-      hideAddVarModal,
-      handleVarListChange,
-      isShowRemoveVarConfirm: false,
-      hideRemoveVarConfirm,
-      onRemoveVarConfirm,
-    })
-  })
-
-  it('should show chat-only system variables and open the add-variable modal when writable', () => {
-    render(<Panel id="start-node" data={createData()} panelProps={{} as PanelProps} />)
-
-    expect(screen.getByText('userinput.query')).toBeInTheDocument()
-    expect(screen.getByText('userinput.files')).toBeInTheDocument()
-    expect(screen.queryByText('LEGACY')).not.toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }),
-    )
-
-    expect(showAddVarModal).toHaveBeenCalledTimes(1)
-  })
-
-  it('should render the add modal and hide it after a successful confirm', () => {
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      isChatMode: false,
-      inputs: createData(),
-      isShowAddVarModal: true,
-      showAddVarModal,
-      handleAddVariable,
-      hideAddVarModal,
-      handleVarListChange,
-      isShowRemoveVarConfirm: true,
-      hideRemoveVarConfirm,
-      onRemoveVarConfirm,
-    })
-
-    render(<Panel id="start-node" data={createData()} panelProps={{} as PanelProps} />)
-
-    expect(screen.queryByText('userinput.query')).not.toBeInTheDocument()
-    expect(screen.getByText('LEGACY')).toBeInTheDocument()
-    expect(screen.getByText('remove-confirm')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'confirm-add-var' }))
-
-    expect(handleAddVariable).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variable: 'locale',
-      }),
-    )
-    expect(hideAddVarModal).toHaveBeenCalledTimes(1)
-  })
-
-  it('should keep the add modal open when validation fails and pass existing variable keys to the modal', () => {
-    handleAddVariable.mockReturnValue(false)
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      isChatMode: false,
-      inputs: createData({
-        variables: [
-          {
-            label: 'Locale',
-            variable: 'locale',
-            type: InputVarType.textInput,
-            required: false,
-          },
-        ],
-      }),
-      isShowAddVarModal: true,
-      showAddVarModal,
-      handleAddVariable,
-      hideAddVarModal,
-      handleVarListChange,
-      isShowRemoveVarConfirm: false,
-      hideRemoveVarConfirm,
-      onRemoveVarConfirm,
-    })
-
-    render(<Panel id="start-node" data={createData()} panelProps={{} as PanelProps} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'confirm-add-var' }))
-
-    expect(mockConfigVarModal).toHaveBeenCalledWith(
-      expect.objectContaining({
-        varKeys: ['locale'],
-      }),
-    )
-    expect(hideAddVarModal).not.toHaveBeenCalled()
-  })
+it('does not expose input mutation entries when the actual Start node is readonly', () => {
+  renderPanel(true)
+  expect(
+    screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
 })

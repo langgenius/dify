@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, Ref } from 'react'
 import type { IInputTypeIconProps } from './input-type-icon'
 import type { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,6 +19,7 @@ type ItemProps = {
   required: boolean
   type: string
   onEdit: () => void
+  editButtonRef?: Ref<HTMLButtonElement>
   onRemove: () => void
   canDrag?: boolean
   dragHandleProps?: ReturnType<ReturnType<typeof useKeyboardSortable>['getHandleProps']>
@@ -32,6 +33,7 @@ const VarItem: FC<ItemProps> = ({
   required,
   type,
   onEdit,
+  editButtonRef,
   onRemove,
   canDrag,
   dragHandleProps,
@@ -86,6 +88,7 @@ const VarItem: FC<ItemProps> = ({
               type="button"
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
               className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              ref={editButtonRef}
               onClick={onEdit}
             >
               <RiEditLine className="size-4 text-text-tertiary" aria-hidden="true" />

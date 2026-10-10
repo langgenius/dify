@@ -8,7 +8,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
-import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import { ConfigModal } from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
 import { toast } from '@/app/notifications'
@@ -164,17 +164,14 @@ export const SnippetSidebarContent = ({
         </Field>
       </div>
 
-      {isShowAddVarModal && (
-        <ConfigVarModal
-          isCreate
-          supportFile
-          isShow={isShowAddVarModal}
-          onClose={hideAddVarModal}
-          onConfirm={handleAddVarConfirm}
-          showHiddenField={false}
-          varKeys={fields.map((v) => v.variable)}
-        />
-      )}
+      <ConfigModal
+        isCreate
+        supportFile
+        open={isShowAddVarModal}
+        onOpenChange={setIsShowAddVarModal}
+        onConfirm={handleAddVarConfirm}
+        showHiddenField={false}
+      />
     </div>
   )
 }

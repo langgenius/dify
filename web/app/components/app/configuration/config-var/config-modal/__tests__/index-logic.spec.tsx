@@ -8,7 +8,7 @@ import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
-import ConfigModal from '../index'
+import { ConfigModal } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 let latestFormProps: Record<string, any> | null = null
@@ -117,7 +117,7 @@ const renderConfigModal = (payload: InputVar = createPayload()) =>
         } as any
       }
     >
-      <ConfigModal isCreate isShow payload={payload} onClose={vi.fn()} onConfirm={vi.fn()} />
+      <ConfigModal isCreate open payload={payload} onOpenChange={vi.fn()} onConfirm={vi.fn()} />
     </DebugConfigurationContext.Provider>,
   )
 

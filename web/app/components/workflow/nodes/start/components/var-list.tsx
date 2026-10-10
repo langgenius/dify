@@ -5,9 +5,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { ConfigModal } from '@/app/components/app/configuration/config-var/config-modal'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -22,6 +23,9 @@ type Props = Readonly<{
 
 const VarList: FC<Props> = ({ readonly, list, onChange }) => {
   const { t } = useTranslation(['appDebug', 'workflow'])
+  const [editing, setEditing] = useState<{ index: number; payload: InputVar }>()
+  const [editOpen, setEditOpen] = useState(false)
+  const editButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleVarChange = useCallback(
     (index: number) => {
@@ -93,57 +97,74 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
 
   const varCount = list.length
 
-  if (list.length === 0) {
-    return (
-      <div className="flex h-10.5 items-center justify-center rounded-md bg-components-panel-bg text-xs leading-4.5 font-normal text-text-tertiary">
-        {t(($) => $['nodes.start.noVarTip'], { ns: 'workflow' })}
-      </div>
-    )
-  }
-
   const canDrag = !readonly && varCount > 1
 
   return (
     <>
       {keyboardSort.announcement}
-      <ReactSortable
-        className="space-y-1"
-        list={listWithIds}
-        disabled={readonly || keyboardSort.isSorting}
-        setList={(list) => {
-          if (
-            keyboardSort.isSorting ||
-            list.every((item, index) => item.id === listWithIds[index]?.id)
-          )
-            return
-          onChange(list.map((item) => item.variable))
+      {list.length === 0 ? (
+        <div className="flex h-10.5 items-center justify-center rounded-md bg-components-panel-bg text-xs leading-4.5 font-normal text-text-tertiary">
+          {t(($) => $['nodes.start.noVarTip'], { ns: 'workflow' })}
+        </div>
+      ) : (
+        <ReactSortable
+          className="space-y-1"
+          list={listWithIds}
+          disabled={readonly || keyboardSort.isSorting}
+          setList={(list) => {
+            if (
+              keyboardSort.isSorting ||
+              list.every((item, index) => item.id === listWithIds[index]?.id)
+            )
+              return
+            onChange(list.map((item) => item.variable))
+          }}
+          handle=".handle"
+          ghostClass="opacity-50"
+          animation={150}
+        >
+          {listWithIds.map((itemWithId, index) => (
+            <div key={itemWithId.id} className="group relative">
+              {canDrag && (
+                <IconButton
+                  {...keyboardSort.getHandleProps(index)}
+                  className="handle pointer-events-none absolute top-1 left-1.5 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                >
+                  <span aria-hidden="true" className="i-ri-draggable size-3" />
+                </IconButton>
+              )}
+              <VarItem
+                className={cn(canDrag && 'handle')}
+                readonly={readonly}
+                payload={itemWithId.variable}
+                editButtonRef={
+                  editing?.index === keyboardSort.getItemKey(index) ? editButtonRef : undefined
+                }
+                onEdit={() => {
+                  setEditing({
+                    index: keyboardSort.getItemKey(index),
+                    payload: itemWithId.variable,
+                  })
+                  setEditOpen(true)
+                }}
+                onRemove={handleVarRemove(keyboardSort.getItemKey(index))}
+                canDrag={canDrag}
+              />
+            </div>
+          ))}
+        </ReactSortable>
+      )}
+      <ConfigModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        finalFocus={editButtonRef}
+        supportFile
+        payload={editing?.payload}
+        onConfirm={(payload, moreInfo) => {
+          if (!editing || !handleVarChange(editing.index)(payload, moreInfo)) return
+          setEditOpen(false)
         }}
-        handle=".handle"
-        ghostClass="opacity-50"
-        animation={150}
-      >
-        {listWithIds.map((itemWithId, index) => (
-          <div key={itemWithId.id} className="group relative">
-            {canDrag && (
-              <IconButton
-                {...keyboardSort.getHandleProps(index)}
-                className="handle pointer-events-none absolute top-1 left-1.5 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
-              >
-                <span aria-hidden="true" className="i-ri-draggable size-3" />
-              </IconButton>
-            )}
-            <VarItem
-              className={cn(canDrag && 'handle')}
-              readonly={readonly}
-              payload={itemWithId.variable}
-              onChange={handleVarChange(keyboardSort.getItemKey(index))}
-              onRemove={handleVarRemove(keyboardSort.getItemKey(index))}
-              varKeys={list.map((item) => item.variable)}
-              canDrag={canDrag}
-            />
-          </div>
-        ))}
-      </ReactSortable>
+      />
     </>
   )
 }

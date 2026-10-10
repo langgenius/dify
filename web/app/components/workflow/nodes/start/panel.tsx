@@ -3,7 +3,7 @@ import type { StartNodeType } from './types'
 import type { InputVar, NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import { ConfigModal } from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
@@ -93,16 +93,16 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
         </Field>
       </div>
 
-      {isShowAddVarModal && (
-        <ConfigVarModal
-          isCreate
-          supportFile
-          isShow={isShowAddVarModal}
-          onClose={hideAddVarModal}
-          onConfirm={handleAddVarConfirm}
-          varKeys={inputs.variables.map((v) => v.variable)}
-        />
-      )}
+      <ConfigModal
+        isCreate
+        supportFile
+        open={isShowAddVarModal}
+        onOpenChange={(open) => {
+          if (open) showAddVarModal()
+          else hideAddVarModal()
+        }}
+        onConfirm={handleAddVarConfirm}
+      />
 
       <RemoveEffectVarConfirm
         isShow={isShowRemoveVarConfirm}
