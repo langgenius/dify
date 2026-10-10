@@ -279,27 +279,33 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
         stop.assert_called_once_with("task")
 
 
-@pytest.mark.parametrize("search_unbound", [False, True])
+@pytest.mark.parametrize("search", ["list", "bound", "unbound"])
+@pytest.mark.parametrize("empty_bindings", [False, True])
 def test_app_list_filters_unbound_apps_before_pagination(
-    resource_fixture: ResourceFixture, sqlite_session: Session, search_unbound: bool
+    resource_fixture: ResourceFixture, sqlite_session: Session, search: str, empty_bindings: bool
 ) -> None:
-    import inspect
-
-    from controllers.openapi._models import AppListQuery
     from controllers.openapi.apps import AppListApi
 
-    flask_app, app_id, _, tenant_id, _ = resource_fixture
+    flask_app, app_id, token_id, tenant_id, _ = resource_fixture
     unbound = App(
         id=str(uuid4()), tenant_id=tenant_id, name="Unbound app", mode=AppMode.CHAT, enable_api=True, enable_site=False
     )
     sqlite_session.add(unbound)
-    sqlite_session.commit()
-    with flask_app.test_request_context("/"):
-        data = call(flask_app, workspace_id=tenant_id, scope=Scope.APPS_READ)
-        result = inspect.unwrap(AppListApi.get)(
-            AppListApi(),
-            data,
-            query=AppListQuery(workspace_id=tenant_id, name=unbound.id if search_unbound else None),
+    if empty_bindings:
+        sqlite_session.execute(
+            delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id)
         )
-    assert result.total == (0 if search_unbound else 1)
-    assert [app.id for app in result.data] == ([] if search_unbound else [app_id])
+    sqlite_session.commit()
+    query = {"workspace_id": tenant_id}
+    if search != "list":
+        query["name"] = app_id if search == "bound" else unbound.id
+    with flask_app.test_request_context(
+        "/apps",
+        query_string=query,
+        headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]},
+    ):
+        result, status = AppListApi().get()
+    expected_ids: list[str] = [] if empty_bindings or search == "unbound" else [app_id]
+    assert status == 200
+    assert result["total"] == len(expected_ids)
+    assert [app["id"] for app in result["data"]] == expected_ids

@@ -16,11 +16,11 @@ from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
     _batch_get_enterprise_webapp_user_permissions,
 )
-from repositories.app.console_repository import ConsoleAppRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app.console_service import ConsoleAppService
+from services.app.export_service import AppExportService
 from services.app.import_service import AppImportService
-from services.app.query_service import AppQueryService
+from services.app.query_service import AppDiscoveryService
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -90,7 +90,8 @@ def pipeline_application(monkeypatch: pytest.MonkeyPatch) -> PipelineGenerator:
 class AppQueryTestServices:
     console: ConsoleAppService
     imports: AppImportService
-    queries: AppQueryService
+    exports: AppExportService
+    discovery: AppDiscoveryService
 
 
 @dataclass(frozen=True)
@@ -108,13 +109,13 @@ def app_query_services(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> ControllerTestServices:
-    repository = ConsoleAppRepository(session_factory=sqlite_session_factory)
     services = ControllerTestServices(
         tags=application_tags,
         apps=AppQueryTestServices(
             console=app_services.console,
             imports=app_services.imports,
-            queries=AppQueryService(apps=repository),
+            exports=app_services.exports,
+            discovery=app_services.discovery,
         ),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, ClassVar, override
+from functools import partial
+from typing import Any, ClassVar, assert_never, override
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -22,10 +23,9 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.resource_access import CheckResourceAccess
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
-from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext
 from models.account import Account
 from models.model import EndUser
 
@@ -57,12 +57,25 @@ class Pipeline:
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
-            if spec.account_context:
-                request_context = RequestContext(get_request_id(), get_trace_id(), ctx.account.id, ctx.workspace.id)
+            # Bind handler arguments while the admission Session is still open.
+            handler_call: Callable[[], Any]
+            match spec.context:
+                case None:
+                    handler_call = call
+                case "orm":
+                    handler_call = partial(call, ctx=ctx)
+                case "workspace":
+                    handler_call = partial(call, ctx=ctx.request_context)
+                case "app":
+                    app_context = AppRequestContext(tenant_id=ctx.app.tenant_id, app_id=ctx.app.id)
+                    handler_call = partial(call, ctx=app_context)
+                case unexpected:
+                    assert_never(unexpected)
+
+            if spec.context != "orm":
                 session.commit()
                 session.close()
-                return call(ctx=request_context)
-            return call(ctx=ctx)
+            return handler_call()
 
 
 def pipeline_for_subject(subject: Subject) -> Pipeline:

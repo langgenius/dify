@@ -55,8 +55,9 @@ class Context:
         return RequestContext(
             request_id=self.request_id,
             trace_id=self.trace_id,
-            account_id=str(self.subject.account_id),
+            account_id=str(self.subject.account_id or self.subject.token_id),
             active_workspace_id=str(self.workspace.id),
+            resource_app_ids=self.resource_app_ids,
         )
 
     @property

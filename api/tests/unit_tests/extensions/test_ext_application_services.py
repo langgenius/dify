@@ -45,6 +45,7 @@ from models.provider import ProviderCredential
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
@@ -249,7 +250,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
         assert isinstance(services.apps, AppServices)
-        assert services.apps.console._apps is services.apps.queries._apps
+        assert services.apps.console._apps is services.apps.discovery._apps
+        dataset_operations = services.knowledge.datasets._operations
+        assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+        assert isinstance(dataset_operations._app_queries, ConsoleAppRepository)
+        assert dataset_operations._app_queries._session_factory is sqlite_session_factory
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server

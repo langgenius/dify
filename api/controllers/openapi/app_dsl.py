@@ -4,9 +4,10 @@ from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import Scope
+from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -17,7 +18,6 @@ from controllers.openapi._models import (
     AppDslImportResponse,
     Hint,
 )
-from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
@@ -28,12 +28,11 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.account import TenantAccountRole
-from services.app_dsl_service import AppDslService
+from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 
 
@@ -65,7 +64,7 @@ class AppDslImportApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="import.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Import an app from DSL text or URL",
@@ -103,7 +102,7 @@ class AppDslImportApi(Resource):
                 ctx, AppImportParams.model_validate(body.model_dump())
             )
         except NoPermissionError as exc:
-            raise Forbidden(str(exc)) from exc
+            raise ForbiddenError(str(exc)) from exc
 
         response = _import_response(result, workspace_id=workspace_id)
         match result.status:
@@ -128,7 +127,7 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="confirm.console_app.dsl_import",
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
@@ -146,7 +145,7 @@ class AppDslImportConfirmApi(Resource):
         try:
             result = application_services().apps.imports.confirm_import(ctx, import_id)
         except NoPermissionError as exc:
-            raise Forbidden(str(exc)) from exc
+            raise ForbiddenError(str(exc)) from exc
 
         if result.status == ImportStatus.FAILED:
             return result, HTTPStatus.BAD_REQUEST
@@ -167,6 +166,7 @@ class AppDslExportApi(Resource):
     """
 
     @endpoint(
+        context="app",
         op="export.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Export app DSL as YAML text inside a JSON object",
@@ -188,16 +188,15 @@ class AppDslExportApi(Resource):
         query=AppDslExportQuery,
         returns=(200, AppDslExportResponse, "Export successful"),
     )
-    def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
+    def get(self, ctx: AppRequestContext, app_id: str, *, query: AppDslExportQuery):
         try:
-            data = AppDslService.export_dsl(
-                app_model=ctx.app,
-                session=db.session(),
-                include_secret=query.include_secret,
-                workflow_id=query.workflow_id,
+            data = application_services().apps.exports.export_app(
+                ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
             )
-        except WorkflowNotFoundError as exc:
-            return str(exc), 404
+        except (WorkflowNotFoundError, AppDiscoveryNotFoundError) as exc:
+            raise NotFoundError(str(exc)) from exc
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(str(exc)) from exc
         return AppDslExportResponse(data=data), 200
 
 
@@ -212,7 +211,7 @@ class AppDslCheckDependenciesApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="check.console_app.dependency",
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",

@@ -125,6 +125,8 @@ class TestAppDslService:
             patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
+            mock_workflow_service.get_draft_workflow.return_value = None
+            mock_workflow_service.get_published_workflow_by_id.return_value = None
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
             mock_workflow_service.return_value.sync_draft_workflow.return_value = MagicMock()
             mock_dependencies_service.generate_latest_dependencies.return_value = []
@@ -1272,9 +1274,7 @@ class TestAppDslService:
             "environment_variables": [],
             "conversation_variables": [],
         }
-        mock_external_service_dependencies[
-            "workflow_service"
-        ].return_value.get_draft_workflow.return_value = mock_workflow
+        mock_external_service_dependencies["workflow_service"].get_draft_workflow.return_value = mock_workflow
 
         exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
@@ -1310,20 +1310,17 @@ class TestAppDslService:
 
         workflow_id = str(uuid4())
 
-        def mock_get_draft_workflow(app_model, wf_id=None, **_kwargs):
-            if wf_id == workflow_id:
-                return mock_workflow
-            return None
-
-        mock_external_service_dependencies[
-            "workflow_service"
-        ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
+        workflow_service = mock_external_service_dependencies["workflow_service"]
+        workflow_service.get_published_workflow_by_id.return_value = mock_workflow
 
         exported_dsl = AppDslService.export_dsl(
             app, include_secret=False, workflow_id=workflow_id, session=db_session_with_containers
         )
         exported_data = yaml.safe_load(exported_dsl)
 
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app, workflow_id, session=db_session_with_containers
+        )
         assert exported_data["kind"] == "app"
         assert "workflow" in exported_data
 
@@ -1334,7 +1331,7 @@ class TestAppDslService:
         app.mode = "workflow"
         db_session_with_containers.commit()
 
-        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
+        mock_external_service_dependencies["workflow_service"].get_published_workflow_by_id.return_value = None
 
         with pytest.raises(
             WorkflowNotFoundError,
@@ -1394,9 +1391,7 @@ class TestAppDslService:
         }
 
         workflow = SimpleNamespace(to_dict=lambda *, include_secret: workflow_dict)
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = workflow
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
+        monkeypatch.setattr(app_dsl_service.WorkflowService, "get_draft_workflow", MagicMock(return_value=workflow))
 
         monkeypatch.setattr(
             AppDslService,
@@ -1435,13 +1430,7 @@ class TestAppDslService:
         assert nodes[5]["data"]["subscription_id"] == ""
         assert dependencies == ["dep-1"]
 
-    def test_append_workflow_export_data_missing_workflow_raises(
-        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
-    ):
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-
+    def test_append_workflow_export_data_missing_workflow_raises(self, db_session_with_containers: Session):
         with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},

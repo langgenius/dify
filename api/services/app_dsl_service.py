@@ -928,6 +928,19 @@ class AppDslService:
         export_data["dependencies"] = [jsonable_encoder(item.model_dump()) for item in dependencies]
         return yaml.dump(export_data, allow_unicode=True)
 
+    @staticmethod
+    def _load_export_workflow(app_model: App, *, workflow_id: str | None, session: Session) -> Workflow:
+        """Require the selected published version, or the app draft when no ID is supplied."""
+        if workflow_id:
+            workflow = WorkflowService.get_published_workflow_by_id(app_model, workflow_id, session=session)
+            if workflow is None:
+                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
+        else:
+            workflow = WorkflowService.get_draft_workflow(app_model, session=session)
+            if workflow is None:
+                raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
+        return workflow
+
     @classmethod
     def _append_workflow_export_data(
         cls,
@@ -946,13 +959,7 @@ class AppDslService:
         :param app_model: App instance
         :param workflow_id: Optional published workflow version to export
         """
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
-        if not workflow:
-            if workflow_id:
-                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
-            raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
-
+        workflow = cls._load_export_workflow(app_model, workflow_id=workflow_id, session=session)
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         graph = workflow_dict.get("graph", {})
         reference_nodes: dict[str, dict[str, Any]] = {}

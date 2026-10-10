@@ -321,36 +321,20 @@ class TestWorkflowService:
 
         assert result is None
 
-    def test_get_draft_workflow_with_workflow_id(self, workflow_service: WorkflowService, sqlite_session: Session):
-        """Test get_draft_workflow with workflow_id calls get_published_workflow_by_id."""
+    # ==================== Get Published Workflow Tests ====================
+    # These tests verify retrieval of published workflows (versioned snapshots)
+
+    def test_get_published_workflow_by_id_reuses_provided_session(self, sqlite_session: Session):
+        """Published lookup sees uncommitted rows through the caller's session."""
         app = TestWorkflowAssociatedDataFactory.create_app()
         workflow_id = "workflow-123"
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=workflow_id, version="v1")
         sqlite_session.add(workflow)
-        sqlite_session.commit()
+        sqlite_session.flush()
 
-        result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=sqlite_session)
+        result = WorkflowService.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
 
         assert result is workflow
-
-    def test_get_draft_workflow_with_workflow_id_reuses_provided_session(
-        self, workflow_service: WorkflowService, sqlite_session: Session
-    ):
-        """Test get_draft_workflow passes an injected session to published workflow lookup."""
-        app = TestWorkflowAssociatedDataFactory.create_app()
-        workflow_id = "workflow-123"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
-
-        with patch.object(
-            workflow_service, "get_published_workflow_by_id", return_value=mock_workflow
-        ) as mock_get_published:
-            result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=sqlite_session)
-
-        assert result == mock_workflow
-        mock_get_published.assert_called_once_with(app, workflow_id, session=sqlite_session)
-
-    # ==================== Get Published Workflow Tests ====================
-    # These tests verify retrieval of published workflows (versioned snapshots)
 
     def test_get_published_workflow_by_id_success(self, workflow_service: WorkflowService, sqlite_session: Session):
         """Test get_published_workflow_by_id returns published workflow."""

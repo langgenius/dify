@@ -1,87 +1,55 @@
 from datetime import datetime
 
-from sqlalchemy.orm import Session
+import pytest
 
+from controllers.openapi._app_response import _EMPTY_PARAMETERS, build_app_describe_response
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA
-from controllers.openapi.apps import _EMPTY_PARAMETERS, build_app_describe_response
-from controllers.service_api.app.error import AppUnavailableError
-from models.model import App, AppMode
+from models.model import AppMode
+from services.app.query_service import AppDescription
+from services.app_definition_query_service import AppParameterConfig
+from services.entities.app_entities import AppSummary
 
 
-def _app() -> App:
-    app = App(
-        id="11111111-1111-1111-1111-111111111111",
-        tenant_id="tenant-1",
-        name="Demo",
-        mode=AppMode.CHAT,
-        description="d",
-        enable_api=True,
+def description(config: AppParameterConfig | None) -> AppDescription:
+    return AppDescription(
+        AppSummary("app-id", "tenant-id", "Demo", "d", AppMode.CHAT, "normal", datetime(2026, 1, 1), "maintainer"),
+        True,
+        config,
     )
-    app.updated_at = datetime(2026, 1, 1)
-    return app
 
 
-def test_fields_none_returns_all_blocks(monkeypatch, unbound_session: Session):
-    app = _app()
-    session = unbound_session
-    parameters_calls: list[tuple[App, Session]] = []
-    input_schema_calls: list[tuple[App, Session]] = []
-
-    def parameters_payload(requested_app: App, *, session: Session):
-        parameters_calls.append((requested_app, session))
-        return {"k": "v"}
-
-    def input_schema(requested_app: App, *, session: Session):
-        input_schema_calls.append((requested_app, session))
-        return {"s": 1}
-
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", parameters_payload)
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", input_schema)
-    resp = build_app_describe_response(app, None, session=session)
-    assert resp.info is not None
-    assert resp.info.name == "Demo"
-    assert resp.parameters == {"k": "v"}
-    assert resp.input_schema == {"s": 1}
-    assert parameters_calls == [(app, session)]
-    assert input_schema_calls == [(app, session)]
+def test_full_description_projects_materialized_data_without_request_or_session() -> None:
+    form = [{"text-input": {"variable": "industry", "label": "Industry", "required": True}}]
+    response = build_app_describe_response(description(AppParameterConfig({}, form)), None)
+    assert response.info is not None
+    assert response.info.model_dump() == {
+        "id": "app-id",
+        "name": "Demo",
+        "description": "d",
+        "mode": "chat",
+        "updated_at": "2026-01-01T00:00:00",
+        "service_api_enabled": True,
+        "is_agent": False,
+    }
+    assert response.parameters is not None
+    assert response.parameters["user_input_form"] == form
+    assert response.input_schema is not None
+    assert response.input_schema["properties"]["inputs"]["required"] == ["industry"]
 
 
-def test_fields_subset_limits_blocks(monkeypatch, unbound_session: Session):
-    session = unbound_session
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {"k": "v"})
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {"s": 1})
-    resp = build_app_describe_response(_app(), ["info"], session=session)
-    assert resp.info is not None
-    assert resp.parameters is None
-    assert resp.input_schema is None
+@pytest.mark.parametrize("fields", [{"info"}, {"parameters"}, {"input_schema"}, set()])
+def test_projection_honors_requested_fields_and_missing_config_fallbacks(fields: set[str]) -> None:
+    response = build_app_describe_response(description(None), fields)
+    assert (response.info is not None) == ("info" in fields)
+    assert response.parameters == (_EMPTY_PARAMETERS if "parameters" in fields else None)
+    assert response.input_schema == (EMPTY_INPUT_SCHEMA if "input_schema" in fields else None)
 
 
-def test_info_omits_author_and_tags(monkeypatch, unbound_session: Session):
-    session = unbound_session
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {})
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {})
-    resp = build_app_describe_response(_app(), ["info"], session=session)
-    assert resp.info is not None
-    # Usage-face describe must not expose creator identity or tags (cross-tenant leak).
-    assert not hasattr(resp.info, "author")
-    assert not hasattr(resp.info, "tags")
-
-
-def test_parameters_fallback_on_app_unavailable(monkeypatch, unbound_session: Session):
-    def _raise(app, *, session):
-        raise AppUnavailableError()
-
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", _raise)
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {"s": 1})
-    resp = build_app_describe_response(_app(), ["parameters"], session=unbound_session)
-    assert resp.parameters == dict(_EMPTY_PARAMETERS)
-
-
-def test_input_schema_fallback_on_app_unavailable(monkeypatch, unbound_session: Session):
-    def _raise(app, *, session):
-        raise AppUnavailableError()
-
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {"k": "v"})
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", _raise)
-    resp = build_app_describe_response(_app(), ["input_schema"], session=unbound_session)
-    assert resp.input_schema == dict(EMPTY_INPUT_SCHEMA)
+def test_empty_parameters_preserve_public_response_contract() -> None:
+    assert _EMPTY_PARAMETERS == {
+        "opening_statement": None,
+        "suggested_questions": [],
+        "user_input_form": [],
+        "file_upload": None,
+        "system_parameters": {},
+    }

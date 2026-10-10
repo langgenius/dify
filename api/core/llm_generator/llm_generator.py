@@ -169,9 +169,7 @@ def _parse_string_list(text: str) -> list[str]:
 
 
 class WorkflowServiceInterface(Protocol):
-    def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, *, session: Session
-    ) -> Workflow | None:
+    def get_draft_workflow(self, app_model: App, *, session: Session) -> Workflow | None:
         pass
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:

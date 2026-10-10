@@ -24,7 +24,7 @@ from models.model import AppMode, IconType
 
 
 @pytest.fixture
-def openapi_app():
+def openapi_app() -> Flask:
     # the real factory: flask-restx wire behaviour (404 route suggestions) is app config
     app = create_flask_app_with_configs()
     app.config["TESTING"] = True
@@ -33,7 +33,7 @@ def openapi_app():
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     a = Flask(__name__)
     a.config["TESTING"] = True
     return a
@@ -127,12 +127,10 @@ def admitted_bearer(
 
 @pytest.fixture(autouse=True)
 def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
-    from controllers.openapi import apps, apps_permitted_external, workspaces
+    from controllers.openapi import workspaces
     from controllers.openapi.auth import loaders, requirements, subjects
 
     for module in (
-        apps,
-        apps_permitted_external,
         workspaces,
         loaders,
         requirements,

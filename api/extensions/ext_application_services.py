@@ -463,7 +463,6 @@ def build_application_services(
         providers=datasource_credentials.providers,
         redis=redis,
         tags=tags,
-        app_queries=apps.queries,
         rbac_members=rbac.members,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
