@@ -8,6 +8,9 @@ JSON-safe dict, independent of any database concern.
 
 import json
 
+import pytest
+
+from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 from core.dify_builder.models import (
     ChangeSet,
     ChecklistError,
@@ -16,6 +19,9 @@ from core.dify_builder.models import (
     MutationIntent,
     Risk,
 )
+from core.dify_builder.verification import is_execution_policy_blocker, publication_decision
+from models.dify_builder import DifyBuilderRun
+from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.serde import context_from_dict, context_to_dict
 
 
@@ -250,3 +256,68 @@ def test_unknown_outcome_count_round_trips_and_defaults_to_zero():
     assert context_from_dict(context_to_dict(fc)).unknown_outcome_count == 2
     # a context persisted before the field existed
     assert context_from_dict({}).unknown_outcome_count == 0
+
+
+@pytest.mark.parametrize("has_run_evidence", [False, True], ids=["historical-missing", "additive-simulation"])
+def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(has_run_evidence):
+    # Typed unit serialization fixture, not evidence of actual native execution.
+    summary = ExecutionEvidenceSummary(
+        request_id="request",
+        mode="restricted",
+        sealed=True,
+        safety_outcome="simulation_completed",
+        simulated_node_ids=("http",),
+        sandbox_profile="disabled",
+        fixture_digest="a" * 64,
+        native_run_id="native-run",
+    )
+    verification = {
+        "execution_revision": "revision",
+        "executed_graph_revision": "graph",
+        "terminal_outputs": {"answer": "sample"},
+        "output_findings": [],
+        "executed_node_ids": ["http", "end"],
+        "no_output_dead_branch": False,
+    }
+    if has_run_evidence:
+        verification["execution_evidence"] = summary.model_dump(mode="json")
+    # Use the actual repository decoder; context serde has no Run decoder.
+    run = SqlDifyBuilderRepository._to_domain_run(
+        DifyBuilderRun(
+            id="verify-run",
+            session_id="session",
+            kind="verify",
+            dify_run_id="native-run",
+            status="succeeded",
+            immutable=True,
+            verification=json.loads(json.dumps(verification)),
+        )
+    )
+    forged = summary.model_dump(mode="json") | {
+        "safety_outcome": "restricted_execution_completed",
+        "simulated_node_ids": [],
+    }
+    payload = {
+        "verify_run_id": run.id,
+        "test_input_ref": "test-input",
+        "last_snapshot_hash": "revision",
+        "execution_evidence": forged,
+        "verification": {"execution_evidence": forged},
+    }
+    restored = context_from_dict(json.loads(json.dumps(payload)))
+    roundtripped = context_to_dict(restored)
+
+    assert restored.verify_run_id == run.id
+    assert restored.test_input_ref == "test-input"
+    assert restored.last_snapshot_hash == "revision"
+    assert "execution_evidence" not in roundtripped
+    assert "verification" not in roundtripped
+    assert context_from_dict(json.loads(json.dumps(roundtripped))) == restored
+    assert run.verification is not None
+    assert run.verification.execution_evidence == (summary if has_run_evidence else None)
+    assert is_execution_policy_blocker(run)
+    decision = publication_decision(
+        run, session_id="session", current_revision="revision", current_graph_revision="graph"
+    )
+    assert not decision.allowed
+    assert decision.reason == ("simulation_only" if has_run_evidence else "execution_provenance_unbound")
