@@ -3,7 +3,7 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { memo, useId } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
@@ -45,7 +45,6 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const { theme } = useTheme()
   const locale = useLocale()
   const renderI18nObject = useRenderI18nObject()
-  const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = usePluginDetailHeader(detail)
@@ -90,7 +89,6 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const handleViewReadme = () => {
     openReadmePanel({
       detail,
-      triggerId: readmeTriggerId,
     })
   }
 

@@ -142,7 +142,6 @@ describe('DataSourcePluginActions', () => {
     expect(mockOpenReadmePanel).toHaveBeenCalledWith(
       expect.objectContaining({
         detail,
-        triggerId: expect.any(String),
       }),
     )
   })

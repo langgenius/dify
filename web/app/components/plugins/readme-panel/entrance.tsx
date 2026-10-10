@@ -1,6 +1,5 @@
 import type { ReadmePanelPresentation, ReadmePanelState } from './store'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BUILTIN_TOOLS_ARRAY } from './constants'
 import { useReadmePanelStore } from './store'
@@ -17,7 +16,6 @@ export const ReadmeEntrance = ({
   showShortTip?: boolean
 }) => {
   const { t } = useTranslation(['plugin'])
-  const triggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
 
   const handleReadmeClick = () => {
@@ -25,7 +23,6 @@ export const ReadmeEntrance = ({
       openReadmePanel({
         detail: pluginDetail,
         presentation,
-        triggerId,
       })
     }
   }
@@ -51,7 +48,6 @@ export const ReadmeEntrance = ({
       )}
 
       <button
-        id={triggerId}
         type="button"
         onClick={handleReadmeClick}
         className="flex w-full items-center justify-start gap-1 rounded-sm text-text-tertiary transition-opacity hover:text-text-accent-light-mode-only focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"

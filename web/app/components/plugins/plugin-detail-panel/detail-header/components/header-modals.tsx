@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
+import { PluginInfoDialog } from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
@@ -58,14 +58,15 @@ const HeaderModals: FC<HeaderModalsProps> = ({
 
   return (
     <>
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={isFromGitHub ? meta?.repo : ''}
-          release={version}
-          packageName={meta?.package || ''}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <PluginInfoDialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+        repository={isFromGitHub ? meta?.repo : ''}
+        release={version}
+        packageName={meta?.package || ''}
+      />
 
       <AlertDialog
         open={isShowDeleteConfirm}

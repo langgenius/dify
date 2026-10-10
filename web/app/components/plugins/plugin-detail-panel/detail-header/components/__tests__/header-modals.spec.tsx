@@ -6,29 +6,6 @@ import { expectLoadingButton } from '@/test/button'
 import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
-vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
-  default: ({
-    repository,
-    release,
-    packageName,
-    onHide,
-  }: {
-    repository: string
-    release: string
-    packageName: string
-    onHide: () => void
-  }) => (
-    <div data-testid="plugin-info">
-      <div data-testid="plugin-info-repo">{repository}</div>
-      <div data-testid="plugin-info-release">{release}</div>
-      <div data-testid="plugin-info-package">{packageName}</div>
-      <button data-testid="plugin-info-close" onClick={onHide}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
   default: ({
     pluginId,
@@ -132,7 +109,9 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.queryByTestId('plugin-info')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'plugin.pluginInfoModal.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render plugin info modal when isShowPluginInfo is true', () => {
@@ -149,7 +128,9 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'plugin.pluginInfoModal.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should pass GitHub repo to plugin info for GitHub source', () => {
@@ -170,7 +151,9 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('owner/repo')
+      expect(
+        screen.getByRole('group', { name: 'plugin.pluginInfoModal.repository' }),
+      ).toHaveTextContent('https://github.com/owner/repo')
     })
 
     it('should pass empty string for repo for non-GitHub source', () => {
@@ -187,7 +170,9 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('')
+      expect(
+        screen.queryByRole('group', { name: 'plugin.pluginInfoModal.repository' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should call hidePluginInfo when close button is clicked', () => {
@@ -204,7 +189,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('plugin-info-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(modalStates.hidePluginInfo).toHaveBeenCalled()
     })
@@ -479,8 +464,8 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { hidden: true })).toBeInTheDocument()
+      expect(screen.getByRole('alertdialog', { hidden: true })).toBeInTheDocument()
       expect(screen.getByTestId('update-modal')).toBeInTheDocument()
     })
   })
@@ -521,8 +506,12 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('')
-      expect(screen.getByTestId('plugin-info-package')).toHaveTextContent('')
+      expect(
+        screen.queryByRole('group', { name: 'plugin.pluginInfoModal.repository' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: 'plugin.pluginInfoModal.packageName' }),
+      ).not.toBeInTheDocument()
     })
   })
 })
