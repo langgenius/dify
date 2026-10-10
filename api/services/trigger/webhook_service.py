@@ -540,6 +540,13 @@ class WebhookService:
             case _:
                 pass
 
+        # A JSON body can also be an array or a scalar. There are no named parameters to read
+        # from it, but the workflow can still use it through the raw webhook data.
+        if not isinstance(raw_body, dict):
+            if body_configs:
+                raise ValueError("Body parameters require the JSON body to be an object")
+            return raw_body
+
         # For structured data (JSON, form-data, etc.)
         processed = {}
         configured_params: dict[str, WebhookBodyParameter] = {config.name: config for config in body_configs}
