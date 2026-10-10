@@ -1,6 +1,7 @@
-import type { ErrorEnvelope, ServerErrorDetail } from './base'
-import type { Hint } from '@/protocol/fold'
+import type { ErrorDetail, ErrorEnvelope } from './base'
+import type { Hint } from '@/protocol/hint'
 import type { Style } from '@/sys/io/color'
+import { LOC_SEPARATOR } from '@/errors/base'
 import { redactBearer } from '@/errors/sanitize'
 import { spacedId } from '@/protocol/op-id'
 import { BINARY } from '@/version/info'
@@ -18,9 +19,9 @@ function resolveHint(e: ErrorEnvelope['error'], opts: RenderOptions): string | u
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
 
-function detailLine(d: ServerErrorDetail): string {
+function detailLine(d: ErrorDetail): string {
   if (d.field !== undefined) return `${d.field}: ${d.msg}`
-  const loc = (d.loc ?? []).join('.')
+  const loc = (d.loc ?? []).join(LOC_SEPARATOR)
   return `${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`
 }
 
