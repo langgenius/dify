@@ -71,9 +71,15 @@ def vector(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 def _release(sqlite_session_factory: sessionmaker[Session], *, dataset_id: str, document_ids: list[str]) -> list[str]:
-    return cleanup.release_document_attachments(
-        dataset_id=dataset_id, document_ids=document_ids, new_session=sqlite_session_factory
+    """Run a release and return the storage keys it deleted, in order."""
+    deleted: list[str] = []
+    cleanup.release_document_attachments(
+        dataset_id=dataset_id,
+        document_ids=document_ids,
+        new_session=sqlite_session_factory,
+        delete_file=deleted.append,
     )
+    return deleted
 
 
 def test_orphan_attachment_releases_its_vector_binding_and_file(
@@ -328,3 +334,79 @@ def test_nothing_to_release_takes_no_lock_and_touches_nothing(
     redis.lock.assert_not_called()
     vector.delete_by_ids.assert_not_called()
     assert sqlite_session.scalars(select(UploadFile)).all() == []
+
+
+def _bound_attachments(session: Session, dataset: Dataset, document_id: str, count: int) -> dict[str, str]:
+    """Bind ``count`` attachments to one document; return attachment id -> storage key."""
+    keys: dict[str, str] = {}
+    for index in range(count):
+        key = f"attachments/{index}.png"
+        attachment_id = _attachment(session, tenant_id=dataset.tenant_id, key=key)
+        _bind(
+            session,
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document_id,
+            attachment_id=attachment_id,
+        )
+        keys[attachment_id] = key
+    return keys
+
+
+def test_committed_batches_delete_their_files_even_when_a_later_batch_fails(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    vector: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Once a batch commits, nothing can rediscover its blobs, so they cannot wait for later batches."""
+    monkeypatch.setattr(cleanup, "ATTACHMENT_RELEASE_BATCH_SIZE", 1)
+    dataset = _dataset(sqlite_session)
+    document_id = str(uuid4())
+    keys = _bound_attachments(sqlite_session, dataset, document_id, count=2)
+    first_id, second_id = sorted(keys)
+    vector.delete_by_ids.side_effect = [None, RuntimeError("vector store unavailable")]
+    deleted: list[str] = []
+
+    with pytest.raises(RuntimeError, match="vector store unavailable"):
+        cleanup.release_document_attachments(
+            dataset_id=dataset.id,
+            document_ids=[document_id],
+            new_session=sqlite_session_factory,
+            delete_file=deleted.append,
+        )
+
+    assert deleted == [keys[first_id]]
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, first_id) is None
+    # The failed batch keeps its row and binding for the next attempt.
+    assert sqlite_session.get(UploadFile, second_id) is not None
+
+
+@pytest.mark.usefixtures("vector")
+def test_a_file_that_cannot_be_deleted_is_logged_and_the_rest_still_go(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    dataset = _dataset(sqlite_session)
+    document_id = str(uuid4())
+    keys = _bound_attachments(sqlite_session, dataset, document_id, count=2)
+    first_key = keys[min(keys)]
+    attempted: list[str] = []
+
+    def delete_file(key: str) -> None:
+        attempted.append(key)
+        if key == first_key:
+            raise OSError("storage unavailable")
+
+    with caplog.at_level("ERROR"):
+        cleanup.release_document_attachments(
+            dataset_id=dataset.id,
+            document_ids=[document_id],
+            new_session=sqlite_session_factory,
+            delete_file=delete_file,
+        )
+
+    assert sorted(attempted) == sorted(keys.values())
+    assert f"Failed to delete segment attachment file, key: {first_key}" in caplog.text

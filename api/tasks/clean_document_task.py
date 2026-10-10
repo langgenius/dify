@@ -108,12 +108,12 @@ def clean_document_task(
 
     # Attachments are found through their bindings, so a failure here leaves them
     # discoverable by a later run even though the segments above are already gone.
-    attachment_file_keys: list[str] = []
     try:
-        attachment_file_keys = release_document_attachments(
+        release_document_attachments(
             dataset_id=dataset_id,
             document_ids=[document_id],
             new_session=session_factory.create_session,
+            delete_file=storage.delete,
         )
     except Exception:
         logger.exception(
@@ -121,16 +121,6 @@ def clean_document_task(
             document_id,
             dataset_id,
         )
-
-    for attachment_file_key in attachment_file_keys:
-        try:
-            storage.delete(attachment_file_key)
-        except Exception:
-            logger.exception(
-                "Delete attachment_file failed when storage deleted, \
-                                    attachment_file_id: %s",
-                attachment_file_key,
-            )
 
     with session_factory.create_session() as session, session.begin():
         # delete dataset metadata binding

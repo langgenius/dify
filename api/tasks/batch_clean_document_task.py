@@ -119,12 +119,11 @@ def batch_clean_document_task(
         # Attachments are found through their bindings rather than through the segments
         # deleted in Step 5, so a failure here stays discoverable by a later run.
         try:
-            storage_keys_to_delete.extend(
-                release_document_attachments(
-                    dataset_id=dataset_id,
-                    document_ids=document_ids,
-                    new_session=session_factory.create_session,
-                )
+            release_document_attachments(
+                dataset_id=dataset_id,
+                document_ids=document_ids,
+                new_session=session_factory.create_session,
+                delete_file=storage.delete,
             )
         except Exception:
             logger.exception(

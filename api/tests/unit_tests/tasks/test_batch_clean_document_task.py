@@ -173,11 +173,17 @@ def test_failed_attachment_release_is_picked_up_by_a_later_run(
     release = task_module.release_document_attachments
     attempts: list[int] = []
 
-    def fail_once(*, dataset_id: str, document_ids: Sequence[str], new_session: Callable[[], Session]) -> list[str]:
+    def fail_once(
+        *,
+        dataset_id: str,
+        document_ids: Sequence[str],
+        new_session: Callable[[], Session],
+        delete_file: Callable[[str], None],
+    ) -> None:
         attempts.append(len(attempts))
         if len(attempts) == 1:
             raise RuntimeError("attachment release failed")
-        return release(dataset_id=dataset_id, document_ids=document_ids, new_session=new_session)
+        release(dataset_id=dataset_id, document_ids=document_ids, new_session=new_session, delete_file=delete_file)
 
     monkeypatch.setattr(task_module, "release_document_attachments", fail_once)
 

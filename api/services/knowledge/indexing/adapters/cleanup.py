@@ -1,5 +1,6 @@
 """Delete document indexes between bounded database transactions."""
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import ExitStack
 
@@ -15,6 +16,8 @@ from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegment
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
+
+logger = logging.getLogger(__name__)
 
 
 def clean_document_indexes(
@@ -127,8 +130,12 @@ ATTACHMENT_RELEASE_BATCH_SIZE = 100
 
 
 def release_document_attachments(
-    *, dataset_id: str, document_ids: Sequence[str], new_session: Callable[[], Session]
-) -> list[str]:
+    *,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    new_session: Callable[[], Session],
+    delete_file: Callable[[str], None],
+) -> None:
     """Release the segment attachments bound to documents that are being deleted.
 
     Attachments are discovered through their bindings, not through segments, so a retry
@@ -144,15 +151,17 @@ def release_document_attachments(
     both keep it. Vectors go before bindings: if the vector deletion fails, the bindings
     are still there for the next attempt.
 
-    Returns the storage keys of the attachment files whose rows were deleted; the caller
-    removes the blobs once its own relational cleanup is done.
+    Attachments are processed in batches, and each batch's blobs are deleted through
+    ``delete_file`` as soon as that batch commits. Once its rows are gone nothing can
+    rediscover those blobs, so they must not wait on a later batch that may still fail.
+    A blob that cannot be deleted is logged and skipped, as elsewhere in document cleanup.
     """
     if not document_ids:
-        return []
+        return
     with new_session() as session:
         dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id))
         if dataset is None:
-            return []
+            return
         tenant_id = dataset.tenant_id
         attachment_ids = sorted(
             set(
@@ -169,7 +178,6 @@ def release_document_attachments(
         vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and attachment_ids else None
         session.expunge(dataset)
 
-    storage_keys: list[str] = []
     for start in range(0, len(attachment_ids), ATTACHMENT_RELEASE_BATCH_SIZE):
         batch = attachment_ids[start : start + ATTACHMENT_RELEASE_BATCH_SIZE]
         with ExitStack() as locks:
@@ -198,11 +206,12 @@ def release_document_attachments(
             if high_quality and vector_orphan_ids:
                 Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(vector_orphan_ids)
 
+            storage_keys: Sequence[str] = []
             with new_session() as session, session.begin():
                 if file_orphan_ids:
-                    storage_keys.extend(
-                        session.scalars(select(UploadFile.key).where(UploadFile.id.in_(file_orphan_ids))).all()
-                    )
+                    storage_keys = session.scalars(
+                        select(UploadFile.key).where(UploadFile.id.in_(file_orphan_ids))
+                    ).all()
                 # Bindings go before the rows they point at.
                 session.execute(
                     delete(SegmentAttachmentBinding).where(
@@ -214,4 +223,10 @@ def release_document_attachments(
                 )
                 if file_orphan_ids:
                     session.execute(delete(UploadFile).where(UploadFile.id.in_(file_orphan_ids)))
-    return storage_keys
+
+        # Committed: these rows are gone, so their blobs go now rather than after later batches.
+        for storage_key in storage_keys:
+            try:
+                delete_file(storage_key)
+            except Exception:
+                logger.exception("Failed to delete segment attachment file, key: %s", storage_key)
