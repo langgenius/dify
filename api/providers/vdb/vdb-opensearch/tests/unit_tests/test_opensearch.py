@@ -31,6 +31,9 @@ def _build_fake_opensearch_modules():
     class Urllib3HttpConnection:
         pass
 
+    class NotFoundError(Exception):
+        pass
+
     class _IndicesClient:
         def __init__(self):
             self.exists = MagicMock(return_value=False)
@@ -49,6 +52,7 @@ def _build_fake_opensearch_modules():
     opensearchpy.OpenSearch = OpenSearch
     opensearchpy.Urllib3AWSV4SignerAuth = Urllib3AWSV4SignerAuth
     opensearchpy.Urllib3HttpConnection = Urllib3HttpConnection
+    opensearchpy.NotFoundError = NotFoundError
     opensearchpy.helpers = helpers
     opensearchpy_helpers.BulkIndexError = BulkIndexError
 
