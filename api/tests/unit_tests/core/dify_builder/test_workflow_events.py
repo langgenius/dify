@@ -142,7 +142,7 @@ def test_edit_unknown_result_does_not_stage_a_failure_or_repair():
         env, Turn(actor=Actor(account_id="account", tenant_id="tenant")), session, DifyBuilderContext()
     )
 
-    assert result.next == PcState.EDIT_APPLY_CHANGES
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
     assert result.run.status == "running"
     assert not result.context.staged_repair
-    assert not any(item.kind in {"test_result", "error", "change_set"} for item in result.items)
+    assert not any(item.kind in {"error", "change_set"} for item in result.items)

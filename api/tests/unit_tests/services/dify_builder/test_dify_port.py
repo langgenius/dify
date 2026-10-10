@@ -126,6 +126,8 @@ def _mock_execution_preparation():
     def prepare(**kwargs):
         return context().model_copy(
             update={
+                "app_id": kwargs["app_id"],
+                "tenant_id": kwargs["actor"].tenant_id,
                 "execution_revision": execution_revision(kwargs["workflow"]),
                 "graph_revision": executable_graph_revision(kwargs["workflow"].graph_dict),
             }
@@ -140,6 +142,16 @@ def _mock_execution_preparation():
         ),
     ):
         policy.return_value.prepare.side_effect = prepare
+        from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+
+        policy.return_value.seal.return_value = ExecutionEvidenceSummary(
+            request_id="unit-request",
+            mode="restricted",
+            sealed=True,
+            safety_outcome="execution_evidence_unknown",
+            sandbox_profile="disabled",
+            fixture_digest="a" * 64,
+        )
         yield
 
 
@@ -801,12 +813,13 @@ def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session
         NodeEvent(node_id="node-1", title="Code", status="succeeded", error=""),
     ]
 
-    # The node-execution read stays: map_run_result needs it for per_node outputs.
-    mock_node_exec_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
-    assert run.status == "succeeded"
-    assert run.dify_run_id == "run-1"
-    assert run.per_node[0].node_id == "node-1"
-    assert run.per_node[0].outputs == {"x": 1}
+    # Frame IDs alone are no longer authority for native linkage.
+    mock_node_exec_repo.get_executions_by_workflow_run.assert_not_called()
+    assert run.status == "running"
+    assert run.dify_run_id == ""
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
+    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
 
 
 def test_run_draft_consumes_the_stream_after_the_session_is_closed(mock_session: MagicMock):
@@ -872,8 +885,8 @@ def test_run_draft_accepts_raw_mapping_chunks(mock_session: MagicMock):
         )
 
     assert seen == ["running", "succeeded"]
-    assert run.status == "succeeded"
-    assert run.dify_run_id == "run-1"
+    assert run.status == "running"
+    assert run.dify_run_id == ""
 
 
 @pytest.mark.parametrize("wire_format", ["mapping", "sse"])
@@ -942,9 +955,9 @@ def test_run_draft_maps_a_paused_stream_to_a_failed_run(mock_session: MagicMock)
             "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
         )
 
-    repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-9")
-    assert run.status == "failed"
-    assert run.dify_run_id == "run-9"
+    repo.get_executions_by_workflow_run.assert_not_called()
+    assert run.status == "running"
+    assert run.dify_run_id == ""
 
 
 # ---- run_draft: truncated streams must never fabricate a failure -------------
@@ -988,9 +1001,7 @@ def test_a_truncated_stream_reports_the_runs_real_status_from_the_database(mock_
             id="run-1", status="succeeded", error=None, elapsed_time=361.0, total_tokens=99
         )
 
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
+        run, _ = WorkflowServiceDifyPort()._finish_run("tenant-1", "app-1", {}, "run-1")
 
     # The run id came off a non-terminal frame, so both reads could still happen.
     node_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
@@ -1018,9 +1029,7 @@ def test_a_truncated_stream_reports_a_real_database_failure_as_failed(mock_sessi
             id="run-1", status="failed", error="node blew up", elapsed_time=1.0, total_tokens=1
         )
 
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
+        run, _ = WorkflowServiceDifyPort()._finish_run("tenant-1", "app-1", {}, "run-1")
 
     assert run.status == "failed"
     assert run.dify_run_id == "run-1"
@@ -1042,9 +1051,7 @@ def test_a_truncated_stream_over_a_still_running_run_is_unknown_not_failed(mock_
             id="run-1", status="running", error=None, elapsed_time=300.0, total_tokens=5
         )
 
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
+        run, _ = WorkflowServiceDifyPort()._finish_run("tenant-1", "app-1", {}, "run-1")
 
     assert run.status == "running"
     assert run.status != "failed"
@@ -1065,9 +1072,7 @@ def test_a_truncated_stream_with_no_run_row_is_unknown_not_failed(mock_session: 
         run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
         run_repo.get_workflow_run_by_id.return_value = None
 
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
+        run, _ = WorkflowServiceDifyPort()._finish_run("tenant-1", "app-1", {}, "run-1")
 
     assert run.status == "running"
     assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
@@ -1215,9 +1220,9 @@ def test_run_draft_reads_a_blocking_dict_response(mock_session: MagicMock):
             "app-1", _actor(), {"q": "hi"}, events.append, session_id="session-1", test_input_id="test-1"
         )
 
-    assert run.status == "succeeded"
-    assert run.dify_run_id == "run-1"
-    assert run.per_node[0].outputs == {"x": 1}
+    assert run.status == "running"
+    assert run.dify_run_id == ""
+    assert run.per_node == []
 
 
 def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: MagicMock):
@@ -1269,27 +1274,20 @@ ESQ1_302_ERROR_FRAME = {
 
 
 def _run_stream(chunks: list, *, node_execs: list | None = None, run_row=None):
-    """Drive ``run_draft`` over ``chunks`` with the repositories stubbed; returns
-    ``(run, forwarded_frames, node_exec_repo)``."""
-    forwarded: list = []
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = iter(chunks)
-        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+    """Exercise the legacy presentation mapper only; no native/sealed execution proof."""
+    forwarded = [value for chunk in chunks if (value := run_mapping.stream_chunk_as_mapping(chunk)) is not None]
+    final, run_id, error = {}, "", None
+    for payload in forwarded:
+        run_id = run_id or run_mapping.run_id_from_stream_chunk(payload)
+        terminal = run_mapping.run_result_data_from_terminal_chunk(payload)
+        if terminal is not None:
+            final = terminal
+        error = error or run_mapping.error_from_stream_chunk(payload)
+    with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as factory:
+        node_repo = factory.create_api_workflow_node_execution_repository.return_value
         node_repo.get_executions_by_workflow_run.return_value = node_execs or []
-        run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
-        run_repo.get_workflow_run_by_id.return_value = run_row
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1",
-            _actor(),
-            {},
-            lambda _e: None,
-            on_workflow_event=forwarded.append,
-            session_id="session-1",
-            test_input_id="test-1",
-        )
+        factory.create_api_workflow_run_repository.return_value.get_workflow_run_by_id.return_value = run_row
+        run, _ = WorkflowServiceDifyPort()._finish_run("tenant-1", "app-1", final, run_id, error_frame=error)
     return run, forwarded, node_repo
 
 
@@ -1495,10 +1493,15 @@ def test_verification_binds_actual_native_graph(mock_session, native_graph, chan
         node_repo.get_executions_by_workflow_run.return_value = []
         repo = factory.create_api_workflow_run_repository.return_value
         repo.get_workflow_run_by_id.return_value = SimpleNamespace(graph_dict=native) if native else None
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _: None, session_id="session-1", test_input_id="test-1"
+        list(stream())  # apply the deliberate post-execution configuration change
+        run = run_mapping.map_run_result({"id": "native", "status": "succeeded", "outputs": {"result": None}}, [])
+        run = WorkflowServiceDifyPort()._bind_run(
+            (run, SimpleNamespace(graph_dict=native) if native else None),
+            "app-1",
+            _actor(),
+            before,
+            WorkflowServiceDifyPort().graph_revision({"nodes": [{"id": "a", "data": {"type": "start"}}], "edges": []}),
         )
-        repo.get_workflow_run_by_id.assert_called_once_with(tenant_id="tenant-1", app_id="app-1", run_id="native")
     assert run.status == "succeeded"
     assert run.verification.terminal_outputs == {"result": None}
     assert run.verification.execution_revision == (before if bound else "")

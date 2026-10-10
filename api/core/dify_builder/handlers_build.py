@@ -76,7 +76,7 @@ from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
-from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, result_card
+from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, is_execution_policy_blocker, result_card
 
 logger = logging.getLogger(__name__)
 
@@ -815,6 +815,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     progress.activate("build-evaluate-test")
 
     run = Run(
+        execution_refusal=raw.execution_refusal if raw else None,
         id=str(uuid.uuid4()),
         session_id=s.id,
         verification=raw.verification if raw else None,
@@ -828,6 +829,23 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
     fc.verify_run_id = run.id
+
+    if is_execution_policy_blocker(run):
+        fc.diagnosis = None
+        fc.staged_repair = []
+        card = result_card(run)
+        items = append_card(fc, card)
+        execution = progress.finish()
+        items += append_assistant(
+            env,
+            s,
+            fc,
+            card.failure_reason or "Review execution policy and test inputs.",
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
+        )
+        return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items, run=run, run_id_sink=[run.id])
 
     if status != "running":
         fc.unknown_outcome_count = 0

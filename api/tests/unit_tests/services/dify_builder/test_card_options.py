@@ -24,6 +24,7 @@ def _decision(state: PcState, *, verified: bool = False):
     run = (
         Run(
             session_id="session",
+            dify_run_id="dify-run-1",
             kind="verify",
             status="succeeded",
             immutable=True,

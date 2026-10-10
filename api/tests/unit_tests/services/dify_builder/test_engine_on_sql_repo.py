@@ -294,3 +294,58 @@ def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision_o
     stored, _ = repo.get_session(s.id)
     assert stored.current_state == PcState.FIX_AWAIT_DECISION
     assert stored.version == out.version
+
+
+def test_execution_evidence_round_trips_without_historical_backfill(repo):
+    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+    from core.dify_builder.models import RunVerification
+
+    # This is serialization evidence only, not a native execution positive control.
+    evidence = RunVerification(
+        execution_revision="r",
+        executed_graph_revision="g",
+        terminal_outputs={},
+        output_findings=[],
+        executed_node_ids=[],
+        no_output_dead_branch=False,
+        execution_evidence=ExecutionEvidenceSummary(
+            request_id="request",
+            mode="mock",
+            sealed=True,
+            safety_outcome="simulation_completed",
+            sandbox_profile="disabled",
+            fixture_digest="a" * 64,
+            native_run_id="native",
+        ),
+    )
+    run = Run(
+        id="receipt-run",
+        session_id="session",
+        kind="verify",
+        status="succeeded",
+        immutable=True,
+        dify_run_id="native",
+        verification=evidence,
+    )
+    repo.save_run("session", run)
+    restored = repo.get_run("receipt-run")
+    assert restored.verification.execution_evidence == evidence.execution_evidence
+    assert restored.status == "succeeded"
+    assert restored.dify_run_id == "native"
+    historical = Run(
+        id="historical",
+        session_id="session",
+        kind="verify",
+        status="succeeded",
+        immutable=True,
+        verification=RunVerification(
+            execution_revision="r",
+            executed_graph_revision="g",
+            terminal_outputs={},
+            output_findings=[],
+            executed_node_ids=[],
+            no_output_dead_branch=False,
+        ),
+    )
+    repo.save_run("session", historical)
+    assert repo.get_run("historical").verification.execution_evidence is None

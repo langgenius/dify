@@ -89,7 +89,18 @@ class BuilderExecutionAdmission(Protocol):
 
     def admit_raw(self, workflow: Workflow, app: App) -> None: ...
 
-    def on_refusal(self, error: BuilderExecutionPolicyError) -> None: ...
+    def on_refusal(self, error: BuilderExecutionPolicyError, *, preworker: bool = False) -> None: ...
+
+    def on_worker_finished(
+        self,
+        *,
+        context: BuilderExecutionContext,
+        native_run_id: str,
+        task_id: str,
+        recorder: BuilderExecutionRecorder | None,
+        worker_thread: threading.Thread,
+        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"],
+    ) -> None: ...
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
@@ -190,20 +201,25 @@ class WorkflowAppGenerator(BaseAppGenerator):
         builder_execution: BuilderExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
-        if builder_execution is not None and (
-            builder_execution_admit is None
-            or args.get("files")
-            or call_depth != 0
-            or not isinstance(user, Account)
-            or invoke_from != InvokeFrom.DEBUGGER
-            or pause_state_config is not None
-            or graph_engine_layers
-        ):
-            raise BuilderExecutionPolicyError("unsupported_execution_transport")
-        if builder_execution is not None:
-            assert builder_execution_admit is not None
-            builder_execution_admit.admit_raw(workflow, app_model)
-            scalar_inputs_digest(args.get("inputs", {}))
+        try:
+            if builder_execution is not None and (
+                builder_execution_admit is None
+                or args.get("files")
+                or call_depth != 0
+                or not isinstance(user, Account)
+                or invoke_from != InvokeFrom.DEBUGGER
+                or pause_state_config is not None
+                or graph_engine_layers
+            ):
+                raise BuilderExecutionPolicyError("unsupported_execution_transport")
+            if builder_execution is not None:
+                assert builder_execution_admit is not None
+                builder_execution_admit.admit_raw(workflow, app_model)
+                scalar_inputs_digest(args.get("inputs", {}))
+        except BuilderExecutionPolicyError as error:
+            if builder_execution_admit is not None:
+                builder_execution_admit.on_refusal(error, preworker=True)
+            raise
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -251,7 +267,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             root_node_config = workflow.get_node_config_by_id(root_node_id)
             root_node_type = workflow.get_node_type_from_node_config(root_node_config)
             if builder_execution is not None and root_node_type != "start":
-                raise BuilderExecutionPolicyError("unsupported_execution_root")
+                error = BuilderExecutionPolicyError("unsupported_execution_root")
+                if builder_execution_admit is not None:
+                    builder_execution_admit.on_refusal(error, preworker=True)
+                raise error
             # Trigger inputs are already adapted event data, not Start form fields.
             if not is_trigger_node_type(root_node_type):
                 inputs = self._prepare_user_inputs(
@@ -279,7 +298,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             if builder_execution is not None:
                 if scalar_inputs_digest(dict(inputs)) != builder_execution.effective_inputs_digest:
-                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                    error = BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                    if builder_execution_admit is not None:
+                        builder_execution_admit.on_refusal(error, preworker=True)
+                    raise error
                 application_generate_entity.trace_manager = TraceQueueManager(
                     app_id=app_model.id,
                     user_id=user.id,
@@ -701,107 +723,130 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-        with preserve_flask_contexts(flask_app, context_vars=context):
-            try:
-                with session_factory.create_session() as session:
-                    workflow = session.scalar(
-                        select(Workflow).where(
-                            Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
-                            Workflow.app_id == application_generate_entity.app_config.app_id,
-                            Workflow.id == application_generate_entity.app_config.workflow_id,
-                        )
-                    )
-                    if workflow is None:
-                        if application_generate_entity.builder_execution is not None:
-                            raise BuilderExecutionPolicyError("execution_owner_mismatch")
-                        raise ValueError("Workflow not found")
-
-                    execution_recorder = None
-                    if application_generate_entity.builder_execution is not None:
-                        if builder_execution_admit is None:
-                            raise BuilderExecutionPolicyError("missing_execution_admission")
-                        app = session.scalar(
-                            select(App).where(
-                                App.id == application_generate_entity.app_config.app_id,
-                                App.tenant_id == application_generate_entity.app_config.tenant_id,
+        execution_recorder = None
+        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"] = "failed"
+        try:
+            with preserve_flask_contexts(flask_app, context_vars=context):
+                try:
+                    with session_factory.create_session() as session:
+                        workflow = session.scalar(
+                            select(Workflow).where(
+                                Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                                Workflow.app_id == application_generate_entity.app_config.app_id,
+                                Workflow.id == application_generate_entity.app_config.workflow_id,
                             )
                         )
-                        if app is None:
-                            raise BuilderExecutionPolicyError("execution_owner_mismatch")
-                        if graph_engine_layers:
-                            raise BuilderExecutionPolicyError("unsupported_execution_transport")
-                        execution_recorder = builder_execution_admit(
-                            workflow,
-                            app,
-                            application_generate_entity,
-                            root_node_id or get_default_root_node_id(workflow.graph_dict),
-                            graph_runtime_state is not None,
-                        )
-                        if execution_recorder is None or not execution_recorder.healthy:
-                            raise BuilderExecutionPolicyError("missing_execution_recorder")
+                        if workflow is None:
+                            if application_generate_entity.builder_execution is not None:
+                                raise BuilderExecutionPolicyError("execution_owner_mismatch")
+                            raise ValueError("Workflow not found")
 
-                    workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
-                    if graph_runtime_state is not None:
-                        self._restore_workflow_run_graph(
-                            session=session,
-                            workflow=workflow,
-                            workflow_run_id=application_generate_entity.workflow_execution_id,
-                        )
+                        if application_generate_entity.builder_execution is not None:
+                            if builder_execution_admit is None:
+                                raise BuilderExecutionPolicyError("missing_execution_admission")
+                            app = session.scalar(
+                                select(App).where(
+                                    App.id == application_generate_entity.app_config.app_id,
+                                    App.tenant_id == application_generate_entity.app_config.tenant_id,
+                                )
+                            )
+                            if app is None:
+                                raise BuilderExecutionPolicyError("execution_owner_mismatch")
+                            if graph_engine_layers:
+                                raise BuilderExecutionPolicyError("unsupported_execution_transport")
+                            execution_recorder = builder_execution_admit(
+                                workflow,
+                                app,
+                                application_generate_entity,
+                                root_node_id or get_default_root_node_id(workflow.graph_dict),
+                                graph_runtime_state is not None,
+                            )
+                            if execution_recorder is None or not execution_recorder.healthy:
+                                raise BuilderExecutionPolicyError("missing_execution_recorder")
 
-                    # Determine system_user_id based on invocation source
-                    is_external_api_call = application_generate_entity.invoke_from in {
-                        InvokeFrom.WEB_APP,
-                        InvokeFrom.SERVICE_API,
-                    }
+                        workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                        if graph_runtime_state is not None:
+                            self._restore_workflow_run_graph(
+                                session=session,
+                                workflow=workflow,
+                                workflow_run_id=application_generate_entity.workflow_execution_id,
+                            )
 
-                    if is_external_api_call:
-                        # For external API calls, use end user's session ID
-                        end_user = session.scalar(
-                            select(EndUser).where(EndUser.id == application_generate_entity.user_id)
-                        )
-                        system_user_id = end_user.session_id if end_user else ""
-                    else:
-                        # For internal calls, use the original user ID
-                        system_user_id = application_generate_entity.user_id
+                        # Determine system_user_id based on invocation source
+                        is_external_api_call = application_generate_entity.invoke_from in {
+                            InvokeFrom.WEB_APP,
+                            InvokeFrom.SERVICE_API,
+                        }
 
-                runner = WorkflowAppRunner(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    variable_loader=variable_loader,
-                    workflow=workflow,
-                    system_user_id=system_user_id,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
-                    root_node_id=root_node_id,
-                    graph_engine_layers=graph_engine_layers,
-                    graph_runtime_state=graph_runtime_state,
-                    response_stream_filter=response_stream_filter,
-                    execution_recorder=execution_recorder,
-                )
+                        if is_external_api_call:
+                            # For external API calls, use end user's session ID
+                            end_user = session.scalar(
+                                select(EndUser).where(EndUser.id == application_generate_entity.user_id)
+                            )
+                            system_user_id = end_user.session_id if end_user else ""
+                        else:
+                            # For internal calls, use the original user ID
+                            system_user_id = application_generate_entity.user_id
 
-                with active_workflow_task(application_generate_entity.task_id):
-                    runner.run()
-            except GenerateTaskStoppedError:
-                logger.warning("Task stopped", exc_info=True)
-                pass
-            except InvokeAuthorizationError:
-                queue_manager.publish_error(
-                    InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
-                )
-            except ValidationError as e:
-                logger.exception("Validation Error when generating")
-                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except BuilderExecutionPolicyError as e:
-                if builder_execution_admit is not None:
-                    builder_execution_admit.on_refusal(e)
-                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except ValueError as e:
-                if dify_config.DEBUG:
-                    logger.exception("Error when generating")
-                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except Exception as e:
-                logger.exception("Unknown Error when generating")
-                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                    runner = WorkflowAppRunner(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        variable_loader=variable_loader,
+                        workflow=workflow,
+                        system_user_id=system_user_id,
+                        workflow_execution_repository=workflow_execution_repository,
+                        workflow_node_execution_repository=workflow_node_execution_repository,
+                        root_node_id=root_node_id,
+                        graph_engine_layers=graph_engine_layers,
+                        graph_runtime_state=graph_runtime_state,
+                        response_stream_filter=response_stream_filter,
+                        execution_recorder=execution_recorder,
+                    )
+
+                    with active_workflow_task(application_generate_entity.task_id):
+                        runner.run()
+                    exit_kind = "returned"
+                except GenerateTaskStoppedError:
+                    exit_kind = "stopped"
+                    logger.warning("Task stopped", exc_info=True)
+                    pass
+                except InvokeAuthorizationError:
+                    queue_manager.publish_error(
+                        InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
+                    )
+                except ValidationError as e:
+                    logger.exception("Validation Error when generating")
+                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                except BuilderExecutionPolicyError as e:
+                    exit_kind = "policy_refused"
+                    if builder_execution_admit is not None:
+                        builder_execution_admit.on_refusal(e)
+                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                except ValueError as e:
+                    if dify_config.DEBUG:
+                        logger.exception("Error when generating")
+                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                except Exception as e:
+                    logger.exception("Unknown Error when generating")
+                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+        except BaseException:
+            exit_kind = "failed"
+            raise
+        finally:
+            marker = application_generate_entity.builder_execution
+            if marker is not None and builder_execution_admit is not None:
+                try:
+                    builder_execution_admit.on_worker_finished(
+                        context=marker,
+                        native_run_id=application_generate_entity.workflow_execution_id,
+                        task_id=application_generate_entity.task_id,
+                        recorder=execution_recorder,
+                        worker_thread=threading.current_thread(),
+                        exit_kind=exit_kind,
+                    )
+                except BaseException:
+                    # A missing/invalid candidate stays unknown; preserve the primary worker error.
+                    logger.warning("Builder worker completion acknowledgment failed")
 
     def _handle_response(
         self,

@@ -365,8 +365,10 @@ export const zDifyBuilderPlanConversationItemResponse = z.object({
  * TestResultCard
  */
 export const zTestResultCard = z.object({
+  blocked_node_ids: z.array(z.string()).optional(),
   dify_run_id: z.string().optional().default(''),
   executed_node_ids: z.array(z.string()).optional(),
+  execution_mode: z.enum(['mock', 'restricted']).nullish(),
   failure_reason: z.string().nullish(),
   outcome: z
     .enum([
@@ -377,6 +379,17 @@ export const zTestResultCard = z.object({
     ])
     .nullish(),
   review_note: z.string().nullish(),
+  safety_outcome: z
+    .enum([
+      'execution_blocked',
+      'execution_evidence_unknown',
+      'native_failed',
+      'restricted_execution_completed',
+      'simulation_completed',
+      'unsupported_safe_execution',
+    ])
+    .nullish(),
+  simulated_node_ids: z.array(z.string()).optional(),
   status: z.enum(['failed', 'succeeded']),
   terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
 })

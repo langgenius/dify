@@ -2,6 +2,7 @@
 
 import importlib
 import json
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -9,12 +10,13 @@ from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from core.dify_builder import execution_policy as domain
 from core.dify_builder.models import Actor
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
-from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 
@@ -517,3 +519,243 @@ def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(owned, monkeyp
         service_module().BuilderExecutionPolicyService(factory).stamp_http_fixtures(
             app.id, actor, base_app_revision="a" * 64, fixtures=()
         )
+
+
+def completion(context, run_id=None, **changes):
+    return domain.TrustedExecutionCompletion(
+        context=context,
+        native_run_id=run_id,
+        task_id="task" if run_id else None,
+        worker_finished=True,
+        worker_exit="returned",
+        recorder_healthy=True,
+        response_completed=True,
+        **changes,
+    )
+
+
+def native_rows(owned, context, status="succeeded"):
+    factory, actor, app, workflow, _, _ = owned
+    run_id = str(uuid4())
+    service_module().BuilderExecutionPolicyService(factory).claim_launch(
+        context=context, native_run_id=run_id, task_id="task"
+    )
+    with factory.begin() as db:
+        db.add(
+            WorkflowRun(
+                id=run_id,
+                tenant_id=actor.tenant_id,
+                app_id=app.id,
+                workflow_id=workflow.id,
+                type="workflow",
+                triggered_from="debugging",
+                version="draft",
+                graph=workflow.graph,
+                inputs=json.dumps({"n": 41, "sys.workflow_run_id": run_id}),
+                status=status,
+                created_by_role="account",
+                created_by=actor.account_id,
+                total_steps=2,
+                finished_at=datetime.now(),
+                outputs='{"out":41}',
+                exceptions_count=0,
+            )
+        )
+        for index, node in enumerate(json.loads(workflow.graph)["nodes"], 1):
+            db.add(
+                WorkflowNodeExecutionModel(
+                    id=str(uuid4()),
+                    tenant_id=actor.tenant_id,
+                    app_id=app.id,
+                    workflow_id=workflow.id,
+                    workflow_run_id=run_id,
+                    node_execution_id=str(uuid4()),
+                    node_id=node["id"],
+                    node_type=node["data"]["type"],
+                    title="test",
+                    index=index,
+                    predecessor_node_id=None if index == 1 else "start",
+                    triggered_from="workflow-run",
+                    created_by_role="account",
+                    created_by=actor.account_id,
+                    status="succeeded",
+                    finished_at=datetime.now(),
+                )
+            )
+    return run_id
+
+
+def test_seal_requires_authoritative_native_rows_and_is_idempotent(owned):
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context)
+    done = completion(context, run_id)
+    result = service.seal(request_id=context.request_id, completion=done)
+    assert result.safety_outcome == "restricted_execution_completed"
+    assert result.native_run_id == run_id
+    assert service.seal(request_id=context.request_id, completion=done) == result
+    with pytest.raises(domain.BuilderExecutionPolicyError):
+        service.seal(request_id=context.request_id, completion=done.model_copy(update={"response_completed": False}))
+
+
+@pytest.mark.parametrize("missing", ["worker", "response", "recorder", "node", "run"])
+def test_incomplete_proof_seals_unknown(owned, missing):
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context)
+    done = completion(context, run_id)
+    field = {"worker": "worker_finished", "response": "response_completed", "recorder": "recorder_healthy"}.get(missing)
+    if field:
+        done = done.model_copy(update={field: False})
+    else:
+        with owned[0].begin() as db:
+            if missing == "run":
+                db.delete(db.get(WorkflowRun, run_id))
+            else:
+                from sqlalchemy import select
+
+                db.delete(db.scalars(select(WorkflowNodeExecutionModel)).first())
+    result = service.seal(request_id=context.request_id, completion=done)
+    assert result.safety_outcome == "execution_evidence_unknown"
+
+
+@pytest.mark.parametrize("status", ["failed", "stopped", "partial-succeeded"])
+def test_complete_non_success_native_status_remains_native_failed(owned, status):
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context, status)
+    assert (
+        service.seal(request_id=context.request_id, completion=completion(context, run_id)).safety_outcome
+        == "native_failed"
+    )
+
+
+@pytest.mark.parametrize(
+    ("kind", "status", "missing", "outcome"),
+    [
+        (
+            "effect_blocked",
+            "succeeded",
+            False,
+            "execution_blocked",
+        ),  # Defensive SQL state, not actual Graphon default output.
+        ("effect_blocked", "partial-succeeded", False, "native_failed"),
+        ("effect_blocked", "succeeded", True, "execution_evidence_unknown"),
+        ("effect_blocked", "succeeded", "malformed_receipt", "execution_evidence_unknown"),
+        ("fixture_served", "succeeded", False, "simulation_completed"),
+        (None, "succeeded", False, "execution_evidence_unknown"),
+    ],
+)
+def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing, outcome):
+    from sqlalchemy import select
+
+    from models.dify_builder import DifyBuilderTestInput
+    from models.workflow import Workflow
+    from services.dify_builder.revision import execution_revision
+    from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph
+
+    factory, actor, app, workflow, sid, tid = owned
+    workflow.graph = json.dumps(graph(http=True))
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = workflow.graph
+        if kind == "fixture_served":
+            db.get(DifyBuilderTestInput, tid).http_fixtures = domain.HttpFixtureSetV1(
+                execution_revision=execution_revision(workflow), fixtures=(fixture(),)
+            ).model_dump(mode="json")
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(factory)
+    run_id = native_rows(owned, context, status)
+    if kind:
+        service.record(
+            context=context,
+            native_run_id=run_id,
+            task_id="task",
+            observation=domain.BuilderExecutionObservation(
+                observation_id="o",
+                invocation_id="i",
+                request_id=context.request_id,
+                node_id="http",
+                kind=kind,
+                implementation_version="graphon.nodes.http_request.node.HttpRequestNode:1",
+                reason_code="test",
+                fixture_digest=context.fixture_digest if kind == "fixture_served" else None,
+            ),
+        )
+    with factory.begin() as db:
+        db.get(WorkflowRun, run_id).total_steps = 3
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
+        nodes[-1].predecessor_node_id = "http"
+        if missing == "malformed_receipt":
+            from models.dify_builder import DifyBuilderExecutionRequest
+
+            row = db.get(DifyBuilderExecutionRequest, context.request_id)
+            row.observations = [*row.observations, {"broken": True}]
+        elif missing:
+            db.delete(nodes[0])
+    result = service.seal(request_id=context.request_id, completion=completion(context, run_id))
+    assert result.safety_outcome == outcome
+    assert result.blocked_node_ids == (("http",) if kind == "effect_blocked" else ())
+    with factory() as db:
+        assert db.get(WorkflowRun, run_id).status == status
+
+
+@pytest.mark.parametrize("mutation", ["actor", "node_actor", "graph", "inputs", "node_execution", "steps"])
+def test_canonical_native_owner_and_proof_mutations(owned, mutation):
+    from sqlalchemy import select
+
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context)
+    with owned[0].begin() as db:
+        run = db.get(WorkflowRun, run_id)
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel)))
+        if mutation == "actor":
+            run.created_by = str(uuid4())
+        elif mutation == "node_actor":
+            nodes[0].created_by = str(uuid4())
+        elif mutation == "graph":
+            run.graph = "{}"
+        elif mutation == "inputs":
+            run.inputs = '{"n":42}'
+        elif mutation == "node_execution":
+            nodes[0].node_execution_id = nodes[1].node_execution_id
+        else:
+            run.total_steps = 3
+    if mutation in {"actor", "node_actor"}:
+        with pytest.raises(domain.BuilderExecutionPolicyError, match="owner_mismatch"):
+            service.seal(request_id=context.request_id, completion=completion(context, run_id))
+    else:
+        assert (
+            service.seal(request_id=context.request_id, completion=completion(context, run_id)).safety_outcome
+            == "execution_evidence_unknown"
+        )
+
+
+@pytest.mark.parametrize("invalid", ["no_refusal", "claim", "recorder", "finished", "exit"])
+def test_seal_revalidates_constructed_preworker_origin(owned, invalid):
+    context = prepare_inputs(owned)
+    facts: dict[str, object] = {
+        "context": context,
+        "native_run_id": None,
+        "task_id": None,
+        "worker_finished": False,
+        "worker_exit": "not_observed",
+        "recorder_healthy": False,
+        "response_completed": True,
+        "refusal": domain.BuilderExecutionRefusal(reason_code="unsupported_workflow"),
+        "preworker_refusal": True,
+    }
+    if invalid == "no_refusal":
+        facts["refusal"] = None
+    elif invalid == "claim":
+        facts.update(native_run_id="allocated", task_id="task")
+    elif invalid == "recorder":
+        facts["recorder_healthy"] = True
+    elif invalid == "finished":
+        facts.update(worker_finished=True, worker_exit="policy_refused")
+    else:
+        facts["worker_exit"] = "policy_refused"
+    forged = domain.TrustedExecutionCompletion.model_construct(_fields_set=None, **facts)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    with pytest.raises(domain.BuilderExecutionPolicyError, match="invalid_execution_completion"):
+        service.seal(request_id=context.request_id, completion=forged)

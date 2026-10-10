@@ -747,6 +747,7 @@ def _seed_session_at(repo: SqlDifyBuilderRepository, state: PcState, *, verified
             kind="verify",
             status="succeeded",
             immutable=True,
+            dify_run_id="build-run-1",
             verification=successful_verification(FakeBuildDifyPort()),
         )
         fc.verify_run_id = run.id
@@ -2374,18 +2375,21 @@ def test_recovery_continue_retry_carries_the_working_states_access_tier() -> Non
 @pytest.mark.parametrize("status", ["failed", "running", "legacy", "missing", "foreign", "stale", "succeeded"])
 def test_publish_verification_projection_and_submit(repo, lock, enqueued, state, mode, action, retest, status):
     from core.dify_builder.models import Run, RunVerification
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, successful_verification
 
     s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID, entry_mode=mode, current_state=state)
     fc = DifyBuilderContext(verify_run_id="11111111-2222-3333-4444-555555555555")
     repo.create_session(s, fc, [])
     run = Run(
         id=fc.verify_run_id,
+        dify_run_id="dify-run-1",
         kind="verify",
         immutable=True,
         status=status if status in {"failed", "running"} else "succeeded",
     )
     if status not in {"legacy", "missing"}:
         run.verification = RunVerification(
+            execution_evidence=successful_verification(FakeDifyPort()).execution_evidence,
             execution_revision="old" if status == "stale" else "rev",
             executed_graph_revision="graph",
             terminal_outputs={"result": None},

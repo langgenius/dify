@@ -129,19 +129,24 @@ class AppGenerateService:
             inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
-        if builder_execution is not None:
-            if (
-                app_model.mode != AppMode.WORKFLOW
-                or workflow_execution_mode != "in_process"
-                or invoke_from != InvokeFrom.DEBUGGER
-                or not isinstance(user, Account)
-                or builder_execution_admit is None
-                or args.get("files")
-            ):
-                raise BuilderExecutionPolicyError("unsupported_execution_transport")
-            workflow = cls._get_workflow(app_model, invoke_from, args.get("workflow_id"), session=session)
-            restricted_admission_snapshot(workflow, app_model)
-            scalar_inputs_digest(args.get("inputs", {}))
+        try:
+            if builder_execution is not None:
+                if (
+                    app_model.mode != AppMode.WORKFLOW
+                    or workflow_execution_mode != "in_process"
+                    or invoke_from != InvokeFrom.DEBUGGER
+                    or not isinstance(user, Account)
+                    or builder_execution_admit is None
+                    or args.get("files")
+                ):
+                    raise BuilderExecutionPolicyError("unsupported_execution_transport")
+                workflow = cls._get_workflow(app_model, invoke_from, args.get("workflow_id"), session=session)
+                restricted_admission_snapshot(workflow, app_model)
+                scalar_inputs_digest(args.get("inputs", {}))
+        except BuilderExecutionPolicyError as error:
+            if builder_execution_admit is not None:
+                builder_execution_admit.on_refusal(error, preworker=True)
+            raise
         return cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
@@ -216,7 +221,10 @@ class AppGenerateService:
             else app_model.mode
         )
         if builder_execution is not None and effective_mode != AppMode.WORKFLOW:
-            raise BuilderExecutionPolicyError("unsupported_workflow")
+            error = BuilderExecutionPolicyError("unsupported_workflow")
+            if builder_execution_admit is not None:
+                builder_execution_admit.on_refusal(error, preworker=True)
+            raise error
         match effective_mode:
             case AppMode.COMPLETION:
                 return rate_limit.generate(

@@ -11,7 +11,7 @@ import re
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError, field_validator, model_validator
 
 ScalarValue = str | int | float | bool | None
 BoundedID = Annotated[str, Field(strict=True, min_length=1, max_length=128)]
@@ -237,6 +237,36 @@ class BuilderExecutionRefusal(_TrustedModel):
 
     safety_outcome: Literal["unsupported_safe_execution"] = "unsupported_safe_execution"
     reason_code: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
+
+
+class TrustedExecutionCompletion(_TrustedModel):
+    """Transient finish facts captured by the native worker/port owner, never posted."""
+
+    context: BuilderExecutionContext
+    native_run_id: BoundedID | None
+    task_id: BoundedID | None
+    worker_finished: StrictBool
+    worker_exit: Literal["returned", "policy_refused", "stopped", "failed", "not_observed"]
+    recorder_healthy: StrictBool
+    response_completed: StrictBool
+    refusal: BuilderExecutionRefusal | None = None
+    preworker_refusal: StrictBool = False
+
+    @model_validator(mode="after")
+    def validate_completion(self) -> "TrustedExecutionCompletion":
+        if (self.native_run_id is None) != (self.task_id is None):
+            raise ValueError("incomplete claim identity")
+        if self.worker_exit == "not_observed" and self.worker_finished:
+            raise ValueError("unobserved worker cannot be finished")
+        if self.preworker_refusal and (
+            self.refusal is None
+            or self.native_run_id is not None
+            or self.recorder_healthy
+            or self.worker_finished
+            or self.worker_exit != "not_observed"
+        ):
+            raise ValueError("invalid preworker refusal origin")
+        return self
 
 
 class RestrictedAdmissionSnapshot(_TrustedModel):

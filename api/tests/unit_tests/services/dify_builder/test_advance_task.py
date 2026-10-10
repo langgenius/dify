@@ -176,7 +176,7 @@ def test_terminal_review_projects_current_persisted_verification(
     assert run.kind == "verify"
     assert run.immutable is True
     assert run.status == ("failed" if evidence == "failed" else "succeeded")
-    assert (run.verification is None) is (evidence in {"failed", "evidenceless"})
+    assert (run.verification is None) is (evidence == "evidenceless")
     assert released == [(session.id, "verify-token")]
     assert finished["kind"] == "command_finished"
     assert finished["state"] == "fix.await_decision"

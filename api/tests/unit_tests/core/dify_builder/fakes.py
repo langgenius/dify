@@ -386,6 +386,7 @@ class FakeDifyPort:
         return Run(
             dify_run_id="dify-run-1",
             status="failed",
+            verification=failed_verification(self),
             per_node=[NodeOutput(node_id="output", status="failed", error="still broken")],
         )
 
@@ -635,6 +636,7 @@ class FakeBuildDifyPort:
         return Run(
             dify_run_id="build-run-1",
             status="failed",
+            verification=failed_verification(self),
             per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
         )
 
@@ -724,14 +726,26 @@ class FakeEditDifyPort(FakeBuildDifyPort):
         self.graph = _seeded_edit_graph()
 
 
-def successful_verification(dify) -> RunVerification:
+def successful_verification(dify, *, no_output=False) -> RunVerification:
+    """Unit policy fixture only; never evidence of a composed native execution."""
+    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+
     return RunVerification(
+        execution_evidence=ExecutionEvidenceSummary(
+            request_id="unit-request",
+            mode="restricted",
+            sealed=True,
+            safety_outcome="restricted_execution_completed",
+            sandbox_profile="disabled",
+            fixture_digest="a" * 64,
+            native_run_id="build-run-1" if isinstance(dify, FakeBuildDifyPort) else "dify-run-1",
+        ),
         execution_revision=dify.hash,
         executed_graph_revision=dify.graph_revision(dify.graph),
         terminal_outputs=dict(dify.run_outputs),
         output_findings=[],
         executed_node_ids=[],
-        no_output_dead_branch=False,
+        no_output_dead_branch=no_output,
     )
 
 
@@ -744,6 +758,7 @@ def seed_verified_run(repo: InMemoryRepository, session: Session, dify) -> None:
         status="succeeded",
         immutable=True,
         verification=successful_verification(dify),
+        dify_run_id="build-run-1" if isinstance(dify, FakeBuildDifyPort) else "dify-run-1",
     )
     repo.save_run(session.id, run)
     repo._contexts[session.id].verify_run_id = run.id
@@ -754,3 +769,11 @@ def saved_test_context(repo, session_id: str, **overrides) -> DifyBuilderContext
     test_input = TestInput(session_id=session_id, source="mock", inputs={})
     repo.save_test_input(test_input)
     return DifyBuilderContext(test_input_ref=test_input.id, **overrides)
+
+
+def failed_verification(dify) -> RunVerification:
+    """Complete business-failure evidence for unit routing only, not native execution proof."""
+    evidence = successful_verification(dify)
+    assert evidence.execution_evidence is not None
+    evidence.execution_evidence = evidence.execution_evidence.model_copy(update={"safety_outcome": "native_failed"})
+    return evidence

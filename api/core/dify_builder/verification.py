@@ -7,11 +7,39 @@ REVIEW_NOTE = "Other paths and goal acceptance were not verified."
 SUCCESS_REPLY = "Execution succeeded; output needs review."
 
 
+def is_execution_policy_blocker(run: Run) -> bool:
+    """Known policy denials and incomplete execution proof cannot enter repair."""
+    if run.execution_refusal is not None:
+        return True
+    summary = run.verification.execution_evidence if run.verification else None
+    if summary is None:
+        return run.kind == "verify"
+    return (
+        bool(summary.blocked_node_ids)
+        or not summary.sealed
+        or summary.safety_outcome
+        in {"unsupported_safe_execution", "execution_blocked", "execution_evidence_unknown", "simulation_completed"}
+    )
+
+
 def publication_decision(
     run: Run | None, *, session_id: str, current_revision: str, current_graph_revision: str
 ) -> PublicationDecision:
     if run is None or run.session_id != session_id or run.kind != "verify" or not run.immutable:
         return PublicationDecision(allowed=False, reason="no_verified_run")
+    summary = run.verification.execution_evidence if run.verification else None
+    if run.execution_refusal is not None or (summary and summary.blocked_node_ids):
+        return PublicationDecision(allowed=False, reason="execution_policy_blocked")
+    if summary is None or not summary.sealed or not summary.native_run_id or summary.native_run_id != run.dify_run_id:
+        return PublicationDecision(allowed=False, reason="execution_provenance_unbound")
+    if summary.safety_outcome in {"unsupported_safe_execution", "execution_blocked"}:
+        return PublicationDecision(allowed=False, reason="execution_policy_blocked")
+    if summary.safety_outcome == "execution_evidence_unknown":
+        return PublicationDecision(allowed=False, reason="execution_evidence_unknown")
+    if summary.safety_outcome == "simulation_completed":
+        return PublicationDecision(allowed=False, reason="simulation_only")
+    if summary.safety_outcome != "restricted_execution_completed" or summary.mode != "restricted":
+        return PublicationDecision(allowed=False, reason="execution_failed")
     if run.status == "failed":
         return PublicationDecision(allowed=False, reason="execution_failed")
     if run.status != "succeeded":
@@ -50,6 +78,22 @@ def result_card(run: Run) -> TestResultCard:
         terminal_outputs=evidence.terminal_outputs if evidence else None,
         executed_node_ids=evidence.executed_node_ids if evidence else [],
     )
+    summary = evidence.execution_evidence if evidence else None
+    if summary:
+        card.execution_mode = summary.mode
+        card.safety_outcome = summary.safety_outcome
+        card.simulated_node_ids = list(summary.simulated_node_ids)
+        card.blocked_node_ids = list(summary.blocked_node_ids)
+    elif run.execution_refusal:
+        card.safety_outcome = run.execution_refusal.safety_outcome
+    else:
+        card.safety_outcome = "execution_evidence_unknown"
+    if is_execution_policy_blocker(run):
+        card.outcome = "execution_unknown"
+        card.failure_reason = (
+            "Execution safety requires review or revised test inputs; automatic repair and publication are blocked."
+        )
+        return card
     if run.status == "succeeded" and has_output_blocker(run):
         card.status = "failed"
         card.outcome = "required_output_unresolved"

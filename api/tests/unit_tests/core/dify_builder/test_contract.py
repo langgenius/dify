@@ -221,6 +221,10 @@ def test_card_shapes_round_trip():
         "executed_node_ids": [],
         "review_note": None,
         "dify_run_id": "run-1",
+        "execution_mode": None,
+        "safety_outcome": None,
+        "simulated_node_ids": [],
+        "blocked_node_ids": [],
     }
 
     # assistant_turn keeps model reasoning separate from observable execution.
