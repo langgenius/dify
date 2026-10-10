@@ -203,7 +203,7 @@ const ExternalMetadataSection = ({
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
               {editingId && (
-                <Button type="button" disabled={pending} onClick={resetDraft}>
+                <Button disabled={pending} onClick={resetDraft}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
               )}
