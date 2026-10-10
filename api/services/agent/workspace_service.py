@@ -189,8 +189,6 @@ class AgentWorkspaceService:
         tenant_id: str,
         binding_id: str,
         session_snapshot: str,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
     ) -> None:
         with session_factory.create_session() as session:
             binding = session.scalar(
@@ -203,8 +201,6 @@ class AgentWorkspaceService:
             if binding is None:
                 raise AgentWorkspaceNotFoundError("ACTIVE Binding is unavailable")
             binding.session_snapshot = session_snapshot
-            binding.pending_form_id = pending_form_id
-            binding.pending_tool_call_id = pending_tool_call_id
             session.commit()
 
     @classmethod

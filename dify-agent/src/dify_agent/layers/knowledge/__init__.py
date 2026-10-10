@@ -5,7 +5,6 @@ root stays import-safe for callers that only need to construct run requests.
 """
 
 from dify_agent.layers.knowledge.configs import (
-    DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
     DifyKnowledgeBaseLayerConfig,
     DifyKnowledgeDatasetConfig,
     DifyKnowledgeEagerResult,
@@ -21,7 +20,6 @@ from dify_agent.layers.knowledge.configs import (
 )
 
 __all__ = [
-    "DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID",
     "DifyKnowledgeBaseLayerConfig",
     "DifyKnowledgeDatasetConfig",
     "DifyKnowledgeEagerResult",

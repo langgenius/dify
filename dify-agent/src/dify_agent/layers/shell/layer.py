@@ -10,18 +10,13 @@ from dataclasses import dataclass, field
 from typing import ClassVar, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
-from pydantic_ai import Tool
-from typing_extensions import Self, override
+from pydantic_ai import RunContext
+from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
+from pydantic_ai.capabilities.abstract import WrapRunHandler
+from pydantic_ai.run import AgentRunResult
+from pydantic_ai.toolsets import FunctionToolset
+from typing_extensions import Self
 
-from agenton.layers import (
-    EmptyRuntimeState,
-    LayerDeps,
-    NoLayerDeps,
-    PlainLayer,
-    PydanticAILayer,
-    PydanticAIPrompt,
-    PydanticAITool,
-)
 from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
@@ -29,10 +24,11 @@ from dify_agent.adapters.shell.protocols import (
     ShellPromptObservation,
 )
 from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
-from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.agent_stub.shell_env import build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.layers.runtime.layer import DifyRuntimeLayer
-from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.runtime.layer import Capability as RuntimeCapability
+from dify_agent.runtime.context import Deps
+from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
 from dify_agent.runtime.command_runner import execute_complete_with_commands
 from dify_agent.runtime_backend import RuntimeLease
@@ -173,12 +169,12 @@ type ShellRunToolResult = str | ShellToolErrorObservation
 type ShellInterruptToolResult = str | ShellToolErrorObservation
 
 
-class DifyShellLayerDeps(LayerDeps):
-    execution_context: PlainLayer[NoLayerDeps, DifyExecutionContextLayerConfig, EmptyRuntimeState] | None  # pyright: ignore[reportUninitializedInstanceVariable]
-    runtime: DifyRuntimeLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+class Config(DifyShellLayerConfig):
+    pass
 
 
-class DifyShellRuntimeState(BaseModel):
+class State(BaseModel):
+    initialized: bool = False
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
 
@@ -203,102 +199,114 @@ class DifyShellRuntimeState(BaseModel):
 CompleteRemoteCommandResult = CompleteShellCommandResult
 
 
-@dataclass(slots=True)
-class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
-    """Expose Shell tools over the active RuntimeLease without owning it.
+class Capability(AbstractCapability[Deps]):
+    """Own one ShellSession, bootstrap once and clean jobs on every outcome."""
 
-    Create optionally bootstraps configured CLI tools in the lease's Workspace.
-    Suspend and delete best-effort remove tracked shellctl jobs, then clear job
-    ids and offsets so they do not persist across requests. Commands, files,
-    Home, and cwd come only from ``DifyRuntimeLayer.lease``. Persistent Binding
-    and Workspace lifecycle remains exclusively owned by Dify API.
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
+
+    def get_ordering(self) -> CapabilityOrdering:
+        return CapabilityOrdering(wrapped_by=[RuntimeCapability], requires=[RuntimeCapability])
+
+    def get_instructions(self):
+        return self._instructions
+
+    def _instructions(self, ctx: RunContext[Deps]) -> str:
+        session = ctx.deps.resources.shells[self.name]
+        return f"{session.build_prefix_prompt()}\n\n{_SHELL_LAYER_SUFFIX_PROMPT}"
+
+    def get_toolset(self) -> FunctionToolset[Deps]:
+        toolset = FunctionToolset[Deps](id=self.name, sequential=True)
+
+        @toolset.tool(name="shell_run")
+        async def shell_run(
+            ctx: RunContext[Deps], script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
+        ) -> ShellRunToolResult:
+            """Start a shell job and return its output and status."""
+            return await ctx.deps.resources.shells[self.name]._tool_run(script, timeout)
+
+        @toolset.tool(name="shell_wait")
+        async def shell_wait(
+            ctx: RunContext[Deps], job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
+        ) -> ShellRunToolResult:
+            """Wait for output or completion from an existing shell job."""
+            return await ctx.deps.resources.shells[self.name]._tool_wait(job_id, timeout)
+
+        @toolset.tool(name="shell_input")
+        async def shell_input(
+            ctx: RunContext[Deps], job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
+        ) -> ShellRunToolResult:
+            """Send stdin to a shell job and wait for its next output."""
+            return await ctx.deps.resources.shells[self.name]._tool_input(job_id, text, timeout)
+
+        @toolset.tool(name="shell_interrupt")
+        async def shell_interrupt(
+            ctx: RunContext[Deps], job_id: str, grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS
+        ) -> ShellInterruptToolResult:
+            """Interrupt a running shell job and return its final status."""
+            return await ctx.deps.resources.shells[self.name]._tool_interrupt(job_id, grace_seconds)
+
+        return toolset
+
+    async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
+        session = ShellSession(self.name, ctx.deps)
+        ctx.deps.resources.shells[self.name] = session
+        try:
+            state = session.runtime_state
+            if not state.initialized:
+                script = _workspace_bootstrap_script(session.config)
+                if script:
+                    result = await session._run_internal_script_complete(script, cwd=session._require_workspace_cwd())
+                    if result.exit_code != 0 or not result.output_complete:
+                        raise RuntimeError(
+                            f"Failed to bootstrap shell workspace: {result.status} exit_code={result.exit_code}"
+                        )
+                state.initialized = True
+                session.save_state(state)
+            return await handler()
+        finally:
+            try:
+                await session._delete_tracked_jobs_best_effort(session.runtime_state.job_ids)
+            finally:
+                session._clear_tracked_jobs()
+                del ctx.deps.resources.shells[self.name]
+
+
+@dataclass(slots=True)
+class ShellSession:
+    """Run-scoped shell operations over borrowed lease and canonical JSON state.
+
+    Capabilities and tools share this live command adapter, never copied Config
+    or State models. Shell tools run sequentially because offsets and tokens
+    share one session. Binding and Workspace retirement remain API-owned.
     """
 
-    type_id: ClassVar[str | None] = DIFY_SHELL_LAYER_TYPE_ID
-
-    config: DifyShellLayerConfig
-    shell_redact_patterns: list[str] = field(default_factory=list)
-    agent_stub_api_base_url: str | None = None
-    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    name: str
+    deps: Deps
     _job_agent_stub_tokens: dict[str, str] = field(default_factory=dict, init=False, repr=False)
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyShellLayerConfig) -> Self:
-        del config
-        raise TypeError("DifyShellLayer requires server-injected settings and must use a provider factory.")
-
-    @classmethod
-    def from_config_with_settings(
-        cls,
-        config: DifyShellLayerConfig,
-        *,
-        shell_redact_patterns: list[str] | None = None,
-        agent_stub_api_base_url: str | None = None,
-        agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
-    ) -> Self:
-        return cls(
-            config=config,
-            shell_redact_patterns=shell_redact_patterns or [],
-            agent_stub_api_base_url=agent_stub_api_base_url,
-            agent_stub_token_factory=agent_stub_token_factory,
-        )
+    @property
+    def config(self) -> Config:
+        return Config.model_validate(self.deps.layers[self.name]["config"])
 
     @property
-    @override
-    def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
-        return [self._build_prefix_prompt]
+    def runtime_state(self) -> State:
+        return State.model_validate(self.deps.layers[self.name]["state"])
 
-    @property
-    @override
-    def suffix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
-        return [_shell_layer_suffix_prompt]
+    def save_state(self, state: State) -> None:
+        self.deps.layers[self.name]["state"] = state.model_dump(mode="json")
 
-    @property
-    @override
-    def tools(self) -> Sequence[PydanticAITool[object]]:
-        return [
-            Tool(self._tool_run, name="shell_run"),
-            Tool(self._tool_wait, name="shell_wait"),
-            Tool(self._tool_input, name="shell_input"),
-            Tool(self._tool_interrupt, name="shell_interrupt"),
-        ]
-
-    def _build_prefix_prompt(self) -> str:
-        execution_context = self.deps.execution_context
-        is_build_draft = (
-            execution_context is not None and execution_context.config.agent_config_version_kind == "build_draft"
+    def build_prefix_prompt(self) -> str:
+        context_name = self.config.execution_context
+        context = (
+            DifyExecutionContextLayerConfig.model_validate(self.deps.layers[context_name]["config"])
+            if context_name
+            else None
         )
-        working_location_prompt = (
-            _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
-        )
-        return f"{_SHELL_LAYER_PREFIX_PROMPT}\n\n{working_location_prompt}"
-
-    @override
-    async def on_context_create(self) -> None:
-        bootstrap_script = _workspace_bootstrap_script(self.config)
-        if not bootstrap_script:
-            return
-        result = await self._run_internal_script_complete(bootstrap_script, cwd=self._require_workspace_cwd())
-        if result.exit_code != 0 or not result.output_complete:
-            raise RuntimeError(
-                f"Failed to bootstrap shell workspace {self._require_workspace_cwd()}: "
-                f"{result.status} exit_code={result.exit_code}"
-            )
-
-    @override
-    async def on_context_resume(self) -> None:
-        _ = self._require_resource()
-
-    @override
-    async def on_context_suspend(self) -> None:
-        await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
-        self._clear_tracked_jobs()
-
-    @override
-    async def on_context_delete(self) -> None:
-        await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
-        self._clear_tracked_jobs()
+        is_build_draft = context is not None and context.agent_config_version_kind == "build_draft"
+        working = _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
+        return f"{_SHELL_LAYER_PREFIX_PROMPT}\n\n{working}"
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         """Start a shell job in the current workspace and return its output and status."""
@@ -312,12 +320,17 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 env=env,
                 timeout=timeout,
             )
+            # Register the remote job before observing output so cancellation during
+            # a tail request still leaves cleanup with its job and redaction token.
+            self._remember_job_id(result.job_id)
+            self._remember_job_offset(result.job_id, 0)
+            if agent_stub_token is not None and not result.done:
+                self._job_agent_stub_tokens[result.job_id] = agent_stub_token
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
                 edge_bytes=_SHELL_OUTPUT_PROMPT_EDGE_BYTES,
             )
-            self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
             if agent_stub_token is not None and not result.done:
                 self._job_agent_stub_tokens[result.job_id] = agent_stub_token
@@ -502,7 +515,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         )
 
     def _require_resource(self) -> RuntimeLease:
-        return self.deps.runtime.lease
+        lease = self.deps.resources.leases.get(self.config.runtime)
+        if lease is None:
+            raise RuntimeError("Shell requires an active Runtime lease.")
+        return lease
 
     def _require_workspace_cwd(self) -> str:
         return self._require_resource().layout.workspace_dir
@@ -518,12 +534,14 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     def _remember_job_id(self, job_id: str) -> None:
         if job_id in self.runtime_state.job_ids:
             return
-        self.runtime_state.job_ids = [*self.runtime_state.job_ids, job_id]
+        state = self.runtime_state
+        state.job_ids = [*state.job_ids, job_id]
+        self.save_state(state)
 
     def _remember_job_offset(self, job_id: str, offset: int) -> None:
-        job_offsets = dict(self.runtime_state.job_offsets)
-        job_offsets[job_id] = offset
-        self.runtime_state.job_offsets = job_offsets
+        state = self.runtime_state
+        state.job_offsets = {**state.job_offsets, job_id: offset}
+        self.save_state(state)
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
         commands = self._require_resource().commands
@@ -538,8 +556,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 )
 
     def _clear_tracked_jobs(self) -> None:
-        self.runtime_state.job_offsets = {}
-        self.runtime_state.job_ids = []
+        state = self.runtime_state
+        state.job_offsets = {}
+        state.job_ids = []
+        self.save_state(state)
         self._job_agent_stub_tokens.clear()
 
     def _build_shell_command_env(
@@ -552,12 +572,16 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         env["HOME"] = self._require_resource().layout.home_dir
         if not include_agent_stub_env:
             return env
-        execution_context_layer = self.deps.execution_context
-        execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        context_name = self.config.execution_context
+        execution_context = (
+            DifyExecutionContextLayerConfig.model_validate(self.deps.layers[context_name]["config"])
+            if context_name
+            else None
+        )
         agent_stub_env = build_shell_agent_stub_env(
-            agent_stub_api_base_url=self.agent_stub_api_base_url,
+            agent_stub_api_base_url=self.deps.services.agent_stub_api_base_url,
             execution_context=execution_context,
-            token_factory=self.agent_stub_token_factory,
+            token_factory=self.deps.services.agent_stub_token_factory,
             session_id=None,
         )
         if agent_stub_env is None:
@@ -587,7 +611,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             if value and len(value) > 8:
                 text = text.replace(value, "***")
         # Server-level + per-agent regex patterns.
-        for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
+        for pattern in (*self.deps.services.shell_redact_patterns, *self.config.redact_patterns):
             text = re.sub(pattern, "***", text)
         return text
 
@@ -621,10 +645,6 @@ async def render_prompt_observation_from_result(
         truncated_in_middle=result.truncated or output_exceeds_edge_budget,
     )
     return ShellPromptObservation(text=text, output_path=output_path, offset=offset)
-
-
-def _shell_layer_suffix_prompt() -> str:
-    return _SHELL_LAYER_SUFFIX_PROMPT
 
 
 def _metadata_dict(
@@ -738,10 +758,11 @@ def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
 
 
 __all__ = [
+    "Config",
+    "State",
+    "Capability",
+    "ShellSession",
     "CompleteRemoteCommandResult",
-    "DifyShellLayer",
-    "DifyShellLayerDeps",
-    "DifyShellRuntimeState",
     "DEFAULT_TERMINATE_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
     "render_prompt_observation_from_result",
