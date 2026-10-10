@@ -125,10 +125,10 @@ def diagnose(
     node_outputs: list[NodeOutput],
     on_reasoning: Callable[[str], None] | None = None,
 ) -> Diagnosis:
-    failed_run, node_outputs = diagnostic_context.redact_run_context(failed_run, graph, node_outputs)
-    failed = _failed_nodes(node_outputs)
+    safe_run, safe_outputs = diagnostic_context.redact_run_context(failed_run, graph, node_outputs)
+    failed = _failed_nodes(safe_outputs)
     if model is None:
-        return _degraded_diagnosis(failed, failed_run.error)
+        return _degraded_diagnosis(failed, safe_run.error)
     system = (
         "You are a Dify workflow debugging assistant. Given a failed workflow run, identify the "
         "single node that caused the failure and the root cause. Reply with ONLY a JSON object: "
@@ -140,16 +140,17 @@ def diagnose(
         f"inputs={_truncate(o.inputs)} outputs={_truncate(o.outputs)}"
         for o in failed
     ) or (
-        f"(no node executed; the run threw at launch: {failed_run.error!r})"
-        if failed_run.error
+        f"(no node executed; the run threw at launch: {safe_run.error!r})"
+        if safe_run.error
         else "(no per-node failure recorded)"
     )
-    graph_context = diagnostic_context.redact_diagnostic_text(_graph_context(graph), graph)
-    user = f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{graph_context}"
+    user = diagnostic_context.redact_diagnostic_text(
+        f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}", failed_run, graph, node_outputs
+    )
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
-        return _degraded_diagnosis(failed, failed_run.error)
+        return _degraded_diagnosis(failed, safe_run.error)
     fallback = failed[0].node_id if failed else ""
     return _diagnosis_from_json(data, graph, fallback_node=fallback)
 
