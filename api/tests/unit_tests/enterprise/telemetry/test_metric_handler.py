@@ -1,6 +1,7 @@
 """Unit tests for EnterpriseMetricHandler."""
 
 import json
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,13 +11,13 @@ from enterprise.telemetry.metric_handler import EnterpriseMetricHandler
 
 
 @pytest.fixture
-def mock_redis():
+def mock_redis() -> Iterator[MagicMock]:
     with patch("enterprise.telemetry.metric_handler.redis_client") as mock:
         yield mock
 
 
 @pytest.fixture
-def sample_envelope():
+def sample_envelope() -> TelemetryEnvelope:
     return TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
         tenant_id="test-tenant",
@@ -25,7 +26,7 @@ def sample_envelope():
     )
 
 
-def test_dispatch_app_created(sample_envelope, mock_redis):
+def test_dispatch_app_created(sample_envelope: TelemetryEnvelope, mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
 
     handler = EnterpriseMetricHandler()
@@ -34,7 +35,7 @@ def test_dispatch_app_created(sample_envelope, mock_redis):
         mock_handler.assert_called_once_with(sample_envelope)
 
 
-def test_dispatch_app_updated(mock_redis):
+def test_dispatch_app_updated(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_UPDATED,
@@ -49,7 +50,7 @@ def test_dispatch_app_updated(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_app_deleted(mock_redis):
+def test_dispatch_app_deleted(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_DELETED,
@@ -64,7 +65,7 @@ def test_dispatch_app_deleted(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_feedback_created(mock_redis):
+def test_dispatch_feedback_created(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.FEEDBACK_CREATED,
@@ -79,7 +80,7 @@ def test_dispatch_feedback_created(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_message_run(mock_redis):
+def test_dispatch_message_run(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.MESSAGE_RUN,
@@ -94,7 +95,7 @@ def test_dispatch_message_run(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_tool_execution(mock_redis):
+def test_dispatch_tool_execution(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.TOOL_EXECUTION,
@@ -109,7 +110,7 @@ def test_dispatch_tool_execution(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_moderation_check(mock_redis):
+def test_dispatch_moderation_check(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.MODERATION_CHECK,
@@ -124,7 +125,7 @@ def test_dispatch_moderation_check(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_suggested_question(mock_redis):
+def test_dispatch_suggested_question(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.SUGGESTED_QUESTION,
@@ -139,7 +140,7 @@ def test_dispatch_suggested_question(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_dataset_retrieval(mock_redis):
+def test_dispatch_dataset_retrieval(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.DATASET_RETRIEVAL,
@@ -154,7 +155,7 @@ def test_dispatch_dataset_retrieval(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_generate_name(mock_redis):
+def test_dispatch_generate_name(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.GENERATE_NAME,
@@ -169,7 +170,7 @@ def test_dispatch_generate_name(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_dispatch_prompt_generation(mock_redis):
+def test_dispatch_prompt_generation(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.PROMPT_GENERATION,
@@ -184,7 +185,7 @@ def test_dispatch_prompt_generation(mock_redis):
         mock_handler.assert_called_once_with(envelope)
 
 
-def test_all_known_cases_have_handlers(mock_redis):
+def test_all_known_cases_have_handlers(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     handler = EnterpriseMetricHandler()
 
@@ -198,7 +199,7 @@ def test_all_known_cases_have_handlers(mock_redis):
         handler.handle(envelope)
 
 
-def test_idempotency_duplicate(sample_envelope, mock_redis):
+def test_idempotency_duplicate(sample_envelope: TelemetryEnvelope, mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = None
 
     handler = EnterpriseMetricHandler()
@@ -207,7 +208,7 @@ def test_idempotency_duplicate(sample_envelope, mock_redis):
         mock_handler.assert_not_called()
 
 
-def test_idempotency_first_seen(sample_envelope, mock_redis):
+def test_idempotency_first_seen(sample_envelope: TelemetryEnvelope, mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
 
     handler = EnterpriseMetricHandler()
@@ -222,7 +223,9 @@ def test_idempotency_first_seen(sample_envelope, mock_redis):
     )
 
 
-def test_idempotency_redis_failure_fails_open(sample_envelope, mock_redis, caplog: pytest.LogCaptureFixture):
+def test_idempotency_redis_failure_fails_open(
+    sample_envelope: TelemetryEnvelope, mock_redis: MagicMock, caplog: pytest.LogCaptureFixture
+) -> None:
     mock_redis.set.side_effect = Exception("Redis unavailable")
 
     handler = EnterpriseMetricHandler()
@@ -232,14 +235,14 @@ def test_idempotency_redis_failure_fails_open(sample_envelope, mock_redis, caplo
     assert "Redis unavailable for deduplication check" in caplog.text
 
 
-def test_rehydration_uses_payload(sample_envelope):
+def test_rehydration_uses_payload(sample_envelope: TelemetryEnvelope) -> None:
     handler = EnterpriseMetricHandler()
     payload = handler._rehydrate(sample_envelope)
 
     assert payload == {"app_id": "app-123", "name": "Test App"}
 
 
-def test_rehydration_from_storage():
+def test_rehydration_from_storage() -> None:
     """Verify _rehydrate loads payload from object storage via payload_ref."""
     stored_data = {"app_id": "app-stored", "mode": "workflow"}
     envelope = TelemetryEnvelope(
@@ -259,7 +262,7 @@ def test_rehydration_from_storage():
         mock_storage.load.assert_called_once_with("telemetry/test-tenant/test-event-fb.json")
 
 
-def test_rehydration_storage_failure_emits_degraded_event():
+def test_rehydration_storage_failure_emits_degraded_event() -> None:
     """Verify _rehydrate emits degraded event when storage load fails."""
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
@@ -286,7 +289,7 @@ def test_rehydration_storage_failure_emits_degraded_event():
         assert "dify.telemetry.error" in call_args[1]["attributes"]
 
 
-def test_rehydration_emits_degraded_event_on_empty_payload():
+def test_rehydration_emits_degraded_event_on_empty_payload() -> None:
     """Verify _rehydrate emits degraded event when payload is empty and no ref exists."""
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
@@ -308,7 +311,7 @@ def test_rehydration_emits_degraded_event_on_empty_payload():
         assert "dify.telemetry.error" in call_args[1]["attributes"]
 
 
-def test_on_app_created_emits_correct_event(mock_redis):
+def test_on_app_created_emits_correct_event(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
@@ -351,7 +354,7 @@ def test_on_app_created_emits_correct_event(mock_redis):
         assert counter_call[0][2]["mode"] == "chat"
 
 
-def test_on_app_updated_emits_correct_event(mock_redis):
+def test_on_app_updated_emits_correct_event(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_UPDATED,
@@ -392,7 +395,7 @@ def test_on_app_updated_emits_correct_event(mock_redis):
         assert counter_call[0][2]["app_id"] == "app-789"
 
 
-def test_on_app_deleted_emits_correct_event(mock_redis):
+def test_on_app_deleted_emits_correct_event(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_DELETED,
@@ -433,7 +436,7 @@ def test_on_app_deleted_emits_correct_event(mock_redis):
         assert counter_call[0][2]["app_id"] == "app-789"
 
 
-def test_on_feedback_created_emits_correct_event(mock_redis):
+def test_on_feedback_created_emits_correct_event(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.FEEDBACK_CREATED,
@@ -477,7 +480,7 @@ def test_on_feedback_created_emits_correct_event(mock_redis):
         assert counter_args[0][2]["rating"] == "like"
 
 
-def test_on_feedback_created_without_content(mock_redis):
+def test_on_feedback_created_without_content(mock_redis: MagicMock) -> None:
     mock_redis.set.return_value = True
     envelope = TelemetryEnvelope(
         case=TelemetryCase.FEEDBACK_CREATED,

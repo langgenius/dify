@@ -491,8 +491,6 @@ def streamablehttp_client(
         ClientToServerQueue,  # Queue for sending messages TO server
         GetSessionIdCallback,
     ],
-    None,
-    None,
 ]:
     """
     Client transport for StreamableHTTP.

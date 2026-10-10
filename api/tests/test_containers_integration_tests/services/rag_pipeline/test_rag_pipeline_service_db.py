@@ -38,7 +38,7 @@ class TestRagPipelineServiceGetPipeline:
     """Integration tests for RagPipelineService.get_pipeline."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         yield
         db_session_with_containers.rollback()
 
@@ -128,7 +128,7 @@ class TestUpdateCustomizedPipelineTemplate:
     """Integration tests for RagPipelineService.update_customized_pipeline_template."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         yield
         db_session_with_containers.rollback()
 
@@ -218,7 +218,7 @@ class TestDeleteCustomizedPipelineTemplate:
     """Integration tests for RagPipelineService.delete_customized_pipeline_template."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         yield
         db_session_with_containers.rollback()
 

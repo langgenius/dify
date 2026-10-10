@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`.',
+          'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },

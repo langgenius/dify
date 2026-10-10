@@ -15,15 +15,20 @@ from sqlalchemy import Connection, Engine, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.message import AppGetFeedbacksApi, MessageFeedbackApi, MessageListApi
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
+from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
 from models.model import ApiToken, App, EndUser, Message, MessageFeedback
+from models.resource_access_token import ResourceAccessToken
+from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
+from services.resource_access_token_service import ResourceAccessTokenService
 from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
@@ -37,6 +42,8 @@ class _Harness:
     message: Message
     factory: sessionmaker[Session]
     sessions: list[Session]
+    resource_access_tokens: ResourceAccessTokenService
+    end_user_queries: list[str]
 
     def post(
         self,
@@ -54,9 +61,30 @@ class _Harness:
             f"/messages/{message_id or self.message.id}/feedbacks", json=body, headers=headers
         )
 
-    def get(self, query: str = "") -> TestResponse:
-        return self.app.test_client().get(
-            f"/app/feedbacks{query}", headers={"Authorization": "Bearer feedback-test-token"}
+    def get(
+        self,
+        query: str = "",
+        *,
+        authorization: str = "Bearer feedback-test-token",
+        requested_app_id: str | None = None,
+    ) -> TestResponse:
+        headers = {"Authorization": authorization}
+        if requested_app_id is not None:
+            headers["X-Dify-App-ID"] = requested_app_id
+        return self.app.test_client().get(f"/app/feedbacks{query}", headers=headers)
+
+    def create_resource_token(self, *app_ids: str) -> ResourceAccessTokenCreateResult:
+        return self.resource_access_tokens.create(
+            RequestContext(
+                request_id="feedback-resource-token-test",
+                trace_id=None,
+                account_id=self.owner.id,
+                active_workspace_id=self.tenant.id,
+            ),
+            name="Feedback integration",
+            resources=tuple(
+                ResourceAccessTokenResource(ResourceAccessTokenResourceType.APP, app_id) for app_id in app_ids
+            ),
         )
 
     def feedbacks(self) -> list[MessageFeedback]:
@@ -112,28 +140,47 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     LoginManager(app)
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sessions: list[Session] = []
+    end_user_queries: list[str] = []
 
     def track(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         assert all(not previous.in_transaction() for previous in sessions if previous is not session)
         sessions.append(session)
 
+    def track_end_user_queries(_connection: Connection, _cursor: object, statement: str, *_args: object) -> None:
+        if "end_users" in statement:
+            end_user_queries.append(statement)
+
     event.listen(sqlite_session_factory, "after_begin", track)
     event.listen(factory, "after_begin", track)
     event.listen(db.session.session_factory, "after_begin", track)
+    event.listen(sqlite_engine, "before_cursor_execute", track_end_user_queries)
     redis_client = Redis()
     redis = RedisClientWrapper()
     redis.initialize(redis_client)
-    app.extensions["application_services"] = build_application_services(
+    services = build_application_services(
         database_client=factory, deployment_edition=DeploymentEdition.COMMUNITY, initialization_password="", redis=redis
     )
+    app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
     api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
     api.add_resource(MessageListApi, "/messages")
-    yield _Harness(app, target, tenant, owner, end_user, message, sqlite_session_factory, sessions)
+    yield _Harness(
+        app,
+        target,
+        tenant,
+        owner,
+        end_user,
+        message,
+        sqlite_session_factory,
+        sessions,
+        services.resource_access_tokens,
+        end_user_queries,
+    )
     event.remove(sqlite_session_factory, "after_begin", track)
     event.remove(factory, "after_begin", track)
     event.remove(db.session.session_factory, "after_begin", track)
+    event.remove(sqlite_engine, "before_cursor_execute", track_end_user_queries)
     redis_client.close()
     with app.app_context():
         db.session.remove()
@@ -321,4 +368,118 @@ def test_empty_feedback_list_keeps_data_array(harness: _Harness) -> None:
     response = harness.get("?limit=101")
     assert response.status_code == HTTPStatus.OK
     assert response.get_json() == {"data": []}
+    harness.assert_closed()
+
+
+def test_resource_token_can_create_and_list_feedback_without_provisioning_on_get(harness: _Harness) -> None:
+    token = harness.create_resource_token(harness.target.id)
+    authorization = f"Bearer {token.token}"
+
+    response = harness.post({"rating": "like", "content": "resource token feedback"}, authorization=authorization)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"result": "success"}
+    [feedback] = harness.feedbacks()
+    assert feedback.from_end_user_id == harness.end_user.id
+    assert feedback.content == "resource token feedback"
+    assert harness.end_user_queries
+    harness.end_user_queries.clear()
+
+    response = harness.get("?user=must-not-be-provisioned", authorization=authorization)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": [feedback.to_dict()]}
+    assert harness.end_user_queries == []
+    with harness.factory() as session:
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is not None
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("select_other_app", [False, True], ids=["first-app", "second-app"])
+def test_multiple_app_resource_token_lists_only_header_selected_app(harness: _Harness, select_other_app: bool) -> None:
+    other = make_app(app_id=str(uuid4()), tenant_id=harness.tenant.id)
+    records = [
+        MessageFeedback(
+            app_id=app_id,
+            conversation_id=str(uuid4()),
+            message_id=str(uuid4()),
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.ADMIN,
+            from_account_id=harness.owner.id,
+            content=app_id,
+        )
+        for app_id in (harness.target.id, other.id)
+    ]
+    with harness.factory.begin() as session:
+        session.add_all([other, *records])
+    token = harness.create_resource_token(harness.target.id, other.id)
+    selected = records[1 if select_other_app else 0]
+
+    response = harness.get(
+        "?user=must-not-be-provisioned",
+        authorization=f"Bearer {token.token}",
+        requested_app_id=selected.app_id,
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": [selected.to_dict()]}
+    assert harness.end_user_queries == []
+    with harness.factory() as session:
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is not None
+    harness.assert_closed()
+
+
+def test_multiple_app_resource_token_list_requires_app_header(harness: _Harness) -> None:
+    other = make_app(app_id=str(uuid4()), tenant_id=harness.tenant.id)
+    with harness.factory.begin() as session:
+        session.add(other)
+    token = harness.create_resource_token(harness.target.id, other.id)
+
+    response = harness.get("?user=must-not-be-provisioned", authorization=f"Bearer {token.token}")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json() == {
+        "code": "bad_request",
+        "message": "App ID is required when a resource access token is bound to multiple apps.",
+        "status": 400,
+    }
+    assert harness.end_user_queries == []
+    with harness.factory() as session:
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is None
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("missing", ["membership", "account"])
+def test_resource_token_requires_owner_for_list_but_not_feedback_write(harness: _Harness, missing: str) -> None:
+    token = harness.create_resource_token(harness.target.id)
+    authorization = f"Bearer {token.token}"
+    with harness.factory.begin() as session:
+        if missing == "membership":
+            session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == harness.tenant.id))
+        else:
+            session.execute(delete(Account).where(Account.id == harness.owner.id))
+
+    response = harness.get("?user=must-not-be-provisioned", authorization=authorization)
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.get_json()["code"] == "unauthorized"
+    assert response.get_json()["message"] == "Tenant owner account not found or tenant is not active."
+    assert harness.end_user_queries == []
+    assert harness.feedbacks() == []
+    harness.assert_closed()
+
+    response = harness.post({"rating": "like"}, authorization=authorization)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"result": "success"}
+    [feedback] = harness.feedbacks()
+    assert feedback.from_end_user_id == harness.end_user.id
+    assert harness.end_user_queries
     harness.assert_closed()

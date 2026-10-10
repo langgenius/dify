@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import {
   createDropdownMenuHandle,
   DropdownMenu,
@@ -389,12 +389,16 @@ export const DetachedTrigger: Story = {
     trigger.focus()
     await userEvent.keyboard('{ArrowDown}')
     const archive = await body.findByRole('menuitem', { name: 'Archive' })
-    await expect(archive).toHaveFocus()
+    await waitFor(async () => {
+      await expect(archive).toHaveFocus()
+    })
     await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('status', { name: 'Archived document' })).toHaveTextContent(
       'Report',
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    await expect(trigger).toHaveFocus()
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
   },
 }

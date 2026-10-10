@@ -154,6 +154,26 @@ def test_other_end_user_cannot_read_history(harness: _Harness) -> None:
     harness.assert_closed()
 
 
+def test_resource_token_lists_only_the_admitted_users_history(harness: _Harness) -> None:
+    token = harness.create_resource_token(harness.target.id)
+    authorization = f"Bearer {token.token}"
+
+    response = _get(harness, authorization=authorization)
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.get_json()
+    assert body["limit"] == 20
+    assert body["has_more"] is False
+    assert [item["id"] for item in body["data"]] == [harness.message.id]
+    harness.assert_closed()
+
+    response = _get(harness, authorization=authorization, user="other-user")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["message"] == "Conversation Not Exists."
+    harness.assert_closed()
+
+
 @pytest.mark.parametrize("field", ["app_id", "from_end_user_id", "from_account_id", "from_source"])
 def test_conversation_ownership_is_enforced(harness: _Harness, field: str) -> None:
     value = ConversationFromSource.CONSOLE if field == "from_source" else str(uuid4())

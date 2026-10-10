@@ -84,7 +84,7 @@ class SnippetService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
-    def _session_scope(self) -> Generator[Session, None, None]:
+    def _session_scope(self) -> Generator[Session]:
         current_session = self._session
         if current_session is not None:
             yield current_session

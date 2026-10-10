@@ -151,7 +151,7 @@ class ArchiveStorage:
         except BotoCoreError as e:
             raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
 
-    def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
+    def get_object_stream(self, key: str) -> Generator[bytes]:
         """
         Stream an object from the archive storage.
 
