@@ -34,7 +34,13 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent, saved_test_context
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    InMemoryRepository,
+    StubAgent,
+    saved_test_context,
+    successful_verification,
+)
 
 # ---- shared fixtures / helpers -------------------------------------------
 
@@ -498,12 +504,8 @@ def test_verify_fail_freezes_run_allows_re_fix():
     assert verify.immutable
 
 
-def test_verify_running_status_routes_to_await_testdata_not_decision():
-    """A truncated-stream run (status="running" -- the outcome is genuinely
-    unknown) must NOT be treated as a failure: the flow returns to
-    fix.await_testdata (re-runnable) with a neutral notice, never reaching
-    fix.await_decision -- where publish/re_fix would act on an unknown
-    result."""
+def test_verify_running_without_proof_stops_at_decision():
+    """Missing proof stops at the existing review gate with publication blocked."""
     from core.dify_builder.models import Run
 
     env, repo = _new_env()
@@ -524,7 +526,7 @@ def test_verify_running_status_routes_to_await_testdata_not_decision():
     )
     out = runner.advance(s.id, turn)
 
-    assert out.current_state == PcState.FIX_AWAIT_TESTDATA  # re-runnable, not fix.await_decision
+    assert out.current_state == PcState.FIX_AWAIT_DECISION  # Missing proof requires review.
 
     _, fc = repo.get_session(s.id)
     verify = repo.get_run(fc.verify_run_id)
@@ -1324,6 +1326,7 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
         kind="verify",
         immutable=True,
         dify_run_id="run-f",
+        verification=successful_verification(env.dify, no_output=True),
         status="succeeded",
         per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
     )
@@ -1335,9 +1338,9 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
     assert res.run.culprit_node_id == "node2"
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "reached no End node" in test_result.payload["failure_reason"]
+    assert "produced no terminal output" in test_result.payload["failure_reason"]
     assert (
-        "without producing any output" in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+        "produced no terminal output" in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 
@@ -1415,7 +1418,7 @@ def test_run_finished_without_output_is_false_without_an_end_node():
     assert run_finished_without_output(graph, per_node) is False
 
 
-def test_a_second_consecutive_unknown_outcome_stops_at_the_fix_decision_gate():
+def test_each_unknown_outcome_stops_at_the_fix_decision_gate():
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, _ = _new_env()
@@ -1425,20 +1428,19 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_fix_decision_gate():
     s = _session(current_state=PcState.FIX_VERIFY)
 
     first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
-    assert first.next == PcState.FIX_AWAIT_TESTDATA
+    assert first.next == PcState.FIX_AWAIT_DECISION
     second = handle_verify(env, Turn(actor=_actor()), s, first.context)
 
     assert second.next == PcState.FIX_AWAIT_DECISION
-    assert second.context.unknown_outcome_count == 2
-    assert "twice in a row" in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert second.context.unknown_outcome_count == 0
+    assert (
+        "Execution safety requires review"
+        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
-def test_re_fix_starts_a_fresh_unknown_outcome_count():
-    """After the cap trips, re_fix clears the rest of the repair loop's state
-    (diagnosis, staged_repair, ...) but previously left unknown_outcome_count
-    at 2 -- so the FIRST unknown outcome of the new repair cycle re-capped
-    immediately instead of being re-runnable once, violating "second
-    CONSECUTIVE"."""
+def test_re_fix_after_unknown_requires_new_inputs():
+    """Re-fix clears the input reference; another verification requires new inputs."""
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, _ = _new_env()
@@ -1450,14 +1452,14 @@ def test_re_fix_starts_a_fresh_unknown_outcome_count():
     first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
     second = handle_verify(env, Turn(actor=_actor()), s, first.context)
     assert second.next == PcState.FIX_AWAIT_DECISION
-    assert second.context.unknown_outcome_count == 2
+    assert second.context.unknown_outcome_count == 0
 
     turn = Turn(action=Action(kind="re_fix", base_version=s.version), actor=_actor())
     re_fixed = handle_await_decision(env, turn, s, second.context)
     assert re_fixed.context.unknown_outcome_count == 0
 
     third = handle_verify(env, Turn(actor=_actor()), s, re_fixed.context)
-    assert third.next == PcState.FIX_AWAIT_TESTDATA
+    assert third.next == PcState.FIX_AWAIT_TESTDATA  # re_fix cleared inputs; new input is required.
 
 
 def test_the_unknown_outcome_counter_is_exported_with_its_cap():

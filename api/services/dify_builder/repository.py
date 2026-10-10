@@ -308,7 +308,16 @@ class SqlDifyBuilderRepository:
                 dify_run_id=run.dify_run_id,
                 status=run.status,
                 per_node=[dataclasses.asdict(n) for n in run.per_node],
-                verification=dataclasses.asdict(run.verification) if run.verification is not None else None,
+                verification=(
+                    {
+                        **dataclasses.asdict(run.verification),
+                        "execution_evidence": run.verification.execution_evidence.model_dump(mode="json")
+                        if run.verification.execution_evidence
+                        else None,
+                    }
+                    if run.verification is not None
+                    else None
+                ),
                 culprit_node_id=run.culprit_node_id,
                 error=run.error,
                 inputs_ref=run.inputs_ref,
@@ -515,6 +524,8 @@ class SqlDifyBuilderRepository:
 
     @staticmethod
     def _to_domain_run(row: DifyBuilderRun) -> Run:
+        from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+
         evidence = row.verification
         verification = None
         if evidence is not None:
@@ -525,6 +536,9 @@ class SqlDifyBuilderRepository:
                 output_findings=[OutputFinding(**finding) for finding in evidence["output_findings"]],
                 executed_node_ids=evidence["executed_node_ids"],
                 no_output_dead_branch=evidence["no_output_dead_branch"],
+                execution_evidence=ExecutionEvidenceSummary.model_validate(evidence["execution_evidence"])
+                if evidence.get("execution_evidence") is not None
+                else None,
             )
         return Run(
             session_id=row.session_id,

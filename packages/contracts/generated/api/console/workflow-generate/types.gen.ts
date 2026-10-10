@@ -158,7 +158,9 @@ export type WorkflowGenerateErrorCode =
   | 'EMPTY_PLAN'
   | 'GRAPH_CYCLE'
   | 'INSTRUCTION_TOO_LONG'
+  | 'INVALID_BRANCH_HANDLE'
   | 'INVALID_CONTAINER'
+  | 'INVALID_HTTP_BODY'
   | 'INVALID_JSON'
   | 'INVALID_SCHEMA'
   | 'MISSING_START'
@@ -220,8 +222,12 @@ export type PostWorkflowGenerateImproveData = {
 }
 
 export type PostWorkflowGenerateImproveErrors = {
-  400: unknown
+  400: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostWorkflowGenerateImproveError =
+  PostWorkflowGenerateImproveErrors[keyof PostWorkflowGenerateImproveErrors]
 
 export type PostWorkflowGenerateImproveResponses = {
   200: WorkflowInstructionImproveResponse
