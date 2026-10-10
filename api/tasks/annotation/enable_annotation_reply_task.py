@@ -34,6 +34,8 @@ def enable_annotation_reply_task(
     """
     logger.info(click.style(f"Start add app annotation to index: {app_id}", fg="green"))
     start_at = time.perf_counter()
+    app_annotation_job_key = f"app_annotation_job_{app_id}"
+    enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
     # get app info
     with session_factory.create_session() as session:
         app = session.scalar(
@@ -42,11 +44,12 @@ def enable_annotation_reply_task(
 
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
+            # Terminal state: nothing left to do, release the app reservation.
+            redis_client.setex(enable_app_annotation_job_key, 600, "completed")
+            redis_client.delete(app_annotation_job_key)
             return
 
         annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
 
         try:
             documents = []
@@ -135,4 +138,4 @@ def enable_annotation_reply_task(
             redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()
         finally:
-            redis_client.delete(enable_app_annotation_key)
+            redis_client.delete(app_annotation_job_key)
