@@ -225,6 +225,101 @@ def test_invalid_model_replacement_still_fails_native_preflight():
     assert risk.level == "high"
 
 
+@pytest.mark.parametrize("grouped", [False, True], ids=["ordinary", "grouped"])
+def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypatch, grouped):
+    """A preflight-valid upstream selector switch must not auto-apply as a config repair."""
+    from datetime import datetime
+
+    from core.dify_builder.handlers_fix import fix_registry
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.runner import Env, Runner
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "source-a", "data": {"type": "template-transform", "title": "A", "template": "A", "variables": []}},
+            {"id": "source-b", "data": {"type": "template-transform", "title": "B", "template": "B", "variables": []}},
+            {
+                "id": "aggregator",
+                "data": {
+                    "type": "variable-aggregator",
+                    "title": "Aggregator",
+                    "output_type": "string",
+                    "variables": [["source-a", "output"]],
+                    "advanced_settings": {
+                        "group_enabled": grouped,
+                        "groups": [
+                            {"group_name": "answer", "output_type": "string", "variables": [["source-a", "output"]]}
+                        ],
+                    },
+                },
+            },
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-a", "source": "start", "target": "source-a"},
+            {"id": "a-b", "source": "source-a", "target": "source-b"},
+            {"id": "b-aggregator", "source": "source-b", "target": "aggregator"},
+            {"id": "aggregator-end", "source": "aggregator", "target": "end"},
+        ],
+    }
+    path = "advanced_settings.groups.0.variables" if grouped else "variables"
+    payload = json.dumps(
+        {
+            "intents": [
+                {
+                    "op": "set_node_config",
+                    "args": {
+                        "node_id": "aggregator",
+                        "path": path,
+                        "value": [["source-b", "output"]],
+                    },
+                }
+            ],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"aggregator","root_cause":"wrong source","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
+    repo.save_run(session.id, Run(id="failed-run", kind="original-failed", status="failed", immutable=True))
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    _, context = repo.get_session(session.id)
+    assert len(context.staged_repair) == 1  # accepted by real native preflight, rather than a no-fix refusal
+    assert context.staged_repair[0].args["value"] == [["source-b", "output"]]
+    assert port.graph == graph
+    assert port.applied == []
+    out = runner.advance(session.id, Turn(actor=actor))
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert port.graph == graph
+
+    out = runner.advance(session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    data = port.graph["nodes"][3]["data"]
+    selectors = data["advanced_settings"]["groups"][0]["variables"] if grouped else data["variables"]
+    assert selectors == [["source-b", "output"]]
+
+
 # Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
 # written.
 _HTTP_GRAPH = {
