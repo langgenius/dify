@@ -59,6 +59,7 @@ from services.knowledge.entities.document_creation import DocumentCreationDatase
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from services.rbac import contracts as rbac_contracts
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
@@ -463,12 +464,12 @@ class SQLAlchemyDocumentOperations:
                     context.active_workspace_id,
                     context.account_id,
                     dataset_id,
-                    rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                    rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
                 )
                 rbac_service.try_sync_creator_access_policy_member_bindings(
                     context.active_workspace_id,
                     context.account_id,
-                    rbac_service.RBACResourceType.DATASET,
+                    rbac_contracts.RBACResourceType.DATASET,
                     dataset_id,
                 )
             return result
