@@ -106,17 +106,11 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                     session_factory=session_factory,
                 )
             elif record.workflow_run_id is not None:
-                # Workflow Agent node / Human Input node form: resume the workflow.
+                # Human Input node form: resume the workflow.
                 service.enqueue_resume(record.workflow_run_id)
-            elif record.conversation_id is not None:
-                # ENG-635: Agent v2 chat ask_human form is conversation-owned (no
-                # workflow_run_id). Resume the chat turn so the timeout is threaded
-                # back to the agent run as the ask_human deferred_tool_result
-                # (status="timeout"), mirroring HumanInputService.submit_form_by_token.
-                service.enqueue_agent_app_resume(conversation_id=record.conversation_id, form_id=record.form_id)
             else:
                 logger.warning(
-                    "Timed-out form %s has neither workflow_run_id nor conversation_id; skipping resume",
+                    "Timed-out form %s has no workflow_run_id; skipping resume",
                     record.form_id,
                 )
         except Exception:

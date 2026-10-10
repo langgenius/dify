@@ -10,7 +10,7 @@ from __future__ import annotations
 import posixpath
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Protocol, TypeVar, cast
+from typing import Protocol, TypeVar, cast, override
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
@@ -109,6 +109,7 @@ class ShellctlCommands(ShellCommandProtocol):
     home_dir: str | None = None
     workspace_dir: str | None = None
 
+    @override
     async def run(
         self,
         script: str,
@@ -136,6 +137,7 @@ class ShellctlCommands(ShellCommandProtocol):
             )
         )
 
+    @override
     async def wait(
         self,
         job_id: str,
@@ -145,6 +147,7 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.wait(job_id, offset=offset, timeout=timeout)))
 
+    @override
     async def read_output(
         self,
         job_id: str,
@@ -155,6 +158,7 @@ class ShellctlCommands(ShellCommandProtocol):
             await _run_client_call(self.client.wait(job_id, offset=offset, timeout=_READ_OUTPUT_TIMEOUT_SECONDS))
         )
 
+    @override
     async def input(
         self,
         job_id: str,
@@ -165,6 +169,7 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.input(job_id, text, offset=offset, timeout=timeout)))
 
+    @override
     async def interrupt(
         self,
         job_id: str,
@@ -173,9 +178,11 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandStatus:
         return _from_job_status(await _run_client_call(self.client.terminate(job_id, grace_seconds=grace_seconds)))
 
+    @override
     async def tail(self, job_id: str) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.tail(job_id)))
 
+    @override
     async def delete(
         self,
         job_id: str,

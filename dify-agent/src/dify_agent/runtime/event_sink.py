@@ -10,15 +10,14 @@ implements the same contract with Redis streams in
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Protocol, TypeAlias, cast
+from typing import Protocol, TypeAlias
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
-    DeferredToolCallPayload,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
@@ -33,7 +32,6 @@ from dify_agent.protocol.schemas import (
 )
 
 
-_UNSET = object()
 TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent
 NonTerminalRunEvent: TypeAlias = RunStartedEvent | PydanticAIStreamRunEvent
 
@@ -146,26 +144,15 @@ async def emit_run_succeeded(
     sink: RunEventSink,
     *,
     run_id: str,
-    output: JsonValue | None | object = _UNSET,
-    deferred_tool_call: DeferredToolCallPayload | object = _UNSET,
-    session_snapshot: CompositorSessionSnapshot,
+    output: JsonValue,
+    session_snapshot: SessionSnapshot,
     usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
-    """Finalize a run as succeeded with output or deferred continuation.
-
-    Callers must activate exactly one result branch. ``_UNSET`` is used instead
-    of ``None`` to preserve the distinction between an omitted inactive branch
-    and an active ``output`` branch whose JSON value is explicitly ``null``.
-    Without that sentinel, ``output=None`` would be indistinguishable from
-    “output field absent”, which would break nullable-success payloads.
-    """
-    data: dict[str, JsonValue | DeferredToolCallPayload | CompositorSessionSnapshot | AgentRunUsage | None] = {
+    """Finalize a successful run, including explicitly null output."""
+    data: dict[str, JsonValue | SessionSnapshot | AgentRunUsage | None] = {
         "session_snapshot": session_snapshot,
     }
-    if output is not _UNSET:
-        data["output"] = cast(JsonValue | None, output)
-    if deferred_tool_call is not _UNSET:
-        data["deferred_tool_call"] = cast(DeferredToolCallPayload, deferred_tool_call)
+    data["output"] = output
     if usage is not None:
         data["usage"] = usage
 
@@ -185,7 +172,7 @@ async def emit_run_failed(
     error: str,
     error_type: RunFailureType | None = None,
     reason: str | None = None,
-    session_snapshot: CompositorSessionSnapshot | None = None,
+    session_snapshot: SessionSnapshot | None = None,
     usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""

@@ -1,13 +1,8 @@
 """Client-safe DTOs for the Dify config declaration layer."""
 
-from typing import ClassVar, Final, Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from agenton.layers import LayerConfig
-
-
-DIFY_CONFIG_LAYER_TYPE_ID: Final[str] = "dify.config"
 
 
 class DifyConfigVersionConfig(BaseModel):
@@ -41,8 +36,10 @@ class DifyConfigFileConfig(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class DifyConfigLayerConfig(LayerConfig):
+class DifyConfigLayerConfig(BaseModel):
     """Agent Soul config context plus eager-pull instructions for prompt mentions."""
+
+    shell: str = "shell"
 
     agent_id: str | None = None
     config_version: DifyConfigVersionConfig | None = None
@@ -57,30 +54,15 @@ class DifyConfigLayerConfig(LayerConfig):
 
 
 class DifyConfigRuntimeState(BaseModel):
-    """Serializable config-layer values computed once during context entry.
-
-    ``config_cli_help`` stores pre-rendered shell-visible ``dify-agent`` help snippets
-    for config commands and file upload/download commands.
-
-    The ``push_spec_*`` fields are compatibility leftovers from the removed root
-    JSON-spec config mutation workflow. This change keeps them in the runtime-state
-    schema to avoid snapshot churn, but new code should treat them as inert
-    compatibility fields rather than active prompt data.
-    """
+    """Persisted outputs of completed shell-backed config pulls."""
 
     pulled_skill_outputs: dict[str, str] = Field(default_factory=dict)
     pulled_file_outputs: dict[str, str] = Field(default_factory=dict)
-    config_context_json: str = ""
-    config_cli_help: dict[str, str] = Field(default_factory=dict)
-    push_spec_semantics: str = ""
-    push_spec_json_schema: str = ""
-    push_spec_example: str = ""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 __all__ = [
-    "DIFY_CONFIG_LAYER_TYPE_ID",
     "DifyConfigFileConfig",
     "DifyConfigLayerConfig",
     "DifyConfigRuntimeState",

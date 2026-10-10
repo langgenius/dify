@@ -425,6 +425,28 @@ def test_create_form_adds_console_and_backstage_recipients(
     }
 
 
+def test_create_runtime_form_requires_workflow_even_when_conversation_is_present() -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant", app_id="app")
+    params = FormCreateParams(
+        workflow_execution_id=None,
+        conversation_id="conversation",
+        node_id="node",
+        form_config=HumanInputNodeData(
+            title="Title",
+            delivery_methods=[],
+            form_content="hello",
+            inputs=[],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
+        ),
+        rendered_content="hello",
+        delivery_methods=[],
+        display_in_ui=True,
+        resolved_default_values={},
+    )
+    with pytest.raises(ValueError, match="requires a workflow_execution_id"):
+        repo.create_form(params)
+
+
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(repository_session: Session) -> None:
     repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_token("tok") is None
