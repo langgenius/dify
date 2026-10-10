@@ -230,8 +230,8 @@ class AppUpdateArguments(TypedDict):
     role: NotRequired[str | None]
 
 
-class AppColumnChanges(TypedDict, total=False):
-    """A partial update of the App row: only the keys present are written."""
+class AppFieldChanges(TypedDict, total=False):
+    """A partial update of the App row and its backing agent's role: only the keys present are written."""
 
     name: str
     description: str
@@ -240,11 +240,6 @@ class AppColumnChanges(TypedDict, total=False):
     icon_background: str
     use_icon_as_answer_icon: bool
     max_active_requests: int
-
-
-class AppFieldChanges(AppColumnChanges, total=False):
-    """App row changes plus the backing agent's role."""
-
     role: str
 
 

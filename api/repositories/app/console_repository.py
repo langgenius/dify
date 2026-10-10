@@ -52,7 +52,6 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppChange,
-    AppColumnChanges,
     AppCreationSettings,
     AppDeletion,
     AppEvent,
@@ -77,7 +76,6 @@ from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 
 logger = logging.getLogger(__name__)
 
-_APP_COLUMN_CHANGES = AppColumnChanges.__optional_keys__
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
@@ -788,9 +786,13 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     @classmethod
     def update_app_fields(cls, app: App, changes: AppFieldChanges, *, account_id: str, session: Session) -> App:
         """Write only the fields in `changes`; the others keep their stored values."""
-        for name, value in changes.items():
-            if name in _APP_COLUMN_CHANGES:
-                setattr(app, name, value)
+        app.name = changes.get("name", app.name)
+        app.description = changes.get("description", app.description)
+        app.icon_type = changes.get("icon_type", app.icon_type)
+        app.icon = changes.get("icon", app.icon)
+        app.icon_background = changes.get("icon_background", app.icon_background)
+        app.use_icon_as_answer_icon = changes.get("use_icon_as_answer_icon", app.use_icon_as_answer_icon)
+        app.max_active_requests = changes.get("max_active_requests", app.max_active_requests)
         app.updated_by = account_id
         app.updated_at = naive_utc_now()
         cls._sync_backing_agent_identity(
