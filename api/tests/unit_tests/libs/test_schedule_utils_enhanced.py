@@ -7,9 +7,9 @@ the enhanced cron syntax introduced in the frontend, ensuring full compatibility
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 from croniter import CroniterBadCronError
 
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
@@ -222,7 +222,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert result is not None
 
                 # Convert to local timezone to verify it's Monday at noon
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = result.astimezone(tz)
                 assert local_time.weekday() == 0  # Monday
                 assert local_time.hour == 12
@@ -239,7 +239,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert result is not None
 
                 # Should be midnight in the specified timezone
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = result.astimezone(tz)
                 assert local_time.hour == 0
                 assert local_time.minute == 0
@@ -255,7 +255,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
         assert result is not None
 
         # Should handle DST transition gracefully
-        tz = pytz.timezone(timezone)
+        tz = ZoneInfo(timezone)
         local_time = result.astimezone(tz)
         assert local_time.weekday() == 6  # Sunday
 
@@ -297,7 +297,7 @@ class TestDstTransitionRegression(unittest.TestCase):
         result = calculate_next_run_at("30 1 * * *", "Europe/Dublin", datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC))
         assert result is not None
         assert result > datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC)
-        local_time = result.astimezone(pytz.timezone("Europe/Dublin"))
+        local_time = result.astimezone(ZoneInfo("Europe/Dublin"))
         assert (local_time.hour, local_time.minute) == (2, 0)
 
 

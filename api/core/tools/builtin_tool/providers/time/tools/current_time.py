@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any, override
+from zoneinfo import ZoneInfo
 
-from pytz import timezone as pytz_timezone  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -31,7 +31,7 @@ class CurrentTimeTool(BuiltinTool):
             return
 
         try:
-            tz = pytz_timezone(tz)
+            tz = ZoneInfo(tz)
         except Exception:
             yield self.create_text_message(f"Invalid timezone: {tz}")
             return

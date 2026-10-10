@@ -7,9 +7,9 @@ complete compatibility between frontend and backend cron processing.
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 from croniter import CroniterBadCronError
 
 from libs.schedule_utils import calculate_next_run_at
@@ -196,7 +196,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                 assert next_time is not None
 
                 # Convert back to the target timezone to verify it's noon
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = next_time.astimezone(tz)
                 assert local_time.hour == 12
                 assert local_time.minute == 0
@@ -213,7 +213,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
             assert next_time is not None
 
             # During DST spring forward, 2 AM becomes 3 AM - both are acceptable
-            tz = pytz.timezone(timezone)
+            tz = ZoneInfo(timezone)
             local_time = next_time.astimezone(tz)
             assert local_time.hour in [2, 3]  # Either 2 AM or 3 AM is acceptable
         except Exception as e:
@@ -234,7 +234,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                     next_time = calculate_next_run_at(expression, timezone, self.base_time)
                     assert next_time is not None
 
-                    tz = pytz.timezone(timezone)
+                    tz = ZoneInfo(timezone)
                     local_time = next_time.astimezone(tz)
                     assert local_time.hour == expected_hour
                     assert local_time.minute == expected_minute
@@ -281,7 +281,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         # Validate each execution time
         for exec_time in execution_times:
             # Convert to local timezone
-            tz = pytz.timezone(test_data["timezone"])
+            tz = ZoneInfo(test_data["timezone"])
             local_time = exec_time.astimezone(tz)
 
             # Should be weekdays (1-5)

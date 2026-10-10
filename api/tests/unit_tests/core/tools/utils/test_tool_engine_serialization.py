@@ -1,11 +1,10 @@
 import json
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 import numpy as np
 import pytest
-import pytz
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_dict, safe_json_value
@@ -17,7 +16,7 @@ class TestSafeJsonValue:
     def test_datetime_conversion(self):
         """Test datetime conversion with timezone handling"""
         # Test datetime with UTC timezone
-        dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+        dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
         result = safe_json_value(dt)
         assert isinstance(result, str)
         assert "2024-01-01T12:00:00+00:00" in result
@@ -110,7 +109,7 @@ class TestSafeJsonValue:
             True,
             [1, 2, 3],
             {"key": "value"},
-            datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             Decimal("123.456"),
             uuid4(),
         ]
@@ -153,8 +152,8 @@ class TestSafeJsonValue:
         complex_data = {
             "dates": [date(2024, 1, 1), date(2024, 1, 2)],
             "timestamps": [
-                datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
-                datetime(2024, 1, 2, 12, 0, 0, tzinfo=pytz.UTC),
+                datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+                datetime(2024, 1, 2, 12, 0, 0, tzinfo=UTC),
             ],
             "numbers": [Decimal("123.456"), Decimal("789.012")],
             "identifiers": [uuid4(), uuid4()],
@@ -190,7 +189,7 @@ class TestSafeJsonDict:
         test_dict = {
             "string": "value",
             "number": 42,
-            "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             "decimal": Decimal("123.456"),
         }
         result = safe_json_dict(test_dict)
@@ -220,7 +219,7 @@ class TestSafeJsonDict:
         """Test nested dictionary conversion"""
         test_dict = {
             "level1": {
-                "level2": {"datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC), "decimal": Decimal("123.456")}
+                "level2": {"datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC), "decimal": Decimal("123.456")}
             }
         }
         result = safe_json_dict(test_dict)
@@ -234,7 +233,7 @@ class TestToolInvokeMessageJsonSerialization:
     def test_json_message_serialization(self):
         """Test JSON message serialization with complex data"""
         complex_data = {
-            "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             "amount": Decimal("123.45"),
             "id": uuid4(),
             "binary": b"test data",
@@ -271,7 +270,7 @@ class TestToolInvokeMessageJsonSerialization:
                 "level2": {
                     "level3": {
                         "dates": [date(2024, 1, 1), date(2024, 1, 2)],
-                        "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)],
+                        "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)],
                         "numbers": [Decimal("1.1"), Decimal("2.2")],
                         "arrays": [np.array([1, 2]), np.array([3, 4])],
                     }
@@ -304,7 +303,7 @@ class TestToolInvokeMessageJsonSerialization:
         """Test integration with ToolFileMessageTransformer for JSON messages"""
         complex_data = {
             "metadata": {
-                "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                 "version": Decimal("1.0"),
                 "tags": ["tag1", "tag2"],
             },
@@ -394,8 +393,8 @@ class TestEndToEndSerialization:
                 "id": uuid4(),
                 "name": "John Doe",
                 "email": "john@example.com",
-                "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
-                "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=pytz.UTC),
+                "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+                "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=UTC),
                 "preferences": {"theme": "dark", "language": "en", "timezone": "UTC"},
             },
             "analytics": {
@@ -404,12 +403,12 @@ class TestEndToEndSerialization:
                 "metrics": np.array([1.1, 2.2, 3.3, 4.4, 5.5]),
                 "events": [
                     {
-                        "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=pytz.UTC),
+                        "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
                         "action": "login",
                         "duration": Decimal("5.67"),
                     },
                     {
-                        "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=pytz.UTC),
+                        "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
                         "action": "logout",
                         "duration": Decimal("3600.0"),
                     },
@@ -420,7 +419,7 @@ class TestEndToEndSerialization:
                     "id": uuid4(),
                     "name": "document.pdf",
                     "size": 1024,
-                    "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=pytz.UTC),
+                    "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=UTC),
                     "checksum": b"abc123def456",
                 }
             ],

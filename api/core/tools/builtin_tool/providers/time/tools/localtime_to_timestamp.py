@@ -1,13 +1,14 @@
 from collections.abc import Generator
 from datetime import datetime, tzinfo
 from typing import Any, cast, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
+from libs.datetime_utils import localize_datetime
 
 
 class LocaltimeToTimestampTool(BuiltinTool):
@@ -46,8 +47,11 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 case None:
                     converted_localtime = local_time.astimezone()
                 case str() as timezone_name:
-                    timezone = pytz.timezone(timezone_name)
-                    converted_localtime = timezone.localize(local_time)
+                    try:
+                        zone = ZoneInfo(timezone_name)
+                    except Exception:
+                        raise ToolInvokeError(f"Invalid timezone: {timezone_name!r}") from None
+                    converted_localtime = localize_datetime(local_time, zone)
                 case tzinfo():
                     localize = getattr(local_tz, "localize", None)
                     if callable(localize):

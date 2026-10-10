@@ -1,13 +1,14 @@
 from collections.abc import Generator
 from datetime import datetime
 from typing import Any, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
+from libs.datetime_utils import localize_datetime
 
 
 class TimezoneConversionTool(BuiltinTool):
@@ -44,11 +45,17 @@ class TimezoneConversionTool(BuiltinTool):
         time_format = "%Y-%m-%d %H:%M:%S"
         try:
             # get source timezone
-            input_timezone = pytz.timezone(source_timezone)
+            try:
+                input_timezone = ZoneInfo(source_timezone)
+            except Exception:
+                raise ToolInvokeError(f"Invalid timezone: {source_timezone!r}") from None
             # get target timezone
-            output_timezone = pytz.timezone(target_timezone)
+            try:
+                output_timezone = ZoneInfo(target_timezone)
+            except Exception:
+                raise ToolInvokeError(f"Invalid timezone: {target_timezone!r}") from None
             local_time = datetime.strptime(current_time, time_format)
-            datetime_with_tz = input_timezone.localize(local_time)
+            datetime_with_tz = localize_datetime(local_time, input_timezone)
             # timezone convert
             converted_datetime = datetime_with_tz.astimezone(output_timezone)
             return converted_datetime.strftime(time_format)

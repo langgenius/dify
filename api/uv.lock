@@ -1490,7 +1490,6 @@ dev = [
     { name = "types-pyopenssl" },
     { name = "types-python-dateutil" },
     { name = "types-python-http-client" },
-    { name = "types-pytz" },
     { name = "types-pywin32" },
     { name = "types-pyyaml" },
     { name = "types-redis" },
@@ -1780,7 +1779,6 @@ dev = [
     { name = "types-pyopenssl", specifier = ">=24.1.0" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20260807" },
     { name = "types-python-http-client", specifier = ">=3.3.7.20260518" },
-    { name = "types-pytz", specifier = ">=2026.3.1.20260727" },
     { name = "types-pywin32", specifier = ">=312.0.0.20260827" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
     { name = "types-redis", specifier = ">=4.6.0.20241004" },
@@ -7222,15 +7220,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1e/53/ae1fab16eaeb9a3a4c552a8ceb722ea79b2afb0c958a68dc4445d61a2a3c/types_python_http_client-3.3.7.20260518.tar.gz", hash = "sha256:a8f58f5957fec443f4349cf7e16d8975f32a798094412f1059c3246393e29740", size = 7737, upload-time = "2026-05-18T06:04:51.813Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/90/0d/4e07fdf22c2dd014df29fcf20ad4860717e37c344e41b3a6d81315f456cc/types_python_http_client-3.3.7.20260518-py3-none-any.whl", hash = "sha256:40d8df1b30bd1b8facd34635b570d4ca45281e3d2d10461dddf48df797fb357a", size = 8852, upload-time = "2026-05-18T06:04:51.046Z" },
-]
-
-[[package]]
-name = "types-pytz"
-version = "2026.3.1.20260727"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b1/cf/eae96172a036b942e0ad0ec49512108b4ef4b97cd6c2aed5677540a597e7/types_pytz-2026.3.1.20260727.tar.gz", hash = "sha256:4364075b6867dd15b210bb8c1d29727d609917129b45600defe1d4b3eda5ecb9", size = 10914, upload-time = "2026-07-27T05:36:32.389Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/24/a654176875944981c75516857cd8750600eeb9ff7fc07a2b82573619a57c/types_pytz-2026.3.1.20260727-py3-none-any.whl", hash = "sha256:42ac44e83645bfceb46597342c8fb8ec028a1407e2feae9c5c539986eab6b57a", size = 10132, upload-time = "2026-07-27T05:36:31.52Z" },
 ]
 
 [[package]]

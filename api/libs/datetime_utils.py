@@ -1,8 +1,7 @@
 import abc
 import datetime
 from typing import Protocol
-
-import pytz  # type: ignore[import-untyped]
+from zoneinfo import ZoneInfo
 
 
 class _NowFunction(Protocol):
@@ -49,6 +48,19 @@ def to_utc_timestamp(dt: datetime.datetime) -> int:
     return int(ensure_naive_utc(dt).replace(tzinfo=datetime.UTC).timestamp())
 
 
+def localize_datetime(dt: datetime.datetime, tz: datetime.tzinfo) -> datetime.datetime:
+    """Attach a timezone to a naive wall-clock datetime, resolving DST edge cases.
+
+    An ambiguous time (clocks set back) resolves to its later occurrence, and a
+    non-existent time (clocks set forward) is shifted forward by the size of the
+    gap. Both are the later of the two instants that ``fold`` can select. The
+    result is round-tripped through UTC so a shifted time also reports its real
+    wall-clock value.
+    """
+    candidates = (dt.replace(tzinfo=tz, fold=0), dt.replace(tzinfo=tz, fold=1))
+    return max(candidates, key=datetime.datetime.timestamp).astimezone(datetime.UTC).astimezone(tz)
+
+
 def parse_time_range(
     start: str | None, end: str | None, tzname: str
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:
@@ -67,8 +79,7 @@ def parse_time_range(
     Raises:
         ValueError: When time range is invalid or start > end
     """
-    tz = pytz.timezone(tzname)
-    utc = pytz.utc
+    tz = ZoneInfo(tzname)
 
     def _parse(time_str: str | None, label: str) -> datetime.datetime | None:
         if not time_str:
@@ -79,13 +90,7 @@ def parse_time_range(
         except ValueError as e:
             raise ValueError(f"Invalid {label} time format: {e}")
 
-        try:
-            return tz.localize(dt, is_dst=None).astimezone(utc)
-        except pytz.AmbiguousTimeError:
-            return tz.localize(dt, is_dst=False).astimezone(utc)
-        except pytz.NonExistentTimeError:
-            dt += datetime.timedelta(hours=1)
-            return tz.localize(dt, is_dst=None).astimezone(utc)
+        return localize_datetime(dt, tz).astimezone(datetime.UTC)
 
     start_dt = _parse(start, "start")
     end_dt = _parse(end, "end")
