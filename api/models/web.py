@@ -25,7 +25,7 @@ class SavedMessage(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_by_role: Mapped[CreatorUserRole] = mapped_column(
-        EnumText(CreatorUserRole, length=255), nullable=False, server_default=sa.text("'end_user'")
+        EnumText(CreatorUserRole, length=255), nullable=False, default=CreatorUserRole.END_USER
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -54,7 +54,7 @@ class PinnedConversation(TypeBase):
     created_by_role: Mapped[CreatorUserRole] = mapped_column(
         EnumText(CreatorUserRole, length=255),
         nullable=False,
-        server_default=sa.text("'end_user'"),
+        default=CreatorUserRole.END_USER,
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
