@@ -148,9 +148,9 @@ def configure(owner, name, *, fixture=False):
     factory, actor, app, workflow, sid, tid = owner
     graph = yaml.safe_load((FIXTURES / name).read_text())
     inputs = {"text": "native scalar"} if name == "scalar.yml" else {"path": "sample"}
-    workflow.graph = json.dumps(graph)
+    graph_json = json.dumps(graph)
     with factory.begin() as session:
-        session.get(Workflow, workflow.id).graph = workflow.graph
+        session.get(Workflow, workflow.id).graph = graph_json
         session.get(DifyBuilderTestInput, tid).inputs = inputs
     if fixture:
         # Stamping rereads the draft in its own session, so commit the graph first.
@@ -509,12 +509,14 @@ def test_composed_http_retry_receipts_and_recorder_poison(native_owner, monkeypa
         graph = draft.graph_dict
         graph["nodes"][1]["data"]["retry_config"] = {"retry_enabled": True, "max_retries": 2, "retry_interval": 0}
         draft.graph = json.dumps(graph)
-        workflow.graph = draft.graph
+    with factory() as session:
+        persisted_workflow = session.get(Workflow, workflow.id)
+        committed_revision = execution_revision(persisted_workflow)
     service = BuilderExecutionPolicyService(factory)
     envelope = service.stamp_http_fixtures(
         app.id,
         actor,
-        base_app_revision=execution_revision(workflow),
+        base_app_revision=committed_revision,
         fixtures=(
             HttpResponseFixtureV1(
                 node_id="http", source="user_sample", status_code=500, content_type="text/plain", body="retry"
