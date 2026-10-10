@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from redis import Redis
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module
+from extensions.ext_redis import RedisClientWrapper
 from models.engine import db
 from models.enums import ApiTokenType
 from models.model import ApiToken
@@ -111,8 +113,37 @@ class TestRecordTokenUsage:
             api_token_service_module.record_token_usage("token-123", "app")
 
 
+@pytest.fixture
+def single_flight_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Redis, list[tuple[object, ...]]]]:
+    """Use the real Redis client, wrapper and lock; isolate only wire commands."""
+    commands: list[tuple[object, ...]] = []
+
+    def execute(*args: object, **_kwargs: object) -> object:
+        commands.append(args)
+        assert args[0] in {"SET", "EVALSHA"}
+        return True
+
+    with Redis() as client:
+        monkeypatch.setattr(client, "execute_command", execute)
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(client)
+        monkeypatch.setattr(api_token_service_module, "redis_client", wrapper)
+        yield client, commands
+
+
+def _assert_lock_released(commands: list[tuple[object, ...]]) -> None:
+    assert len(commands) == 2
+    acquire, release = commands
+    assert acquire[:2] == ("SET", "api_token_query_lock:app:token-123")
+    assert acquire[3:] == ("NX", "PX", 10000)
+    assert release[0] == "EVALSHA"
+    assert release[2:] == (1, acquire[1], acquire[2])  # Release uses the acquired ownership token.
+
+
 class TestFetchTokenWithSingleFlight:
-    def test_should_return_cached_token_when_lock_acquired_and_cache_filled(self):
+    def test_should_return_cached_token_when_lock_acquired_and_cache_filled(
+        self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+    ) -> None:
         auth_token = "token-123"
         scope = "app"
         cached_token = CachedApiToken(
@@ -124,69 +155,71 @@ class TestFetchTokenWithSingleFlight:
             last_used_at=None,
             created_at=None,
         )
-        lock = MagicMock()
-        lock.acquire.return_value = True
+        _client, commands = single_flight_redis
 
         with (
-            patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module.ApiTokenCache, "get", return_value=cached_token),
             patch.object(api_token_service_module, "query_token_from_db") as mock_query_db,
         ):
-            mock_redis.lock.return_value = lock
             result = api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
         assert result == cached_token
-        lock.acquire.assert_called_once_with(blocking=True)
-        lock.release.assert_called_once()
+        _assert_lock_released(commands)
         mock_query_db.assert_not_called()
 
-    def test_should_query_db_when_lock_acquired_and_cache_missed(self):
+    def test_should_query_db_when_lock_acquired_and_cache_missed(
+        self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+    ) -> None:
         auth_token = "token-123"
         scope = "app"
         db_token = _api_token()
-        lock = MagicMock()
-        lock.acquire.return_value = True
+        _client, commands = single_flight_redis
 
         with (
-            patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module.ApiTokenCache, "get", return_value=None),
             patch.object(api_token_service_module, "query_token_from_db", return_value=db_token) as mock_query_db,
         ):
-            mock_redis.lock.return_value = lock
             result = api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
         assert result == db_token
         mock_query_db.assert_called_once_with(auth_token, scope)
-        lock.release.assert_called_once()
+        _assert_lock_released(commands)
 
-    def test_should_query_db_directly_when_lock_not_acquired(self):
+    def test_should_query_db_directly_when_lock_not_acquired(
+        self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         auth_token = "token-123"
         scope = "app"
         db_token = _api_token()
-        lock = MagicMock()
-        lock.acquire.return_value = False
+        client, commands = single_flight_redis
+
+        def contended(*args: object, **_kwargs: object) -> bool:
+            commands.append(args)
+            assert args[0] == "SET"
+            return False
+
+        monkeypatch.setattr(client, "execute_command", contended)
 
         with (
-            patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module.ApiTokenCache, "get") as mock_cache_get,
             patch.object(api_token_service_module, "query_token_from_db", return_value=db_token) as mock_query_db,
         ):
-            mock_redis.lock.return_value = lock
             result = api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
         assert result == db_token
         mock_cache_get.assert_not_called()
         mock_query_db.assert_called_once_with(auth_token, scope)
-        lock.release.assert_not_called()
+        assert commands
+        assert all(command[0] == "SET" for command in commands)
 
-    def test_should_reraise_unauthorized_from_db_query(self):
+    def test_should_reraise_unauthorized_from_db_query(
+        self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+    ) -> None:
         auth_token = "token-123"
         scope = "app"
-        lock = MagicMock()
-        lock.acquire.return_value = True
+        _client, commands = single_flight_redis
 
         with (
-            patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module.ApiTokenCache, "get", return_value=None),
             patch.object(
                 api_token_service_module,
@@ -194,28 +227,34 @@ class TestFetchTokenWithSingleFlight:
                 side_effect=Unauthorized("Access token is invalid"),
             ),
         ):
-            mock_redis.lock.return_value = lock
             with pytest.raises(Unauthorized, match="Access token is invalid"):
                 api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
-        lock.release.assert_called_once()
+        _assert_lock_released(commands)
 
-    def test_should_fallback_to_db_query_when_lock_raises_exception(self):
+    def test_should_fallback_to_db_query_when_lock_raises_exception(
+        self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         auth_token = "token-123"
         scope = "app"
         db_token = _api_token()
-        lock = MagicMock()
-        lock.acquire.side_effect = RuntimeError("redis lock error")
+        client, commands = single_flight_redis
+
+        def unavailable(*args: object, **_kwargs: object) -> bool:
+            commands.append(args)
+            raise RuntimeError("redis lock error")
+
+        monkeypatch.setattr(client, "execute_command", unavailable)
 
         with (
-            patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module, "query_token_from_db", return_value=db_token) as mock_query_db,
         ):
-            mock_redis.lock.return_value = lock
             result = api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
         assert result == db_token
         mock_query_db.assert_called_once_with(auth_token, scope)
+        assert len(commands) == 1
+        assert commands[0][:2] == ("SET", "api_token_query_lock:app:token-123")
 
 
 class TestApiTokenCacheTenantBranches:
