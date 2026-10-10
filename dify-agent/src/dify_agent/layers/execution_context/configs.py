@@ -1,4 +1,4 @@
-"""Client-safe DTOs for the Dify execution-context Agenton layer.
+"""Client-safe DTOs for the Dify execution-context layer.
 
 This layer carries both Dify product execution context (tenant, user, workflow,
 invoke source) and Agent backend runtime mode. The product-facing fields are
@@ -7,18 +7,15 @@ need to reconstruct Dify API file-access scope without granting the sandbox any
 direct inner-API credentials. Knowledge-base layers also read ``user_from`` from
 this shared config so the inner Dify API can distinguish platform-user and
 end-user searches without making that caller identity model-controlled.
-Server-only plugin-daemon settings are injected by the runtime provider factory
+Server-only plugin-daemon settings are injected by the runtime runtime services
 and therefore do not appear in this public schema.
 """
 
-from typing import ClassVar, Final, Literal, TypeAlias
+from typing import ClassVar, Literal, TypeAlias
 
-from pydantic import ConfigDict
-
-from agenton.layers import LayerConfig
+from pydantic import BaseModel, ConfigDict
 
 
-DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID: Final[str] = "dify.execution_context"
 DifyExecutionContextAgentMode: TypeAlias = Literal[
     "workflow_run",
     "single_step",
@@ -40,7 +37,7 @@ DifyExecutionContextInvokeFrom: TypeAlias = Literal[
 ]
 
 
-class DifyExecutionContextLayerConfig(LayerConfig):
+class DifyExecutionContextLayerConfig(BaseModel):
     """Public config for Dify execution identity and daemon transport context."""
 
     tenant_id: str
@@ -63,7 +60,6 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID",
     "DifyExecutionContextAgentConfigVersionKind",
     "DifyExecutionContextAgentMode",
     "DifyExecutionContextInvokeFrom",

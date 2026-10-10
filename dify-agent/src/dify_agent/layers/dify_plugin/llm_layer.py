@@ -1,77 +1,42 @@
-"""Dify plugin LLM model layer.
+"""Construct the API-metered model from JSON config and borrowed services."""
 
-This layer owns model capability resolution for Dify plugin-backed LLMs. It
-depends on ``DifyExecutionContextLayer`` for shared request context through
-Agenton's direct dependency binding and returns a Pydantic AI model adapter
-configured from the public LLM layer DTO. Runtime code supplies the FastAPI
-lifespan-owned shared HTTP client to ``get_model``; the layer does not own or
-discover live resources. The API provider carries plugin transport identity,
-while the DTO's ``model_provider`` is passed to the adapter as request-level
-model identity.
-"""
+from pydantic import BaseModel, ConfigDict
+from pydantic_ai.capabilities import AbstractCapability
 
-from dataclasses import dataclass, field
-from typing import ClassVar
-
-import httpx
-from typing_extensions import Self, override
-
-from agenton.layers import LayerDeps, PlainLayer
 from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
-from dify_agent.layers.dify_plugin.configs import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DifyPluginLLMLayerConfig
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig
+from dify_agent.layers.execution_context.layer import Config as ExecutionContextConfig
+from dify_agent.runtime.context import Deps
 
 
-class DifyPluginLLMDeps(LayerDeps):
-    """Dependencies required by ``DifyPluginLLMLayer``."""
-
-    execution_context: DifyExecutionContextLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+class Config(DifyPluginLLMLayerConfig):
+    pass
 
 
-@dataclass(slots=True)
-class DifyPluginLLMLayer(PlainLayer[DifyPluginLLMDeps, DifyPluginLLMLayerConfig]):
-    """Layer that creates the Dify API-backed Pydantic AI model."""
+class State(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    type_id: ClassVar[str | None] = DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 
-    config: DifyPluginLLMLayerConfig
-    inner_api_url: str = "http://localhost:5001"
-    inner_api_key: str = field(default="", repr=False)
+class Capability(AbstractCapability[Deps]):
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyPluginLLMLayerConfig) -> Self:
-        """Create the LLM layer from validated public config."""
-        return cls(config=config)
-
-    @classmethod
-    def from_config_with_settings(
-        cls,
-        config: DifyPluginLLMLayerConfig,
-        *,
-        inner_api_url: str,
-        inner_api_key: str,
-    ) -> Self:
-        return cls(config=config, inner_api_url=inner_api_url.rstrip("/"), inner_api_key=inner_api_key)
-
-    def get_model(self, *, http_client: httpx.AsyncClient, agent_run_id: str) -> DifyLLMAdapterModel:
-        """Return the configured model through the API-owned metered gateway."""
-        if http_client.is_closed:
-            raise RuntimeError("DifyPluginLLMLayer.get_model() requires an open Dify API HTTP client.")
+    def build_model(self, deps: Deps) -> DifyLLMAdapterModel:
+        config = Config.model_validate(deps.layers[self.name]["config"])
+        if deps.services.dify_api_http_client.is_closed:
+            raise RuntimeError("Model execution requires an open Dify API HTTP client.")
         provider = DifyApiLLMProvider(
-            plugin_id=self.config.plugin_id,
-            inner_api_url=self.inner_api_url,
-            inner_api_key=self.inner_api_key,
-            execution_context=self.deps.execution_context.config,
-            agent_run_id=agent_run_id,
-            http_client=http_client,
+            plugin_id=config.plugin_id,
+            inner_api_url=deps.services.inner_api_url,
+            inner_api_key=deps.services.inner_api_key,
+            execution_context=ExecutionContextConfig.model_validate(deps.layers[config.execution_context]["config"]),
+            agent_run_id=deps.run_id,
+            http_client=deps.services.dify_api_http_client,
         )
         return DifyLLMAdapterModel(
-            model=self.config.model,
+            model=config.model,
             dify_provider=provider,
-            model_provider=self.config.model_provider,
-            model_settings=self.config.model_settings,
+            model_provider=config.model_provider,
+            model_settings=config.model_settings,
         )
-
-
-__all__ = ["DifyPluginLLMDeps", "DifyPluginLLMLayer"]

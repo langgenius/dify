@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from clients.agent_backend import (
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
@@ -338,7 +337,6 @@ class WorkflowAgentOutputAdapter:
         if isinstance(
             event,
             AgentBackendRunSucceededInternalEvent
-            | AgentBackendDeferredToolCallInternalEvent
             | AgentBackendRunFailedInternalEvent
             | AgentBackendRunCancelledInternalEvent,
         ):
