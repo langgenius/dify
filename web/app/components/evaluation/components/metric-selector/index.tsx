@@ -109,21 +109,19 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
               })}
           </div>
 
-          {resourceType !== 'agents' && (
-            <SelectorFooter
-              title={t(($) => $['metrics.custom.footerTitle'])}
-              description={
-                hasCustomMetric
-                  ? t(($) => $['metrics.custom.limitDescription'])
-                  : t(($) => $['metrics.custom.footerDescription'])
-              }
-              disabled={hasCustomMetric}
-              onClick={() => {
-                addCustomMetric(resourceType, resourceId)
-                setOpen(false)
-              }}
-            />
-          )}
+          <SelectorFooter
+            title={t(($) => $['metrics.custom.footerTitle'])}
+            description={
+              hasCustomMetric
+                ? t(($) => $['metrics.custom.limitDescription'])
+                : t(($) => $['metrics.custom.footerDescription'])
+            }
+            disabled={hasCustomMetric}
+            onClick={() => {
+              addCustomMetric(resourceType, resourceId)
+              setOpen(false)
+            }}
+          />
         </div>
       </PopoverContent>
     </Popover>

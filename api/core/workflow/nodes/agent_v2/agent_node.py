@@ -65,7 +65,10 @@ from .runtime_request_builder import (
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
+    from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
     from graphon.runtime import InitParams, RuntimeState
+
+    from .tool_snapshot import AgentRuntimeToolDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -294,6 +297,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             metadata.clear()
             metadata.update(runtime_request.metadata)
             metadata["attempt"] = attempt
+            evaluation_trace_collector = self._build_evaluation_trace_collector(
+                enabled=dify_ctx.capture_agent_evaluation_trace,
+                available_tools=runtime_request.available_tools,
+            )
 
             try:
                 create_response = self._agent_backend_client.create_run(runtime_request.request)
@@ -321,6 +328,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 stream_text=not custom_outputs
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
+                evaluation_trace_collector=evaluation_trace_collector,
             )
             if metadata.get("knowledge_fs_sources"):
                 yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
@@ -433,6 +441,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     return
                 edge_source_handle = selected
 
+            if evaluation_trace_collector is not None:
+                metadata["evaluation_trace"] = evaluation_trace_collector.build_trace_snapshot(
+                    output=success_event.output
+                ).model_dump(mode="json")
+
             yield StreamCompletedEvent(
                 node_run_result=self._output_adapter.build_success_result(
                     event=success_event,
@@ -453,6 +466,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -485,6 +499,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
+            evaluation_trace_collector=evaluation_trace_collector,
         )
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
@@ -498,6 +513,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -514,6 +530,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 if public_event.id is not None:
                     last_event_id = public_event.id
                 for internal_event in self._event_adapter.adapt(public_event):
+                    if evaluation_trace_collector is not None:
+                        evaluation_trace_collector.consume(internal_event)
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
                         continue
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
@@ -587,6 +605,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             after=last_event_id,
         )
         return cancellation, None
+
+    @staticmethod
+    def _build_evaluation_trace_collector(
+        *, enabled: bool, available_tools: Sequence[AgentRuntimeToolDefinition]
+    ) -> AgentV2TraceCollector | None:
+        if not enabled:
+            return None
+
+        from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
+        from core.evaluation.entities.evaluation_entity import AgentToolDefinition
+
+        return AgentV2TraceCollector(
+            [
+                AgentToolDefinition(
+                    tool_ref=tool.tool_ref,
+                    name=tool.name,
+                    display_name=tool.display_name,
+                    description=tool.description,
+                    input_schema=tool.input_schema,
+                    schema_available=tool.schema_available,
+                )
+                for tool in available_tools
+            ]
+        )
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""

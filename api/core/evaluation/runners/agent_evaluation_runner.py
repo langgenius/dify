@@ -1,11 +1,13 @@
-"""Evaluation runner and trace normalizer for legacy Agent nodes."""
+"""Evaluation runner and trace normalizer for legacy and Agent V2 workflow nodes."""
 
 import json
 from collections.abc import Mapping
 from typing import Any, Literal
 
+from clients.agent_backend import WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, WORKFLOW_USER_PROMPT_LAYER_ID
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
+    AgentEvaluationTraceSnapshot,
     AgentToolCall,
     AgentToolDefinition,
     AgentTrajectory,
@@ -25,7 +27,7 @@ _TASK_INPUT_KEYS = ("task", "instruction", "query", "prompt", "question", "input
 
 
 class AgentEvaluationRunner(BaseEvaluationRunner):
-    """Normalize legacy Agent execution logs before running framework-independent judges."""
+    """Normalize Agent execution traces before running framework-independent judges."""
 
     def evaluate_metrics(
         self,
@@ -60,10 +62,18 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
         for position, node_result in enumerate(node_results):
             dataset_item = dataset_items[position] if dataset_items and position < len(dataset_items) else None
             final_output = _extract_agent_output(node_result.outputs)
-            available_tools, tool_snapshot_warning = _extract_available_tools(node_result)
-            tool_calls, trajectory = _extract_agent_trace(node_result.outputs, available_tools, final_output)
-            if tool_snapshot_warning:
-                trajectory.warnings.append(tool_snapshot_warning)
+            trace_snapshot, trace_snapshot_warning = _extract_agent_v2_trace_snapshot(node_result)
+            if trace_snapshot is not None:
+                available_tools = trace_snapshot.available_tools
+                tool_calls = trace_snapshot.tool_calls
+                trajectory = trace_snapshot.trajectory
+            else:
+                available_tools, tool_snapshot_warning = _extract_available_tools(node_result)
+                tool_calls, trajectory = _extract_agent_trace(node_result.outputs, available_tools, final_output)
+                if tool_snapshot_warning:
+                    trajectory.warnings.append(tool_snapshot_warning)
+            if trace_snapshot_warning:
+                trajectory.warnings.append(trace_snapshot_warning)
             items.append(
                 AgentEvaluationItem(
                     index=position,
@@ -74,6 +84,14 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
                         )
                     },
                     output=final_output,
+                    expected_output=(
+                        dataset_item.get_expected_output_for_node(
+                            node_info.node_id if node_info else None,
+                            node_info.title if node_info else None,
+                        )
+                        if dataset_item is not None
+                        else None
+                    ),
                     tool_calls=tool_calls,
                     expected_tool_calls=(
                         dataset_item.get_expected_tool_calls_for_node(
@@ -98,6 +116,21 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
         return items
 
 
+def _extract_agent_v2_trace_snapshot(
+    node_result: NodeRunResult,
+) -> tuple[AgentEvaluationTraceSnapshot | None, str | None]:
+    agent_log = node_result.metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+    if not isinstance(agent_log, Mapping):
+        return None, None
+    raw_snapshot = agent_log.get("evaluation_trace")
+    if raw_snapshot is None:
+        return None, None
+    try:
+        return AgentEvaluationTraceSnapshot.model_validate(raw_snapshot), None
+    except (TypeError, ValueError):
+        return None, "The captured Agent V2 evaluation trace was invalid."
+
+
 def _extract_agent_task_input(
     node_inputs: Mapping[str, Any],
     dataset_inputs: Mapping[str, Any] | None,
@@ -111,7 +144,45 @@ def _extract_agent_task_input(
             task_parts.append(f"{key}: {rendered}")
     if task_parts:
         return "\n".join(task_parts)
+
+    runtime_task = _extract_agent_v2_runtime_task(node_inputs)
+    if runtime_task:
+        return runtime_task
     return _format_dataset_inputs(dataset_inputs or {})
+
+
+def _extract_agent_v2_runtime_task(node_inputs: Mapping[str, Any]) -> str:
+    """Read the exact task and run context sent to a workflow Agent V2 node."""
+
+    raw_request = node_inputs.get("agent_backend_request")
+    if not isinstance(raw_request, Mapping):
+        return ""
+    composition = raw_request.get("composition")
+    if not isinstance(composition, Mapping):
+        return ""
+    layers = composition.get("layers")
+    if not isinstance(layers, list):
+        return ""
+
+    prompts_by_name: dict[str, str] = {}
+    for raw_layer in layers:
+        if not isinstance(raw_layer, Mapping):
+            continue
+        layer_name = raw_layer.get("name")
+        if layer_name not in {WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, WORKFLOW_USER_PROMPT_LAYER_ID}:
+            continue
+        config = raw_layer.get("config")
+        if not isinstance(config, Mapping):
+            continue
+        rendered = _render_value(config.get("user"))
+        if rendered:
+            prompts_by_name[str(layer_name)] = rendered
+
+    return "\n\n".join(
+        prompts_by_name[layer_name]
+        for layer_name in (WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, WORKFLOW_USER_PROMPT_LAYER_ID)
+        if layer_name in prompts_by_name
+    )
 
 
 def _format_dataset_inputs(inputs: Mapping[str, Any]) -> str:

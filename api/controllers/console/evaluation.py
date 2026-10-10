@@ -397,9 +397,7 @@ def _config_response(config: EvaluationConfiguration | None, *, target_type: str
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
             "default_metrics": default_metrics,
-            "customized_metrics": (
-                None if target_type == EvaluationTargetType.AGENTS.value else config.customized_metrics_dict
-            ),
+            "customized_metrics": config.customized_metrics_dict,
             "judgment_config": EvaluationService.serialize_console_judgment_config(config.judgment_config_dict),
         },
     )

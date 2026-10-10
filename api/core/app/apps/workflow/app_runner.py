@@ -98,6 +98,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 call_depth=self.application_generate_entity.call_depth,
+                capture_agent_evaluation_trace=bool(
+                    self.application_generate_entity.extras.get("capture_agent_evaluation_trace")
+                ),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -154,6 +157,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 call_depth=self.application_generate_entity.call_depth,
+                capture_agent_evaluation_trace=bool(
+                    self.application_generate_entity.extras.get("capture_agent_evaluation_trace")
+                ),
             )
 
         # RUN WORKFLOW

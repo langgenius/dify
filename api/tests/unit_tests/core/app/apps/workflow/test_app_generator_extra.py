@@ -584,6 +584,27 @@ class TestWorkflowAppGeneratorGenerate:
             )
         execute.assert_not_called()
 
+    def test_generate_marks_agent_evaluation_trace(self, generation):
+        generator, app, workflow, user, execute = generation
+        workflow.graph = json.dumps(
+            {"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
+        )
+
+        result = generator.generate(
+            app_model=app,
+            workflow=workflow,
+            user=user,
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=False,
+            capture_agent_evaluation_trace=True,
+        )
+
+        assert result == {"ok": True}
+        generated = execute.call_args.kwargs["application_generate_entity"]
+        assert isinstance(generated, WorkflowAppGenerateEntity)
+        assert generated.extras["capture_agent_evaluation_trace"] is True
+
 
 class TestWorkflowAppGeneratorResume:
     def test_resume_restores_trace_manager_when_missing(self, monkeypatch: pytest.MonkeyPatch):

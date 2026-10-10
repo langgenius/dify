@@ -191,6 +191,7 @@ class SnippetGenerateService:
         session_maker: sessionmaker[Session] | None = None,
         workflow_id: str | None = None,
         task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -229,6 +230,7 @@ class SnippetGenerateService:
             streaming=False,
             call_depth=0,
             task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         return response
 

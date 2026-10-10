@@ -219,7 +219,11 @@ const CustomMetricEditorCard = ({
               <MappingRow
                 key={inputVariable.id}
                 inputVariable={inputVariable}
-                publishedGraph={publishedGraph}
+                source={
+                  resourceType === 'agents'
+                    ? { type: 'agent' }
+                    : { type: 'workflow', publishedGraph }
+                }
                 value={mapping?.outputVariableId ?? null}
                 onUpdate={(outputVariableId) => {
                   if (!mapping) return

@@ -16,6 +16,11 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.evaluation.agent.customized_workflow_adapter import (
+    AGENT_CUSTOM_EVALUATOR_DATASET_COLUMNS,
+    AGENT_CUSTOM_EVALUATOR_NODE_ID,
+    AGENT_CUSTOM_EVALUATOR_OUTPUT_TYPES,
+)
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
@@ -529,9 +534,11 @@ class EvaluationService:
                     published_node = published_nodes.get(node.node_id)
                     if published_node is None:
                         raise ValueError(f"Node '{node.node_id}' is not in the published target workflow.")
-                    if is_dify_agent_node_data(published_node):
+                    if is_dify_agent_node_data(published_node) and metric.metric not in {
+                        name.value for name in NATIVE_AGENT_METRIC_NAMES
+                    }:
                         raise ValueError(
-                            f"Node '{node.node_id}' is an Agent V2 node, which evaluation does not support yet."
+                            f"Metric '{metric.metric}' is not supported for Agent V2 node '{node.node_id}'."
                         )
                     published_type = str(published_node.get("type", ""))
                     if cls.category_for_node_type(published_type) != cls.category_for_node_type(node.type):
@@ -547,8 +554,6 @@ class EvaluationService:
         if customized_metrics is not None:
             if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
                 raise ValueError("Customized evaluation workflows are not supported for knowledge bases.")
-            if normalized_target_type == EvaluationTargetType.AGENTS:
-                raise ValueError("Customized evaluation workflows are not supported for Agent V2 targets.")
             output_variables = [field.variable for field in customized_metrics.output_fields]
             if not output_variables:
                 raise ValueError("Customized metrics must select at least one evaluation workflow output.")
@@ -595,7 +600,16 @@ class EvaluationService:
             cls._validate_customized_inputs(
                 customized_metrics=customized_metrics,
                 evaluator_workflow=evaluator_workflow,
-                published_node_ids=set(published_nodes),
+                published_node_ids=(
+                    {AGENT_CUSTOM_EVALUATOR_NODE_ID}
+                    if normalized_target_type == EvaluationTargetType.AGENTS
+                    else set(published_nodes)
+                ),
+                allowed_output_fields_by_node=(
+                    {AGENT_CUSTOM_EVALUATOR_NODE_ID: set(AGENT_CUSTOM_EVALUATOR_OUTPUT_TYPES)}
+                    if normalized_target_type == EvaluationTargetType.AGENTS
+                    else None
+                ),
             )
 
         cls._validate_judgment_config(
@@ -662,6 +676,7 @@ class EvaluationService:
         customized_metrics: CustomizedMetrics,
         evaluator_workflow: Workflow,
         published_node_ids: set[str],
+        allowed_output_fields_by_node: Mapping[str, set[str]] | None = None,
     ) -> None:
         input_definitions = [field for field in evaluator_workflow.user_input_form() if isinstance(field, Mapping)]
         declared_inputs = {
@@ -695,6 +710,14 @@ class EvaluationService:
                 if node_id not in published_node_ids:
                     raise ValueError(
                         f"Customized metric selector node '{node_id}' is not in the published target workflow."
+                    )
+                allowed_output_fields = (allowed_output_fields_by_node or {}).get(node_id)
+                if allowed_output_fields is not None and (
+                    len(selector.value_selector) != 2 or selector.value_selector[1] not in allowed_output_fields
+                ):
+                    allowed_fields = ", ".join(sorted(allowed_output_fields))
+                    raise ValueError(
+                        f"Customized metric selector for Agent '{node_id}' must use one of: {allowed_fields}."
                     )
 
     @staticmethod
@@ -1389,7 +1412,11 @@ class EvaluationService:
         if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
             cls._stop_workflow_tasks(run.id, run.total_items)
         elif target_type == EvaluationTargetType.AGENTS.value:
-            cls._stop_agent_runs(tenant_id=tenant_id, evaluation_run_id=run.id)
+            cls._stop_agent_evaluation_tasks(
+                tenant_id=tenant_id,
+                evaluation_run_id=run.id,
+                total_items=run.total_items,
+            )
 
         # Persist cancellation before notifying Celery so cooperative checks in
         # a running task can observe the terminal state immediately.
@@ -1412,8 +1439,13 @@ class EvaluationService:
         cls._stop_workflow_task_positions(evaluation_run_id, range(total_items))
 
     @classmethod
-    def _stop_workflow_task_positions(cls, evaluation_run_id: str, positions: Sequence[int]) -> None:
-        """Stop target and evaluator workflows for the selected original row positions."""
+    def _stop_workflow_task_positions(
+        cls,
+        evaluation_run_id: str,
+        positions: Sequence[int],
+        phases: Sequence[str] = ("target", "evaluator"),
+    ) -> None:
+        """Stop selected workflow phases for the selected original row positions."""
         from core.app.apps.base_app_queue_manager import AppQueueManager
         from extensions.ext_redis import redis_client
         from graphon.graph_engine.manager import GraphEngineManager
@@ -1426,7 +1458,7 @@ class EvaluationService:
             )
             manager = None
         for position in positions:
-            for phase in ("target", "evaluator"):
+            for phase in phases:
                 task_id = cls.workflow_task_id(evaluation_run_id, phase, position)
                 try:
                     AppQueueManager.set_stop_flag_no_user_check(task_id)
@@ -1438,6 +1470,23 @@ class EvaluationService:
                     manager.send_stop_command(task_id)
                 except Exception:
                     logger.exception("Failed to send stop command for evaluation workflow task %s", task_id)
+
+    @classmethod
+    def _stop_agent_evaluation_tasks(
+        cls,
+        *,
+        tenant_id: str,
+        evaluation_run_id: str,
+        total_items: int,
+    ) -> None:
+        """Stop both the Agent backend target and any customized evaluator workflows."""
+
+        cls._stop_agent_runs(tenant_id=tenant_id, evaluation_run_id=evaluation_run_id)
+        cls._stop_workflow_task_positions(
+            evaluation_run_id,
+            range(total_items),
+            phases=("evaluator",),
+        )
 
     @staticmethod
     def _stop_agent_runs(*, tenant_id: str, evaluation_run_id: str) -> None:
@@ -1618,6 +1667,12 @@ class EvaluationService:
             for run_id, celery_task_id, run_target_type, total_items in tasks_to_stop:
                 if run_target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
                     cls._stop_workflow_tasks(run_id, total_items)
+                elif run_target_type == EvaluationTargetType.AGENTS.value:
+                    cls._stop_workflow_task_positions(
+                        run_id,
+                        range(total_items),
+                        phases=("evaluator",),
+                    )
                 if celery_task_id:
                     try:
                         celery_app.control.revoke(celery_task_id, terminate=False)
@@ -1813,12 +1868,51 @@ class EvaluationService:
         expected_output_columns = cls._get_expected_output_columns(data.default_metrics)
         success_criteria_columns = cls._get_success_criteria_columns(data.default_metrics)
         expected_tool_call_columns = cls._get_expected_tool_call_columns(data.default_metrics)
+        agent_custom_reference_columns = (
+            cls._get_agent_custom_reference_columns(data.customized_metrics)
+            if target_type == EvaluationTargetType.AGENTS.value
+            else []
+        )
+        provided_agent_reference_columns: set[str] = set()
+        if expected_output_columns:
+            provided_agent_reference_columns.add("expected_output")
+        if success_criteria_columns:
+            provided_agent_reference_columns.add("success_criteria")
+        if expected_tool_call_columns:
+            provided_agent_reference_columns.add("expected_tool_calls")
+        agent_custom_reference_columns = [
+            column
+            for column in agent_custom_reference_columns
+            if column["name"] not in provided_agent_reference_columns
+        ]
         return [
             {"name": "index", "type": "number"},
             *input_columns,
             *expected_output_columns,
             *success_criteria_columns,
             *expected_tool_call_columns,
+            *agent_custom_reference_columns,
+        ]
+
+    @staticmethod
+    def _get_agent_custom_reference_columns(
+        customized_metrics: CustomizedMetrics | None,
+    ) -> list[EvaluationTemplateColumn]:
+        """Add dataset columns consumed by the standalone Agent custom-evaluator contract."""
+        if customized_metrics is None:
+            return []
+
+        referenced_outputs = {
+            selector.value_selector[1]
+            for value_source in customized_metrics.input_fields.values()
+            if isinstance(value_source, str)
+            for selector in VariableTemplateParser(value_source).extract_variable_selectors()
+            if len(selector.value_selector) == 2 and selector.value_selector[0] == AGENT_CUSTOM_EVALUATOR_NODE_ID
+        }
+        return [
+            {"name": column_name, "type": "string"}
+            for output_name, column_name in AGENT_CUSTOM_EVALUATOR_DATASET_COLUMNS.items()
+            if output_name in referenced_outputs
         ]
 
     @classmethod
@@ -1973,6 +2067,7 @@ class EvaluationService:
         metrics: list[str],
     ) -> dict[str, list[dict[str, str]]]:
         node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
+        agent_v2_node_ids: set[str] = set()
         for node_id, node_data in workflow.walk_nodes():
             if not cls._is_supported_evaluation_node(node_data):
                 continue
@@ -1980,21 +2075,27 @@ class EvaluationService:
             node_type_to_nodes.setdefault(ntype, []).append(
                 NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
             )
+            if is_dify_agent_node_data(node_data):
+                agent_v2_node_ids.add(node_id)
 
         result: dict[str, list[dict[str, str]]] = {}
+        native_agent_metrics = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
         for metric in metrics:
             required_node_type = METRIC_NODE_TYPE_MAPPING.get(metric)
             if required_node_type is None:
                 result[metric] = []
                 continue
-            result[metric] = node_type_to_nodes.get(required_node_type, [])
+            matching_nodes = node_type_to_nodes.get(required_node_type, [])
+            if required_node_type == "agent" and metric not in native_agent_metrics:
+                matching_nodes = [node for node in matching_nodes if node["node_id"] not in agent_v2_node_ids]
+            result[metric] = matching_nodes
         return result
 
     @classmethod
     def _is_supported_evaluation_node(cls, node_data: Mapping[str, Any]) -> bool:
-        """Allow legacy Agent nodes while explicitly excluding Agent V2."""
+        """Return whether a published workflow node can be selected for evaluation."""
         node_type = str(node_data.get("type", ""))
-        return node_type in cls.SUPPORTED_NODE_TYPES and not is_dify_agent_node_data(node_data)
+        return node_type in cls.SUPPORTED_NODE_TYPES
 
     @classmethod
     def _union_supported_metric_names(cls) -> list[str]:
@@ -2332,6 +2433,7 @@ class EvaluationService:
                     session_maker=session_factory.get_session_maker(),
                     workflow_id=target_workflow_version_id,
                     task_id=task_id,
+                    capture_agent_evaluation_trace=True,
                 )
             except ValueError as exc:
                 if "No published workflow found" in str(exc):
@@ -2375,6 +2477,7 @@ class EvaluationService:
                 streaming=False,
                 call_depth=0,
                 task_id=task_id,
+                capture_agent_evaluation_trace=True,
             )
             return response
         raise ValueError(f"Unsupported evaluation target type: {target_type}")
