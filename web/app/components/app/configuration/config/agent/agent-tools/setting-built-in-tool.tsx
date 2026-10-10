@@ -150,8 +150,36 @@ const SettingBuiltInTool: FC<Props> = ({
       )}
     </div>
   )
-  const infoUI = renderSchemaDetails(infoSchemas)
+  const infoUI = readonly ? (
+    renderSchemaDetails(infoSchemas)
+  ) : (
+    <Form
+      value={tempSetting}
+      onChange={setTempSetting}
+      formSchemas={infoSchemas}
+      isEditMode={false}
+      showOnVariableMap={{}}
+      validating={false}
+      readonly={readonly}
+    />
+  )
   const settingDetailsUI = renderSchemaDetails(settingSchemas)
+
+  const saveFooter =
+    !readonly && (hasSetting || infoSchemas.length > 0) ? (
+      <div className="flex justify-end gap-2 py-2">
+        <Button onClick={onHide}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={!isValid}
+          onClick={() => onSave?.(tempSetting)}
+        >
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </div>
+    ) : null
 
   const settingUI = (
     <Form
@@ -259,27 +287,20 @@ const SettingBuiltInTool: FC<Props> = ({
                     <div className="min-h-0 flex-1 overflow-y-auto px-4">
                       {showSettingTab ? (
                         <>
-                          <TabsPanel value="info">{infoUI}</TabsPanel>
+                          <TabsPanel value="info">
+                            {infoUI}
+                            {saveFooter}
+                          </TabsPanel>
                           <TabsPanel value="setting">
                             {showSettingAsDetails ? settingDetailsUI : settingUI}
-                            {!readonly && (
-                              <div className="flex justify-end gap-2 py-2">
-                                <Button onClick={onHide}>
-                                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  disabled={!isValid}
-                                  onClick={() => onSave?.(tempSetting)}
-                                >
-                                  {t(($) => $['operation.save'], { ns: 'common' })}
-                                </Button>
-                              </div>
-                            )}
+                            {saveFooter}
                           </TabsPanel>
                         </>
                       ) : (
-                        infoUI
+                        <>
+                          {infoUI}
+                          {saveFooter}
+                        </>
                       )}
                     </div>
                     <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
