@@ -109,9 +109,13 @@ class TemplateTransformer(ABC):
     def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         # assemble runner script
         script = cls.get_runner_script()
-        script = script.replace(cls._code_placeholder, code)
+        # Substitute the inputs placeholder before inserting the user code:
+        # a post-insertion substitution would also rewrite `{{inputs}}` literals
+        # inside the user's source (see #43435). The code placeholder is a single
+        # top-level slot, so substituting inputs first is always safe.
         inputs_str = cls.serialize_inputs(inputs)
         script = script.replace(cls._inputs_placeholder, inputs_str)
+        script = script.replace(cls._code_placeholder, code)
         return script
 
     @classmethod
