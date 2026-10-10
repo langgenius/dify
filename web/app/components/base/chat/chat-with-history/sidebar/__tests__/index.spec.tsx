@@ -9,7 +9,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
-import RenameModal from '../rename-modal'
+import { RenameConversationDialog } from '../rename-modal'
 
 let mockBranding: { enabled: boolean; workspace_logo: string } = {
   enabled: false,
@@ -523,7 +523,7 @@ describe('Sidebar Index', () => {
       await user.clear(input)
       await user.type(input, 'New Name')
 
-      // The RenameModal has a save button
+      // The RenameConversationDialog has a save button
       const saveButton = screen.getByText('common.operation.save')
       await user.click(saveButton)
 
@@ -872,14 +872,14 @@ describe('Sidebar Index', () => {
   })
 })
 
-describe('RenameModal', () => {
+describe('RenameConversationDialog', () => {
   it('should render title when modal is shown', () => {
     render(
-      <RenameModal
-        isShow
+      <RenameConversationDialog
+        open
         saveLoading={false}
         name="Conversation"
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={vi.fn()}
       />,
     )
@@ -891,11 +891,11 @@ describe('RenameModal', () => {
     const useTranslationSpy = mockUseTranslationWithEmptyKeys(['chat.conversationNamePlaceholder'])
     try {
       render(
-        <RenameModal
-          isShow
+        <RenameConversationDialog
+          open
           saveLoading={false}
           name="Conversation"
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSave={vi.fn()}
         />,
       )

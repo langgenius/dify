@@ -5,28 +5,6 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
 
-vi.mock('../info-modal', () => ({
-  default: ({
-    isShow,
-    onClose,
-    data,
-  }: {
-    isShow: boolean
-    onClose: () => void
-    data?: SiteInfo
-  }) => {
-    if (!isShow) return null
-    return (
-      <div data-testid="info-modal">
-        <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>
-          Close Info
-        </button>
-      </div>
-    )
-  },
-}))
-
 const mockSetTheme = vi.fn()
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }) }))
 
@@ -251,12 +229,12 @@ describe('MenuDropdown', () => {
 
       fireEvent.click(screen.getByText('common.userProfile.about'))
       await waitFor(() => {
-        expect(screen.getByTestId('info-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test App' })).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('Close Info'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('info-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'Test App' })).not.toBeInTheDocument()
       })
     })
   })
