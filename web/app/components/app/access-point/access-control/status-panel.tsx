@@ -107,7 +107,6 @@ export function AccessControlStatusPanel({
               {!enabled
                 ? t(($) => $['studio.accessControl.tooltipPaused'], {
                     ns: 'deployments',
-                    name: policyName ?? '',
                   })
                 : coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
                   ? t(($) => $['studio.accessControl.protectingAll'], {
@@ -168,7 +167,7 @@ export function AccessControlStatusPanel({
 
         <div className="flex flex-col gap-0.5">
           <p className="system-sm-medium text-text-secondary">
-            {t(($) => $['studio.accessControl.applyTo'], { ns: 'deployments' })}
+            {t(($) => $['studio.accessPoints'], { ns: 'deployments' })}
           </p>
           {availableAccessPoints.map((scope) => {
             const excluded = !draft.scopes[scope]

@@ -338,26 +338,27 @@ describe('AccessControlEntry', () => {
   })
 
   it.each([
-    { accessPoints: ['webapp', 'service_api', 'mcp'], protectedCount: 3 },
-    { accessPoints: ['webapp', 'service_api', 'mcp', 'trigger'], protectedCount: 4 },
-  ] as const)(
-    'shows $protectedCount of 4 protected access points on hover',
-    async ({ accessPoints, protectedCount }) => {
-      const user = userEvent.setup()
-      renderEntry({
-        plan: 'professional',
-        groups: [createNetworkAccessGroupFixture()],
-        binding: createBinding({ access_points: [...accessPoints] }),
-        availableAccessPoints: ['webapp', 'service_api', 'mcp', 'trigger'],
-      })
-
-      await user.hover(getChip())
-      expect(
-        await screen.findByText(`${protectedCount} of 4 access points are protected`),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    {
+      accessPoints: ['webapp', 'service_api', 'mcp'],
+      tooltip: '3 of 4 access points are protected',
     },
-  )
+    {
+      accessPoints: ['webapp', 'service_api', 'mcp', 'trigger'],
+      tooltip: 'All 4 access points are protected',
+    },
+  ] as const)('shows "$tooltip" on hover', async ({ accessPoints, tooltip }) => {
+    const user = userEvent.setup()
+    renderEntry({
+      plan: 'professional',
+      groups: [createNetworkAccessGroupFixture()],
+      binding: createBinding({ access_points: [...accessPoints] }),
+      availableAccessPoints: ['webapp', 'service_api', 'mcp', 'trigger'],
+    })
+
+    await user.hover(getChip())
+    expect(await screen.findByText(tooltip)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 
   it.each(['professional', 'team'] as const)(
     'renders the unpaid-config Off chip on Cloud %s',
@@ -423,11 +424,7 @@ describe('AccessControlEntry', () => {
     await user.click(getChip())
 
     expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
-    expect(
-      screen.queryByText(
-        'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
-      ),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText('A policy is the list of IP addresses allowed in.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
@@ -440,7 +437,7 @@ describe('AccessControlEntry', () => {
       'true',
     )
     expect(screen.queryByRole('switch', { name: 'Trigger' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Not enabled')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not protected')).not.toBeInTheDocument()
   })
 
   it('opens the new policy dialog from the empty-state create action', async () => {
@@ -448,7 +445,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
 
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
     expect(mockSetSettingsDestination).not.toHaveBeenCalled()
@@ -459,7 +456,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
@@ -505,7 +502,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
     await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
     await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -931,7 +928,7 @@ describe('supported access points and binding permission', () => {
     await user.click(getChip())
 
     expect(screen.getByText('Ask a workspace owner or admin to create one.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /(?:Manage|View) IP policies/ }),
     ).not.toBeInTheDocument()
@@ -957,7 +954,7 @@ describe('supported access points and binding permission', () => {
         groups: [createNetworkAccessGroupFixture()],
       })
       await user.click(getChip())
-      expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'View IP policies' }))
       expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
       await user.click(getChip())
@@ -1043,9 +1040,7 @@ describe('supported access points and binding permission', () => {
           expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
         )
         expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
-        expect(
-          screen.getByText('Paused — Internal Network is configured but not enforcing'),
-        ).toBeInTheDocument()
+        expect(screen.getByText('Configured but paused')).toBeInTheDocument()
         expect(within(getChip()).getByText('Paused')).toBeInTheDocument()
         expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
@@ -1748,7 +1743,7 @@ describe('returning from policy creation', () => {
     renderEntry({ plan: 'professional', groups: server.groups })
     await openSelectedConfig(user)
     await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-    await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
+    await user.click(screen.getByRole('option', { name: 'Create an IP policy' }))
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'First')
     await user.click(screen.getByPlaceholderText('10.0.0.0/8'))
     await user.paste('10.0.0.0/8')
@@ -1756,7 +1751,7 @@ describe('returning from policy creation', () => {
     await waitFor(() => expect(finish).toBeDefined())
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-    await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
+    await user.click(screen.getByRole('option', { name: 'Create an IP policy' }))
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Second')
     await act(async () =>
       finish(
@@ -1793,7 +1788,7 @@ describe('returning from policy creation', () => {
       await screen.findByText(lockoutWarning)
       await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
       await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-      await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
+      await user.click(screen.getByRole('option', { name: 'Create an IP policy' }))
       const dialog = await screen.findByRole('dialog')
       if (action !== 'cancel') {
         await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'New Office')

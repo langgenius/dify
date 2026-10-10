@@ -136,7 +136,10 @@ export function AllowlistField({
       </Button>
 
       {currentIpStatus && (
-        <p role="status" className="system-xs-regular text-text-tertiary">
+        <p
+          role="status"
+          className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary"
+        >
           {currentIpStatus === 'loading'
             ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
             : t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
@@ -149,7 +152,7 @@ export function AllowlistField({
       )}
 
       {currentIp && (
-        <p className="flex shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
+        <p className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
           <span>{t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}</span>
           <Button
             type="button"

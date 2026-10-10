@@ -265,23 +265,64 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should allow users with Access Point view permission to open the page directly', async () => {
-    mockPathname = '/app/app-1/access-point'
-    mockAppResponse.mockResolvedValue(
-      createAppDetail({ permission_keys: [AppACLPermission.AccessPointView] }),
-    )
+  it.each([AppModeEnum.WORKFLOW, AppModeEnum.AGENT_CHAT])(
+    'should allow users with Access Point view permission to open a %s page directly',
+    async (mode) => {
+      mockPathname = '/app/app-1/access-point'
+      mockAppResponse.mockResolvedValue(
+        createAppDetail({ mode, permission_keys: [AppACLPermission.AccessPointView] }),
+      )
 
-    render(
-      <AppDetailLayout appId="app-1">
-        <div>App page content</div>
-      </AppDetailLayout>,
-    )
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
 
-    await waitForAppContent()
+      await waitForAppContent()
 
-    expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
-  })
+      expect(mockReplace).not.toHaveBeenCalled()
+      expect(useStore.getState().appDetail?.id).toBe('app-1')
+    },
+  )
+
+  it.each([
+    {
+      source: 'fetched Agent',
+      cached: false,
+      agentId: 'agent-1',
+      destination: '/agents/agent-1/access',
+    },
+    {
+      source: 'cached Agent',
+      cached: true,
+      agentId: 'agent-1',
+      destination: '/agents/agent-1/access',
+    },
+    { source: 'unbound Agent', cached: false, agentId: null, destination: '/agents' },
+  ])(
+    'redirects the legacy Access Point URL for a $source without rendering generic app content',
+    async ({ cached, agentId, destination }) => {
+      mockPathname = '/app/app-1/access-point'
+      const agentApp = createAppDetail({
+        mode: AppModeEnum.AGENT,
+        bound_agent_id: agentId,
+        permission_keys: [AppACLPermission.AccessPointView],
+      })
+      mockAppResponse.mockResolvedValue(agentApp)
+      if (cached) useStore.getState().setAppDetail(agentApp)
+
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+
+      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(destination))
+      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    },
+  )
 
   it('should redirect access point pages when view permission is missing', async () => {
     mockPathname = '/app/app-1/access-point'
