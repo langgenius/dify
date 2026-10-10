@@ -623,8 +623,10 @@ export type ResourceSelectCard = {
 }
 
 export type TestResultCard = {
+  blocked_node_ids?: Array<string>
   dify_run_id?: string
   executed_node_ids?: Array<string>
+  execution_mode?: 'mock' | 'restricted' | null
   failure_reason?: string | null
   outcome?:
     | 'execution_failed'
@@ -633,6 +635,15 @@ export type TestResultCard = {
     | 'required_output_unresolved'
     | null
   review_note?: string | null
+  safety_outcome?:
+    | 'execution_blocked'
+    | 'execution_evidence_unknown'
+    | 'native_failed'
+    | 'restricted_execution_completed'
+    | 'simulation_completed'
+    | 'unsupported_safe_execution'
+    | null
+  simulated_node_ids?: Array<string>
   status: 'failed' | 'succeeded'
   terminal_outputs?: {
     [key: string]: unknown

@@ -20043,6 +20043,16 @@ Account not link tenant.
 | roles | [ [MemberRoleSummaryResponse](#memberrolesummaryresponse) ] |  | No |
 | status | string |  | Yes |
 
+#### Action
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canvas_event | string |  | No |
+| id | string |  | Yes |
+| kind | [ActionKind](#actionkind) |  | Yes |
+| label | string |  | Yes |
+| next_state | string |  | No |
+
 #### ActionKind
 
 Action button styling / semantics (spec §2, §5).
@@ -24070,6 +24080,19 @@ You cannot transfer ownership to yourself.
 | ---- | ---- | ----------- | -------- |
 | CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent`` union. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
 
+#### CardOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canvas_event | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| input | [OptionInput](#optioninput) |  | No |
+| is_default | boolean |  | No |
+| label | string |  | Yes |
+| next_state | string |  | No |
+| tone | string, <br>**Default:** neutral |  | No |
+
 #### ChangeEmailResetPayload
 
 | Name | Type | Description | Required |
@@ -25802,6 +25825,16 @@ Enum class for datasource provider
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
+#### Decision
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_option_id | string |  | No |
+| description | string |  | No |
+| options | [ [CardOption](#cardoption) ] |  | No |
+| submit | [Action](#action) |  | No |
+| title | string |  | Yes |
+
 #### DecisionItem
 
 | Name | Type | Description | Required |
@@ -26080,6 +26113,7 @@ Enum representing the deployment edition of the platform.
 | canvas_read_only | boolean |  | Yes |
 | command_id | string |  | Yes |
 | conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
 | interrupted | boolean |  | Yes |
 | model | [SessionModel](#sessionmodel) |  | No |
 | phase | [Phase](#phase) |  | Yes |
@@ -26118,7 +26152,7 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | command_id | string |  | Yes |
-| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
+| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
 | session_id | string |  | Yes |
 
 #### DifyBuilderConversationItemAppendedEventResponse
@@ -26140,7 +26174,7 @@ Enum representing the deployment edition of the platform.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) ] |  | Yes |
+| data | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) ] |  | Yes |
 | first_seq | integer |  | Yes |
 | has_more | boolean |  | Yes |
 | last_seq | integer |  | Yes |
@@ -26249,6 +26283,15 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | payload | [FormCard](#formcard) |  | Yes |
 | seq | integer |  | Yes |
 
+#### DifyBuilderInteractionResponseConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [InteractionResponseItem](#interactionresponseitem) |  | Yes |
+| seq | integer |  | Yes |
+
 #### DifyBuilderNoticeConversationItemResponse
 
 | Name | Type | Description | Required |
@@ -26338,6 +26381,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | app_revision | [DifyBuilderAppRevisionResponse](#difybuilderapprevisionresponse) |  | No |
 | canvas_read_only | boolean |  | Yes |
 | conversation_last_seq | integer |  | Yes |
+| decision | [Decision](#decision) |  | No |
 | interrupted | boolean |  | Yes |
 | last_command_id | string |  | No |
 | model | [SessionModel](#sessionmodel) |  | No |
@@ -28120,6 +28164,37 @@ You don't have the permission to access the requested resource.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### FormCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| fields | [ [FormField](#formfield) ] |  | No |
+| frozen | boolean |  | No |
+| title | string |  | No |
+| values | object |  | No |
+| variant | string |  | Yes |
+
+#### FormField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| default | string<br>integer<br>number<br>boolean |  | No |
+| hint | string |  | No |
+| json_schema | string<br>object |  | No |
+| key | string |  | Yes |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| number_limits | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| type | string |  | Yes |
+| unit | string |  | No |
+
 #### FormInputConfig
 
 | Name | Type | Description | Required |
@@ -28980,138 +29055,24 @@ The app is not available in this app library.
 | ---- | ---- | ----------- | -------- |
 | type | string | Instruction template type | Yes |
 
-#### InteractiveSurfaceDeliveryMethod
+#### InteractionResponseField
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config | [_InteractiveSurfaceDeliveryConfig](#_interactivesurfacedeliveryconfig) |  | No |
-| enabled | boolean, <br>**Default:** true |  | No |
-| id | string (uuid) |  | No |
-| type | string, <br>**Default:** webapp |  | No |
+| display_value | string |  | Yes |
+| key | string |  | Yes |
+| label | string |  | Yes |
+| value |  |  | Yes |
 
-#### InvalidAccountDeletionCodeError
-
-Invalid account deletion code.
+#### InteractionResponseItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| InvalidAccountDeletionCodeError |  | Invalid account deletion code. |  |
-
-#### InvalidAccountPasswordError
-
-The password does not satisfy the account password policy.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidAccountPasswordError |  | The password does not satisfy the account password policy. |  |
-
-#### InvalidActionError
-
-Invalid action.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidActionError |  | Invalid action. |  |
-
-#### InvalidComposerConfigError
-
-Invalid agent composer config.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidComposerConfigError |  | Invalid agent composer config. |  |
-
-#### InvalidCursorError
-
-The app list cursor is invalid. Refresh the list and try again.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidCursorError |  | The app list cursor is invalid. Refresh the list and try again. |  |
-
-#### InvalidEmailError
-
-The email address is not valid.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidEmailError |  | The email address is not valid. |  |
-
-#### InvalidFormDataError
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidFormDataError |  |  |  |
-
-#### InvalidInputError
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidInputError |  |  |  |
-
-#### InvalidInvitationCodeError
-
-Invalid invitation code.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidInvitationCodeError |  | Invalid invitation code. |  |
-
-#### InvalidMetadataError
-
-The metadata content is incorrect. Please check and verify.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidMetadataError |  | The metadata content is incorrect. Please check and verify. |  |
-
-#### InvalidOrExpiredTokenError
-
-The token is invalid or has expired.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidOrExpiredTokenError |  | The token is invalid or has expired. |  |
-
-#### InvalidRequestError
-
-Invalid skill request.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidRequestError |  | Invalid skill request. |  |
-
-#### InvalidRoleError
-
-Invalid role.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidRoleError |  | Invalid role. |  |
-
-#### InvalidRosterAgentPackageError
-
-The Roster Agent package is invalid.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidRosterAgentPackageError |  | The Roster Agent package is invalid. |  |
-
-#### InvalidTracingConfigError
-
-The tracing configuration is invalid.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvalidTracingConfigError |  | The tracing configuration is invalid. |  |
-
-#### InvitationAccountMismatchError
-
-This invitation was sent to another account. Please sign in with the invited account.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InvitationAccountMismatchError |  | This invitation was sent to another account. Please sign in with the invited account. |  |
+| answer | string |  | No |
+| fields | [ [InteractionResponseField](#interactionresponsefield) ] |  | No |
+| interaction_kind | string, <br>**Available values:** "choice", "form", "resource" | *Enum:* `"choice"`, `"form"`, `"resource"` | Yes |
+| question | string |  | Yes |
+| submitted_data | object |  | No |
 
 #### IterationNodeRunPayload
 
@@ -33599,6 +33560,15 @@ OAuth schema
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
 
+#### OptionInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_length | integer, <br>**Default:** 100 |  | No |
+| min_length | integer |  | No |
+| placeholder | string |  | No |
+| required | boolean, <br>**Default:** true |  | No |
+
 #### OutputErrorStrategy
 
 Per-output failure handling strategy.
@@ -35848,7 +35818,9 @@ Keep the existing resolved-form wire shape without exposing storage metadata.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| description | string |  | No |
 | recommended | [ [ResourceOption](#resourceoption) ] |  | No |
+| title | string |  | No |
 
 #### ResourceUserAccessPolicies
 
@@ -37472,9 +37444,17 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| blocked_node_ids | [ string ] |  | No |
 | dify_run_id | string |  | No |
+| executed_node_ids | [ string ] |  | No |
+| execution_mode | string, <br>**Available values:** "mock", "restricted" |  | No |
 | failure_reason | string |  | No |
+| outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
+| review_note | string |  | No |
+| safety_outcome | string, <br>**Available values:** "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
+| simulated_node_ids | [ string ] |  | No |
 | status | string, <br>**Available values:** "failed", "succeeded" | *Enum:* `"failed"`, `"succeeded"` | Yes |
+| terminal_outputs | object |  | No |
 
 #### TextContentResponse
 
