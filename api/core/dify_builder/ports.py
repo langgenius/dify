@@ -199,6 +199,8 @@ class DifyPort(Protocol):
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
+        session_id: str,
+        test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
     ) -> Run: ...
 
