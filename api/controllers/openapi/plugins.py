@@ -268,12 +268,12 @@ class PluginTaskApi(Resource):
             hints = []
         return PluginTaskResponse(
             task_id=task_id,
-            status=str(task.status),
+            status=task.status,
             plugins=[
                 PluginTaskItem(
                     plugin_id=plugin.plugin_id,
                     identifier=plugin.plugin_unique_identifier,
-                    status=str(plugin.status),
+                    status=plugin.status,
                     message=plugin.message,
                 )
                 for plugin in task.plugins

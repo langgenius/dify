@@ -1596,7 +1596,7 @@ export type PluginInstallTask = {
   created_at: string
   id: string
   plugins: Array<PluginInstallTaskPluginStatus>
-  status: PluginInstallTaskStatus | string
+  status: PluginInstallTaskStatus
   total_plugins: number
   updated_at: string
 }
@@ -2331,7 +2331,7 @@ export type PluginInstallTaskPluginStatus = {
   plugin_id: string
   plugin_unique_identifier: string
   source?: string | null
-  status: PluginInstallTaskStatus | string
+  status: PluginInstallTaskStatus
 }
 
 export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'

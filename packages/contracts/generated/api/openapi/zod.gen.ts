@@ -1288,6 +1288,11 @@ export const zPluginInstallPayload = z.object({
 })
 
 /**
+ * PluginInstallTaskStatus
+ */
+export const zPluginInstallTaskStatus = z.enum(['failed', 'pending', 'running', 'success'])
+
+/**
  * PluginListQuery
  */
 export const zPluginListQuery = z.object({
@@ -1331,7 +1336,7 @@ export const zPluginTaskItem = z.object({
   identifier: z.string(),
   message: z.string(),
   plugin_id: z.string(),
-  status: z.string(),
+  status: zPluginInstallTaskStatus,
 })
 
 /**
@@ -1340,7 +1345,7 @@ export const zPluginTaskItem = z.object({
 export const zPluginTaskResponse = z.object({
   hints: z.array(zHint).optional(),
   plugins: z.array(zPluginTaskItem),
-  status: z.string(),
+  status: zPluginInstallTaskStatus,
   task_id: z.string(),
 })
 

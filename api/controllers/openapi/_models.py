@@ -15,6 +15,7 @@ from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
+from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
@@ -571,13 +572,13 @@ class PluginTaskStartResponse(Hinted):
 class PluginTaskItem(BaseModel):
     plugin_id: str
     identifier: str
-    status: str
+    status: PluginInstallTaskStatus
     message: str
 
 
 class PluginTaskResponse(Hinted):
     task_id: str
-    status: str = Field(description="pending, running, success or failed")
+    status: PluginInstallTaskStatus
     plugins: list[PluginTaskItem]
 
 

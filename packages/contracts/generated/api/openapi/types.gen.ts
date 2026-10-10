@@ -956,6 +956,8 @@ export type PluginInstallPayload = {
   identifiers: Array<string>
 }
 
+export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
+
 export type PluginListQuery = {
   category?: PluginCategory | null
 }
@@ -985,13 +987,13 @@ export type PluginTaskItem = {
   identifier: string
   message: string
   plugin_id: string
-  status: string
+  status: PluginInstallTaskStatus
 }
 
 export type PluginTaskResponse = {
   hints?: Array<Hint>
   plugins: Array<PluginTaskItem>
-  status: string
+  status: PluginInstallTaskStatus
   task_id: string
 }
 

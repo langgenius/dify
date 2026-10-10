@@ -2935,6 +2935,12 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | identifiers | [ string ] | Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin (identifier) or check.console_app.dependency | Yes |
 
+#### PluginInstallTaskStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginInstallTaskStatus | string |  |  |
+
 #### PluginListQuery
 
 | Name | Type | Description | Required |
@@ -2975,7 +2981,7 @@ Strict (extra='forbid').
 | identifier | string |  | Yes |
 | message | string |  | Yes |
 | plugin_id | string |  | Yes |
-| status | string |  | Yes |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) |  | Yes |
 
 #### PluginTaskResponse
 
@@ -2983,7 +2989,7 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | plugins | [ [PluginTaskItem](#plugintaskitem) ] |  | Yes |
-| status | string | pending, running, success or failed | Yes |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) |  | Yes |
 | task_id | string |  | Yes |
 
 #### PluginTaskStartResponse
