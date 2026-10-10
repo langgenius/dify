@@ -12,8 +12,8 @@ vi.mock('@/features/agent-v2/permissions', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
-  default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
-    show ? (
+  CreateFromDSLModal: ({ open, onSuccess }: { open: boolean; onSuccess?: () => void }) =>
+    open ? (
       <div role="dialog" aria-label="agentRoster.roster.importDSL">
         <button onClick={onSuccess}>Complete agent import</button>
       </div>

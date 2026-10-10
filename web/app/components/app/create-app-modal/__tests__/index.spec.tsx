@@ -11,7 +11,7 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import CreateAppModal from '../index'
+import { CreateAppModal } from '../index'
 
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
@@ -102,17 +102,17 @@ const { mockToastSuccess, mockToastError } = toastMocks
 let appQuota = { size: 0, limit: 1 }
 
 const renderModal = () => {
-  const onClose = vi.fn()
+  const onOpenChange = vi.fn()
   const onCreateFromTemplate = vi.fn()
   render(
     <CreateAppModal
-      show
-      onClose={onClose}
+      open
+      onOpenChange={onOpenChange}
       onCreateFromTemplate={onCreateFromTemplate}
       defaultAppMode={AppModeEnum.ADVANCED_CHAT}
     />,
   )
-  return { onClose, onCreateFromTemplate }
+  return { onOpenChange, onCreateFromTemplate }
 }
 
 function render(ui: ReactElement) {
@@ -142,7 +142,7 @@ describe('CreateAppModal', () => {
       maintainer: 'user-1',
     })
     mockCreateApp.mockResolvedValue(mockApp)
-    const { onClose } = renderModal()
+    const { onOpenChange } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -164,7 +164,7 @@ describe('CreateAppModal', () => {
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -216,7 +216,7 @@ describe('CreateAppModal', () => {
 
   it('shows error toast when creation fails', async () => {
     mockCreateApp.mockRejectedValue(new Error('boom'))
-    const { onClose } = renderModal()
+    const { onOpenChange } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -224,7 +224,7 @@ describe('CreateAppModal', () => {
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
     expect(mockToastError).toHaveBeenCalledWith('boom')
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it('shows the apps-full notice and disables creation when the workspace quota is exhausted', () => {
@@ -305,11 +305,11 @@ describe('CreateAppModal', () => {
       mockCreateApp.mockResolvedValue(
         createAppDetailFixture({ id: 'reopened-app', mode: AppModeEnum.ADVANCED_CHAT }),
       )
-      const onClose = vi.fn()
-      const modal = (show: boolean) => (
+      const onOpenChange = vi.fn()
+      const modal = (open: boolean) => (
         <CreateAppModal
-          show={show}
-          onClose={onClose}
+          open={open}
+          onOpenChange={onOpenChange}
           onCreateFromTemplate={vi.fn()}
           defaultAppMode={AppModeEnum.ADVANCED_CHAT}
         />
@@ -326,7 +326,7 @@ describe('CreateAppModal', () => {
       fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
       expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
-      expect(onClose).toHaveBeenCalledOnce()
+      expect(onOpenChange).toHaveBeenCalledOnce()
     },
   )
 

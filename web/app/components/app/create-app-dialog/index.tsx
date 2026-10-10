@@ -4,33 +4,31 @@ import { CreateAppDialogShell } from '../create-app-dialog-shell'
 import AppList from './app-list'
 
 type CreateAppDialogProps = {
-  show: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onCreateFromBlank?: () => void
   templateMode?: 'agent'
 }
 
-const CreateAppTemplateDialog = ({
-  show,
-  onClose,
+export function CreateAppTemplateDialog({
+  open,
+  onOpenChange,
   onCreateFromBlank,
   templateMode,
-}: CreateAppDialogProps) => {
+}: CreateAppDialogProps) {
   const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
-      show={show}
+      open={open}
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
-      onClose={onClose}
+      onOpenChange={onOpenChange}
     >
       <AppList
         onCreateFromBlank={onCreateFromBlank}
-        onClose={onClose}
+        onClose={() => onOpenChange(false)}
         templateMode={templateMode}
       />
     </CreateAppDialogShell>
   )
 }
-
-export default CreateAppTemplateDialog

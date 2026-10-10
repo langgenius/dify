@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
-import CreateFromDSLModal from '../index'
+import { CreateFromDSLModal } from '../index'
 import { CreateFromDSLModalTab } from '../types'
 
 const mockPush = vi.fn()
@@ -167,7 +167,7 @@ describe('CreateFromDSLModal', () => {
           { code: 'agent_skill_missing', path: 'skills.s_000001', message: 'Missing Skill' },
         ],
       })
-      render(<CreateFromDSLModal show onClose={onClose} droppedFile={file} />)
+      render(<CreateFromDSLModal open onOpenChange={onClose} droppedFile={file} />)
       await user.click(getCreateButton())
 
       await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file }))
@@ -194,7 +194,7 @@ describe('CreateFromDSLModal', () => {
       status: 'completed',
       app_mode: AppModeEnum.AGENT,
     })
-    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    render(<CreateFromDSLModal open onOpenChange={vi.fn()} />)
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')
     expect(input).not.toBeNull()
     if (!input) throw new Error('Missing file picker')
@@ -211,8 +211,8 @@ describe('CreateFromDSLModal', () => {
   it('should render the file tab and show the dropped file', async () => {
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         droppedFile={new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })}
       />,
     )
@@ -226,7 +226,7 @@ describe('CreateFromDSLModal', () => {
 
   it('should switch tabs, close from the header icon, and ignore shortcuts without valid input', async () => {
     const handleClose = vi.fn()
-    render(<CreateFromDSLModal show onClose={handleClose} />)
+    render(<CreateFromDSLModal open onOpenChange={handleClose} />)
 
     submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
@@ -238,15 +238,15 @@ describe('CreateFromDSLModal', () => {
       screen.getByPlaceholderText(/(?:^|\.)importAppUrlPlaceholder(?=$|:)/),
     )!.toBeInTheDocument()
 
-    const closeTrigger = screen
-      .getByText(/(?:^|\.)importApp(?=$|:)/)
-      .parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
+    const closeTrigger = screen.getByRole('button', { name: 'common.operation.cancel' })
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
 
   it('should expose the URL as a named form field', () => {
-    render(<CreateFromDSLModal show onClose={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />)
+    render(
+      <CreateFromDSLModal open onOpenChange={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />,
+    )
 
     const urlInput = screen.getByRole('textbox', {
       name: /(?:^|\.)importFromDSLUrl(?=$|:)/,
@@ -258,7 +258,7 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should initially focus Browse when the file import dialog opens', async () => {
-    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    render(<CreateFromDSLModal open onOpenChange={vi.fn()} />)
 
     await waitFor(() => {
       expect(
@@ -269,7 +269,7 @@ describe('CreateFromDSLModal', () => {
 
   it('should move focus from each active tab directly to its first panel control', async () => {
     const user = userEvent.setup()
-    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    render(<CreateFromDSLModal open onOpenChange={vi.fn()} />)
 
     const fileTab = screen.getByRole('tab', {
       name: /(?:^|\.)importFromFile(?=$|:)/,
@@ -297,8 +297,8 @@ describe('CreateFromDSLModal', () => {
   it('should render the import shortcut with kbd primitives', () => {
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -321,8 +321,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={handleClose}
+        open
+        onOpenChange={handleClose}
         onSuccess={handleSuccess}
         activeTab={CreateFromDSLModalTab.FROM_URL}
       />,
@@ -369,8 +369,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -411,8 +411,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         droppedFile={new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })}
       />,
     )
@@ -456,7 +456,7 @@ describe('CreateFromDSLModal', () => {
       permission_keys: ['app.acl.view_layout'],
     })
 
-    render(<CreateFromDSLModal show onClose={handleClose} droppedFile={file} />)
+    render(<CreateFromDSLModal open onOpenChange={handleClose} droppedFile={file} />)
 
     fireEvent.click(getCreateButton())
     await waitFor(() => {
@@ -486,8 +486,8 @@ describe('CreateFromDSLModal', () => {
   it('should remove the current file and keep the create shortcut guarded', async () => {
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         droppedFile={new File(['app: demo'], 'demo.yml', { type: 'text/yaml' })}
       />,
     )
@@ -529,8 +529,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         onSuccess={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
@@ -586,8 +586,8 @@ describe('CreateFromDSLModal', () => {
       const onClose = vi.fn()
       render(
         <CreateFromDSLModal
-          show
-          onClose={onClose}
+          open
+          onOpenChange={onClose}
           activeTab={CreateFromDSLModalTab.FROM_URL}
           dslUrl="https://example.com/app.yml"
         />,
@@ -631,8 +631,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/agent.yml"
       />,
@@ -675,8 +675,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -707,8 +707,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -749,8 +749,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={handleClose}
+        open
+        onOpenChange={handleClose}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -805,8 +805,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -857,8 +857,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={handleClose}
+        open
+        onOpenChange={handleClose}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -890,7 +890,7 @@ describe('CreateFromDSLModal', () => {
         status: 'completed',
         app_mode: AppModeEnum.AGENT,
       })
-      render(<CreateFromDSLModal show onClose={vi.fn()} />)
+      render(<CreateFromDSLModal open onOpenChange={vi.fn()} />)
       expect(screen.getByText('apps-full')).toBeInTheDocument()
       await user.click(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))
       expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
@@ -907,8 +907,8 @@ describe('CreateFromDSLModal', () => {
     appCount = 10
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         droppedFile={new File(['app: demo'], 'demo.yaml')}
       />,
     )
@@ -926,7 +926,7 @@ describe('CreateFromDSLModal', () => {
       status: 'completed',
       app_mode: AppModeEnum.AGENT,
     })
-    render(<CreateFromDSLModal show onClose={vi.fn()} />)
+    render(<CreateFromDSLModal open onOpenChange={vi.fn()} />)
     expect(
       screen.getByRole('button', { name: 'app.dslUploader.browse' }),
     ).toHaveAccessibleDescription('app.importAppFormats')
@@ -959,8 +959,8 @@ describe('CreateFromDSLModal', () => {
 
     const { rerender } = render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -976,8 +976,8 @@ describe('CreateFromDSLModal', () => {
 
     rerender(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -1014,8 +1014,8 @@ describe('CreateFromDSLModal', () => {
       const onClose = vi.fn()
       render(
         <CreateFromDSLModal
-          show
-          onClose={onClose}
+          open
+          onOpenChange={onClose}
           activeTab={CreateFromDSLModalTab.FROM_URL}
           dslUrl="https://example.com/app.yml"
         />,
@@ -1050,8 +1050,8 @@ describe('CreateFromDSLModal', () => {
 
     render(
       <CreateFromDSLModal
-        show
-        onClose={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
         activeTab={CreateFromDSLModalTab.FROM_URL}
         dslUrl="https://example.com/app.yml"
       />,
@@ -1087,5 +1087,61 @@ describe('CreateFromDSLModal', () => {
       expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
       { description: 'boom' },
     )
+  })
+  it('starts a fresh file and tab session after the previous popup has closed', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const firstFile = new File(['first'], 'first.yml')
+    const nextFile = new File(['next'], 'next.yml')
+    const { rerender } = render(
+      <CreateFromDSLModal open onOpenChange={onOpenChange} droppedFile={firstFile} />,
+    )
+    await user.click(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))
+    await user.type(screen.getByRole('textbox'), 'https://example.com/old.yml')
+    await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
+    rerender(<CreateFromDSLModal open={false} onOpenChange={onOpenChange} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(<CreateFromDSLModal open onOpenChange={onOpenChange} droppedFile={nextFile} />)
+
+    expect(screen.getByRole('tab', { name: 'app.importFromFile' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByText('next.yml')).toBeInTheDocument()
+    expect(screen.queryByText('first.yml')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('dismisses only the version confirmation on Escape and keeps the original import available', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    mockImportDSL.mockResolvedValue({
+      id: 'pending-session',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+    render(
+      <CreateFromDSLModal
+        open
+        onOpenChange={onOpenChange}
+        droppedFile={new File(['dsl'], 'session.yml')}
+      />,
+    )
+    await user.click(getCreateButton())
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByText('session.yml')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(mockImportDSLConfirm).not.toHaveBeenCalled()
+
+    await user.click(getCreateButton())
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(mockImportDSL).toHaveBeenCalledTimes(2)
+    expect(mockImportDSLConfirm).not.toHaveBeenCalled()
   })
 })

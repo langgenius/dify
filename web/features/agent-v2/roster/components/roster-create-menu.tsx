@@ -2,9 +2,9 @@
 
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
+import { CreateAppTemplateDialog } from '@/app/components/app/create-app-dialog'
 import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
-import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
+import { CreateFromDSLModal } from '@/app/components/app/create-from-dsl-modal'
 import { useCanCreateAgents, useCanImportAgents } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
 import { CreateAgentDialog } from './create-agent-dialog'
@@ -26,20 +26,20 @@ export function RosterCreateMenu() {
         onImportDSL={canImport ? () => setImportDialogOpen(true) : undefined}
         onCreateTemplate={canImport ? () => setTemplateDialogOpen(true) : undefined}
       />
-      {canImport && templateDialogOpen && (
+      {canImport && (
         <CreateAppTemplateDialog
-          show
+          open={templateDialogOpen}
           templateMode="agent"
-          onClose={() => setTemplateDialogOpen(false)}
+          onOpenChange={setTemplateDialogOpen}
         />
       )}
       {canCreate && (
         <CreateAgentDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       )}
-      {canImport && importDialogOpen && (
+      {canImport && (
         <CreateFromDSLModal
-          show
-          onClose={() => setImportDialogOpen(false)}
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
           onSuccess={() => {
             void queryClient.invalidateQueries({ queryKey: consoleQuery.agent.get.key() })
           }}
