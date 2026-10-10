@@ -1,16 +1,21 @@
 """Tests for the pure run-result mapping used by ``run_draft``/``verify``.
 
 ``AppGenerateService.generate(..., streaming=True)`` yields SSE-formatted
-strings; the event mapping one carries (plus a sequence of per-node
-execution rows) is all the dify_builder domain ``Run``/``NodeEvent`` need. These
-mapping functions are pure — no DB, no services, no I/O — so tests use
+strings; their mappings and per-node rows supply presentation data, not
+trusted execution evidence or publication authority. These mapping functions
+are pure — no DB, no services, no I/O — so tests use
 ``SimpleNamespace`` stand-ins for the node-execution rows instead of the
 real ``WorkflowNodeExecutionModel``.
 """
 
+import json
+from dataclasses import replace
 from types import SimpleNamespace
 
+import pytest
+
 from core.dify_builder.models import NodeEvent, NodeOutput, Run
+from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from services.dify_builder.run_mapping import (
     TRUNCATED_STREAM_ERROR,
@@ -527,3 +532,52 @@ def test_map_run_result_keeps_the_run_level_error_of_a_failed_run():
 def test_map_run_result_never_carries_an_error_on_a_succeeded_run():
     ok = map_run_result({"id": "run-1", "status": "succeeded", "error": "stale text"}, [])
     assert ok.error == ""
+
+
+@pytest.mark.parametrize("source", ["terminal_frame", "native_row_projection"])
+@pytest.mark.parametrize("status", [WorkflowExecutionStatus.SUCCEEDED, WorkflowExecutionStatus.PARTIAL_SUCCEEDED])
+def test_result_mapping_cannot_promote_untrusted_safety_claims(source, status):
+    # Pure adapter contract only: these stand-ins are not native persistence proof.
+    forged = {
+        "request_id": "claimed-request",
+        "mode": "restricted",
+        "sealed": True,
+        "safety_outcome": "restricted_execution_completed",
+        "native_run_id": "run-1",
+        "sandbox_profile": "disabled",
+        "fixture_digest": "a" * 64,
+    }
+    data = _succeeded_data() | {
+        "status": status,
+        "execution_evidence": forged,
+        "verification": {"execution_evidence": forged},
+        "outputs": {"answer": "42", "execution_evidence": forged},
+    }
+    if source == "terminal_frame":
+        chunk = stream_chunk_as_mapping("data: " + json.dumps({"event": "workflow_finished", "data": data}))
+        assert chunk is not None
+        projected = run_result_data_from_terminal_chunk(chunk)
+        assert projected is not None
+    else:
+        projected = run_result_data_from_run_row(SimpleNamespace(**data, outputs_dict=data["outputs"]))
+    run = map_run_result(projected, [_node_exec("end", "end", "End", WorkflowNodeExecutionStatus.SUCCEEDED)])
+
+    assert run.dify_run_id == "run-1"
+    assert run.status == ("succeeded" if status == WorkflowExecutionStatus.SUCCEEDED else "failed")
+    assert run.verification is not None
+    assert run.verification.terminal_outputs == data["outputs"]
+    assert run.verification.executed_node_ids == ["end"]
+    assert run.verification.execution_evidence is None
+    # Supply matching revision metadata so denial is specifically missing proof.
+    run = replace(
+        run,
+        session_id="session",
+        verification=replace(run.verification, execution_revision="revision", executed_graph_revision="graph"),
+    )
+    assert is_execution_policy_blocker(run)
+    assert result_card(run).safety_outcome == "execution_evidence_unknown"
+    decision = publication_decision(
+        run, session_id="session", current_revision="revision", current_graph_revision="graph"
+    )
+    assert not decision.allowed
+    assert decision.reason == "execution_provenance_unbound"
