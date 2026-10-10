@@ -20,7 +20,7 @@ type MockToolFormItemProps = {
 const mockToolFormItem = vi.fn<(props: MockToolFormItemProps) => void>()
 
 vi.mock('../item', () => ({
-  default: (props: MockToolFormItemProps) => {
+  ToolFormItem: (props: MockToolFormItemProps) => {
     mockToolFormItem(props)
     return (
       <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>

@@ -4,7 +4,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import TriggerFormItem from './item'
+import { TriggerFormItem } from './item'
 
 type Props = Readonly<{
   readOnly: boolean
