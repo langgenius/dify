@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
 from services.dify_builder import credentials
@@ -243,6 +244,85 @@ class _RecordingInstance:
     def invoke_llm(self, **kwargs):
         self.calls.append(kwargs)
         return _Result(self._replies.pop(0))
+
+
+def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence():
+    graph = {
+        "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": "graph-secret"}}],
+        "edges": [],
+    }
+    outputs = [
+        NodeOutput(
+            node_id="http1",
+            title="HTTP",
+            status="failed",
+            error="connection refused with graph-secret",
+            inputs={
+                "key": "ordinary lookup",
+                "zero": 0,
+                "false": False,
+                "empty": "",
+                "nil": None,
+                "nested": [{"api_key": "runtime-secret", "authorization": "Bearer auth-secret"}],
+            },
+            outputs={"status_code": 503, "headers": {"X-Private": "header-secret"}, "params": "session:query-secret"},
+        )
+    ]
+    run = Run(status="failed", per_node=outputs, immutable=True)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    diagnosis = fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    for secret in ("graph-secret", "runtime-secret", "auth-secret", "header-secret", "query-secret"):
+        assert secret not in prompt
+    for useful in ("connection refused", "status=failed", "503", "ordinary lookup", "'zero': 0", "False", "None"):
+        assert useful in prompt
+    assert diagnosis.culprit_node_id == "http1"
+    assert (run, graph, outputs) == before
+
+
+def test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text():
+    secret = "long-credential-" + "Z" * 400
+    graph = {
+        "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": secret}}],
+        "edges": [],
+    }
+    outputs = [NodeOutput(node_id="http1", status="exception", inputs={"body": secret + " connection refused"})]
+    run = Run(status="failed", per_node=outputs)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "long-credential-" not in prompt
+    assert "connection refused" in prompt
+    assert (run, graph, outputs) == before
+
+
+def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_error():
+    graph = {
+        "nodes": [
+            {
+                "id": "http1",
+                "data": {"type": "http-request", "title": "HTTP graph-token", "headers": "X-Key:graph-token"},
+            }
+        ],
+        "edges": [],
+    }
+    run = Run(status="failed", error="connection refused using graph-token")
+    before = deepcopy((run, graph))
+    model = _RecordingInstance(['{"culprit_node_id":"","root_cause":"connection refused","severity":"high"}'])
+
+    fix.diagnose(model, run, graph, [])
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "graph-token" not in prompt
+    assert "connection refused" in prompt
+    assert "no node executed" in prompt
+    assert (run, graph) == before
 
 
 _SECRET_HTTP_GRAPH = {
