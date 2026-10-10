@@ -1,4 +1,4 @@
-import type { Tag } from '../../../hooks'
+import type { Tag } from '../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -6,20 +6,15 @@ import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 
-type MarketplaceTriggerProps = {
-  selectedTagsLength: number
+type LabeledTriggerProps = {
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
 }
 
-function MarketplaceTrigger({
-  selectedTagsLength,
-  tags,
-  tagsMap,
-  onTagsChange,
-}: MarketplaceTriggerProps) {
+function LabeledTrigger({ tags, tagsMap, onTagsChange }: LabeledTriggerProps) {
   const { t } = useTranslation(['pluginTags'])
+  const selectedTagsLength = tags.length
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
   const selectedTagLabels = tags.map((tag) => tagsMap[tag]?.label).filter(Boolean)
@@ -108,4 +103,4 @@ function MarketplaceTrigger({
   )
 }
 
-export default memo(MarketplaceTrigger)
+export default memo(LabeledTrigger)

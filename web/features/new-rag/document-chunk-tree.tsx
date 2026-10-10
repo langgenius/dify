@@ -4,10 +4,10 @@ import type { DocumentChunkTree } from './document-detail-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80

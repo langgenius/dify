@@ -22,10 +22,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
-  default: () => <input aria-label="Search trigger" />,
-}))
-
 vi.mock('@/app/components/workflow/block-selector/all-start-blocks', () => ({
   default: ({ onSelect }: { onSelect: (type: BlockEnum) => void }) => (
     <button type="button" onClick={() => onSelect(BlockEnum.Start)}>

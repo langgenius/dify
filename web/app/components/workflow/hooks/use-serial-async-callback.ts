@@ -1,5 +1,5 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 
 export const useSerialAsyncCallback = <Args extends any[], Result = void>(
   fn: (...args: Args) => Promise<Result> | Result,
