@@ -50,6 +50,9 @@ from models.model import EndUser
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.annotation_import_job_repository import RedisAnnotationImportJobRepository
+from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
+from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -94,6 +97,10 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.annotation_command_service import AnnotationCommandService
+from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
+from services.annotation_query import AnnotationQuery
+from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -121,6 +128,7 @@ from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
+from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
@@ -192,6 +200,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
+from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
+from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
+from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
+from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -242,6 +256,10 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    annotation_commands: AnnotationCommandService
+    annotation_imports: AnnotationImportService
+    annotation_queries: AnnotationQuery
+    annotation_reply: AnnotationReplyService
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -370,6 +388,13 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> File
     )
 
 
+def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return None
+    quota = FeatureService.get_features(tenant_id, exclude_vector_space=True).annotation_quota_limit
+    return AnnotationImportQuota(limit=quota.limit, size=quota.size)
+
+
 def build_application_services(
     *,
     database_client: sessionmaker[Session],
@@ -495,7 +520,34 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    annotations = AnnotationRepository(session_factory=database_client)
     return ApplicationServices(
+        annotation_commands=AnnotationCommandService(
+            annotations=annotations,
+            add_index=add_annotation_to_index_task.delay,
+            update_index=update_annotation_to_index_task.delay,
+            delete_index=delete_annotation_index_task.delay,
+        ),
+        annotation_queries=annotations,
+        annotation_imports=AnnotationImportService(
+            apps=annotations,
+            jobs=RedisAnnotationImportJobRepository(redis=redis),
+            publish=batch_import_annotations_task.delay,
+            quota=_get_annotation_import_quota,
+            limits=AnnotationImportLimits(
+                min_records=dify_config.ANNOTATION_IMPORT_MIN_RECORDS,
+                max_records=dify_config.ANNOTATION_IMPORT_MAX_RECORDS,
+                requests_per_minute=dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE,
+                requests_per_hour=dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR,
+                max_concurrent=dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT,
+            ),
+        ),
+        annotation_reply=AnnotationReplyService(
+            apps=annotations,
+            jobs=RedisAnnotationReplyJobRepository(redis=redis),
+            enable_task=enable_annotation_reply_task.delay,
+            disable_task=disable_annotation_reply_task.delay,
+        ),
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
