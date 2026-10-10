@@ -10,6 +10,7 @@ import { COMMAND_SEPARATOR } from '@/protocol/op-id'
 import { labelOf, propertiesOf, shapeOf } from '@/protocol/shape'
 import { view } from '@/sys/io/view'
 import { argToken, flagToken } from '@/util/flag-name'
+import { skeletonExample } from './examples'
 
 export type FieldRow = Readonly<{
   name: string
@@ -126,7 +127,10 @@ export const SECTIONS: readonly Section[] = [
   {
     title: 'Examples',
     lines: (d, style) =>
-      d.examples.flatMap((example) => [style.dim(`${COMMENT} ${example.title}`), example.command]),
+      (d.examples.length > 0 ? d.examples : [skeletonExample(d)]).flatMap((example) => [
+        style.dim(`${COMMENT} ${example.title}`),
+        example.command,
+      ]),
   },
   {
     title: 'Pins',

@@ -24,7 +24,7 @@ it('renders the row from the statics with a JSON Schema input', () => {
     summary: 'Do a thing',
     effect: 'write',
     positional: ['id'],
-    examples: [{ title: 'Basic', command: 'difyctl fake thing x' }],
+    examples: [{ title: 'Basic', input: { id: 'x' }, command: 'difyctl fake thing x' }],
   })
   expect(row.input).toMatchObject({
     type: 'object',
