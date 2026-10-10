@@ -649,6 +649,127 @@ def test_delete_segment_with_legacy_scalar_keywords(
         assert probe.tasks == []
 
 
+@pytest.mark.parametrize(
+    ("segment_update", "content"),
+    [("console", "content"), ("console", "updated content"), ("service_api", None), ("service_api", "updated content")],
+    indirect=["segment_update"],
+)
+@pytest.mark.parametrize("previous_error", [None, "vector already removed"])
+def test_reenable_segment_recreates_missing_vector(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    content: str | None,
+    previous_error: str | None,
+) -> None:
+    _, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = False
+        segment.disabled_at = datetime(2026, 1, 1)
+        segment.disabled_by = "author"
+        segment.index_node_id = "index-1"
+        segment.index_node_hash = generate_text_hash(segment.content)
+        if previous_error:
+            segment.status = SegmentStatus.ERROR
+            segment.error = previous_error
+        session.add(segment)
+
+    def delete_missing_vector(_ids: Sequence[str]) -> None:
+        raise RuntimeError("vector already removed")
+
+    monkeypatch.setattr(probe, "delete_by_ids", delete_missing_vector)
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"enabled": True, "content": content},
+    )
+
+    assert result.data.enabled is True
+    assert result.data.status == SegmentStatus.COMPLETED
+    assert result.data.error is None
+    assert result.data.disabled_at is None
+    assert result.data.disabled_by is None
+    assert result.data.index_node_id == "index-1"
+    assert probe.batches == [(content or "content",)]
+    assert probe.writes == 1
+    assert not probe.active_transactions
+
+
+def test_reenable_segment_restores_existing_attachments(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        dataset.is_multimodal = True
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = False
+        segment.index_node_id = "index-1"
+        segment.index_node_hash = generate_text_hash(segment.content)
+        session.add_all(
+            [
+                segment,
+                _upload("image-1", "workspace-1", "chart.png"),
+                SegmentAttachmentBinding(
+                    tenant_id="workspace-1",
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id="segment-1",
+                    attachment_id="image-1",
+                ),
+            ]
+        )
+
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"enabled": True, "content": "content"},
+    )
+
+    assert result.data.enabled is True
+    assert result.data.status == SegmentStatus.COMPLETED
+    assert [attachment.id for attachment in result.data.attachments] == ["image-1"]
+    assert probe.writes == 2
+    assert probe.deleted_ids == []
+
+
+def test_reenable_segment_preserves_indexing_failure(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = False
+        segment.index_node_id = "index-1"
+        segment.index_node_hash = generate_text_hash(segment.content)
+        session.add(segment)
+    probe.fail = True
+
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"enabled": True, "content": "content"},
+    )
+
+    assert result.data.enabled is False
+    assert result.data.status == SegmentStatus.ERROR
+    assert result.data.error == "index unavailable"
+    assert probe.batches == [("content",)]
+
+
 @pytest.mark.parametrize("keywords", ["legacy-scalar", 42, {"invalid": "object"}, [{"invalid": "item"}]])
 def test_update_repairs_legacy_keywords_without_validating_presentation_first(
     segment_update: SegmentUpdateEntry,
