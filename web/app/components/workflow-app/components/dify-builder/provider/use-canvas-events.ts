@@ -4,8 +4,13 @@ import { useCallback, useMemo } from 'react'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { difyBuilderCanvasPendingRefreshAtom } from '../store'
 
-export const useDifyBuilderCanvasEvents = (onFocusCanvas: () => void) => {
+export const useDifyBuilderCanvasEvents = (
+  onFocusCanvas: () => void,
+  onPublishWorkflow?: () => void,
+  onResetPublication?: () => void,
+) => {
   const setPendingRefresh = useSetAtom(difyBuilderCanvasPendingRefreshAtom)
+
   const onCanvasEvent = useCallback(
     (data: CanvasEventData) => {
       const event = data.event
@@ -43,14 +48,19 @@ export const useDifyBuilderCanvasEvents = (onFocusCanvas: () => void) => {
         case 'mark_test_success':
         case 'mark_review_ready':
         case 'cancel_publish':
+          return
         case 'publish_workflow':
+          onPublishWorkflow?.()
           return
         default:
           event satisfies never
       }
     },
-    [onFocusCanvas, setPendingRefresh],
+    [onFocusCanvas, onPublishWorkflow, setPendingRefresh],
   )
-  const reset = useCallback(() => setPendingRefresh(null), [setPendingRefresh])
+  const reset = useCallback(() => {
+    onResetPublication?.()
+    setPendingRefresh(null)
+  }, [onResetPublication, setPendingRefresh])
   return useMemo(() => ({ onCanvasEvent, reset }), [onCanvasEvent, reset])
 }
