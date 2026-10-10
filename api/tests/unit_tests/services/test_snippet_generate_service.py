@@ -1,15 +1,21 @@
 import json
-from types import SimpleNamespace
-from unittest.mock import Mock
+import unittest.mock
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.console.app.workflow import LoopNodeRunPayload
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
+from graphon.file import FileUploadConfig
+from graphon.file.models import File
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_service import SnippetService
+from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_workflow
 
 
@@ -31,6 +37,24 @@ def _snippet(*, input_fields: list[dict] | None = None) -> CustomizedSnippet:
 
 def _account(account_id: str = "user-1") -> Account:
     return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
+
+
+def _set_draft_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    workflow: Workflow | None,
+) -> None:
+    def get_draft_workflow(_self, *, snippet):
+        _ = snippet
+        return workflow
+
+    monkeypatch.setattr(SnippetService, "get_draft_workflow", get_draft_workflow)
+
+
+def _set_published_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    workflow: Workflow | None,
+) -> None:
+    monkeypatch.setattr(SnippetService, "get_published_workflow", lambda _self, _snippet: workflow)
 
 
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
@@ -95,7 +119,7 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
             }
         ]
     )
-    make_transient = Mock()
+    make_transient = unittest.mock.Mock()
     monkeypatch.setattr("services.snippet_generate_service.make_transient", make_transient)
 
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
@@ -111,32 +135,45 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
 
 def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
-    monkeypatch.setattr("services.snippet_generate_service.FileUploadConfigManager.convert", Mock(return_value=None))
+
+    def convert(_config, is_vision):
+        _ = is_vision
+
+    monkeypatch.setattr(FileUploadConfigManager, "convert", convert)
 
     assert SnippetGenerateService.parse_files(workflow, files=[{"id": "file-1"}]) == []
 
 
 def test_parse_files_delegates_to_file_factory(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
-    upload_config = SimpleNamespace(enabled=True)
-    files = [SimpleNamespace(id="file-1")]
-    monkeypatch.setattr(
-        "services.snippet_generate_service.FileUploadConfigManager.convert", Mock(return_value=upload_config)
-    )
-    build_from_mappings = Mock(return_value=files)
+    upload_config = FileUploadConfig()
+    files = [File.model_construct(id="file-1")]
+
+    def convert(_config, is_vision):
+        _ = is_vision
+        return upload_config
+
+    monkeypatch.setattr(FileUploadConfigManager, "convert", convert)
+    captured: dict[str, object] = {}
+
+    def build_from_mappings(**kwargs):
+        captured.update(kwargs)
+        return files
+
     monkeypatch.setattr("services.snippet_generate_service.file_factory.build_from_mappings", build_from_mappings)
 
     result = SnippetGenerateService.parse_files(workflow, files=[{"id": "file-1"}])
 
     assert result == files
-    build_from_mappings.assert_called_once()
+    assert captured["tenant_id"] == workflow.tenant_id
+    assert captured["config"] is upload_config
 
 
-def test_generate_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
-    )
+def test_generate_raises_when_draft_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
+    _set_draft_workflow(monkeypatch, None)
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate(
@@ -144,10 +181,14 @@ def test_generate_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyP
             user=_account(),
             args={"inputs": {}},
             invoke_from="debugger",
+            session_maker=unbound_session_factory,
         )
 
 
-def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch: pytest.MonkeyPatch):
+def test_generate_delegates_to_workflow_generator_and_filters_stream(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = _snippet()
     user = _account()
@@ -157,62 +198,79 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
             {"event": "node_finished", "data": {"node_id": "llm-1"}},
         ]
     )
-    generator = SimpleNamespace(generate=Mock(return_value=raw_stream))
-    workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda response: response)
+    generate_kwargs: dict[str, object] = {}
+    ensure_calls: list[tuple[Workflow, CustomizedSnippet]] = []
+    converted: list[object] = []
 
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
-    )
-    ensure_start_node = Mock(return_value=workflow)
-    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    def generate(_self, **kwargs):
+        generate_kwargs.update(kwargs)
+        return raw_stream
+
+    def ensure_start_node(_cls, current_workflow, current_snippet):
+        ensure_calls.append((current_workflow, current_snippet))
+        return current_workflow
+
+    def convert_to_event_stream(response):
+        converted.append(response)
+        return response
+
+    _set_draft_workflow(monkeypatch, workflow)
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+    monkeypatch.setattr(WorkflowAppGenerator, "convert_to_event_stream", staticmethod(convert_to_event_stream))
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
 
     result = SnippetGenerateService.generate(
         snippet=snippet,
         user=user,
         args={"inputs": {"query": "hello"}},
         invoke_from="debugger",
+        session_maker=unbound_session_factory,
     )
 
     assert list(result) == [{"event": "node_finished", "data": {"node_id": "llm-1"}}]
-    ensure_start_node.assert_called_once_with(workflow, snippet)
-    generator.generate.assert_called_once()
-    kwargs = generator.generate.call_args.kwargs
+    assert ensure_calls == [(workflow, snippet)]
+    kwargs = generate_kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["workflow"] is workflow
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
-    workflow_generator_class.convert_to_event_stream.assert_called_once()
+    assert len(converted) == 1
 
 
-def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch: pytest.MonkeyPatch):
+def test_run_published_delegates_to_workflow_generator_non_streaming(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = _snippet()
     user = _account()
-    generator = SimpleNamespace(generate=Mock(return_value={"data": {"outputs": {"answer": "ok"}}}))
+    generate_kwargs: dict[str, object] = {}
+    ensure_calls: list[tuple[Workflow, CustomizedSnippet]] = []
 
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
-    )
-    ensure_start_node = Mock(return_value=workflow)
-    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", Mock(return_value=generator))
+    def generate(_self, **kwargs):
+        generate_kwargs.update(kwargs)
+        return {"data": {"outputs": {"answer": "ok"}}}
+
+    def ensure_start_node(_cls, current_workflow, current_snippet):
+        ensure_calls.append((current_workflow, current_snippet))
+        return current_workflow
+
+    _set_published_workflow(monkeypatch, workflow)
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
 
     result = SnippetGenerateService.run_published(
         snippet=snippet,
         user=user,
         args={"inputs": {"query": "hello"}},
         invoke_from="service-api",
+        session_maker=unbound_session_factory,
     )
 
     assert result == {"data": {"outputs": {"answer": "ok"}}}
-    ensure_start_node.assert_called_once_with(workflow, snippet)
-    generator.generate.assert_called_once()
-    kwargs = generator.generate.call_args.kwargs
+    assert ensure_calls == [(workflow, snippet)]
+    kwargs = generate_kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["streaming"] is False
     assert kwargs["call_depth"] == 0
@@ -221,27 +279,38 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
     snippet = _snippet()
-    ensure_start_node = Mock(return_value=workflow)
-    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
+    ensure_calls: list[tuple[Workflow, CustomizedSnippet]] = []
+
+    def ensure_start_node(_cls, current_workflow, current_snippet):
+        ensure_calls.append((current_workflow, current_snippet))
+        return current_workflow
+
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
 
     result = SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
 
     assert result is workflow
-    ensure_start_node.assert_called_once_with(workflow, snippet)
+    assert ensure_calls == [(workflow, snippet)]
 
 
-def test_run_draft_node_delegates_to_workflow_service(monkeypatch: pytest.MonkeyPatch):
+def test_run_draft_node_delegates_to_workflow_service(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = _snippet()
     account = _account("account-1")
     execution = WorkflowNodeExecutionModel(id="execution-1")
-    workflow_service = SimpleNamespace(run_draft_workflow_node=Mock(return_value=execution))
+    run_kwargs: dict[str, object] = {}
 
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
-    )
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowService", Mock(return_value=workflow_service))
+    def run_draft_workflow_node(_self, **kwargs):
+        run_kwargs.update(kwargs)
+        return execution
+
+    workflow_service = WorkflowService(unbound_session_factory)
+    _set_draft_workflow(monkeypatch, workflow)
+    monkeypatch.setattr(WorkflowService, "run_draft_workflow_node", run_draft_workflow_node)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowService", lambda: workflow_service)
 
     result = SnippetGenerateService.run_draft_node(
         snippet=snippet,
@@ -250,11 +319,11 @@ def test_run_draft_node_delegates_to_workflow_service(monkeypatch: pytest.Monkey
         account=account,
         query="question",
         files=[],
+        session_maker=unbound_session_factory,
     )
 
     assert result is execution
-    workflow_service.run_draft_workflow_node.assert_called_once()
-    kwargs = workflow_service.run_draft_workflow_node.call_args.kwargs
+    kwargs = run_kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["draft_workflow"] is workflow
     assert kwargs["node_id"] == "llm-1"
@@ -264,11 +333,11 @@ def test_run_draft_node_delegates_to_workflow_service(monkeypatch: pytest.Monkey
     assert kwargs["files"] == []
 
 
-def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
-    )
+def test_run_draft_node_raises_when_draft_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
+    _set_draft_workflow(monkeypatch, None)
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.run_draft_node(
@@ -276,6 +345,7 @@ def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch: pytest.M
             node_id="llm-1",
             user_inputs={},
             account=_account("account-1"),
+            session_maker=unbound_session_factory,
         )
 
 
@@ -287,15 +357,20 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     snippet = _snippet()
     user = _account()
     response = iter(["event"])
-    generator = SimpleNamespace(single_iteration_generate=Mock(return_value=response))
-    workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda item: item)
+    generate_kwargs: dict[str, object] = {}
+    converted: list[object] = []
 
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
-    )
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    def single_iteration_generate(_self, **kwargs):
+        generate_kwargs.update(kwargs)
+        return response
+
+    def convert_to_event_stream(item):
+        converted.append(item)
+        return item
+
+    _set_draft_workflow(monkeypatch, workflow)
+    monkeypatch.setattr(WorkflowAppGenerator, "single_iteration_generate", single_iteration_generate)
+    monkeypatch.setattr(WorkflowAppGenerator, "convert_to_event_stream", staticmethod(convert_to_event_stream))
 
     result = SnippetGenerateService.generate_single_iteration(
         snippet=snippet,
@@ -306,24 +381,20 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     )
 
     assert list(result) == ["event"]
-    generator.single_iteration_generate.assert_called_once()
-    kwargs = generator.single_iteration_generate.call_args.kwargs
+    kwargs = generate_kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["workflow"] is workflow
     assert kwargs["node_id"] == "iteration-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert isinstance(kwargs["session"], Session)
-    workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
+    assert converted == [response]
 
 
 def test_generate_single_iteration_raises_when_draft_workflow_missing(
     monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
 ):
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
-    )
+    _set_draft_workflow(monkeypatch, None)
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate_single_iteration(
@@ -343,59 +414,60 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     snippet = _snippet()
     user = _account()
     response = iter(["event"])
-    generator = SimpleNamespace(single_loop_generate=Mock(return_value=response))
-    workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda item: item)
+    generate_kwargs: dict[str, object] = {}
+    converted: list[object] = []
 
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
-    )
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    def single_loop_generate(_self, **kwargs):
+        generate_kwargs.update(kwargs)
+        return response
+
+    def convert_to_event_stream(item):
+        converted.append(item)
+        return item
+
+    _set_draft_workflow(monkeypatch, workflow)
+    monkeypatch.setattr(WorkflowAppGenerator, "single_loop_generate", single_loop_generate)
+    monkeypatch.setattr(WorkflowAppGenerator, "convert_to_event_stream", staticmethod(convert_to_event_stream))
 
     result = SnippetGenerateService.generate_single_loop(
         snippet=snippet,
         user=user,
         node_id="loop-1",
-        args=SimpleNamespace(inputs={"items": [1]}),
+        args=LoopNodeRunPayload(inputs={"items": [1]}),
         session_maker=sqlite_session_factory,
     )
 
     assert list(result) == ["event"]
-    generator.single_loop_generate.assert_called_once()
-    kwargs = generator.single_loop_generate.call_args.kwargs
+    kwargs = generate_kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["workflow"] is workflow
     assert kwargs["node_id"] == "loop-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert isinstance(kwargs["session"], Session)
-    workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
+    assert converted == [response]
 
 
 def test_generate_single_loop_raises_when_draft_workflow_missing(
     monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
 ):
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
-    )
+    _set_draft_workflow(monkeypatch, None)
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         SnippetGenerateService.generate_single_loop(
             snippet=_snippet(),
             user=_account(),
             node_id="loop-1",
-            args=SimpleNamespace(inputs={}),
+            args=LoopNodeRunPayload(inputs={}),
             session_maker=unbound_session_factory,
         )
 
 
-def test_run_published_raises_when_published_workflow_missing(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "services.snippet_generate_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_published_workflow=Mock(return_value=None)),
-    )
+def test_run_published_raises_when_published_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+):
+    _set_published_workflow(monkeypatch, None)
 
     with pytest.raises(ValueError, match="No published workflow found"):
         SnippetGenerateService.run_published(
@@ -403,4 +475,5 @@ def test_run_published_raises_when_published_workflow_missing(monkeypatch: pytes
             user=_account(),
             args={"inputs": {}},
             invoke_from="service-api",
+            session_maker=unbound_session_factory,
         )
