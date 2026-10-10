@@ -1,5 +1,5 @@
 import urllib.parse
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -11,14 +11,14 @@ class BaseOAuthTest:
     """Base class for OAuth provider tests with common fixtures"""
 
     @pytest.fixture
-    def oauth_config(self):
+    def oauth_config(self) -> dict[str, str]:
         return {
             "client_id": "test_client_id",
             "client_secret": "test_client_secret",
             "redirect_uri": "http://localhost/callback",
         }
 
-    def parse_auth_url(self, url):
+    def parse_auth_url(self, url: str) -> tuple[urllib.parse.ParseResult, dict[str, list[str]]]:
         """Helper to parse authorization URL"""
         parsed = urllib.parse.urlparse(url)
         params = urllib.parse.parse_qs(parsed.query)
@@ -27,7 +27,7 @@ class BaseOAuthTest:
 
 class TestGitHubOAuth(BaseOAuthTest):
     @pytest.fixture
-    def oauth(self, oauth_config):
+    def oauth(self, oauth_config: dict[str, str]) -> GitHubOAuth:
         return GitHubOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
@@ -47,8 +47,14 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     def test_should_generate_authorization_url_correctly(
-        self, oauth, oauth_config, invite_token, timezone, language, expected_state
-    ):
+        self,
+        oauth: GitHubOAuth,
+        oauth_config: dict[str, str],
+        invite_token: str | None,
+        timezone: str | None,
+        language: str | None,
+        expected_state: dict[str, str] | None,
+    ) -> None:
         url = oauth.get_authorization_url(invite_token, timezone=timezone, language=language)
         parsed, params = self.parse_auth_url(url)
 
@@ -64,7 +70,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         else:
             assert "state" not in params
 
-    def test_should_preserve_redirect_url_in_state(self, oauth):
+    def test_should_preserve_redirect_url_in_state(self, oauth: GitHubOAuth) -> None:
         redirect_url = "/apps?category=workflow"
 
         url = oauth.get_authorization_url(redirect_url=redirect_url)
@@ -81,7 +87,14 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.post", autospec=True)
-    def test_should_retrieve_access_token(self, mock_post, oauth, response_data, expected_token, should_raise):
+    def test_should_retrieve_access_token(
+        self,
+        mock_post: MagicMock,
+        oauth: GitHubOAuth,
+        response_data: dict[str, str],
+        expected_token: str | None,
+        should_raise: bool,
+    ) -> None:
         mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
@@ -119,7 +132,14 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, email_data, expected_email):
+    def test_should_retrieve_user_info_correctly(
+        self,
+        mock_get: MagicMock,
+        oauth: GitHubOAuth,
+        user_data: dict[str, object],
+        email_data: list[dict[str, object]],
+        expected_email: str,
+    ) -> None:
         user_response = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
         email_response = httpx.Response(200, json=email_data, request=httpx.Request("GET", oauth._EMAIL_INFO_URL))
 
@@ -134,7 +154,9 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert mock_get.call_count == 2
 
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_skip_email_endpoint_when_profile_email_present(self, mock_get, oauth):
+    def test_should_skip_email_endpoint_when_profile_email_present(
+        self, mock_get: MagicMock, oauth: GitHubOAuth
+    ) -> None:
         """When the /user profile already contains an email, do not call /user/emails."""
         user_response = httpx.Response(
             200,
@@ -167,7 +189,9 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_use_noreply_email_when_no_usable_email(self, mock_get, oauth, user_data, email_data):
+    def test_should_use_noreply_email_when_no_usable_email(
+        self, mock_get: MagicMock, oauth: GitHubOAuth, user_data: dict[str, object], email_data: list[dict[str, object]]
+    ) -> None:
         user_response = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
         email_response = httpx.Response(200, json=email_data, request=httpx.Request("GET", oauth._EMAIL_INFO_URL))
 
@@ -179,7 +203,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert user_info.email == "12345@users.noreply.github.com"
 
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get, oauth):
+    def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get: MagicMock, oauth: GitHubOAuth) -> None:
         user_response = httpx.Response(
             200,
             json={"id": 12345, "login": "testuser", "name": "Test User"},
@@ -195,7 +219,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert user_info.email == "12345@users.noreply.github.com"
 
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_handle_network_errors(self, mock_get, oauth):
+    def test_should_handle_network_errors(self, mock_get: MagicMock, oauth: GitHubOAuth) -> None:
         mock_get.side_effect = httpx.RequestError("Network error")
 
         with pytest.raises(httpx.RequestError):
@@ -204,7 +228,7 @@ class TestGitHubOAuth(BaseOAuthTest):
 
 class TestGoogleOAuth(BaseOAuthTest):
     @pytest.fixture
-    def oauth(self, oauth_config):
+    def oauth(self, oauth_config: dict[str, str]) -> GoogleOAuth:
         return GoogleOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
 
     @pytest.mark.parametrize(
@@ -224,8 +248,14 @@ class TestGoogleOAuth(BaseOAuthTest):
         ],
     )
     def test_should_generate_authorization_url_correctly(
-        self, oauth, oauth_config, invite_token, timezone, language, expected_state
-    ):
+        self,
+        oauth: GoogleOAuth,
+        oauth_config: dict[str, str],
+        invite_token: str | None,
+        timezone: str | None,
+        language: str | None,
+        expected_state: dict[str, str] | None,
+    ) -> None:
         url = oauth.get_authorization_url(invite_token, timezone=timezone, language=language)
         parsed, params = self.parse_auth_url(url)
 
@@ -242,7 +272,7 @@ class TestGoogleOAuth(BaseOAuthTest):
         else:
             assert "state" not in params
 
-    def test_should_preserve_redirect_url_in_state(self, oauth):
+    def test_should_preserve_redirect_url_in_state(self, oauth: GoogleOAuth) -> None:
         redirect_url = "/apps?category=workflow"
 
         url = oauth.get_authorization_url(redirect_url=redirect_url)
@@ -260,8 +290,14 @@ class TestGoogleOAuth(BaseOAuthTest):
     )
     @patch("libs.oauth._http_client.post", autospec=True)
     def test_should_retrieve_access_token(
-        self, mock_post, oauth, oauth_config, response_data, expected_token, should_raise
-    ):
+        self,
+        mock_post: MagicMock,
+        oauth: GoogleOAuth,
+        oauth_config: dict[str, str],
+        response_data: dict[str, str],
+        expected_token: str | None,
+        should_raise: bool,
+    ) -> None:
         mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
@@ -292,7 +328,9 @@ class TestGoogleOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, expected_name):
+    def test_should_retrieve_user_info_correctly(
+        self, mock_get: MagicMock, oauth: GoogleOAuth, user_data: dict[str, object], expected_name: str
+    ) -> None:
         mock_get.return_value = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
 
         user_info = oauth.get_user_info("test_token")
@@ -312,14 +350,16 @@ class TestGoogleOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_handle_http_errors(self, mock_get, oauth, exception_type):
+    def test_should_handle_http_errors(
+        self, mock_get: MagicMock, oauth: GoogleOAuth, exception_type: type[httpx.HTTPError]
+    ) -> None:
         mock_get.side_effect = exception_type("Error")
 
         with pytest.raises(exception_type):
             oauth.get_raw_user_info("invalid_token")
 
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_handle_http_status_errors(self, mock_get, oauth):
+    def test_should_handle_http_status_errors(self, mock_get: MagicMock, oauth: GoogleOAuth) -> None:
         response = httpx.Response(401, request=httpx.Request("GET", oauth._USER_INFO_URL))
         mock_get.return_value = response
 
@@ -338,7 +378,7 @@ class TestOAuthUserInfo:
             {"id": "789", "name": "Another User", "email": "another@test.org"},
         ],
     )
-    def test_should_create_user_info_dataclass(self, user_data):
+    def test_should_create_user_info_dataclass(self, user_data: dict[str, str]) -> None:
         user_info = OAuthUserInfo(**user_data)
 
         assert user_info.id == user_data["id"]
