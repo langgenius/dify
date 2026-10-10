@@ -1,37 +1,33 @@
+import type {
+  DatasetMetadataBuiltInFieldResponse,
+  DatasetMetadataListItemResponse,
+  DatasetMetadataResponse,
+  DatasetMetadataType,
+  DocumentMetadataResponse,
+  MetadataOperationData,
+} from '@dify/contracts/api/console/datasets/types.gen'
+
 export const DataType = {
   string: 'string',
   number: 'number',
   time: 'time',
 } as const
 
-export type DataType = (typeof DataType)[keyof typeof DataType]
+export type DataType = DatasetMetadataType
 
-export type BuiltInMetadataItem = {
-  type: DataType
-  name: string
-}
+export type BuiltInMetadataItem = DatasetMetadataBuiltInFieldResponse
 
-export type MetadataItem = BuiltInMetadataItem & {
-  id: string
-}
+export type MetadataItem = DatasetMetadataResponse
 
-export type MetadataItemWithValue = MetadataItem & {
-  value: string | number | null
-}
+export type MetadataItemWithValue = DocumentMetadataResponse
 
-export type MetadataItemWithValueLength = MetadataItem & {
-  count: number
-}
+export type MetadataItemWithValueLength = DatasetMetadataListItemResponse
 
 export type MetadataItemInBatchEdit = MetadataItemWithValue & {
   isMultipleValue?: boolean
 }
 
-export type MetadataBatchEditToServer = {
-  document_id: string
-  metadata_list: MetadataItemWithValue[]
-  partial_update?: boolean
-}[]
+export type MetadataBatchEditToServer = MetadataOperationData['operation_data']
 
 export const UpdateType = {
   changeValue: 'changeValue',

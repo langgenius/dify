@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from enums.dataset import DatasetMetadataType
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from services.data_source.entities.notion_import import NotionPageType
@@ -20,14 +21,14 @@ class NotionEstimateWorkspacePayload(BaseModel):
 
 class DatasetMetadataResponse(ResponseModel):
     id: str
-    type: str
+    type: DatasetMetadataType
     name: str
 
 
 class DatasetMetadataListItemResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: DatasetMetadataType
     count: int = 0
 
 
@@ -38,7 +39,7 @@ class DatasetMetadataListResponse(ResponseModel):
 
 class DatasetMetadataBuiltInFieldResponse(ResponseModel):
     name: str
-    type: str
+    type: DatasetMetadataType
 
 
 class DatasetMetadataBuiltInFieldsResponse(ResponseModel):

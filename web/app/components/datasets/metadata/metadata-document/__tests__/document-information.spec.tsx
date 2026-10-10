@@ -1,16 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, render as testingLibraryRender } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import MetadataDocument from '../index'
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContext: () => ({ dataset: { embedding_available: true } }),
-}))
-
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useBatchUpdateDocMetadata: () => ({ mutateAsync: vi.fn() }),
-  useCreateMetaData: () => ({ mutateAsync: vi.fn() }),
-  useDocumentMetaData: () => ({ data: { doc_metadata: [] } }),
-  useDatasetMetaData: () => ({ data: { built_in_field_enabled: false } }),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -56,6 +51,12 @@ const renderDocument = (detail: Partial<DocumentDetail>) => (
     docDetail={detail as DocumentDetail}
   />
 )
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(ui, {
+    wrapper: createMetadataQueryWrapper({ datasetId: 'dataset-1', documentId: 'document-1' })
+      .wrapper,
+  })
 
 describe('Document information', () => {
   it('shows the uploaded file size from the document detail response', () => {

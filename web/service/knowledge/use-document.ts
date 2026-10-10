@@ -25,7 +25,7 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
 
-export const useDocumentListKey = [NAME_SPACE, 'documentList']
+const useDocumentListKey = [NAME_SPACE, 'documentList']
 type DocumentListRefetchInterval = UseQueryOptions<DocumentListResponse>['refetchInterval']
 
 export const useDocumentList = (payload: {

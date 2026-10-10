@@ -18322,7 +18322,7 @@ Site token customization strategy
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 
 #### DatasetMetadataBuiltInFieldsResponse
 
@@ -18337,7 +18337,7 @@ Site token customization strategy
 | count | integer |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 
 #### DatasetMetadataListResponse
 
@@ -18352,7 +18352,15 @@ Site token customization strategy
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
+
+#### DatasetMetadataType
+
+Dataset metadata value type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetMetadataType | string | Dataset metadata value type. |  |
 
 #### DatasetQueryContentResponse
 
@@ -18892,7 +18900,7 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 | value | string<br>integer<br>number<br>boolean |  | No |
 
 #### DocumentMetadataUpdatePayload

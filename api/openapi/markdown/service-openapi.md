@@ -2952,7 +2952,7 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 
 #### DatasetMetadataBuiltInFieldsResponse
 
@@ -2967,7 +2967,7 @@ Enum class for custom configuration status.
 | count | integer |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 
 #### DatasetMetadataListResponse
 
@@ -2982,7 +2982,15 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
+
+#### DatasetMetadataType
+
+Dataset metadata value type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetMetadataType | string | Dataset metadata value type. |  |
 
 #### DatasetRerankingModelResponse
 
@@ -3185,7 +3193,7 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | [DatasetMetadataType](#datasetmetadatatype) |  | Yes |
 | value | string<br>integer<br>number<br>boolean |  | No |
 
 #### DocumentResponse

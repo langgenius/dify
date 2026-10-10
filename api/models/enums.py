@@ -6,6 +6,7 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from enums.dataset import DatasetMetadataType  # noqa: F401
 
 
 class CreatorUserRole(StrEnum):
@@ -234,14 +235,6 @@ class TagType(StrEnum):
     APP = "app"
     SNIPPET = "snippet"
     SKILL = "skill"
-
-
-class DatasetMetadataType(StrEnum):
-    """Dataset metadata value type"""
-
-    STRING = "string"
-    NUMBER = "number"
-    TIME = "time"
 
 
 class SegmentType(StrEnum):

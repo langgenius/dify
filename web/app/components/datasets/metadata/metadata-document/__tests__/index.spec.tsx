@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react'
 import type { MetadataItemWithValue } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import { DataType } from '../../types'
 import MetadataDocument from '../index'
 
@@ -30,13 +32,6 @@ vi.mock('../../hooks/use-metadata-document', () => ({
 }))
 
 // Mock service calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [],
-    },
-  }),
-}))
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({
@@ -56,6 +51,9 @@ vi.mock('@/hooks/use-timestamp', () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,
   }),
 }))
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(ui, { wrapper: createMetadataQueryWrapper({}).wrapper })
 
 describe('MetadataDocument', () => {
   const mockDocDetail = {

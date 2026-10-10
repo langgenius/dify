@@ -647,6 +647,147 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       datasets: {
+        byDatasetId: {
+          // Metadata writes are transactional. Preserve success-only invalidation.
+          metadata: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+            byMetadataId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      // Document lists still use the legacy query until their domain is migrated.
+                      context.client.invalidateQueries({
+                        queryKey: ['knowledge/document', 'documentList', params.dataset_id],
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: ['knowledge/document', 'documentList', params.dataset_id],
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            builtIn: {
+              byAction: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      const params = { dataset_id: variables.params.dataset_id }
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                            input: { params },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                            input: { params },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                              input: { params },
+                            }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: ['knowledge/document', 'documentList', params.dataset_id],
+                        }),
+                      ])
+                    },
+                  },
+                },
+              },
+            },
+          },
+          documents: {
+            metadata: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = variables.params
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: ['knowledge/document', 'documentList', params.dataset_id],
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
+        },
         apiKeys: {
           post: {
             mutationOptions: {

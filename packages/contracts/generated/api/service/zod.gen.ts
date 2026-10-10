@@ -655,11 +655,18 @@ export const zDatasetMetadataActionResponse = z.object({
 })
 
 /**
+ * DatasetMetadataType
+ *
+ * Dataset metadata value type.
+ */
+export const zDatasetMetadataType = z.enum(['number', 'string', 'time'])
+
+/**
  * DatasetMetadataBuiltInFieldResponse
  */
 export const zDatasetMetadataBuiltInFieldResponse = z.object({
   name: z.string(),
-  type: z.string(),
+  type: zDatasetMetadataType,
 })
 
 /**
@@ -676,7 +683,7 @@ export const zDatasetMetadataListItemResponse = z.object({
   count: z.int().optional().default(0),
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: zDatasetMetadataType,
 })
 
 /**
@@ -693,7 +700,7 @@ export const zDatasetMetadataListResponse = z.object({
 export const zDatasetMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: zDatasetMetadataType,
 })
 
 /**
@@ -930,7 +937,7 @@ export const zDocumentListQuery = z.object({
 export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: zDatasetMetadataType,
   value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
 })
 

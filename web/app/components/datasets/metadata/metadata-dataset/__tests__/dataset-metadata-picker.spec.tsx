@@ -2,16 +2,11 @@ import type { MetadataItem } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import { DataType } from '../../types'
 import { DatasetMetadataPicker } from '../dataset-metadata-picker'
 
-const { mockUseDatasetMetaData } = vi.hoisted(() => ({
-  mockUseDatasetMetaData: vi.fn(),
-}))
-
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: mockUseDatasetMetaData,
-}))
+let selectedMetadata: MetadataItem[]
 
 const metadataItems: MetadataItem[] = [
   { id: '1', name: 'field_one', type: DataType.string },
@@ -32,18 +27,17 @@ function renderDatasetMetadataPicker(
 
   return {
     props,
-    ...render(<DatasetMetadataPicker {...props} />),
+    ...render(<DatasetMetadataPicker {...props} />, {
+      wrapper: createMetadataQueryWrapper({ datasetId: props.datasetId, fields: selectedMetadata })
+        .wrapper,
+    }),
   }
 }
 
 describe('DatasetMetadataPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDatasetMetaData.mockReturnValue({
-      data: {
-        doc_metadata: metadataItems,
-      },
-    })
+    selectedMetadata = metadataItems
   })
 
   describe('Rendering', () => {
@@ -265,11 +259,7 @@ describe('DatasetMetadataPicker', () => {
   describe('Edge Cases', () => {
     it('should keep action buttons available when metadata list is empty', async () => {
       const user = userEvent.setup()
-      mockUseDatasetMetaData.mockReturnValue({
-        data: {
-          doc_metadata: [],
-        },
-      })
+      selectedMetadata = []
 
       renderDatasetMetadataPicker()
 
