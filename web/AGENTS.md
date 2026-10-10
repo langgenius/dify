@@ -9,6 +9,7 @@
 Web owns application-specific requirements and consumes shared architecture guidance from skills and primitive contracts from Dify UI. Link to those owners instead of redefining their rules here.
 
 - For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
+- Before adding or keeping a toast, follow [Toasts]. A toast is only for a result the user cannot see where they acted.
 - When adding or changing page layouts, navigation, or landmark elements, follow [Page landmarks] and inspect the composed page, including parent layouts.
 - User-facing strings must use `web/i18n/locales/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/console`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
@@ -40,5 +41,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 [Input Group contract]: ../packages/dify-ui/src/input-group/README.md
 [Keyboard commands]: docs/hotkeys.md
 [Page landmarks]: docs/landmarks.md
+[Toasts]: docs/toasts.md
 [Truncated Text Disclosure]: docs/truncated-text-disclosure.md
 [form contract]: ../packages/dify-ui/docs/forms.md
