@@ -361,8 +361,14 @@ def validate_restricted_http_defaults(data: Mapping[str, Any]) -> None:
                     continue
             except UnicodeError:
                 pass
-        if key == "status_code" and kind == "number" and type(value) in (int, float) and math.isfinite(value):
-            continue
+        if key == "status_code" and kind == "number" and type(value) in (int, float):
+            try:
+                if math.isfinite(value):
+                    continue
+            except OverflowError:
+                # Refuse integers outside the native finite float range before
+                # concrete validation or any later native number conversion.
+                pass
         raise BuilderExecutionPolicyError("unsupported_http_defaults")
 
 

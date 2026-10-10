@@ -1,6 +1,7 @@
 """Pure restricted admission controls: no runtime transport is exercised here."""
 
 import importlib
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
@@ -203,6 +204,40 @@ def test_native_start_end_identity_and_raw_digest_binding():
     assert bindings[0].normalized_config_digest == p.canonical_digest(
         {"type": "start", "variables": [], "version": "1"}
     )
+
+
+@pytest.mark.parametrize(
+    "value", [10**400, -(10**400), 10**309, -(10**309)], ids=["huge", "negative-huge", "overflow", "negative-overflow"]
+)
+def test_http_default_large_integer_refused_before_native_validation(monkeypatch, value):
+    from graphon.nodes.http_request.node import HttpRequestNode
+
+    p = policy()
+    raw_graph = graph(http=True)
+    data = cast(dict[str, object], raw_graph["nodes"][1]["data"])
+    data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
+    assert p.canonical_digest(raw_graph)
+
+    def forbidden(_data):
+        pytest.fail("oversized default reached native validation")
+
+    monkeypatch.setattr(HttpRequestNode, "validate_node_data", forbidden)
+    with pytest.raises(p.BuilderExecutionPolicyError) as error:
+        p.admitted_node_bindings(snapshot(raw_graph))
+    assert error.value.reason_code == "unsupported_http_defaults"
+    assert str(error.value) == "Builder execution policy refused: unsupported_http_defaults"
+
+
+@pytest.mark.parametrize(
+    "value", [599, 599.5, 10**308, -(10**308)], ids=["integer", "float", "large-finite", "negative-finite"]
+)
+def test_http_default_finite_number_preserves_raw_binding(value):
+    p = policy()
+    raw_graph = graph(http=True)
+    data = cast(dict[str, object], raw_graph["nodes"][1]["data"])
+    data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
+    bindings = p.admitted_node_bindings(snapshot(raw_graph))
+    assert bindings[1].normalized_config_digest == p.canonical_digest({**data, "version": "1"})
 
 
 @pytest.mark.parametrize(
