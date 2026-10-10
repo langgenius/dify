@@ -56,6 +56,9 @@ _NODE_FIELDS: dict[str, dict[str, tuple[str, ...]]] = {
         "HTTP target or authentication": ("url", "method", "authorization", "headers", "params", "ssl_verify"),
     },
     BuiltinNodeTypes.LLM: {"data access": ("context", "memory", "vision")},
+    BuiltinNodeTypes.LIST_OPERATOR: {"data access": ("variable",)},
+    BuiltinNodeTypes.ITERATION: {"data access": ("iterator_selector", "output_selector")},
+    BuiltinNodeTypes.AGENT: {"data access": ("memory",)},
     # Native aggregator selectors are list[list[str]], rooted at arbitrary
     # upstream node IDs. Group settings choose which selector lists are read.
     BuiltinNodeTypes.VARIABLE_AGGREGATOR: {"data access": ("variables", "advanced_settings")},
@@ -87,8 +90,56 @@ def _sensitive_values(data: dict[str, Any]) -> dict[str, dict[tuple[str, ...], A
     if "type" in data:
         remember("node type", ("type",), data["type"])
 
-    def visit(value: Any, path: tuple[str, ...]) -> None:
+    if data.get("type") == BuiltinNodeTypes.AGENT:
+        parameters = data.get("agent_parameters")
+        if isinstance(parameters, dict):
+            for name, parameter in parameters.items():
+                if not isinstance(parameter, dict):
+                    continue
+                path = ("agent_parameters", name, "value")
+                value = parameter.get("value")
+                if parameter.get("type") == "variable":
+                    # The discriminator activates variable_pool.get even if
+                    # the selector-looking value itself did not change.
+                    remember("data access", path, value)
+                elif parameter.get("type") in ("constant", "mixed"):
+                    # Native MODEL_SELECTOR values use dynamic parameter names,
+                    # not necessarily a key named `model`. Protect the known
+                    # provider/model descriptor, including completion params.
+                    if isinstance(value, dict) and "provider" in value and "model" in value:
+                        remember("model configuration", path, value)
+                    if not isinstance(value, list):
+                        continue
+                    for index, tool in enumerate(value):
+                        if not isinstance(tool, dict) or not {"provider_name", "tool_name"} <= tool.keys():
+                            continue
+                        tool_path = (*path, str(index))
+                        enabled = bool(tool.get("enabled", False))
+                        remember("resource or credential binding", (*tool_path, "enabled"), enabled)
+                        tool_parameters = tool.get("parameters", {})
+                        if not enabled or not isinstance(tool_parameters, dict):
+                            continue
+                        # Native Agent runtime only decodes typed tool inputs
+                        # when every parameter has the new dictionary shape.
+                        if not all(isinstance(item, dict) for item in tool_parameters.values()):
+                            continue
+                        for key, item in tool_parameters.items():
+                            binding = item.get("value")
+                            if (
+                                item.get("auto", 1) == 0
+                                and isinstance(binding, dict)
+                                and binding.get("type") == "variable"
+                            ):
+                                remember("data access", (*tool_path, "parameters", key, "value"), binding.get("value"))
+
+    def visit(value: Any, path: tuple[str, ...], *, unnamed_selectors: bool = True) -> None:
         if isinstance(value, dict):
+            literal_agent_input = (
+                data.get("type") == BuiltinNodeTypes.AGENT
+                and len(path) == 2
+                and path[0] == "agent_parameters"
+                and value.get("type") in ("constant", "mixed")
+            )
             for key, item in value.items():
                 child_path = (*path, key)
                 if key in _MODEL_KEYS:
@@ -97,14 +148,18 @@ def _sensitive_values(data: dict[str, Any]) -> dict[str, dict[tuple[str, ...], A
                     remember("resource or credential binding", child_path, item)
                 if key in _ACCESS_KEYS:
                     remember("data access", child_path, item)
-                visit(item, child_path)
+                visit(
+                    item,
+                    child_path,
+                    unnamed_selectors=unnamed_selectors and not (literal_agent_input and key == "value"),
+                )
         elif isinstance(value, list):
             # Tool/Agent variable inputs may store selectors under `value`
             # rather than a key named `variable_selector`.
-            if value and value[0] == "conversation":
+            if unnamed_selectors and value and value[0] == "conversation":
                 remember("data access", path, value)
             for index, item in enumerate(value):
-                visit(item, (*path, str(index)))
+                visit(item, (*path, str(index)), unnamed_selectors=unnamed_selectors)
         elif isinstance(value, str):
             bindings = tuple(_TEMPLATE_BINDING.findall(value))
             if bindings:
