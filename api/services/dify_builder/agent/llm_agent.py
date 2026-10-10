@@ -100,8 +100,10 @@ class LlmBuilderAgent:
         )
 
     # -- Build cognition (real) --
-    def analyze_goal(self, goal_text):
-        return build.analyze_goal(self.model_or_none(), goal_text, self._reasoning_for("analyze-goal"))
+    def analyze_goal(self, goal_text, *, reply_language: str | None = None):
+        return build.analyze_goal(
+            self.model_or_none(), goal_text, self._reasoning_for("analyze-goal"), reply_language=reply_language
+        )
 
     def propose_app_name(self, goal_text, requirements):
         return build.propose_app_name(

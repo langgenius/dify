@@ -1,13 +1,18 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedAppDetail } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AppACLPermission } from '@/utils/permission'
@@ -381,11 +386,12 @@ describe('useWorkflowInit', () => {
 
   it('should keep node defaults when loading published metadata fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const publishedError = new Error('published workflow failed')
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
     mockFetchNodesDefaultConfigs.mockResolvedValue([
       { type: 'start', config: { title: 'Start Config' } },
     ])
-    mockFetchPublishedWorkflow.mockRejectedValue(new Error('published workflow failed'))
+    mockFetchPublishedWorkflow.mockRejectedValue(publishedError)
 
     const { store } = renderHook(() => useWorkflowInit(), { lastPublishedHasUserInput: true })
 
@@ -396,6 +402,88 @@ describe('useWorkflowInit', () => {
       })
     })
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(publishedError)
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('keeps native publication metadata while a replacement query is pending and later fails', async () => {
+    let resolveDefaults!: (configs: []) => void
+    let resolveOldPublished!: (workflow: null) => void
+    let rejectReplacement!: (error: Error) => void
+    let publishedAt = 0
+    let lastPublishedHasUserInput = false
+    const initialWorkflowState = mockWorkflowStoreGetState()
+    mockWorkflowStoreGetState.mockImplementation(() => ({
+      ...initialWorkflowState,
+      publishedAt,
+      lastPublishedHasUserInput,
+    }))
+    mockSetPublishedAt.mockImplementation((seconds: number) => {
+      publishedAt = seconds * 1000
+    })
+    mockSetLastPublishedHasUserInput.mockImplementation((hasInput: boolean) => {
+      lastPublishedHasUserInput = hasInput
+    })
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    mockFetchNodesDefaultConfigs.mockReset().mockReturnValue(
+      new Promise((resolve) => {
+        resolveDefaults = resolve
+      }),
+    )
+    mockFetchPublishedWorkflow
+      .mockReset()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOldPublished = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+          rejectReplacement = reject
+        }),
+      )
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
+    const publishedQuery = appWorkflowQueryOptions('app-1')
+    queryClient.setQueryData<WorkflowResponse | null>(publishedQuery.queryKey, null)
+    await queryClient.invalidateQueries({
+      queryKey: publishedQuery.queryKey,
+      exact: true,
+      refetchType: 'none',
+    })
+
+    renderHookWithConsoleState(() => useWorkflowInit(), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+    await waitFor(() => expect(mockFetchPublishedWorkflow).toHaveBeenCalledOnce())
+    let replacementQuery!: Promise<unknown>
+    await act(async () => {
+      await queryClient.cancelQueries({ queryKey: publishedQuery.queryKey, exact: true })
+      replacementQuery = queryClient
+        .query({ ...publishedQuery, staleTime: 0 })
+        .catch(() => undefined)
+    })
+    await waitFor(() => expect(mockFetchPublishedWorkflow).toHaveBeenCalledTimes(2))
+    expect(queryClient.getQueryState(publishedQuery.queryKey)).toMatchObject({
+      data: null,
+      fetchStatus: 'fetching',
+      status: 'success',
+    })
+
+    mockSetPublishedAt(123)
+    mockSetLastPublishedHasUserInput(true)
+    await act(async () => resolveDefaults([]))
+    await waitFor(() =>
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ nodesDefaultConfigs: {} }),
+    )
+    expect(publishedAt).toBe(123_000)
+    expect(lastPublishedHasUserInput).toBe(true)
+
+    await act(async () => rejectReplacement(new Error('replacement GET failed')))
+    await replacementQuery
+    resolveOldPublished(null)
+    expect(publishedAt).toBe(123_000)
+    expect(lastPublishedHasUserInput).toBe(true)
     consoleErrorSpy.mockRestore()
   })
 })

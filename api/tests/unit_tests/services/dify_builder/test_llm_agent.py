@@ -22,7 +22,7 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
     monkeypatch.setattr(
         build,
         "analyze_goal",
-        lambda _m, _g, _reasoning=None: {
+        lambda _m, _g, _reasoning=None, *, reply_language=None: {  # noqa: ARG005
             "fields": [{"key": "k", "label": "K", "type": "text"}],
             "values": {},
         },
@@ -34,15 +34,17 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
 def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
     seen = {}
 
-    def mock_analyze_goal(model, _goal_text, _reasoning=None):
+    def mock_analyze_goal(model, _goal_text, _reasoning=None, *, reply_language=None):
         seen["m"] = model
+        seen["reply_language"] = reply_language
         return {"fields": [], "values": {}}
 
     monkeypatch.setattr(build_mod, "analyze_goal", mock_analyze_goal)
     agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
-    agent.analyze_goal("goal")
+    agent.analyze_goal("goal", reply_language="es-ES")
     assert seen["m"] == "MODEL"
+    assert seen["reply_language"] == "es-ES"
 
 
 def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):

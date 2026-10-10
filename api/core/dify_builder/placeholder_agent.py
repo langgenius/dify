@@ -81,7 +81,7 @@ class PlaceholderAgent:
 
     # -- Build cognition (Slice 2; fixed, deterministic canned output) --
 
-    def analyze_goal(self, goal_text: str) -> dict[str, Any]:
+    def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, Any]:
         # Always proceeds -- no real missing-info branch. The challenge card
         # the handler shows is an informational "proceeding" note.
         return {
