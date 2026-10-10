@@ -83,21 +83,25 @@ def update_app_info[T: BaseModel](ctx: Context, patch: BaseModel, model: type[T]
     return model.model_validate(asdict(_update_app_info(ctx, patch.model_dump(exclude_unset=True, exclude_none=True))))
 
 
-def _agent_app_info(ctx: Context, record: AppRecord, role: str | None) -> AgentAppInfo:
-    if role is None:
-        agent = agent_binding(ctx.workspace.id, ctx.app.id)
-        role = agent.role if agent is not None else None
+def _stored_role(ctx: Context) -> str | None:
+    agent = agent_binding(ctx.workspace.id, ctx.app.id)
+    return agent.role if agent is not None else None
+
+
+def _agent_app_info(record: AppRecord, role: str | None) -> AgentAppInfo:
     return AgentAppInfo.model_validate({**asdict(record), "role": role})
 
 
 def agent_app_info(ctx: Context) -> AgentAppInfo:
     record = application_services().apps.console.get(ctx.request_context, ctx.app.id)
-    return _agent_app_info(ctx, record, None)
+    return _agent_app_info(record, _stored_role(ctx))
 
 
 def update_agent_app_info(ctx: Context, patch: AgentAppInfoPatch) -> AgentAppInfo:
     changes = patch.model_dump(exclude_unset=True, exclude_none=True)
-    return _agent_app_info(ctx, _update_app_info(ctx, changes), changes.get("role"))
+    # The request's agent binding may be cached from before the write, so a role sent is the one stored.
+    role = changes["role"] if "role" in changes else _stored_role(ctx)
+    return _agent_app_info(_update_app_info(ctx, changes), role)
 
 
 def _update_app_info(ctx: Context, changes: dict[str, Any]) -> AppRecord:

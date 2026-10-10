@@ -28,7 +28,6 @@ from controllers.openapi.auth.requirements import EDITOR_ROLES, account_app_guar
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
-from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService, YamlUrlFetchError, fetch_yaml_url
@@ -186,7 +185,7 @@ class AppDslCheckApi(Resource):
     def post(self, ctx: RequestContext, workspace_id: str, *, body: DslCheckPayload):
         try:
             issues = check_dsl(ctx, body.yaml_content, body.app_id)
-        except (DslNotCheckableError, VariableError) as error:
+        except DslNotCheckableError as error:
             raise BadRequest(str(error)) from error
         except ConsoleAppNotFoundError as error:
             raise NotFound(str(error)) from error

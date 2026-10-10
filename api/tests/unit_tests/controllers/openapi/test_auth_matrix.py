@@ -1025,7 +1025,6 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "apps.describe": dict(_ACCOUNT_READER_APP),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
-    "app_run.draft.advanced_chat": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
@@ -1184,7 +1183,7 @@ _REQ_DRAFT_RUN = (
 )
 
 
-def _node_run_req(mode: AppMode) -> tuple[Requirement, ...]:
+def _draft_req(mode: AppMode) -> tuple[Requirement, ...]:
     return (*_REQ_DRAFT_RUN[:3], CheckAppMode(mode), *_REQ_DRAFT_RUN[3:])
 
 
@@ -1300,8 +1299,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_run.chat": _REQ_RUN,
     "app_run.advanced_chat": _REQ_RUN,
     "app_run.completion": _REQ_RUN,
-    "app_run.draft.workflow": _REQ_DRAFT_RUN,
-    "app_run.draft.advanced_chat": _REQ_DRAFT_RUN,
+    "app_run.draft.workflow": _draft_req(AppMode.WORKFLOW),
+    "app_run.draft.advanced_chat": _draft_req(AppMode.ADVANCED_CHAT),
     "app_workflow.run.list": _REQ_RUN_HISTORY,
     "app_workflow.run.describe": _REQ_RUN_HISTORY,
     "app_workflow.run.nodes": _REQ_RUN_HISTORY,
@@ -1316,8 +1315,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "node_types.describe": _REQ_NODE_TYPES,
     "app_create.workflow": _REQ_APP_CREATE,
     "app_create.advanced_chat": _REQ_APP_CREATE,
-    "app_workflow.node_run.workflow": _node_run_req(AppMode.WORKFLOW),
-    "app_workflow.node_run.advanced_chat": _node_run_req(AppMode.ADVANCED_CHAT),
+    "app_workflow.node_run.workflow": _draft_req(AppMode.WORKFLOW),
+    "app_workflow.node_run.advanced_chat": _draft_req(AppMode.ADVANCED_CHAT),
     "app_info.describe.workflow": _settings_req(
         (AppMode.WORKFLOW,), RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
     ),

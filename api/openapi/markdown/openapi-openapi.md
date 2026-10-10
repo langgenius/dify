@@ -645,7 +645,7 @@ Upload a file to use as an input variable when running the app
 | last_id | query | Cursor: id of the last run on the previous page | No | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | status | query |  | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
-| triggered_from | query | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No | string, <br>**Available values:** "app-run", "debugging" |
+| triggered_from | query | debugging: draft test runs, as in the console; app-run: real use | No | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -1932,7 +1932,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | icon | string | Emoji, file id or URL, per icon_type | No |
 | icon_background | string | Background colour for an emoji icon | No |
 | icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
-| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| max_active_requests | integer | Concurrent run cap; 0 uses the server default. The server-wide cap still applies | No |
 | name | string | App name | No |
 | role | string | The agent's role; empty string clears it | No |
 | use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
@@ -2070,7 +2070,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | icon | string | Emoji, file id or URL, per icon_type | No |
 | icon_background | string | Background colour for an emoji icon | No |
 | icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
-| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| max_active_requests | integer | Concurrent run cap; 0 uses the server default. The server-wide cap still applies | No |
 | name | string | App name | No |
 
 #### AppListQuery
@@ -2145,7 +2145,7 @@ mode is a closed enum of listable app types.
 | icon | string | Emoji, file id or URL, per icon_type | No |
 | icon_background | string | Background colour for an emoji icon | No |
 | icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
-| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| max_active_requests | integer | Concurrent run cap; 0 uses the server default. The server-wide cap still applies | No |
 | name | string | App name | No |
 | use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
 
@@ -3075,7 +3075,7 @@ Strict (extra='forbid').
 | last_id | string | Cursor: id of the last run on the previous page | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |  | No |
-| triggered_from | string, <br>**Available values:** "app-run", "debugging" | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging | debugging: draft test runs, as in the console; app-run: real use<br>*Enum:* `"app-run"`, `"debugging"` | No |
 
 #### RunListResponse
 

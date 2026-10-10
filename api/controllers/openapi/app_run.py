@@ -144,7 +144,6 @@ _RUN_GUARDS: Final = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
-_DRAFT_RUN_GUARDS: Final = account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES)
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
 _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
@@ -239,7 +238,19 @@ class _RunRoute:
     hints: tuple[HintLayer, ...] = ()
     examples: tuple[Example, ...] = ()
     invoke_from: InvokeFrom = InvokeFrom.OPENAPI
-    requirements: tuple[Requirement, ...] = _RUN_GUARDS
+
+    @property
+    def draft(self) -> bool:
+        return self.invoke_from is InvokeFrom.DEBUGGER
+
+    @property
+    def requirements(self) -> tuple[Requirement, ...]:
+        """Draft runs are account-only, so their guards check the mode before RBAC as other account routes do."""
+        if self.draft:
+            return account_app_guards(
+                RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=self.modes
+            )
+        return _RUN_GUARDS
 
 
 _RUN_ROUTES: Final = (
@@ -369,7 +380,6 @@ _RUN_ROUTES: Final = (
             ),
         ),
         invoke_from=InvokeFrom.DEBUGGER,
-        requirements=_DRAFT_RUN_GUARDS,
     ),
     _RunRoute(
         resource="AdvancedChatDraftRunApi",
@@ -387,13 +397,10 @@ _RUN_ROUTES: Final = (
             ),
         ),
         invoke_from=InvokeFrom.DEBUGGER,
-        requirements=_DRAFT_RUN_GUARDS,
     ),
 )
 
-DRAFT_TEST_OPS: Final = {
-    mode: route.op for route in _RUN_ROUTES if route.invoke_from is InvokeFrom.DEBUGGER for mode in route.modes
-}
+DRAFT_TEST_OPS: Final = {mode: route.op for route in _RUN_ROUTES if route.draft for mode in route.modes}
 
 
 def _run_api(route: _RunRoute) -> type[Resource]:
@@ -407,7 +414,8 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         returns=_STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
-        _require_mode(ctx.app, *route.modes)
+        if not route.draft:
+            _require_mode(ctx.app, *route.modes)
         stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)

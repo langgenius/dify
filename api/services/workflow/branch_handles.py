@@ -16,7 +16,7 @@ _LEGACY_IF_HANDLE: Final = "true"
 def _ids(items: object, key: str) -> frozenset[str]:
     if not isinstance(items, list):
         return frozenset()
-    return frozenset(str(item.get(key)) for item in items if isinstance(item, Mapping))
+    return frozenset(str(item[key]) for item in items if isinstance(item, Mapping) and item.get(key) is not None)
 
 
 def _if_else(data: Mapping[str, Any]) -> frozenset[str]:

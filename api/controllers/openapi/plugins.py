@@ -42,7 +42,6 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     WORKSPACE_READ_GUARDS,
     CheckPluginInstallSetting,
-    Requirement,
     workspace_write_guards,
 )
 from controllers.openapi.model_providers import ModelProviderApi
@@ -57,10 +56,6 @@ from services.errors.plugin import PluginInstallationForbiddenError
 _IN_FLIGHT: Final = frozenset({PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running})
 
 _TASK_READ: Final = (*WORKSPACE_READ_GUARDS, CheckPluginInstallSetting())
-
-
-def _write(permission: RBACPermission) -> tuple[Requirement, ...]:
-    return workspace_write_guards(permission, roles=None, extra=(CheckPluginInstallSetting(),))
 
 
 @contextmanager
@@ -238,7 +233,9 @@ class PluginInstallApi(Resource):
         kind=Kind.OBJECT,
         summary="Start installing marketplace plugins; finishes in the background, check describe.plugin.task",
         examples=(Example(title="Install one plugin", input={"identifiers": ["langgenius/openai:0.2.1@<sha256>"]}),),
-        requirements=_write(RBACPermission.PLUGIN_INSTALL),
+        requirements=workspace_write_guards(
+            RBACPermission.PLUGIN_INSTALL, roles=None, extra=(CheckPluginInstallSetting(),)
+        ),
         body=PluginInstallPayload,
         returns=(HTTPStatus.OK, PluginTaskStartResponse, "Install started"),
     )
@@ -292,7 +289,9 @@ class PluginApi(Resource):
         kind=Kind.OBJECT,
         summary="Uninstall a plugin from the workspace",
         examples=(Example(title="Uninstall OpenAI", input={"plugin_id": "langgenius/openai"}),),
-        requirements=_write(RBACPermission.PLUGIN_DELETE),
+        requirements=workspace_write_guards(
+            RBACPermission.PLUGIN_DELETE, roles=None, extra=(CheckPluginInstallSetting(),)
+        ),
         returns=(HTTPStatus.OK, PluginDeleteResponse, "Plugin uninstalled"),
     )
     def delete(self, ctx: Context, workspace_id: str, plugin_id: str):

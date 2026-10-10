@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import BinaryIO, Literal, override
+from typing import Any, BinaryIO, Final, Literal, override
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -67,6 +68,10 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+# The draft a new workflow app starts with, as the console editor creates it.
+_EMPTY_DRAFT_GRAPH: Final[dict[str, Any]] = {"nodes": [], "edges": []}
+_EMPTY_DRAFT_FEATURES: Final[dict[str, Any]] = {"retriever_resource": {"enabled": True}}
 
 
 @dataclass(frozen=True)
@@ -402,8 +407,8 @@ class AppLifecycleGateway(AppLifecycle):
         with self._session_factory() as session:
             WorkflowService(self._session_factory).sync_draft_workflow(
                 app_model=require_console_app(session, context, app_id),
-                graph={"nodes": [], "edges": []},
-                features={"retriever_resource": {"enabled": True}},
+                graph=copy.deepcopy(_EMPTY_DRAFT_GRAPH),
+                features=copy.deepcopy(_EMPTY_DRAFT_FEATURES),
                 unique_hash=None,
                 account=console_app_actor(session, context),
                 environment_variables=[],

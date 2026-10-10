@@ -901,7 +901,11 @@ class AppInfoPatch(BaseModel):
     icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
     icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
     icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
-    max_active_requests: int | None = Field(default=None, ge=0, description="Concurrent run cap; 0 means no cap")
+    max_active_requests: int | None = Field(
+        default=None,
+        ge=0,
+        description="Concurrent run cap; 0 uses the server default. The server-wide cap still applies",
+    )
 
 
 class ChatAppInfoPatch(AppInfoPatch):

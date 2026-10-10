@@ -1061,7 +1061,7 @@ export type RunListQuery = {
   last_id?: string | null
   limit?: number
   status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded' | null
-  triggered_from?: 'app-run' | 'debugging' | null
+  triggered_from?: 'app-run' | 'debugging'
 }
 
 export type RunListResponse = {

@@ -16,6 +16,7 @@ from constants import HIDDEN_VALUE
 from core.db.session_factory import session_factory
 from factories import variable_factory
 from graphon.variables import SecretVariable, SegmentType, VariableBase
+from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
 from models import App, AppMode, Workflow
 from repositories.app.console_repository import require_console_app
@@ -82,18 +83,21 @@ def _target_app(session: Session, context: RequestContext, app_id: str | None) -
 
 
 def _environment(workflow: Mapping[str, Any]) -> dict[str, VariableBase]:
-    variables = (
-        variable_factory.build_environment_variable_from_mapping(item)
-        for item in workflow.get("environment_variables") or []
-    )
+    try:
+        variables = [
+            variable_factory.build_environment_variable_from_mapping(item)
+            for item in workflow.get("environment_variables") or []
+        ]
+    except VariableError as error:
+        raise DslNotCheckableError(str(error)) from error
     return {variable.name: variable for variable in variables}
 
 
 def check_dsl(context: RequestContext, yaml_content: str, app_id: str | None) -> list[GraphIssue]:
     """Every issue, errors and credential warnings alike.
 
-    Raises DslNotCheckableError for a DSL that is not a workflow graph, VariableError for a bad
-    environment variable, ConsoleAppNotFoundError for an `app_id` outside the workspace.
+    Raises DslNotCheckableError for a DSL that is not a workflow graph or has a bad environment
+    variable, ConsoleAppNotFoundError for an `app_id` outside the workspace.
     """
     data = _parse(yaml_content)
     workflow = _section(data, "workflow")
