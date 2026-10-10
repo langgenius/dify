@@ -305,6 +305,8 @@ agent.diagnose.assert_not_called()  # blocked policy is not a business-code bug
 
 ## Task 5: Per-run network-disabled Code/template adapters (kept unavailable by default)
 
+Before Task 5 or Release A, complete the owned native bootstrap follow-up: restricted `WorkflowBasedAppRunner._init_graph` must hand the original JSON graph to the factory's raw binding checks and `Graph.init`, preserving undeclared fields and exact revision/config identity. The ordinary typed graph serialization path stays unchanged. Python-mode shared DTO serialization introduces enum objects for HTTP defaults before factory construction; do not weaken canonical JSON admission or stringify arbitrary model/enum input to compensate. Add a real runner-boundary default-output RED/GREEN control, raw mutation/non-JSON refusal controls and ordinary regression coverage, then require the unchanged full 32-case native PostgreSQL gate. The independently corrected fixture transaction handoff remains binding. This follow-up does not reopen the capped Task 4 fix loop or waive native/default-denial evidence.
+
 **Files**
 - Modify `api/core/helper/code_executor/code_executor.py`, `api/core/workflow/template_rendering.py`, `api/core/workflow/node_factory.py`, `api/core/workflow/restricted_execution.py`, existing CodeExecutionSandboxConfig in `api/configs/feature/__init__.py`.
 - Extend `api/tests/unit_tests/core/helper/code_executor/test_code_executor.py`, `api/tests/unit_tests/core/workflow/test_node_factory.py`, `test_restricted_execution.py`, `graph_engine/test_builder_restricted_native.py`.
