@@ -679,25 +679,27 @@ function AccessControlSession({
         }}
       >
         <AlertDialogContent className="w-100">
-          <AlertDialogTitle>
-            {t(($) => $['studio.accessControl.saveWithoutOwnIp'], { ns: 'deployments' })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t(($) => $['studio.accessControl.lockoutWarning'], {
-              ns: 'deployments',
-              ip: confirmation?.clientIp ?? '',
-            })}
-          </AlertDialogDescription>
-          {confirmation?.changed && (
-            <p role="status" className="system-sm-regular text-text-warning">
-              {t(($) => $['studio.accessControl.policyChanged'], { ns: 'deployments' })}
-            </p>
-          )}
-          {saveCheck.isError && (
-            <p role="alert" className="system-sm-regular text-text-warning">
-              {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
-            </p>
-          )}
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {t(($) => $['studio.accessControl.saveWithoutOwnIp'], { ns: 'deployments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-secondary">
+              {t(($) => $['studio.accessControl.lockoutWarning'], {
+                ns: 'deployments',
+                ip: confirmation?.clientIp ?? '',
+              })}
+            </AlertDialogDescription>
+            {confirmation?.changed && (
+              <p role="status" className="system-sm-regular text-text-warning">
+                {t(($) => $['studio.accessControl.policyChanged'], { ns: 'deployments' })}
+              </p>
+            )}
+            {saveCheck.isError && (
+              <p role="alert" className="system-sm-regular text-text-warning">
+                {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+              </p>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
