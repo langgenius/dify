@@ -1,6 +1,7 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
+import type { ToolNodeType } from '../../nodes/tool/types'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -15,6 +16,7 @@ import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import ToolDefault from '../../nodes/tool/default'
 import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
@@ -184,7 +186,9 @@ function setupNodesMap() {
     metaData: { isStart: false, isRequired: false },
   }
   mockNodesMap[BlockEnum.Tool] = {
-    checkValid: () => ({ errorMessage: '' }),
+    checkValid: (data, t, extra) => ({
+      errorMessage: ToolDefault.checkValid(data as ToolNodeType, t, extra).errorMessage ?? '',
+    }),
     metaData: { isStart: false, isRequired: false },
   }
   mockNodesMap[BlockEnum.AgentV2] = {
@@ -373,11 +377,135 @@ const credentialRequiredProvider = {
   tools: [],
 } satisfies ToolWithProvider
 
+function buildUnauthorizedToolGraph(requiredForm?: 'llm' | 'form') {
+  toolServiceState.buildInTools = [
+    {
+      ...credentialRequiredProvider,
+      allow_delete: true,
+      tools: [
+        {
+          name: 'search',
+          author: 'Google',
+          label: { en_US: 'Search', zh_Hans: '搜索' },
+          description: { en_US: 'Search repositories' },
+          labels: [],
+          output_schema: {},
+          parameters: requiredForm
+            ? [
+                {
+                  name: 'query',
+                  label: { en_US: 'Query', zh_Hans: '查询', en: 'Query' },
+                  human_description: { en_US: 'Search query', zh_Hans: '搜索查询' },
+                  type: 'string',
+                  form: requiredForm,
+                  llm_description: 'Search query',
+                  required: true,
+                  multiple: false,
+                  default: '',
+                },
+              ]
+            : [],
+        },
+      ],
+    },
+  ]
+  return {
+    nodes: [
+      createNode({ id: 'start', data: { type: BlockEnum.Start } }),
+      createNode({
+        id: 'tool',
+        data: {
+          type: BlockEnum.Tool,
+          provider_type: CollectionType.builtIn,
+          provider_id: 'google',
+          tool_name: 'search',
+          tool_parameters: {},
+          tool_configurations: {},
+        },
+      }),
+    ],
+    edges: [createEdge({ source: 'start', target: 'tool' })],
+  }
+}
+
+const validAppUserDraft = createAppUserAuthDraft({
+  canOAuth: false,
+  canApiKey: true,
+})
+validAppUserDraft.description = 'Find repositories'
+
 // ---------------------------------------------------------------------------
 // useChecklist
 // ---------------------------------------------------------------------------
 
 describe('useChecklist', () => {
+  it.each(['workspace-auth', 'reuse-from-node'] as const)(
+    'replaces Workspace authorization errors in App user mode and restores them in %s',
+    (nextTab) => {
+      const { nodes, edges } = buildUnauthorizedToolGraph()
+      const { result, store } = renderWorkflowHook(() => useChecklist(nodes, edges))
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.authRequired',
+      ])
+
+      act(() => {
+        store
+          .getState()
+          .setNodeAppUserAuthDraft('tool', 'google', 'google', createAppUserAuthDraft())
+        store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'app-user-auth')
+      })
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'plugin.auth.appUser.clientRequired',
+        'plugin.auth.appUser.descriptionRequired',
+      ])
+
+      act(() => {
+        store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', validAppUserDraft)
+      })
+      expect(result.current).toEqual([])
+
+      act(() => {
+        store.getState().setNodeAuthorizationTab('tool', 'google', 'google', nextTab)
+      })
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.authRequired',
+      ])
+    },
+  )
+
+  it.each(['llm', 'form'] as const)(
+    'keeps required tool %s fields in App user mode',
+    (requiredForm) => {
+      const { nodes, edges } = buildUnauthorizedToolGraph(requiredForm)
+      const { result, store } = renderWorkflowHook(() => useChecklist(nodes, edges))
+      act(() => {
+        store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', validAppUserDraft)
+        store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'app-user-auth')
+      })
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.fieldRequired:{"field":"Query"}',
+      ])
+    },
+  )
+
+  it.each([
+    { nodeId: 'another-tool', providerId: 'google', mismatch: 'node' },
+    { nodeId: 'tool', providerId: 'old-google', mismatch: 'provider' },
+  ])(
+    'keeps Workspace authorization errors for a stale $mismatch draft',
+    ({ nodeId, providerId }) => {
+      const { nodes, edges } = buildUnauthorizedToolGraph()
+      const { result, store } = renderWorkflowHook(() => useChecklist(nodes, edges))
+      act(() => {
+        store.getState().setNodeAppUserAuthDraft(nodeId, providerId, providerId, validAppUserDraft)
+        store.getState().setNodeAuthorizationTab(nodeId, providerId, providerId, 'app-user-auth')
+      })
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.authRequired',
+      ])
+    },
+  )
+
   it('updates App user checklist errors immediately after edits or switching auth mode', () => {
     toolServiceState.buildInTools = [credentialRequiredProvider]
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start } })
@@ -863,6 +991,19 @@ describe('useChecklist', () => {
 // ---------------------------------------------------------------------------
 
 describe('useChecklistBeforePublish', () => {
+  it('does not reject valid App user authorization as missing Workspace authorization', async () => {
+    const { nodes, edges } = buildUnauthorizedToolGraph()
+    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.edges = edges as unknown as typeof rfState.edges
+    const { result, store } = renderWorkflowHook(() => useChecklistBeforePublish())
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', validAppUserDraft)
+      store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'app-user-auth')
+    })
+
+    await expect(result.current.handleCheckBeforePublish()).resolves.toBe(true)
+  })
+
   it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
     rfState.nodes = nodes as unknown as typeof rfState.nodes

@@ -117,8 +117,16 @@ describe('ToolNode', () => {
   })
 
   it('updates App user errors on the canvas immediately as the draft changes', () => {
+    mockUseCurrentToolCollection.mockReturnValue({
+      currentTools: [],
+      currCollection: {
+        allow_delete: true,
+        is_team_authorization: false,
+      },
+    })
     const data = createNodeData()
     const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+    expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
     const draft = createAppUserAuthDraft()
     act(() => {
       store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, draft)
@@ -128,6 +136,7 @@ describe('ToolNode', () => {
     })
     expect(screen.getByText('plugin.auth.appUser.clientRequired')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
     act(() => {
       store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
@@ -146,6 +155,7 @@ describe('ToolNode', () => {
       })
     })
     expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
     act(() => {
       store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
@@ -158,9 +168,25 @@ describe('ToolNode', () => {
     expect(screen.getByText('plugin.auth.appUser.selectMethod')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
+
+    act(() => {
+      store
+        .getState()
+        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'workspace-auth')
+    })
+    expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.auth.appUser.selectMethod')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
   })
 
   it('does not show errors for a different provider', () => {
+    mockUseCurrentToolCollection.mockReturnValue({
+      currentTools: [],
+      currCollection: {
+        allow_delete: true,
+        is_team_authorization: false,
+      },
+    })
     const data = createNodeData()
     const { store, rerender } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
     act(() => {
@@ -179,5 +205,6 @@ describe('ToolNode', () => {
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     rerender(<Node id="tool-node-1" data={createNodeData({ provider_id: 'github' })} />)
     expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
   })
 })

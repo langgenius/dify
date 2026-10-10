@@ -18,14 +18,12 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
     useNodePluginInstallation(data)
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const showAuthorizationWarning = isToolAuthorizationRequired(data.provider_type, currCollection)
   const authDraft = useStore((state) => state.nodeAuthDrafts[id])
-  const authErrors =
+  const isAppUserAuth =
     authDraft?.authorizationTab === 'app-user-auth' && authDraft.providerId === data.provider_id
-      ? authDraft.errors
-      : undefined
+  const authErrors = isAppUserAuth ? authDraft.errors : undefined
   const authorizationWarnings: string[] = []
-  if (showAuthorizationWarning)
+  if (!isAppUserAuth && isToolAuthorizationRequired(data.provider_type, currCollection))
     authorizationWarnings.push(t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' }))
   if (authErrors?.methods)
     authorizationWarnings.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))

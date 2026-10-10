@@ -6,6 +6,7 @@ import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/ty
 import type { LLMNodeType } from '../nodes/llm/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
+import type { AppUserAuthSliceShape } from '../store/workflow/app-user-auth-slice'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -100,6 +101,18 @@ type NodeValidator = NonNullable<
 >[BlockEnum]['checkValid']
 
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
+
+const getAppUserAuthDraft = (
+  node: Node,
+  nodeAuthDrafts: AppUserAuthSliceShape['nodeAuthDrafts'],
+) => {
+  const authDraft = nodeAuthDrafts[node.id]
+  return node.data.type === BlockEnum.Tool &&
+    authDraft?.authorizationTab === 'app-user-auth' &&
+    authDraft.providerId === (node.data as ToolNodeType).provider_id
+    ? authDraft
+    : undefined
+}
 
 const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: FlowType) => {
   if (!flowType) return moreDataForCheckValid
@@ -368,10 +381,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
+      const appUserAuthDraft = getAppUserAuthDraft(node!, nodeAuthDrafts)
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
-      if (node!.data.type === BlockEnum.Tool)
+      if (node!.data.type === BlockEnum.Tool) {
         moreDataForCheckValid = getToolCheckParams(
           node!.data as ToolNodeType,
           buildInTools || [],
@@ -379,6 +393,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
           workflowTools || [],
           language,
         )
+        if (appUserAuthDraft) moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
+      }
 
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(
@@ -435,17 +451,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
         const errorMessages: string[] = []
         const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
-        const authDraft = nodeAuthDrafts[node!.id]
-        if (
-          node!.data.type === BlockEnum.Tool &&
-          authDraft?.authorizationTab === 'app-user-auth' &&
-          authDraft.providerId === (node!.data as ToolNodeType).provider_id
-        ) {
-          if (authDraft.errors?.methods)
+        if (appUserAuthDraft) {
+          if (appUserAuthDraft.errors?.methods)
             errorMessages.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))
-          if (authDraft.errors?.oauthClient)
+          if (appUserAuthDraft.errors?.oauthClient)
             errorMessages.push(t(($) => $['auth.appUser.clientRequired'], { ns: 'plugin' }))
-          if (authDraft.errors?.description)
+          if (appUserAuthDraft.errors?.description)
             errorMessages.push(t(($) => $['auth.appUser.descriptionRequired'], { ns: 'plugin' }))
         }
 
@@ -710,7 +721,7 @@ export const useChecklistBeforePublish = () => {
 
   const handleCheckBeforePublish = useCallback(async () => {
     const { getNodes, edges } = store.getState()
-    const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
+    const { dataSourceList, environmentVariables = [], nodeAuthDrafts } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
@@ -785,7 +796,7 @@ export const useChecklistBeforePublish = () => {
       const node = filteredNodes[i]
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
-      if (node!.data.type === BlockEnum.Tool)
+      if (node!.data.type === BlockEnum.Tool) {
         moreDataForCheckValid = getToolCheckParams(
           node!.data as ToolNodeType,
           buildInTools || [],
@@ -793,6 +804,9 @@ export const useChecklistBeforePublish = () => {
           workflowTools || [],
           language,
         )
+        if (getAppUserAuthDraft(node!, nodeAuthDrafts))
+          moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
+      }
 
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(
