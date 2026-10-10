@@ -10,9 +10,9 @@ from sqlalchemy.engine import CursorResult
 from core.db.session_factory import session_factory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
-from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes, release_document_attachments
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,6 @@ def batch_clean_document_task(
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
-    orphan_attachment_ids: list[str] = []
     dataset_tenant_id: str | None = None
 
     try:
@@ -65,41 +64,6 @@ def batch_clean_document_task(
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
-
-                # 多模态附件与正文内联图片分开处理：附件可能同时绑定到本批之外的文档，
-                # 只有当再无任何绑定引用它时才能删除。
-                attachment_ids = list(
-                    dict.fromkeys(
-                        session.scalars(
-                            select(SegmentAttachmentBinding.attachment_id).where(
-                                SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
-                                SegmentAttachmentBinding.dataset_id == dataset_id,
-                                SegmentAttachmentBinding.document_id.in_(document_ids),
-                                SegmentAttachmentBinding.segment_id.in_(segment_ids),
-                            )
-                        ).all()
-                    )
-                )
-                if attachment_ids:
-                    shared_attachment_ids = set(
-                        session.scalars(
-                            select(SegmentAttachmentBinding.attachment_id).where(
-                                SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
-                                SegmentAttachmentBinding.document_id.not_in(document_ids),
-                            )
-                        ).all()
-                    )
-                    orphan_attachment_ids = [
-                        attachment_id for attachment_id in attachment_ids if attachment_id not in shared_attachment_ids
-                    ]
-                    if orphan_attachment_ids:
-                        storage_keys_to_delete.extend(
-                            f.key
-                            for f in session.scalars(
-                                select(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids))
-                            ).all()
-                            if f and f.key
-                        )
 
             # Query storage keys for image files
             if total_image_upload_file_ids:
@@ -120,8 +84,6 @@ def batch_clean_document_task(
                 document_ids=document_ids,
                 doc_form=doc_form,
                 new_session=session_factory.create_session,
-                # 附件向量写在 doc_id == UploadFile.id 下，分段的 index_node_id 覆盖不到它们。
-                extra_node_ids=orphan_attachment_ids,
             )
         except Exception:
             logger.exception(
@@ -153,27 +115,23 @@ def batch_clean_document_task(
                 document_ids,
             )
 
-        # ============ Step 3.5: Release segment attachment bindings and orphan rows ============
-        # 绑定必须先于附件行删除，且只删 Step 1 判定为孤儿的那些；它们的向量已在上面
-        # 随 extra_node_ids 一起清掉了。
-        if segment_ids:
-            try:
-                with session_factory.create_session() as session, session.begin():
-                    session.execute(
-                        delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.dataset_id == dataset_id,
-                            SegmentAttachmentBinding.document_id.in_(document_ids),
-                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
-                        )
-                    )
-                    if orphan_attachment_ids:
-                        session.execute(delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids)))
-            except Exception:
-                logger.exception(
-                    "Failed to release segment attachments for dataset_id: %s, document_ids: %s",
-                    dataset_id,
-                    document_ids,
+        # ============ Step 3.5: Release segment attachments ============
+        # Attachments are found through their bindings rather than through the segments
+        # deleted in Step 5, so a failure here stays discoverable by a later run.
+        try:
+            storage_keys_to_delete.extend(
+                release_document_attachments(
+                    dataset_id=dataset_id,
+                    document_ids=document_ids,
+                    new_session=session_factory.create_session,
                 )
+            )
+        except Exception:
+            logger.exception(
+                "Failed to release segment attachments for dataset_id: %s, document_ids: %s",
+                dataset_id,
+                document_ids,
+            )
 
         # ============ Step 4: Batch delete UploadFile records (multiple short transactions) ============
         if total_image_upload_file_ids:
@@ -210,7 +168,6 @@ def batch_clean_document_task(
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
-                        # 绑定已在 Step 3.5 统一释放。
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()

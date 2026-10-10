@@ -269,7 +269,6 @@ class TestVectorCleanupResilience:
             "dataset_id": dataset_id,
             "document_ids": [document_id],
             "doc_form": "paragraph",
-            "extra_node_ids": [],
         }
         _assert_relational_cleanup(
             sqlite_session,
@@ -317,8 +316,28 @@ class TestVectorCleanupResilience:
         schedule_refresh.assert_not_called()
 
 
-def _attachment(*, tenant_id: str, created_by: str, key: str) -> UploadFile:
-    return UploadFile(
+def _persist_attachment(
+    session: Session, *, document_id: str, dataset_id: str, tenant_id: str, key: str
+) -> tuple[str, str, str]:
+    """Persist a dataset, one segment and one attachment bound to it; return their ids."""
+    created_by = str(uuid.uuid4())
+    session.add(
+        Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name="Attachment dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=created_by,
+        )
+    )
+    segment = _segment(
+        segment_id=str(uuid.uuid4()),
+        document_id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        created_by=created_by,
+    )
+    attachment = UploadFile(
         tenant_id=tenant_id,
         storage_type=StorageType.LOCAL,
         key=key,
@@ -331,12 +350,24 @@ def _attachment(*, tenant_id: str, created_by: str, key: str) -> UploadFile:
         created_at=datetime.now(UTC),
         used=True,
     )
+    session.add_all([segment, attachment])
+    session.flush()
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    session.add(binding)
+    session.commit()
+    return segment.id, attachment.id, binding.id
 
 
-class TestSegmentAttachmentCleanup:
-    """附件向量与附件行必须按「是否还有别的文档引用」区别对待。"""
+class TestSegmentAttachmentRelease:
+    """Attachments are released through their bindings and survive a failed attempt."""
 
-    def test_orphan_attachment_vectors_and_rows_are_cleaned(
+    def test_orphan_attachment_is_released_with_the_document(
         self,
         document_id: str,
         dataset_id: str,
@@ -346,54 +377,22 @@ class TestSegmentAttachmentCleanup:
         mock_storage: MagicMock,
         mock_index_cleanup: MagicMock,
     ) -> None:
-        """只被本文档引用的附件：向量、数据行、blob 三者都要清掉。"""
-        created_by = str(uuid.uuid4())
-        segment = _segment(
-            segment_id=str(uuid.uuid4()),
+        _, attachment_id, binding_id = _persist_attachment(
+            sqlite_session,
             document_id=document_id,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            created_by=created_by,
-        )
-        dataset = Dataset(
-            id=dataset_id,
-            tenant_id=tenant_id,
-            name="attachment dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            created_by=created_by,
-        )
-        attachment = _attachment(tenant_id=tenant_id, created_by=created_by, key="attachments/orphan.png")
-        sqlite_session.add_all([dataset, segment, attachment])
-        sqlite_session.flush()
-        binding = SegmentAttachmentBinding(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_id=document_id,
-            segment_id=segment.id,
-            attachment_id=attachment.id,
-        )
-        sqlite_session.add(binding)
-        sqlite_session.commit()
-        attachment_id = attachment.id
-        binding_id = binding.id
-
-        clean_document_task(
-            document_id=document_id,
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_id=None,
+            key="attachments/orphan.png",
         )
 
-        # 附件向量写在 doc_id == UploadFile.id 下，只能靠 extra_node_ids 送进清理。
-        _, kwargs = mock_index_cleanup.call_args
-        assert kwargs["extra_node_ids"] == [attachment_id]
+        clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
 
         sqlite_session.expire_all()
         assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
         assert sqlite_session.get(UploadFile, attachment_id) is None
         mock_storage.delete.assert_any_call("attachments/orphan.png")
 
-    def test_attachment_bound_to_another_document_survives(
+    def test_failed_release_leaves_bindings_for_a_later_run(
         self,
         document_id: str,
         dataset_id: str,
@@ -402,68 +401,35 @@ class TestSegmentAttachmentCleanup:
         bind_task_sessions: None,
         mock_storage: MagicMock,
         mock_index_cleanup: MagicMock,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """同一个附件还被别的文档绑定时，它的行、blob 和向量都必须留下。"""
-        created_by = str(uuid.uuid4())
-        other_document_id = str(uuid.uuid4())
-        dataset = Dataset(
-            id=dataset_id,
-            tenant_id=tenant_id,
-            name="attachment dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            created_by=created_by,
-        )
-        segment = _segment(
-            segment_id=str(uuid.uuid4()),
+        segment_id, attachment_id, binding_id = _persist_attachment(
+            sqlite_session,
             document_id=document_id,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            created_by=created_by,
-        )
-        other_segment = _segment(
-            segment_id=str(uuid.uuid4()),
-            document_id=other_document_id,
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            created_by=created_by,
-        )
-        attachment = _attachment(tenant_id=tenant_id, created_by=created_by, key="attachments/shared.png")
-        sqlite_session.add_all([dataset, segment, other_segment, attachment])
-        sqlite_session.flush()
-        binding = SegmentAttachmentBinding(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_id=document_id,
-            segment_id=segment.id,
-            attachment_id=attachment.id,
-        )
-        other_binding = SegmentAttachmentBinding(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_id=other_document_id,
-            segment_id=other_segment.id,
-            attachment_id=attachment.id,
-        )
-        sqlite_session.add_all([binding, other_binding])
-        sqlite_session.commit()
-        attachment_id = attachment.id
-        binding_id = binding.id
-        other_binding_id = other_binding.id
-
-        clean_document_task(
-            document_id=document_id,
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_id=None,
+            key="attachments/retry.png",
         )
 
-        _, kwargs = mock_index_cleanup.call_args
-        assert kwargs["extra_node_ids"] == []
+        with (
+            patch(
+                "tasks.clean_document_task.release_document_attachments",
+                side_effect=RuntimeError("attachment release failed"),
+            ),
+            caplog.at_level("ERROR"),
+        ):
+            clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
+
+        assert "Failed to release segment attachments" in caplog.text
+        sqlite_session.expire_all()
+        # The rest of the cleanup still ran, and the binding is still there to be found again.
+        assert sqlite_session.get(DocumentSegment, segment_id) is None
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is not None
+        assert sqlite_session.get(UploadFile, attachment_id) is not None
+
+        clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
 
         sqlite_session.expire_all()
-        # 本文档自己的绑定要删掉，但附件行、另一个文档的绑定、以及 blob 都必须还在。
         assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
-        assert sqlite_session.get(SegmentAttachmentBinding, other_binding_id) is not None
-        assert sqlite_session.get(UploadFile, attachment_id) is not None
-        for call in mock_storage.delete.call_args_list:
-            assert call.args[0] != "attachments/shared.png"
+        assert sqlite_session.get(UploadFile, attachment_id) is None
+        mock_storage.delete.assert_any_call("attachments/retry.png")

@@ -8,9 +8,9 @@ from sqlalchemy import delete, select
 from core.db.session_factory import session_factory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
-from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes, release_document_attachments
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ def clean_document_task(
     """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
-    total_attachment_files = []
     vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
@@ -46,40 +45,6 @@ def clean_document_task(
 
             dataset_tenant_id = dataset.tenant_id
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            # Use JOIN to fetch attachments with bindings in a single query
-            attachments_with_bindings = session.execute(
-                select(SegmentAttachmentBinding, UploadFile)
-                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-                .where(
-                    SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
-                    SegmentAttachmentBinding.dataset_id == dataset_id,
-                    SegmentAttachmentBinding.document_id == document_id,
-                )
-            ).all()
-
-            attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
-            binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-
-            # 一个附件可能同时绑定到其它文档的分段上（SegmentAttachmentBinding.attachment_id
-            # 没有唯一约束）。删整个文档意味着本文档的绑定全部消失，因此只要还存在任何一条
-            # 属于其它文档的绑定，这个附件就必须保留。
-            shared_attachment_ids = set(
-                session.scalars(
-                    select(SegmentAttachmentBinding.attachment_id).where(
-                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
-                        SegmentAttachmentBinding.document_id != document_id,
-                    )
-                ).all()
-            )
-            orphan_attachment_ids = [
-                attachment_id for attachment_id in attachment_ids if attachment_id not in shared_attachment_ids
-            ]
-            total_attachment_files.extend(
-                attachment_file.key
-                for _, attachment_file in attachments_with_bindings
-                if attachment_file.id not in shared_attachment_ids and attachment_file.key
-            )
-
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
         except Exception:
@@ -95,8 +60,6 @@ def clean_document_task(
                 document_ids=[document_id],
                 doc_form=doc_form,
                 new_session=session_factory.create_session,
-                # 附件向量写在 doc_id == UploadFile.id 下，分段的 index_node_id 覆盖不到它们。
-                extra_node_ids=orphan_attachment_ids,
             )
             is not None
         )
@@ -143,19 +106,23 @@ def clean_document_task(
                     logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
                 session.delete(file)
 
-    with session_factory.create_session() as session, session.begin():
-        # delete segment attachments
-        # 绑定必须先删：附件行一旦先消失，幸存的绑定就会指向不存在的 UploadFile。
-        if binding_ids:
-            binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
-            session.execute(binding_delete_stmt)
+    # Attachments are found through their bindings, so a failure here leaves them
+    # discoverable by a later run even though the segments above are already gone.
+    attachment_file_keys: list[str] = []
+    try:
+        attachment_file_keys = release_document_attachments(
+            dataset_id=dataset_id,
+            document_ids=[document_id],
+            new_session=session_factory.create_session,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to release segment attachments for document_id: %s, dataset_id: %s",
+            document_id,
+            dataset_id,
+        )
 
-        # 只删已确认无人再引用的附件行，其余留给仍然绑定着它们的文档。
-        if orphan_attachment_ids:
-            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids))
-            session.execute(attachment_file_delete_stmt)
-
-    for attachment_file_key in total_attachment_files:
+    for attachment_file_key in attachment_file_keys:
         try:
             storage.delete(attachment_file_key)
         except Exception:
