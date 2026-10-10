@@ -84,7 +84,6 @@ class TestAppGenerateService:
             # Setup default mock returns for app generators
             mock_completion_generator_instance = mock_completion_generator.return_value
             mock_completion_generator_instance.generate.return_value = ["completion_response"]
-            mock_completion_generator_instance.generate_more_like_this.return_value = ["more_like_this_response"]
             mock_completion_generator.convert_to_event_stream.return_value = ["completion_stream"]
 
             mock_chat_generator_instance = mock_chat_generator.return_value
@@ -905,77 +904,6 @@ class TestAppGenerateService:
 
         # Verify error message
         assert "Invalid app mode" in str(exc_info.value)
-
-    def test_generate_more_like_this_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful more like this generation.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        message_id = fake.uuid4()
-
-        # Execute the method under test
-        result = AppGenerateService.generate_more_like_this(
-            session=db_session_with_containers,
-            app_model=app,
-            user=account,
-            message_id=message_id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=True,
-        )
-
-        # Verify the result
-        assert result == ["more_like_this_response"]
-
-        # Verify completion generator was called
-        mock_external_service_dependencies[
-            "completion_generator"
-        ].return_value.generate_more_like_this.assert_called_once()
-
-    def test_generate_more_like_this_with_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test more like this generation with EndUser.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Create end user
-        end_user = EndUser(
-            tenant_id=account.current_tenant.id,
-            app_id=app.id,
-            type=EndUserType.BROWSER,
-            external_user_id=fake.uuid4(),
-            name=fake.name(),
-            is_anonymous=False,
-            session_id=fake.uuid4(),
-        )
-
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
-
-        message_id = fake.uuid4()
-
-        # Execute the method under test
-        result = AppGenerateService.generate_more_like_this(
-            session=db_session_with_containers,
-            app_model=app,
-            user=end_user,
-            message_id=message_id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=True,
-        )
-
-        # Verify the result
-        assert result == ["more_like_this_response"]
 
     def test_get_max_active_requests_with_app_limit(
         self, db_session_with_containers: Session, mock_external_service_dependencies

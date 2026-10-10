@@ -176,7 +176,9 @@ def harness(
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
-    queries = SuggestedQuestionsQuery(session_factory=sqlite_session_factory, repository_factory=MessageRepository)
+    queries = SuggestedQuestionsQuery(
+        session_factory=sqlite_session_factory, repository=MessageRepository(session_factory=sqlite_session_factory)
+    )
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
