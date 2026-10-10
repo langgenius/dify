@@ -7,52 +7,33 @@ import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
 import { useTags } from '@/app/components/plugins/hooks'
-import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
-import MarketplaceTrigger from './trigger/marketplace'
-import ToolSelectorTrigger from './trigger/tool-selector'
+import CompactTrigger from './compact-trigger'
+import LabeledTrigger from './labeled-trigger'
 
-type TagsFilterProps = {
-  tags: string[]
-  onTagsChange: (tags: string[]) => void
-  usedInMarketplace?: boolean
+type PluginTagsFilterProps = {
+  value: string[]
+  onValueChange: (tags: string[]) => void
+  variant?: 'compact' | 'labeled'
 }
-function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilterProps) {
+export function PluginTagsFilter({
+  value,
+  onValueChange,
+  variant = 'compact',
+}: PluginTagsFilterProps) {
   const { t } = useTranslation(['pluginTags'])
   const [searchText, setSearchText] = useState('')
   const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter((option) =>
     option.label.toLowerCase().includes(searchText.toLowerCase()),
   )
-  const selectedTagsLength = tags.length
-  const handleTagsChange = (nextTags: string[]) => {
-    const addedTag = nextTags.find((tag) => !tags.includes(tag))
-    const removedTag = tags.find((tag) => !nextTags.includes(tag))
-    markMarketplaceSiteFilter({
-      filter_type: 'category',
-      selection_mode: 'multi',
-      filter_value: addedTag ?? removedTag ?? nextTags.at(-1) ?? '',
-      selected_values: nextTags,
-    })
-    onTagsChange(nextTags)
-  }
 
   return (
     <Popover>
-      {usedInMarketplace && (
-        <MarketplaceTrigger
-          selectedTagsLength={selectedTagsLength}
-          tags={tags}
-          tagsMap={tagsMap}
-          onTagsChange={handleTagsChange}
-        />
+      {variant === 'labeled' && (
+        <LabeledTrigger tags={value} tagsMap={tagsMap} onTagsChange={onValueChange} />
       )}
-      {!usedInMarketplace && (
-        <ToolSelectorTrigger
-          selectedTagsLength={selectedTagsLength}
-          tags={tags}
-          tagsMap={tagsMap}
-          onTagsChange={handleTagsChange}
-        />
+      {variant === 'compact' && (
+        <CompactTrigger tags={value} tagsMap={tagsMap} onTagsChange={onValueChange} />
       )}
       <PopoverContent
         placement="bottom-start"
@@ -84,8 +65,8 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
           </div>
           <CheckboxGroup
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}
-            value={tags}
-            onValueChange={handleTagsChange}
+            value={value}
+            onValueChange={(nextTags) => onValueChange(nextTags)}
             className="max-h-112 overflow-y-auto p-1"
           >
             {filteredOptions.map((option) => (
@@ -103,5 +84,3 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
     </Popover>
   )
 }
-
-export default TagsFilter

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import TagsFilter from '../tags-filter'
+import { PluginTagsFilter } from '..'
 
 const { mockTranslate } = vi.hoisted(() => ({
   mockTranslate: vi.fn((key: string, options?: { ns?: string }) =>
@@ -33,7 +33,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-describe('TagsFilter', () => {
+describe('PluginTagsFilter', () => {
   const ensurePopoverOpen = async (user: ReturnType<typeof userEvent.setup>) => {
     if (!screen.queryByRole('searchbox', { name: 'pluginTags.searchTags' }))
       await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
@@ -50,7 +50,7 @@ describe('TagsFilter', () => {
 
   it('filters tag options by search text', async () => {
     const user = userEvent.setup()
-    render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    render(<PluginTagsFilter value={[]} onValueChange={vi.fn()} />)
     const search = await ensurePopoverOpen(user)
 
     expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
@@ -67,13 +67,13 @@ describe('TagsFilter', () => {
   it('adds and removes selected tags when options are clicked', async () => {
     const user = userEvent.setup()
     const onTagsChange = vi.fn()
-    const { rerender } = render(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
+    const { rerender } = render(<PluginTagsFilter value={['agent']} onValueChange={onTagsChange} />)
 
     await user.click(screen.getByRole('button', { name: 'Agent' }))
     await user.click(screen.getByRole('checkbox', { name: 'Agent' }))
     expect(onTagsChange).toHaveBeenCalledWith([])
 
-    rerender(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
+    rerender(<PluginTagsFilter value={['agent']} onValueChange={onTagsChange} />)
     await user.click(screen.getByRole('checkbox', { name: 'RAG' }))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
   })
@@ -82,7 +82,7 @@ describe('TagsFilter', () => {
     const user = userEvent.setup()
     mockTranslate.mockImplementation(() => undefined as unknown as string)
 
-    render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    render(<PluginTagsFilter value={[]} onValueChange={vi.fn()} />)
     await user.click(screen.getByRole('button'))
 
     expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', '')

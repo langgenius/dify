@@ -1,5 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
@@ -17,34 +18,6 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
-}))
-
-vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
-  default: ({
-    search,
-    tags,
-    onSearchChange,
-    onTagsChange,
-    placeholder,
-  }: {
-    search: string
-    tags: string[]
-    onSearchChange: (value: string) => void
-    onTagsChange: (value: string[]) => void
-    placeholder: string
-  }) => (
-    <div data-testid="search-box">
-      <div>{placeholder}</div>
-      <div data-testid="search-state">{search}</div>
-      <div data-testid="tags-state">{tags.join(',')}</div>
-      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>
-        set-query
-      </button>
-      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>
-        set-tags
-      </button>
-    </div>
-  ),
 }))
 
 vi.mock('../no-data-placeholder', () => ({
@@ -144,7 +117,8 @@ describe('ToolPicker', () => {
     expect(screen.getByTestId('no-data')).toHaveTextContent('true')
   })
 
-  it('filters by plugin type, tags, and query', () => {
+  it('filters by plugin type, tags, and query', async () => {
+    const user = userEvent.setup()
     mockInstalledPluginList.data = {
       plugins: [
         createPlugin('tool-search', PluginSource.marketplace, 'tool', ['search']),
@@ -174,13 +148,16 @@ describe('ToolPicker', () => {
     fireEvent.click(screen.getByText('plugin.category.tools'))
     expect(screen.getAllByTestId('tool-item')).toHaveLength(2)
 
-    fireEvent.click(screen.getByTestId('set-tags'))
+    await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
+    await user.click(screen.getByRole('checkbox', { name: 'pluginTags.tags.rag' }))
     expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
     expect(screen.getByText('tool-rag')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
 
-    fireEvent.click(screen.getByTestId('set-query'))
+    const search = screen.getByRole('searchbox', { name: 'plugin.searchTools' })
+    await user.type(search, 'tool-rag')
     expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
-    expect(screen.getByTestId('search-state')).toHaveTextContent('tool-rag')
+    expect(search).toHaveValue('tool-rag')
   })
 
   it('limits selectable integrations to the provided integration category', () => {

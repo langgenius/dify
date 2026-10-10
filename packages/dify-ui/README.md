@@ -52,6 +52,7 @@ Utilities:
 - `./direction-provider` exports Base UI `DirectionProvider` and `useDirection`. Set HTML `dir` as well for CSS layout; pickers propagate their resolved direction to their trigger and portaled content.
 
 - `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
+- `./use-merged-refs` exports `useMergedRefs` for combining internal and caller refs, including callback cleanup.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
 
 ## Guides

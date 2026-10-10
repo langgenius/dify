@@ -9,6 +9,10 @@
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
     },
+    "./use-merged-refs": {
+      "types": "./src/use-merged-refs.ts",
+      "import": "./src/use-merged-refs.ts"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"

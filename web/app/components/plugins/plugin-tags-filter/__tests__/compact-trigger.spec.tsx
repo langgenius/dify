@@ -1,10 +1,10 @@
-import type { Tag } from '../../../../hooks'
-import { Popover } from '@langgenius/dify-ui/popover'
+import type { Tag } from '../../hooks'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import MarketplaceTrigger from '../marketplace'
+import CompactTrigger from '../compact-trigger'
 
 const tagsMap: Record<string, Tag> = {
   agent: { name: 'agent', label: 'Agent' },
@@ -12,16 +12,11 @@ const tagsMap: Record<string, Tag> = {
   search: { name: 'search', label: 'Search' },
 }
 
-describe('MarketplaceTrigger', () => {
-  it('shows all-tags text when no tags are selected', () => {
+describe('CompactTrigger', () => {
+  it('renders only icon when no tags are selected', () => {
     render(
       <Popover>
-        <MarketplaceTrigger
-          selectedTagsLength={0}
-          tags={[]}
-          tagsMap={tagsMap}
-          onTagsChange={vi.fn()}
-        />
+        <CompactTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
       </Popover>,
     )
 
@@ -29,13 +24,13 @@ describe('MarketplaceTrigger', () => {
     expect(
       screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
   })
 
-  it('shows selected tag labels and overflow count', () => {
+  it('renders selected tag labels and overflow count', () => {
     render(
       <Popover>
-        <MarketplaceTrigger
-          selectedTagsLength={3}
+        <CompactTrigger
           tags={['agent', 'rag', 'search']}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -46,20 +41,39 @@ describe('MarketplaceTrigger', () => {
     expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
     expect(screen.getByText('+1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Agent, RAG, Search' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
+    ).toBeInTheDocument()
   })
 
-  it('clears selected tags from a separate button', async () => {
+  it('opens the tag filter from the keyboard', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Popover>
+        <CompactTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
+        <PopoverContent>Tag options</PopoverContent>
+      </Popover>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+    await user.tab()
+    expect(trigger).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByText('Tag options')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+  })
+
+  it('keeps clear as a separate action from the popover trigger', async () => {
     const user = userEvent.setup()
     function Harness() {
       const [tags, setTags] = useState(['agent'])
       return (
         <Popover>
-          <MarketplaceTrigger
-            selectedTagsLength={tags.length}
-            tags={tags}
-            tagsMap={tagsMap}
-            onTagsChange={setTags}
-          />
+          <CompactTrigger tags={tags} tagsMap={tagsMap} onTagsChange={setTags} />
         </Popover>
       )
     }
@@ -68,35 +82,17 @@ describe('MarketplaceTrigger', () => {
 
     const trigger = screen.getByRole('button', { name: 'Agent' })
     const clearButton = screen.getByRole('button', { name: /^pluginTags\.clearSelectedTags/ })
-    expect(trigger).not.toContainElement(clearButton)
 
-    await user.click(clearButton)
+    expect(trigger).not.toContainElement(clearButton)
+    trigger.focus()
+    await user.tab()
+    expect(clearButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
 
     expect(
       screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toHaveFocus()
-  })
-
-  it('reflects the actual popover state on the trigger', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <Popover>
-        <MarketplaceTrigger
-          selectedTagsLength={0}
-          tags={[]}
-          tagsMap={tagsMap}
-          onTagsChange={vi.fn()}
-        />
-      </Popover>,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    await user.click(trigger)
-
-    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 })
