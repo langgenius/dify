@@ -39,3 +39,21 @@ def test_binding_file_timeout_docker_settings_use_their_service_env_files() -> N
     assert f"{_AGENT_TIMEOUT_ENV}=" in agent_env_example
     assert f"{_API_TIMEOUT_ENV}:" not in compose_template
     assert f"{_AGENT_TIMEOUT_ENV}:" not in compose_template
+
+
+def test_knowledge_limits_default_to_existing_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS", raising=False)
+    monkeypatch.delenv("AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS", raising=False)
+    settings = AgentBackendConfig()
+    assert settings.AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS == 2000
+    assert settings.AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS == 12000
+
+
+@pytest.mark.parametrize(("content_limit", "observation_limit"), [(0, 12000), (-1, 12000), (2000, 0), (2000, 1999)])
+def test_knowledge_limits_reject_invalid_env_values(
+    monkeypatch: pytest.MonkeyPatch, content_limit: int, observation_limit: int
+) -> None:
+    monkeypatch.setenv("AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS", str(content_limit))
+    monkeypatch.setenv("AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS", str(observation_limit))
+    with pytest.raises(ValidationError):
+        AgentBackendConfig()
