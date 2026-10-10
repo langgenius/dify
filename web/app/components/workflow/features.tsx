@@ -6,6 +6,7 @@ import { memo, useCallback } from 'react'
 import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { normalizeFileUploadForSave } from '@/app/components/workflow-app/utils'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { updateFeatures } from '@/service/workflow'
 import { useIsChatMode, useNodesReadOnly } from './hooks/use-workflow'
@@ -56,7 +57,7 @@ const Features = () => {
         speech_to_text: currentFeatures.speech2text,
         retriever_resource: currentFeatures.citation,
         sensitive_word_avoidance: currentFeatures.moderation,
-        file_upload: currentFeatures.file,
+        file_upload: normalizeFileUploadForSave(currentFeatures.file),
       }
 
       await updateFeatures({

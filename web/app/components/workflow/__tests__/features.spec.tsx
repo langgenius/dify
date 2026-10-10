@@ -23,7 +23,18 @@ const mockFeaturesStore = {
       speech2text: false,
       citation: false,
       moderation: false,
-      file: false,
+      file: {
+        enabled: true,
+        allowed_file_types: ['image', 'video'],
+        allowed_file_extensions: ['.png', '.mp4'],
+        allowed_file_upload_methods: ['local_file'],
+        number_limits: 10,
+        image: {
+          enabled: false,
+          number_limits: 3,
+          transfer_methods: ['local_file', 'remote_url'],
+        },
+      },
     },
   }),
 }
@@ -187,6 +198,18 @@ describe('Features', () => {
 
       await vi.waitFor(() => {
         expect(mockUpdateFeatures).toHaveBeenCalledTimes(1)
+        expect(mockUpdateFeatures).toHaveBeenCalledWith({
+          appId: 'app-1',
+          features: expect.objectContaining({
+            file_upload: {
+              enabled: true,
+              allowed_file_types: ['image', 'video'],
+              allowed_file_extensions: ['.png', '.mp4'],
+              allowed_file_upload_methods: ['local_file'],
+              number_limits: 10,
+            },
+          }),
+        })
         expect(store.getState().showFeaturesPanel).toBe(true)
       })
     })

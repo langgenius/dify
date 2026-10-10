@@ -1,4 +1,4 @@
-import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -31,6 +31,15 @@ type WorkflowFeaturesLike = {
   text_to_speech?: { enabled?: boolean }
   retriever_resource?: { enabled?: boolean }
   sensitive_word_avoidance?: { enabled?: boolean }
+}
+
+export const normalizeFileUploadForSave = (
+  fileUpload: FileUpload | undefined,
+): FileUpload | undefined => {
+  if (!fileUpload) return fileUpload
+
+  const { image, ...rest } = fileUpload
+  return image?.enabled ? fileUpload : rest
 }
 
 export const buildTriggerStatusMap = (triggers: TriggerStatusLike[]) => {
