@@ -78,6 +78,7 @@ from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.node_policy import proposal_policy_rejections
 from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
@@ -240,6 +241,11 @@ class WorkflowServiceDifyPort:
         before_graph, revision = self.read_graph(app_id, actor)
         if revision != expected_revision:
             raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+        # A direct write must enforce the same boundary as candidate preflight.
+        # Check after the owner/revision read and before any mutation or events.
+        policy_rejections = proposal_policy_rejections(before_graph, intents)
+        if policy_rejections:
+            raise PreflightError("Builder node policy: " + "; ".join(policy_rejections))
         graph: Graph = before_graph
 
         # Idempotent re-entry (interrupted-step Retry): a re-applied fix.apply

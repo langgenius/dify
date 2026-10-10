@@ -311,16 +311,16 @@ def test_propose_plan_v1_preserves_valid_plan_strings_without_content_thresholds
 def test_discover_resources_retains_full_source_in_model_payload(monkeypatch):
     goal = "Use only the company knowledge base; optionally consider exports. " * 200
     requirements = {"answer_language": "中文", "approved_dataset": "kb-1"}
-    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
-    model = _FakeInstance(['{"resource_ids": ["kb-1"]}'])
+    _stub_inventory(monkeypatch, tools=[resources.ResourceRef(id="tool/run", label="Export")])
+    model = _FakeInstance(['{"resource_ids": ["tool/run"]}'])
 
     options = build.discover_resources(model, "t1", ["retrieve knowledge"], goal_text=goal, requirements=requirements)
 
-    assert [option.id for option in options] == ["kb-1"]
+    assert [option.id for option in options] == ["tool/run"]
     payload = model.calls[0][0][1].content
     source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
     assert payload.startswith(source + "\n\nPLAN:\nretrieve knowledge\n\nAVAILABLE:\n")
-    assert payload.endswith("- kb-1 (knowledge, ready): Company KB")
+    assert payload.endswith("- tool/run (plugin, ready): Export")
 
 
 def test_assess_capability_gap_retains_source_and_distinguishes_same_label_resource_ids():
@@ -348,7 +348,7 @@ def test_assess_capability_gap_retains_source_and_distinguishes_same_label_resou
     )
 
 
-def test_discover_resources_grounds_real_ids(monkeypatch):
+def test_discover_resources_refuses_dataset_recommendations(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
@@ -358,8 +358,7 @@ def test_discover_resources_grounds_real_ids(monkeypatch):
     )
     m = _FakeInstance([json.dumps({"resource_ids": ["kb-1"]})])
     opts = build.discover_resources(m, "t1", ["Retrieve knowledge"])
-    assert opts[0].id == "kb-1"
-    assert opts[0].kind == "knowledge"
+    assert opts == []
 
 
 def _stub_inventory(monkeypatch, *, datasets=(), models=(), tools=()):
@@ -402,13 +401,13 @@ def test_discover_resources_never_falls_back_to_the_whole_inventory(monkeypatch)
 def test_discover_resources_keeps_only_ids_the_model_actually_picked(monkeypatch):
     _stub_inventory(
         monkeypatch,
-        datasets=[resources.ResourceRef(id=f"kb-{i}", label=f"KB {i}") for i in range(20)],
+        tools=[resources.ResourceRef(id=f"tool-{i}/run", label=f"Tool {i}") for i in range(20)],
     )
-    m = _FakeInstance([json.dumps({"resource_ids": ["kb-3", "not-in-catalog"]})])
+    m = _FakeInstance([json.dumps({"resource_ids": ["tool-3/run", "not-in-catalog"]})])
 
     opts = build.discover_resources(m, "t1", ["Retrieve knowledge"])
 
-    assert [o.id for o in opts] == ["kb-3"]
+    assert [o.id for o in opts] == ["tool-3/run"]
 
 
 def test_discover_resources_shows_the_model_each_options_readiness(monkeypatch):
@@ -493,7 +492,7 @@ def test_assess_capability_gap_shows_the_model_each_option_and_its_readiness(mon
     assert "Slack" in captured["user"]
 
 
-def test_bind_resources_names_bound_label(monkeypatch):
+def test_bind_resources_refuses_dataset_binding(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
@@ -502,7 +501,7 @@ def test_bind_resources_names_bound_label(monkeypatch):
         ),
     )
     out = build.bind_resources(None, "t1", ["Retrieve knowledge"], ["kb-1"])
-    assert any("Company KB" in item for item in out)
+    assert out == ["Retrieve knowledge"]
 
 
 def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
@@ -543,7 +542,7 @@ def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
 
     assert out[0] == plan[0]
     assert out[1] == plan[1] + " (using langgenius/tokener/tokener/deepseek-v4-flash)"
-    assert out[2] == plan[2] + " (using Company KB)"
+    assert out[2] == plan[2]
     assert out[3] == plan[3] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert out[4] == plan[4]
 
@@ -664,9 +663,9 @@ def test_bind_resources_names_the_tool_id_on_an_empty_plan_too(monkeypatch):
     assert out == ["Use Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx]"]
 
 
-def test_bind_resources_keeps_models_and_knowledge_label_only(monkeypatch):
+def test_bind_resources_keeps_model_label_and_ignores_selected_dataset(monkeypatch):
     """Only a tool is pinned by id; a model's label already IS its full id and
-    a dataset is grounded by its name (``_ground``), so neither gets brackets."""
+    datasets are unavailable in this Builder phase."""
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
@@ -686,7 +685,7 @@ def test_bind_resources_keeps_models_and_knowledge_label_only(monkeypatch):
     out = build.bind_resources(None, "t1", plan, ["langgenius/tokener/tokener/deepseek-v4-flash", "9f1c2b7e-kb"])
 
     assert out[0] == plan[0] + " (using langgenius/tokener/tokener/deepseek-v4-flash)"
-    assert out[1] == plan[1] + " (using Company KB)"
+    assert out[1] == plan[1]
     assert "[" not in out[0]
     assert "[" not in out[1]
 
@@ -1196,3 +1195,35 @@ def test_analyze_goal_does_not_explain_a_field_that_has_a_value():
     out = build.analyze_goal(m, _PM_GOAL)
 
     assert not out["fields"][0].get("hint")
+
+
+def test_planner_describes_only_first_phase_nodes_to_the_model():
+    model = _FakeInstance(['{"plan": ["code node: process", "end node: return"]}'])
+
+    assert build.propose_plan_v1(model, {})
+
+    system = model.calls[0][0][0].content
+    assert '"knowledge-retrieval"' not in system
+    assert '"human-input"' not in system
+    assert '"code"' in system
+    assert '"list-operator"' in system
+
+
+def test_grounding_preserves_retrieval_config_without_dataset_assignment(monkeypatch):
+    from core.app.app_config.entities import ModelConfig
+    from core.dify_builder.models import MutationIntent
+
+    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-real", label="Company KB")])
+    intent = MutationIntent(
+        op="create_node",
+        args={
+            "node_type": "knowledge-retrieval",
+            "node_id": "r",
+            "config": {"dataset_ids": ["original"], "retrieval_mode": "multiple"},
+        },
+    )
+    mc = ModelConfig.model_validate({"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}})
+
+    build._ground([intent], mc)
+
+    assert intent.args["config"]["dataset_ids"] == ["original"]

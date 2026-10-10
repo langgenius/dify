@@ -320,7 +320,6 @@ _DIFY_NODE_VOCABULARY = """\
 - "start"               — workflow entry. Always present. Holds the input form variables.
 - "end"                 — workflow exit. Returns the result.
 - "llm"                 — call an LLM with a prompt.
-- "knowledge-retrieval" — query a Dify knowledge base.
 - "code"                — run a Python/JavaScript snippet.
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
@@ -333,8 +332,7 @@ _DIFY_NODE_VOCABULARY = """\
 - "document-extractor"  — extract text from an uploaded file. Needs a file input.
 - "variable-aggregator" — rejoin mutually-exclusive branches into one variable.
 - "list-operator"       — filter / sort / slice an array variable.
-- "assigner"            — update an existing conversation or loop variable.
-- "human-input"         — pause for a person to review, approve, or enter data."""
+- "assigner"            — update an existing conversation or loop variable."""
 
 
 # How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
@@ -470,8 +468,7 @@ def discover_resources(
     requirements: dict[str, Any] | None = None,
 ) -> list[ResourceOption]:
     inv = resources.list_tenant_resources(tenant_id)
-    catalog = {r.id: ("knowledge", r) for r in inv.datasets}
-    catalog.update({r.id: ("plugin", r) for r in inv.tools})
+    catalog = {r.id: ("plugin", r) for r in inv.tools}
     catalog.update({r.id: ("model", r) for r in inv.models})
     if not catalog or model is None:
         return []
@@ -567,7 +564,6 @@ def assess_capability_gap(
 # as a whole word/phrase, because steps mix scripts ("tool节点：...").
 _STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
     "model": ("llm", "question-classifier", "parameter-extractor"),
-    "knowledge": ("knowledge-retrieval", "knowledge"),
     "plugin": ("tool",),
 }
 
@@ -611,8 +607,7 @@ def _bound_name(kind: str, ref: ResourceRef) -> str:
     the shared generator pins a tool deterministically only on that identifier
     (``tool_catalogue._find_explicit_tool_keys``), never on the label, and its
     boundary treats '[' / ']' as non-word characters. A model's label already is
-    its full id, and a dataset is grounded by its name (``_ground``), so those
-    keep the label alone.
+    its full id and keeps the label alone.
     """
     return f"{ref.label} [{ref.id}]" if kind == "plugin" else ref.label
 
@@ -643,10 +638,9 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     """
     inv = resources.list_tenant_resources(tenant_id)
     kinds: dict[str, str] = {}
-    kinds.update({r.id: "knowledge" for r in inv.datasets})
     kinds.update({r.id: "plugin" for r in inv.tools})
     kinds.update({r.id: "model" for r in inv.models})
-    by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
+    by_id = {r.id: r for r in (*inv.tools, *inv.models)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
     stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
@@ -882,8 +876,6 @@ def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str,
 def _prepare_build_candidate(
     graph: dict[str, Any],
     grounding_mc: ModelConfig,
-    tenant_id: str,
-    plan_items: list[str],
     trusted_text: str,
 ) -> preflight.VettedIntents:
     """Translate, ground, and vet the complete candidate as the write guard does.
@@ -894,7 +886,7 @@ def _prepare_build_candidate(
     caller must correct it rather than returning only the applicable subset.
     """
     intents = graph_translate.to_intents(graph)
-    _ground(intents, grounding_mc, tenant_id, plan_items)
+    _ground(intents, grounding_mc)
     for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
         logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
     for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
@@ -945,7 +937,7 @@ def build_nodes(
                 # follows the user's selected model, or the session fallback.
                 if grounding_mc is None:
                     grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
-                candidate = _prepare_build_candidate(graph, grounding_mc, tenant_id, plan_items, trusted_text)
+                candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text)
                 if not candidate.rejections and candidate.applicable:
                     return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
                 # vet_intents supplies credential-safe node/field refusals from
@@ -1294,10 +1286,8 @@ def _ground_placeholder_credentials(intents: list[MutationIntent], *, trusted_te
     return grounded
 
 
-def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
+def _ground(intents: list[MutationIntent], mc: ModelConfig) -> None:
     mode = mc.mode.value if hasattr(mc.mode, "value") else str(mc.mode)
-    datasets = resources.list_tenant_resources(tenant_id).datasets
-    matched = [d.id for d in datasets if any(d.label in item for item in plan_items)]
     for intent in intents:
         if intent.op != "create_node":
             continue
@@ -1314,6 +1304,4 @@ def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan
             model["name"] = mc.name
             model.setdefault("mode", mode)
             config["model"] = model
-        if intent.args.get("node_type") == "knowledge-retrieval":
-            config["dataset_ids"] = list(matched)  # independent copy per node -- never share one list
         intent.args["config"] = config
