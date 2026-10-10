@@ -2055,6 +2055,7 @@ export default interface Resources {
     'metadata.documentMetadata.metadataToolTip': 'Metadata serves as a critical filter that enhances the accuracy and relevance of information retrieval. You can modify and add metadata for this document here.'
     'metadata.documentMetadata.startLabeling': 'Start Labeling'
     'metadata.documentMetadata.technicalParameters': 'Technical Parameters'
+    'metadata.externalDescription': 'Configure field names and types supported by your external knowledge API. The external provider owns the values; changes are saved immediately.'
     'metadata.metadata': 'Metadata'
     'metadata.selectMetadata.manageAction': 'Manage'
     'metadata.selectMetadata.newAction': 'New Metadata'
@@ -5877,6 +5878,7 @@ export default interface Resources {
     'nodes.variableAssigner.varNotSet': 'Variable not set'
   }
   workflowModels: {
+    'nodes.knowledgeRetrieval.metadata.conditionConflict': 'These conditions are incompatible with the selected knowledge bases and have been preserved: {{fields}}. Resolve the conflicts before retrieval.'
     'nodes.knowledgeRetrieval.metadata.options.automatic.desc': 'Automatically generate metadata filtering conditions based on Query Variable'
     'nodes.knowledgeRetrieval.metadata.options.automatic.subTitle': 'Automatically generate metadata filtering conditions based on user query'
     'nodes.knowledgeRetrieval.metadata.options.automatic.title': 'Automatic'
@@ -5891,6 +5893,7 @@ export default interface Resources {
     'nodes.knowledgeRetrieval.metadata.panel.search': 'Search metadata'
     'nodes.knowledgeRetrieval.metadata.panel.select': 'Select variable...'
     'nodes.knowledgeRetrieval.metadata.panel.title': 'Metadata Filter Conditions'
+    'nodes.knowledgeRetrieval.metadata.schemaConflict': 'Fields must have the same name and type in every selected knowledge base: {{fields}}.'
     'nodes.knowledgeRetrieval.metadata.tip': 'Metadata filtering is the process of using metadata attributes (such as tags, categories, or access permissions) to refine and control the retrieval of relevant information within a system.'
     'nodes.knowledgeRetrieval.metadata.title': 'Metadata Filtering'
     'nodes.knowledgeRetrieval.outputVars.content': 'Segmented content'

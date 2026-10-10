@@ -1,6 +1,7 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { isMetadataConditionCompatible } from '../../metadata-schema'
 import AddCondition from './add-condition'
 import ConditionList from './condition-list'
 
@@ -10,11 +11,17 @@ type MetadataPanelProps = {
 const MetadataPanel = ({
   metadataFilteringConditions,
   metadataList,
+  selectedDatasetsLoaded,
   onCancel,
   handleAddCondition,
   ...restProps
 }: MetadataPanelProps) => {
   const { t } = useTranslation(['workflowModels'])
+  const incompatible = selectedDatasetsLoaded
+    ? (metadataFilteringConditions?.conditions ?? []).filter(
+        (condition) => !isMetadataConditionCompatible(condition, metadataList ?? []),
+      )
+    : []
 
   return (
     <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl">
@@ -30,6 +37,14 @@ const MetadataPanel = ({
         </div>
       </div>
       <div className="px-1 py-2">
+        {incompatible.length > 0 && (
+          <div role="alert" className="px-3 py-2 text-xs text-text-destructive">
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.conditionConflict'], {
+              ns: 'workflowModels',
+              fields: incompatible.map((condition) => condition.name).join(', '),
+            })}
+          </div>
+        )}
         <div className="px-3 py-1">
           <div className="pb-2">
             <ConditionList

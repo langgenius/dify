@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "以下條件與已選知識庫不相容，已保留：{{fields}}。請在檢索前解決衝突。",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "根據查詢變數自動生成元資料過濾條件",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "根據用戶查詢自動生成元資料過濾條件",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "自動的",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "搜尋元資料",
   "nodes.knowledgeRetrieval.metadata.panel.select": "選擇變數...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "元資料過濾條件",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "以下欄位在所有已選知識庫中的名稱和類型必須一致：{{fields}}。",
   "nodes.knowledgeRetrieval.metadata.tip": "元資料過濾是使用元資料屬性（如標籤、類別或訪問權限）來精煉和控制在系統內檢索相關信息的過程。",
   "nodes.knowledgeRetrieval.metadata.title": "元資料過濾",
   "nodes.knowledgeRetrieval.outputVars.content": "分段內容",

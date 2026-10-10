@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "เก็บเงื่อนไขที่ไม่เข้ากันเหล่านี้ไว้แล้ว: {{fields}} โปรดแก้ข้อขัดแย้งก่อนค้นคืน",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "สร้างเงื่อนไขการกรองข้อมูลเมตาโดยอัตโนมัติตามตัวแปรค้นหา",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "สร้างเงื่อนไขการกรองข้อมูลเมตาโดยอัตโนมัติตามการค้นหาของผู้ใช้",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "อัตโนมัติ",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "ค้นหาข้อมูลเมตา",
   "nodes.knowledgeRetrieval.metadata.panel.select": "เลือกตัวแปร...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "เงื่อนไขการกรองข้อมูลเมตา",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "ฟิลด์ต้องมีชื่อและประเภทตรงกันในฐานความรู้ที่เลือกทั้งหมด: {{fields}}",
   "nodes.knowledgeRetrieval.metadata.tip": "การกรองข้อมูลเมตาดาต้าเป็นกระบวนการที่ใช้คุณลักษณะของเมตาดาต้า (เช่น แท็ก หมวดหมู่ หรือสิทธิการเข้าถึง) เพื่อปรับแต่งและควบคุมการดึงข้อมูลที่เกี่ยวข้องภายในระบบ.",
   "nodes.knowledgeRetrieval.metadata.title": "การกรองข้อมูลเมตา",
   "nodes.knowledgeRetrieval.outputVars.content": "เนื้อหาที่แบ่งกลุ่ม",

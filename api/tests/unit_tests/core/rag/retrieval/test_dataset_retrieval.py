@@ -1,3 +1,4 @@
+import json
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
@@ -4084,30 +4085,36 @@ class TestDatasetRetrievalAdditionalHelpers:
             prompt_messages, stop = retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="chat",
-                metadata_fields=["author"],
+                metadata_fields={"author": "string"},
                 query="python",
             )
             assert prompt_messages == ["prompt"]
             assert stop == ["x"]
+            chat = mock_prompt_transform.return_value.get_prompt.call_args.kwargs["prompt_template"]
+            assert any(message.text == '{"metadata_map":[]}' for message in chat)
+            assert '"type": "string"' in chat[-1].text
+            assert '"operators":' in chat[-1].text
 
-            with patch(
-                "core.rag.retrieval.dataset_retrieval.METADATA_FILTER_COMPLETION_PROMPT",
-                "{input_text} {metadata_fields}",
-            ):
-                prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
-                    model_config=model_config_completion,
-                    mode="completion",
-                    metadata_fields=["author"],
-                    query="python",
-                )
-                assert prompt_messages_completion == ["prompt"]
-                assert stop_completion == []
+            prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
+                model_config=model_config_completion,
+                mode="completion",
+                metadata_fields={"author": "string"},
+                query='python "quoted" query',
+            )
+            assert prompt_messages_completion == ["prompt"]
+            assert stop_completion == []
+            completion = mock_prompt_transform.return_value.get_prompt.call_args.kwargs["prompt_template"].text
+            assert '{"metadata_map":[]}' in completion
+            assert '"type": "string"' in completion
+            assert '"operators":' in completion
+            completion_input = completion.split("### User Input\n", 1)[1].split("### Assistant Output", 1)[0]
+            assert json.loads(completion_input)["input_text"] == 'python "quoted" query'
 
         with pytest.raises(ValueError):
             retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="unknown-mode",
-                metadata_fields=[],
+                metadata_fields={},
                 query="python",
             )
 
@@ -4215,11 +4222,6 @@ class TestDatasetRetrievalAdditionalHelpers:
                         "metadata_field_value": "Alice",
                         "comparison_operator": "contains",
                     },
-                    {
-                        "metadata_field_name": "ignored",
-                        "metadata_field_value": "value",
-                        "comparison_operator": "contains",
-                    },
                 ]
             }
             result = retrieval._automatic_metadata_filter_func(
@@ -4246,6 +4248,168 @@ class TestDatasetRetrievalAdditionalHelpers:
                     user_id=user_id,
                     metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
                 )
+
+    @pytest.mark.parametrize("failure_stage", ["invoke", "stream", "json"])
+    def test_automatic_metadata_filter_failure_stops_retrieval(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session, failure_stage: str
+    ) -> None:
+        model = Mock()
+        tenant_id, dataset_id = str(uuid4()), str(uuid4())
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(model, Mock())),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
+            patch.object(retrieval, "_handle_invoke_result", return_value=("{}", None)) as stream,
+            patch.object(retrieval, "_record_usage"),
+            patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown", return_value={}) as parser,
+            patch.object(retrieval, "process_metadata_filter_func") as process,
+        ):
+            target = {"invoke": model.invoke_llm, "stream": stream, "json": parser}[failure_stage]
+            target.side_effect = RuntimeError("generation failed")
+            with pytest.raises(ValueError, match="retrieval was stopped"):
+                retrieval.get_metadata_filter_condition(
+                    sqlite_session,
+                    dataset_ids=[dataset_id],
+                    query="q",
+                    tenant_id=tenant_id,
+                    user_id="user",
+                    metadata_filtering_mode="automatic",
+                    metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+                    metadata_filtering_conditions=None,
+                    inputs={},
+                )
+            process.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {},
+            {"metadata_map": None},
+            {
+                "metadata_map": [
+                    {
+                        "metadata_field_name": "missing",
+                        "comparison_operator": "is",
+                        "metadata_field_value": "x",
+                    }
+                ]
+            },
+        ],
+    )
+    def test_invalid_automatic_metadata_response_is_not_ignored(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session, payload: dict[str, object]
+    ) -> None:
+        model = Mock()
+        tenant_id, dataset_id = str(uuid4()), str(uuid4())
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(model, Mock())),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
+            patch.object(retrieval, "_handle_invoke_result", return_value=("{}", None)),
+            patch.object(retrieval, "_record_usage"),
+            patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown", return_value=payload),
+        ):
+            with pytest.raises(ValueError):
+                retrieval._automatic_metadata_filter_func(
+                    sqlite_session,
+                    dataset_ids=[dataset_id],
+                    query="q",
+                    tenant_id=tenant_id,
+                    user_id="user",
+                    metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+                )
+
+    def test_automatic_metadata_prompt_uses_authorized_schema_intersection(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session
+    ) -> None:
+        tenant_id, user_id = str(uuid4()), str(uuid4())
+        dataset_ids = [str(uuid4()), str(uuid4())]
+        for dataset_id, name, kind, tenant in [
+            (dataset_ids[0], "author", "string", tenant_id),
+            (dataset_ids[1], "author", "string", tenant_id),
+            (dataset_ids[0], "score", "number", tenant_id),
+            (dataset_ids[1], "score", "string", tenant_id),
+            (dataset_ids[0], "private", "string", str(uuid4())),
+        ]:
+            sqlite_session.add(
+                DatasetMetadata(
+                    tenant_id=tenant,
+                    dataset_id=dataset_id,
+                    name=name,
+                    type=kind,
+                    created_by=user_id,
+                )
+            )
+        sqlite_session.commit()
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(Mock(), Mock())),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])) as prompt,
+            patch.object(retrieval, "_handle_invoke_result", return_value=("{}", None)),
+            patch.object(retrieval, "_record_usage"),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown", return_value={"metadata_map": []}
+            ),
+        ):
+            assert (
+                retrieval._automatic_metadata_filter_func(
+                    sqlite_session,
+                    dataset_ids=dataset_ids,
+                    query="q",
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+                )
+                == []
+            )
+            assert prompt.call_args.kwargs["metadata_fields"] == {"author": "string"}
+
+    @pytest.mark.parametrize("mode", ["chat", "completion"])
+    def test_empty_automatic_filter_with_real_prompt(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session, mode: str
+    ) -> None:
+        tenant_id, dataset_id, user_id = str(uuid4()), str(uuid4()), str(uuid4())
+        sqlite_session.add(
+            DatasetMetadata(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                name="author",
+                type="string",
+                created_by=user_id,
+            )
+        )
+        sqlite_session.commit()
+        config = ModelConfigWithCredentialsEntity.model_construct(
+            provider="openai",
+            model="gpt",
+            model_schema=Mock(),
+            mode=mode,
+            provider_model_bundle=Mock(),
+            credentials={},
+            parameters={},
+            stop=[],
+        )
+        with (
+            patch.object(retrieval, "_fetch_model_config", return_value=(Mock(), config)),
+            patch("core.rag.retrieval.dataset_retrieval.AdvancedPromptTransform") as transform,
+            patch.object(retrieval, "_handle_invoke_result", return_value=('{"metadata_map":[]}', None)),
+        ):
+            transform.return_value.get_prompt.return_value = list[object]()
+            assert (
+                retrieval._automatic_metadata_filter_func(
+                    sqlite_session,
+                    dataset_ids=[dataset_id],
+                    query="Tell me about these documents",
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode=mode),
+                )
+                == []
+            )
+            prompt = transform.return_value.get_prompt.call_args.kwargs["prompt_template"]
+            if mode == "chat":
+                assert '"type": "string"' in prompt[-1].text
+                assert any(message.text == '{"metadata_map":[]}' for message in prompt)
+            else:
+                assert '"type": "string"' in prompt.text
+                assert '{"metadata_map":[]}' in prompt.text
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval, sqlite_session: Session) -> None:
         tenant_id = str(uuid4())
@@ -5861,7 +6025,7 @@ class TestInternalHooksCoverage:
             model_instance = Mock()
             model_instance.invoke_llm.side_effect = RuntimeError("nope")
             with patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, Mock())):
-                assert (
+                with pytest.raises(ValueError, match="retrieval was stopped"):
                     retrieval._automatic_metadata_filter_func(
                         self.orm_session,
                         dataset_ids=[dataset_id],
@@ -5870,8 +6034,6 @@ class TestInternalHooksCoverage:
                         user_id=user_id,
                         metadata_model_config=WorkflowModelConfig(provider="openai", name="gpt", mode="chat"),
                     )
-                    is None
-                )
 
         with (
             patch("core.rag.retrieval.dataset_retrieval.ModelMode", return_value=object()),
@@ -5890,6 +6052,6 @@ class TestInternalHooksCoverage:
                         stop=[],
                     ),
                     mode="chat",
-                    metadata_fields=[],
+                    metadata_fields={},
                     query="q",
                 )

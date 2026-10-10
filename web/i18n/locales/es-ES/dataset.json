@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Los metadatos sirven como un filtro crítico que mejora la precisión y relevancia de la recuperación de información. Puede modificar y agregar metadatos para este documento aquí.",
   "metadata.documentMetadata.startLabeling": "Comenzar a etiquetar",
   "metadata.documentMetadata.technicalParameters": "Parámetros técnicos",
+  "metadata.externalDescription": "Configura los nombres y tipos de campos que admite tu API externa. El proveedor externo administra los valores; los cambios se guardan inmediatamente.",
   "metadata.metadata": "Metadatos",
   "metadata.selectMetadata.manageAction": "Gestionar",
   "metadata.selectMetadata.newAction": "Nuevos Metadatos",

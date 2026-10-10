@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "次の条件は互換性がないため保持されています：{{fields}}。検索前に競合を解決してください。",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Query Variable（検索変数）に基づきフィルタ条件を自動生成",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "検索履歴からフィルタ条件を自動生成",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "自動生成",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "メタデータ検索",
   "nodes.knowledgeRetrieval.metadata.panel.select": "変数選択...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "メタデータのフィルタ条件",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "選択したすべてのナレッジベースでフィールド名と型を一致させてください：{{fields}}。",
   "nodes.knowledgeRetrieval.metadata.tip": "タグ/カテゴリ等の属性で検索を絞り込み",
   "nodes.knowledgeRetrieval.metadata.title": "メタデータフィルタ",
   "nodes.knowledgeRetrieval.outputVars.content": "セグメント内容",

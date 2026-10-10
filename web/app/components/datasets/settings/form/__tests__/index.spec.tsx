@@ -562,3 +562,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
   }
 })
+
+// Field CRUD has its own owner tests; this suite owns the surrounding settings.
+vi.mock('../components/external-metadata-section', () => ({ default: () => null }))

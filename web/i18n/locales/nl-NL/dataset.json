@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metadata serves as a critical filter that enhances the accuracy and relevance of information retrieval. You can modify and add metadata for this document here.",
   "metadata.documentMetadata.startLabeling": "Start Labeling",
   "metadata.documentMetadata.technicalParameters": "Technical Parameters",
+  "metadata.externalDescription": "Configureer veldnamen en typen die uw externe kennis-API ondersteunt. De externe provider beheert de waarden; wijzigingen worden direct opgeslagen.",
   "metadata.metadata": "Metadata",
   "metadata.selectMetadata.manageAction": "Manage",
   "metadata.selectMetadata.newAction": "New Metadata",
