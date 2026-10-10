@@ -474,7 +474,6 @@ project-excludes = [
   "core/telemetry/test_gateway_integration.py",
   "core/test_file.py",
   "core/test_model_manager.py",
-  "core/test_provider_configuration.py",
   "core/test_provider_manager.py",
   "core/test_trigger_debug_event_selectors.py",
   "core/tools/entities/test_api_entities.py",
