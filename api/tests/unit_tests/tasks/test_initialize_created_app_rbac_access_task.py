@@ -70,14 +70,11 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(
 
     first, second = rbac_domain.transport.requests
     for request, account_ids in ((first, ["acct-1", "acct-2"]), (second, ["acct-3"])):
-        assert request.method == "PUT"
-        assert request.endpoint == "/rbac/apps/user-access-policies"
+        assert request.method == "POST"
+        assert request.endpoint == "/rbac/apps/whitelist/members/batch"
         assert (request.tenant_id, request.account_id) == ("tenant-1", "actor-1")
-        assert request.params == {"app_id": "app-1", "account_id": None}
-        assert request.json == {
-            "account_ids": account_ids,
-            "access_policy_ids": [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-        }
+        assert request.params is None
+        assert request.json == {"data": [{"app_id": "app-1", "account_ids": account_ids, "policy_id": "default"}]}
 
 
 @pytest.mark.parametrize("kind", ["app", "dataset", "agent"])
@@ -90,10 +87,10 @@ def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_p
     initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **{f"{kind}_id": resource_id})
 
     request = rbac_domain.transport.only_request
-    assert (request.method, request.endpoint) == ("PUT", f"/rbac/{kind}s/user-access-policies")
+    assert (request.method, request.endpoint) == ("POST", f"/rbac/{kind}s/whitelist/members/batch")
     assert (request.tenant_id, request.account_id) == ("tenant-1", "actor-1")
-    assert request.params == {f"{kind}_id": resource_id, "account_id": None}
-    assert request.json == {"account_ids": ["acct-1"], "access_policy_ids": ["default"]}
+    assert request.params is None
+    assert request.json == {"data": [{f"{kind}_id": resource_id, "account_ids": ["acct-1"], "policy_id": "default"}]}
 
 
 def test_initialize_created_app_rbac_access_task_retries_on_failure(
@@ -114,7 +111,7 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(
         initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", "app-1")
 
     assert retries == [failure]
-    assert rbac_domain.transport.only_request.endpoint == "/rbac/apps/user-access-policies"
+    assert rbac_domain.transport.only_request.endpoint == "/rbac/apps/whitelist/members/batch"
 
 
 def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_resources(
