@@ -1,24 +1,25 @@
 import type { PollSuccess } from '@/auth/device-api'
 import type { CommandContext } from '@/plugins/base'
+import type { YamlStore } from '@/store/store'
 import { hostname } from 'node:os'
-import { join } from 'node:path'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
-import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
+import { assertNotEnvLogin, pendingLoginStore, revokeAndClearSession } from '@/auth/logout'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Command } from '@/plugins/commands/command'
-import { env } from '@/plugins/env'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
-import { YamlStore } from '@/store/store'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '@/util/browser'
-import { DEFAULT_HOST, resolveHost, validateVerificationURI } from '@/util/host'
+import { resolveHost, validateVerificationURI } from '@/util/host'
 
 const INPUT = z.object({
-  server: z.string().default(DEFAULT_HOST).describe('Dify server base URL'),
+  server: z
+    .string()
+    .optional()
+    .describe('Dify server base URL. Required to start a login; there is no default'),
   no_browser: z
     .boolean()
     .default(false)
@@ -41,11 +42,10 @@ const INPUT = z.object({
     .boolean()
     .default(false)
     .describe(
-      'Check a login started with --no-wait once. Prints status pending until the user approves',
+      'Check a login started with --no-wait once. Prints status pending until the user approves. With no pending login, prints the saved login, or fails with not_logged_in',
     ),
 })
 
-const PENDING_FILE_NAME = 'login-pending.yml'
 const PENDING_STATUS = 'pending'
 const PENDING_SCHEMA = z.object({
   server: z.string(),
@@ -54,11 +54,12 @@ const PENDING_SCHEMA = z.object({
   device_code: z.string(),
 })
 type Pending = z.infer<typeof PENDING_SCHEMA>
-const NO_PENDING_MESSAGE = 'no pending login; start one with login --no-wait'
 const FINAL_POLL_ERRORS: readonly string[] = [ErrorCode.AuthExpired, ErrorCode.AccessDenied]
 
 const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
 const NO_EMAIL_MESSAGE = 'login response carries no account or subject email'
+const NO_SERVER_MESSAGE = 'pass --server <url>: the Dify server to log in to'
+const NO_SERVER_HINT = 'ask the user which server; Dify Cloud is https://cloud.dify.ai'
 
 // A present-but-empty email is the same as absent: neither account.email nor
 // subject_email is meaningful until it has a value.
@@ -68,35 +69,44 @@ function meaningfulEmail(value: string | undefined): string | undefined {
 
 export default class Login extends Command<typeof INPUT> {
   static override summary =
-    'Log in via the OAuth device flow. Blocks until approval: run it in the background, never cancel it'
+    'Log in via the OAuth device flow. Agents: use --no-wait, then --resume after the user approves'
   static override effect = 'write' as const
   static override input = INPUT
   static override examples = [
     {
-      title: 'Agent: run in the background, relay the url and code to the user, do not cancel',
-      input: { server: 'https://dify.example.com', no_browser: true },
-    },
-    {
-      title: 'Agent in a sandbox: add --no-keyring and point DIFY_CONFIG_DIR at persistent storage',
-      input: { server: 'https://dify.example.com', no_browser: true, no_keyring: true },
-    },
-    {
-      title: 'Agent that cannot keep a process alive: start without waiting',
+      title: 'Agent: start without waiting, give the user the url and code, then end the turn',
       input: { server: 'https://dify.example.com', no_browser: true, no_wait: true },
     },
     {
-      title: 'Then, after the user approves, finish the login (repeat while status is pending)',
+      title: 'Agent in a sandbox: add --no-keyring and point DIFY_CONFIG_DIR at persistent storage',
+      input: {
+        server: 'https://dify.example.com',
+        no_browser: true,
+        no_wait: true,
+        no_keyring: true,
+      },
+    },
+    {
+      title:
+        'Finish a --no-wait login once the user says they approved; with no pending login, reports the saved login or fails with not_logged_in',
       input: { resume: true },
     },
   ]
 
   async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const pendingStore = await pendingLoginStore(ctx)
+    if (input.resume) return resume(ctx, pendingStore)
+
+    if (input.server === undefined || input.server.trim() === '')
+      throw new BaseError({
+        code: ErrorCode.UsageMissingArg,
+        message: NO_SERVER_MESSAGE,
+        hint: NO_SERVER_HINT,
+      })
+
     const sessionService = await ctx.get(session)
     assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
-
-    const { configDir } = await ctx.get(env)
-    const pendingStore = new YamlStore(join(configDir, PENDING_FILE_NAME))
-    if (input.resume) return resume(ctx, pendingStore)
+    await pendingStore.rm()
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
@@ -142,7 +152,14 @@ export default class Login extends Command<typeof INPUT> {
 async function resume(ctx: CommandContext, pendingStore: YamlStore) {
   const parsed = PENDING_SCHEMA.safeParse(await pendingStore.getTyped<unknown>())
   if (!parsed.success) {
-    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: NO_PENDING_MESSAGE })
+    const current = await (await ctx.get(session)).require()
+    await (await ctx.get(token)).get()
+    return {
+      server: current.server,
+      email: current.email,
+      account: current.account,
+      workspace_id: current.workspaceId,
+    }
   }
   const pending = parsed.data
   const api = deviceApi(pending.server, { insecure: pending.insecure })

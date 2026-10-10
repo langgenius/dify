@@ -17,6 +17,7 @@ import {
   helpMap,
   helpSearch,
   pointer,
+  SKILL_NOTICE,
   spacedWords,
 } from '@/plugins/commands/help'
 import {
@@ -41,7 +42,7 @@ const HELP_FLAGS: readonly string[] = ['--help', '-h']
 const FULL_FLAG = '--full'
 const ALL_FLAG = '--all'
 const FLAG_PREFIX = '-'
-const NO_SERVER_NOTICE = 'log in to list server operations'
+const NO_SERVER_NOTICE = 'not logged in: run difyctl login --help'
 const NO_SERVER_HINT = 'log in to use server operations'
 const OPS_UNAVAILABLE_PREFIX = 'could not list server operations: '
 const NO_MATCH_NOTICE = `nothing matched; ${helpHint()} for the map`
@@ -131,6 +132,7 @@ async function discover(args: Discovery): Promise<number> {
 
   const entries = entriesOf(tree, listing)
   if (path.length === 0) {
+    streams.notice(SKILL_NOTICE)
     await streams.document(mapView(helpMap(entries)))
     return ExitCode.Success
   }
