@@ -11,7 +11,6 @@ from constants.oauth_bearer import Scope
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import _app_settings as settings
 from controllers.openapi import openapi_ns
-from controllers.openapi._app_settings import WebAppPath
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
     AdvancedChatWebApp,
@@ -65,7 +64,7 @@ class WorkflowWebAppApi(Resource):
         returns=(HTTPStatus.OK, WorkflowWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, WorkflowWebApp, WebAppPath.WORKFLOW)
+        return settings.webapp(ctx, WorkflowWebApp)
 
     @endpoint(
         op="set.webapp.workflow",
@@ -79,7 +78,7 @@ class WorkflowWebAppApi(Resource):
         returns=(HTTPStatus.OK, WorkflowWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: WorkflowWebAppPatch):
-        return settings.update_webapp(ctx, body, WorkflowWebApp, WebAppPath.WORKFLOW)
+        return settings.update_webapp(ctx, body, WorkflowWebApp)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/advanced-chat")
@@ -95,7 +94,7 @@ class AdvancedChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, AdvancedChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, AdvancedChatWebApp, WebAppPath.CHAT)
+        return settings.webapp(ctx, AdvancedChatWebApp)
 
     @endpoint(
         op="set.webapp.advanced_chat",
@@ -109,7 +108,7 @@ class AdvancedChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, AdvancedChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: AdvancedChatWebAppPatch):
-        return settings.update_webapp(ctx, body, AdvancedChatWebApp, WebAppPath.CHAT)
+        return settings.update_webapp(ctx, body, AdvancedChatWebApp)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/chat")
@@ -123,7 +122,7 @@ class ChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, ChatWebApp, WebAppPath.CHAT)
+        return settings.webapp(ctx, ChatWebApp)
 
     @endpoint(
         op="set.webapp.chat",
@@ -137,7 +136,7 @@ class ChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ChatWebAppPatch):
-        return settings.update_webapp(ctx, body, ChatWebApp, WebAppPath.CHAT)
+        return settings.update_webapp(ctx, body, ChatWebApp)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/agent-chat")
@@ -153,7 +152,7 @@ class AgentChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, ChatWebApp, WebAppPath.CHAT)
+        return settings.webapp(ctx, ChatWebApp)
 
     @endpoint(
         op="set.webapp.agent_chat",
@@ -167,7 +166,7 @@ class AgentChatWebAppApi(Resource):
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ChatWebAppPatch):
-        return settings.update_webapp(ctx, body, ChatWebApp, WebAppPath.CHAT)
+        return settings.update_webapp(ctx, body, ChatWebApp)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/completion")
@@ -183,7 +182,7 @@ class CompletionWebAppApi(Resource):
         returns=(HTTPStatus.OK, WebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, WebApp, WebAppPath.COMPLETION)
+        return settings.webapp(ctx, WebApp)
 
     @endpoint(
         op="set.webapp.completion",
@@ -197,7 +196,7 @@ class CompletionWebAppApi(Resource):
         returns=(HTTPStatus.OK, WebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: WebAppPatch):
-        return settings.update_webapp(ctx, body, WebApp, WebAppPath.COMPLETION)
+        return settings.update_webapp(ctx, body, WebApp)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/agent")
@@ -213,7 +212,7 @@ class AgentWebAppApi(Resource):
         returns=(HTTPStatus.OK, AgentWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.webapp(ctx, AgentWebApp, WebAppPath.AGENT)
+        return settings.agent_webapp(ctx)
 
     @endpoint(
         op="set.webapp.agent",
@@ -227,7 +226,7 @@ class AgentWebAppApi(Resource):
         returns=(HTTPStatus.OK, AgentWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ChatWebAppPatch):
-        return settings.update_webapp(ctx, body, AgentWebApp, WebAppPath.AGENT)
+        return settings.update_agent_webapp(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/agent:reset")

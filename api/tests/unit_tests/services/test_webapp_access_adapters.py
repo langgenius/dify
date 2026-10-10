@@ -27,6 +27,10 @@ class EnterpriseWebAppAuthStub:
             raise self.access_mode_error
         return WebAppSettings(accessMode=self.access_mode)
 
+    def update_app_access_mode(self, app_id: str, access_mode: str) -> None:
+        del app_id
+        self.access_mode = access_mode
+
     def is_user_allowed_to_access_webapp(self, user_id: str, app_id: str) -> bool:
         self.permission_calls.append((user_id, app_id))
         if self.permission_error is not None:

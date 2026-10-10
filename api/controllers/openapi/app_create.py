@@ -25,9 +25,8 @@ _CREATE_GUARDS: Final = workspace_write_guards(
 def _create(
     ctx: RequestContext, mode: Literal[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT], body: CreateAppPayload
 ) -> tuple[CreatedAppResponse, HTTPStatus]:
-    console = application_services().apps.console
-    app = console.create(ctx, CreateAppParams(mode=mode.value, **body.model_dump(exclude_none=True)))
-    console.create_draft(ctx, app.id)
+    params = CreateAppParams(mode=mode.value, **body.model_dump(exclude_none=True))
+    app = application_services().apps.console.create_with_draft(ctx, params)
     return CreatedAppResponse(app_id=app.id, mode=mode.value, name=app.name), HTTPStatus.CREATED
 
 

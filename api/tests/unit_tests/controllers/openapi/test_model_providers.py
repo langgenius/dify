@@ -1,15 +1,18 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
 
-from controllers.openapi._models import ModelListQuery, ModelRef
+from controllers.openapi._models import ModelListQuery
 from controllers.openapi._search import matches
-from controllers.openapi.model_providers import _activate_if_none, _provider_write_response, model_rows
+from controllers.openapi.model_providers import _provider_write_response, model_rows
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
+from services.entities.model_provider_entities import ProviderResponse
+from services.model_provider.service import ModelProviderService
 
 
 def _model(
@@ -97,11 +100,8 @@ def test_inactive_credential_hints_replace_active() -> None:
             SimpleNamespace(credential_id="new-id", credential_name="spare"),
         ],
     )
-    with patch(
-        "controllers.openapi.model_providers._provider",
-        return_value=SimpleNamespace(custom_configuration=configuration),
-    ):
-        response = _provider_write_response("ws", "langgenius/openai/openai", "new-id")
+    provider = SimpleNamespace(provider="langgenius/openai/openai", custom_configuration=configuration)
+    response = _provider_write_response("ws", cast(ProviderResponse, provider), "new-id")
     [hint] = response.hints
     assert not response.active
     assert hint.op == "set.model_provider.credential"
@@ -109,16 +109,20 @@ def test_inactive_credential_hints_replace_active() -> None:
 
 
 def _custom(current: str | None) -> SimpleNamespace:
-    return SimpleNamespace(model="llama3", model_type="llm", current_credential_id=current)
+    return SimpleNamespace(model="llama3", model_type=ModelType.LLM, current_credential_id=current)
 
 
 @pytest.mark.parametrize(("current", "switched"), [(None, True), ("other-id", False)])
 def test_new_model_credential_becomes_active_only_when_none_is(current: str | None, switched: bool) -> None:
-    response = SimpleNamespace(custom_configuration=SimpleNamespace(custom_models=[_custom(current)]))
-    ref = ModelRef(model="llama3", model_type=ModelType.LLM)
+    configuration = Mock()
+    configuration.create_custom_model_credential.return_value = "new-id"
+    configuration.custom_configuration.models = [_custom(current)]
+    service = ModelProviderService()
     with (
-        patch("controllers.openapi.model_providers._provider", return_value=response),
-        patch("controllers.openapi.model_providers.ModelProviderService") as service,
+        patch.object(service, "_get_provider_configuration", return_value=configuration),
+        patch.object(service, "switch_active_custom_model_credential") as switch,
     ):
-        _activate_if_none("ws", "langgenius/ollama/ollama", ref, "new-id")
-    assert service.return_value.switch_active_custom_model_credential.called is switched
+        service.create_model_credential(
+            "ws", "langgenius/ollama/ollama", "llm", "llama3", {}, None, activate_if_none=True
+        )
+    assert switch.called is switched

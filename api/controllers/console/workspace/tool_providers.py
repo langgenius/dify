@@ -597,18 +597,16 @@ class ToolBuiltinProviderAddApi(Resource):
     @with_current_tenant_id
     @model_validate(BuiltinToolAddPayload)
     def post(self, req_data: BuiltinToolAddPayload, tenant_id: str, user: Account, provider: str):
-        return dump_response(
-            SimpleResultResponse,
-            BuiltinToolManageService.add_builtin_tool_provider(
-                user_id=user.id,
-                tenant_id=tenant_id,
-                provider=provider,
-                credentials=req_data.credentials,
-                name=req_data.name,
-                api_type=CredentialType.of(req_data.type),
-                visibility=req_data.visibility,
-            ),
+        BuiltinToolManageService.add_builtin_tool_provider(
+            user_id=user.id,
+            tenant_id=tenant_id,
+            provider=provider,
+            credentials=req_data.credentials,
+            name=req_data.name,
+            api_type=CredentialType.of(req_data.type),
+            visibility=req_data.visibility,
         )
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")

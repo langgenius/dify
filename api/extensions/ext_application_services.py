@@ -11,7 +11,6 @@ from uuid import uuid4
 
 import httpx
 from flask import Flask, current_app
-from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -186,7 +185,7 @@ from services.web_passport_gateways import (
     PassportTokenGateway,
 )
 from services.web_passport_service import WebPassportService
-from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+from services.webapp_access_adapters import ENTERPRISE_UNAVAILABLE_ERRORS, EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
@@ -210,7 +209,7 @@ _EXTENSION_KEY = "application_services"
 def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
     try:
         settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+    except ENTERPRISE_UNAVAILABLE_ERRORS as e:
         raise WebAppAccessUnavailableError from e
     access_modes: dict[str, WebAppAccessMode] = {}
     for app_id, setting in settings.items():

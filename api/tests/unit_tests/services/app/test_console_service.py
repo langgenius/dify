@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
-from enums import WebAppAccessMode
 from events.app_event import app_was_updated
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
@@ -151,10 +150,6 @@ class Access:
     def access_mode(self, app_id: str) -> str | None:
         del app_id
         return "private"
-
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None:
-        del app_id, access_mode
-        pytest.fail("Unexpected access update")
 
     def can_export_version(self, workspace_id: str) -> bool:
         self.calls.append(("paid", workspace_id))

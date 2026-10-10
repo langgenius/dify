@@ -222,7 +222,7 @@ class PluginsApi(Resource):
                     version=plugin.version,
                     latest_version=newest.version if (newest := latest.get(plugin.plugin_id)) else None,
                     category=str(plugin.declaration.category),
-                    label=localized(plugin.declaration.label.model_dump(), language),
+                    label=localized(plugin.declaration.label, language),
                     source=str(plugin.source),
                     provides=provides_of(plugin),
                 )

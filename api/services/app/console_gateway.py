@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import BinaryIO, Final, Literal, override
+from typing import BinaryIO, Literal, override
 from uuid import UUID
 
-import httpx
-from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rbac import RBACPermission
-from enums import DeploymentEdition, WebAppAccessMode
+from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from machinery.context import RequestContext
 from models.account import Account
@@ -65,21 +62,11 @@ from services.entities.dsl_entities import (
     ImportStatus,
 )
 from services.errors.base import NoPermissionError
-from services.errors.enterprise import EnterpriseServiceError
 from services.feature_service import FeatureService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
-from services.webapp_access_query_service import WebAppAccessUnavailableError
 from services.workflow_service import WorkflowService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
-
-_ENTERPRISE_UNAVAILABLE: Final = (
-    EnterpriseServiceError,
-    httpx.RequestError,
-    json.JSONDecodeError,
-    UnicodeDecodeError,
-    ValidationError,
-)
 
 
 @dataclass(frozen=True)
@@ -204,13 +191,6 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
         if not SystemFeatureService.is_webapp_auth_enabled():
             return None
         return EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
-
-    @override
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None:
-        try:
-            EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode)
-        except _ENTERPRISE_UNAVAILABLE as error:
-            raise WebAppAccessUnavailableError from error
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:

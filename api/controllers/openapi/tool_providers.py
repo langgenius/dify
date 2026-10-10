@@ -38,8 +38,10 @@ from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -48,27 +50,27 @@ from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
+_ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
 _PROVIDER_PATH: Final = "/workspaces/<string:workspace_id>/tool-providers/<path:provider>"
 
 
-def _form_fields(schemas: Sequence[ProviderConfig], language: str | None) -> list[CredentialFormField]:
-    """A tool provider's API-key form, cut to what a caller needs. Tool forms have no show_on rules."""
+def _form(schemas: Sequence[ProviderConfig], language: str | None) -> list[CredentialFormField]:
     return [
-        CredentialFormField(
+        CredentialFormField.of(
             name=field.name,
-            type=str(field.type),
+            type=field.type,
             required=field.required,
-            label=localized(field.label.model_dump(), language) if field.label else None,
-            placeholder=localized(field.placeholder.model_dump(), language) if field.placeholder else None,
-            options=[option.value for option in field.options] if field.options else None,
-            show_on=[],
+            label=field.label,
+            placeholder=field.placeholder,
+            options=field.options,
+            language=language,
         )
         for field in schemas
     ]
 
 
 @contextmanager
-def _provider_errors() -> Generator[None, None, None]:
+def _provider_not_found_errors() -> Generator[None, None, None]:
     try:
         yield
     except ToolProviderNotFoundError as error:
@@ -76,27 +78,27 @@ def _provider_errors() -> Generator[None, None, None]:
 
 
 @contextmanager
-def _credential_errors() -> Generator[None, None, None]:
+def _credential_write_errors() -> Generator[None, None, None]:
+    """Maps what the builtin tool service raises for a credential write."""
     try:
         yield
+    except ToolProviderCredentialValidationError as error:
+        raise CredentialInvalid(str(error)) from error
     except ValueError as error:
-        # The service rewraps every failure as a bare ValueError; the original is its __context__.
-        if isinstance(error.__context__, ToolProviderCredentialValidationError):
-            raise CredentialInvalid(str(error)) from error
         raise BadRequest(str(error)) from error
 
 
-def _controller(workspace_id: str, provider: str):
-    with _provider_errors():
+def _controller(workspace_id: str, provider: str) -> _ToolProviderController:
+    with _provider_not_found_errors():
         return ToolManager.get_builtin_provider(provider, workspace_id)
 
 
-def _api_key_supported(controller) -> bool:
+def _api_key_supported(controller: _ToolProviderController) -> bool:
     return CredentialType.API_KEY in controller.get_supported_credential_types()
 
 
-def _credentials(ctx: Context, provider: str):
-    with _provider_errors():
+def _credentials(ctx: Context, provider: str) -> list[ToolProviderCredentialApiEntity]:
+    with _provider_not_found_errors():
         return BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id=ctx.workspace.id,
             provider_name=provider,
@@ -105,7 +107,7 @@ def _credentials(ctx: Context, provider: str):
         )
 
 
-def _visible_credential(ctx: Context, provider: str, credential_id: str):
+def _visible_credential(ctx: Context, provider: str, credential_id: str) -> ToolProviderCredentialApiEntity:
     for credential in _credentials(ctx, provider):
         if credential.id == credential_id:
             return credential
@@ -139,7 +141,7 @@ def _inputs(parameters: Sequence[ToolParameter], form: ToolParameter.ToolParamet
 def _parameter_row(parameter: ToolParameter, language: str | None) -> ToolParameterRow:
     return ToolParameterRow(
         name=parameter.name,
-        label=localized(parameter.label.model_dump(), language),
+        label=localized(parameter.label, language),
         type=str(parameter.type),
         form=str(parameter.form),
         required=parameter.required,
@@ -153,15 +155,15 @@ def _parameter_row(parameter: ToolParameter, language: str | None) -> ToolParame
 
 def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> ToolRow:
     parameters = tool.parameters or []
-    label = localized(tool.label.model_dump(), language) or tool.name
+    label = localized(tool.label, language) or tool.name
     return ToolRow(
         provider=provider.id,
         provider_type=str(provider.type),
-        provider_label=localized(provider.label.model_dump(), language),
+        provider_label=localized(provider.label, language),
         configured=provider.is_team_authorization,
         name=tool.name,
         label=label,
-        description=localized(tool.description.model_dump(), language),
+        description=localized(tool.description, language),
         parameters=[_parameter_row(p, language) for p in parameters],
         node_data=ToolNodeTemplate(
             title=label,
@@ -231,9 +233,7 @@ class ToolProviderApi(Resource):
         controller = _controller(ctx.workspace.id, provider)
         language = ctx.account.interface_language
         api_key = _api_key_supported(controller)
-        form = (
-            _form_fields(controller.get_credentials_schema_by_type(CredentialType.API_KEY), language) if api_key else []
-        )
+        form = _form(controller.get_credentials_schema_by_type(CredentialType.API_KEY), language) if api_key else []
         saved = _credentials(ctx, provider)
         configured = (
             not controller.need_credentials
@@ -261,7 +261,7 @@ class ToolProviderApi(Resource):
         )
         return ToolProviderDetailResponse(
             provider=provider,
-            label=localized(controller.entity.identity.label.model_dump(), language),
+            label=localized(controller.entity.identity.label, language),
             configured=configured,
             credential_types=[str(t) for t in controller.get_supported_credential_types()],
             credential_form=form,
@@ -290,8 +290,8 @@ class ToolProviderCredentialsApi(Resource):
     def post(self, ctx: Context, workspace_id: str, provider: str, *, body: ToolCredentialCreatePayload):
         if not _api_key_supported(_controller(ctx.workspace.id, provider)):
             raise CredentialOAuthOnly()
-        with _credential_errors():
-            result = BuiltinToolManageService.add_builtin_tool_provider(
+        with _credential_write_errors():
+            credential_id = BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=ctx.account.id,
                 api_type=CredentialType.API_KEY,
                 tenant_id=ctx.workspace.id,
@@ -299,7 +299,7 @@ class ToolProviderCredentialsApi(Resource):
                 credentials=body.credentials,
                 name=body.name,
             )
-        return _write_response(ctx, provider, result["id"]), HTTPStatus.CREATED
+        return _write_response(ctx, provider, credential_id), HTTPStatus.CREATED
 
 
 @openapi_ns.route(f"{_PROVIDER_PATH}/credentials/<string:credential_id>")
@@ -327,7 +327,7 @@ class ToolProviderCredentialApi(Resource):
     ):
         if _visible_credential(ctx, provider, credential_id).credential_type != CredentialType.API_KEY:
             raise CredentialOAuthOnly()
-        with _credential_errors():
+        with _credential_write_errors():
             BuiltinToolManageService.update_builtin_tool_provider(
                 user_id=ctx.account.id,
                 tenant_id=ctx.workspace.id,

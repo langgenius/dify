@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
 from uuid import UUID, uuid4
 
-from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
@@ -86,8 +86,6 @@ class ConsoleAppAccess(Protocol):
     def access_modes(self, app_ids: list[str]) -> dict[str, str]: ...
 
     def access_mode(self, app_id: str) -> str | None: ...
-
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None: ...
 
     def can_export_version(self, workspace_id: str) -> bool: ...
 
@@ -210,9 +208,6 @@ class ConsoleAppService:
         self._creators = creators
         self._tracing = tracing
         self._lifecycle = lifecycle
-
-    def update_access(self, app_id: str, access_mode: WebAppAccessMode) -> None:
-        self._access.update_access(app_id, access_mode)
 
     def access_ready(self, context: RequestContext, app_id: str) -> bool:
         """Whether an agent app has a published version its web app and Service API can serve."""
@@ -347,14 +342,35 @@ class ConsoleAppService:
         self._access.initialize_created_app(context, app.id)
         return self._lifecycle.present(context, replace(app, permission_keys=keys))
 
-    def create_draft(self, context: RequestContext, app_id: str) -> None:
-        """Save the empty draft the console editor saves on first open, so the app exports as DSL."""
-        self._lifecycle.create_draft(context, app_id)
+    def create_with_draft(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
+        """Create a workflow-type app with the empty draft the editor saves on first open, so it exports as DSL.
+        An app whose draft could not be saved is deleted again."""
+        app = self.create(context, params)
+        try:
+            self._lifecycle.create_draft(context, app.id)
+        except Exception:
+            self.delete(context, app.id)
+            raise
+        return app
 
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord:
         app = self._apps.update(context, app_id, params)
         self._lifecycle.updated(context, app)
         return self.get(context, app_id)
+
+    def update_fields(self, context: RequestContext, app_id: str, changes: Mapping[str, object]) -> AppRecord:
+        """`update` for only the `UpdateAppParams` fields in `changes`; the others keep their stored values."""
+        current = self.get(context, app_id)
+        stored = {
+            "name": current.name,
+            "description": current.description or "",
+            "icon_type": current.icon_type,
+            "icon": current.icon or "",
+            "icon_background": current.icon_background or "",
+            "use_icon_as_answer_icon": current.use_icon_as_answer_icon,
+            "max_active_requests": current.max_active_requests or 0,
+        }
+        return self.update(context, app_id, UpdateAppParams.model_validate({**stored, **changes}))
 
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord:
         app = self._apps.rename(context, app_id, name)

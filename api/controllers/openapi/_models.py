@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal, Self
+from typing import Any, Final, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from enums import DeploymentEdition, WebAppAccessMode
@@ -1022,6 +1024,15 @@ class WebAppAccessPayload(BaseModel):
     )
 
 
+class _FormOption(Protocol):
+    value: str
+
+
+class _FormShowOn(Protocol):
+    variable: str
+    value: str
+
+
 class CredentialFormField(BaseModel):
     name: str
     type: str
@@ -1030,6 +1041,30 @@ class CredentialFormField(BaseModel):
     placeholder: str | None
     options: list[str] | None = Field(description="Allowed values, when the field is a choice")
     show_on: list[dict[str, str]] = Field(description="Show this field only when these other fields have these values")
+
+    @classmethod
+    def of(
+        cls,
+        *,
+        name: str,
+        type: object,
+        required: bool,
+        label: BaseModel | None,
+        placeholder: BaseModel | None,
+        options: Sequence[_FormOption] | None,
+        show_on: Sequence[_FormShowOn] = (),
+        language: str | None,
+    ) -> CredentialFormField:
+        """A model or tool provider's credential form field, cut to what a caller needs."""
+        return cls(
+            name=name,
+            type=str(type),
+            required=required,
+            label=localized(label, language),
+            placeholder=localized(placeholder, language),
+            options=[option.value for option in options] if options else None,
+            show_on=[{"variable": rule.variable, "value": rule.value} for rule in show_on],
+        )
 
 
 class CredentialRef(BaseModel):

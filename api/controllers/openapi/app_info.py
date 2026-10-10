@@ -200,7 +200,7 @@ class AgentAppInfoApi(Resource):
         returns=(HTTPStatus.OK, AgentAppInfo, "App info"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.app_info(ctx, AgentAppInfo)
+        return settings.agent_app_info(ctx)
 
     @endpoint(
         op="set.app_info.agent",
@@ -214,7 +214,7 @@ class AgentAppInfoApi(Resource):
         returns=(HTTPStatus.OK, AgentAppInfo, "App info"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: AgentAppInfoPatch):
-        return settings.update_app_info(ctx, body, AgentAppInfo)
+        return settings.update_agent_app_info(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/service-api")
@@ -260,7 +260,7 @@ class AgentServiceApiApi(Resource):
         returns=(HTTPStatus.OK, AgentServiceApi, "Service API"),
     )
     def get(self, ctx: Context, app_id: str):
-        return settings.service_api(ctx, AgentServiceApi)
+        return settings.agent_service_api(ctx)
 
     @endpoint(
         op="set.service_api.agent",
@@ -274,4 +274,4 @@ class AgentServiceApiApi(Resource):
         returns=(HTTPStatus.OK, AgentServiceApi, "Service API"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ServiceApiPatch):
-        return settings.update_service_api(ctx, body.enabled, AgentServiceApi)
+        return settings.update_agent_service_api(ctx, body.enabled)

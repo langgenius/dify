@@ -54,7 +54,8 @@ _PROVIDER_PATH: Final = "/workspaces/<string:workspace_id>/model-providers/<path
 
 
 @contextmanager
-def _credential_errors() -> Generator[None, None, None]:
+def _model_provider_errors() -> Generator[None, None, None]:
+    """Maps what the model provider service raises for a credential write or a provider lookup."""
     try:
         yield
     except ProviderNotFoundError as error:
@@ -65,26 +66,25 @@ def _credential_errors() -> Generator[None, None, None]:
         raise BadRequest(str(error)) from error
 
 
-def _form_fields(schemas: Sequence[CredentialFormSchema], language: str | None) -> list[CredentialFormField]:
+def _form(schemas: Sequence[CredentialFormSchema], language: str | None) -> list[CredentialFormField]:
     return [
-        CredentialFormField(
+        CredentialFormField.of(
             name=field.variable,
-            type=str(field.type),
+            type=field.type,
             required=field.required,
-            label=localized(field.label.model_dump(), language),
-            placeholder=localized(field.placeholder.model_dump(), language) if field.placeholder else None,
-            options=[option.value for option in field.options] if field.options else None,
-            show_on=[{"variable": rule.variable, "value": rule.value} for rule in field.show_on],
+            label=field.label,
+            placeholder=field.placeholder,
+            options=field.options,
+            show_on=field.show_on,
+            language=language,
         )
         for field in schemas
     ]
 
 
 def _provider(workspace_id: str, provider: str) -> ProviderResponse:
-    for response in ModelProviderService().get_provider_list(workspace_id):
-        if response.provider == provider:
-            return response
-    raise ProviderNotFound(f"Provider {provider} not found.")
+    with _model_provider_errors():
+        return ModelProviderService().get_provider(workspace_id, provider)
 
 
 def _active(response: ProviderResponse) -> CredentialRef | None:
@@ -97,29 +97,31 @@ def _active(response: ProviderResponse) -> CredentialRef | None:
 def _row(response: ProviderResponse, language: str | None) -> dict[str, Any]:
     return {
         "provider": response.provider,
-        "label": localized(response.label.model_dump(), language),
+        "label": localized(response.label, language),
         "model_types": [str(model_type) for model_type in response.supported_model_types],
         "configured": response.custom_configuration.status == CustomConfigurationStatus.ACTIVE,
         "active_credential": _active(response),
     }
 
 
-def _custom_model(response: ProviderResponse, model: str, model_type: str) -> CustomModelConfiguration | None:
+def _custom_model(response: ProviderResponse, ref: ModelRef) -> CustomModelConfiguration | None:
     for custom in response.custom_configuration.custom_models or []:
-        if custom.model == model and str(custom.model_type) == model_type:
+        if custom.model == ref.model and custom.model_type == ref.model_type:
             return custom
     return None
 
 
-def _provider_write_response(workspace_id: str, provider: str, credential_id: str) -> CredentialWriteResponse:
-    configuration = _provider(workspace_id, provider).custom_configuration
+def _provider_write_response(
+    workspace_id: str, response: ProviderResponse, credential_id: str
+) -> CredentialWriteResponse:
+    configuration = response.custom_configuration
     names = {c.credential_id: c.credential_name for c in configuration.available_credentials or []}
     active = configuration.current_credential_id == credential_id
     hint = (
         Hint(
             summary="Pick a model for your nodes",
             op=op_of(ModelsApi.get),
-            input={"workspace_id": workspace_id, "provider": provider},
+            input={"workspace_id": workspace_id, "provider": response.provider},
         )
         if active
         else Hint(
@@ -127,7 +129,7 @@ def _provider_write_response(workspace_id: str, provider: str, credential_id: st
             op=op_of(ModelProviderCredentialApi.patch),
             input={
                 "workspace_id": workspace_id,
-                "provider": provider,
+                "provider": response.provider,
                 "credential_id": configuration.current_credential_id,
                 "credentials": None,
             },
@@ -137,9 +139,9 @@ def _provider_write_response(workspace_id: str, provider: str, credential_id: st
 
 
 def _model_write_response(
-    workspace_id: str, provider: str, ref: ModelRef, credential_id: str
+    workspace_id: str, response: ProviderResponse, ref: ModelRef, credential_id: str
 ) -> CredentialWriteResponse:
-    custom = _custom_model(_provider(workspace_id, provider), ref.model, ref.model_type.value)
+    custom = _custom_model(response, ref)
     names = {c.credential_id: c.credential_name for c in (custom.available_model_credentials if custom else [])}
     active = custom is not None and custom.current_credential_id == credential_id
     hints = (
@@ -149,7 +151,7 @@ def _model_write_response(
                 op=op_of(ModelCredentialApi.patch),
                 input={
                     "workspace_id": workspace_id,
-                    "provider": provider,
+                    "provider": response.provider,
                     "credential_id": custom.current_credential_id,
                     "model": ref.model,
                     "model_type": ref.model_type.value,
@@ -163,21 +165,6 @@ def _model_write_response(
     return CredentialWriteResponse(id=credential_id, name=names.get(credential_id), active=active, hints=hints)
 
 
-def _activate_if_none(workspace_id: str, provider: str, ref: ModelRef, credential_id: str) -> None:
-    """Make a new model credential active when the model has none, as a provider's first credential is."""
-    custom = _custom_model(_provider(workspace_id, provider), ref.model, ref.model_type.value)
-    if custom is None or custom.current_credential_id:
-        return
-    with _credential_errors():
-        ModelProviderService().switch_active_custom_model_credential(
-            tenant_id=workspace_id,
-            provider=provider,
-            model_type=ref.model_type.value,
-            model=ref.model,
-            credential_id=credential_id,
-        )
-
-
 def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, language: str | None) -> list[ModelRow]:
     rows = []
     for m in models:
@@ -185,10 +172,10 @@ def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, languag
             continue
         row = ModelRow(
             provider=m.provider.provider,
-            provider_label=localized(m.provider.label.model_dump(), language),
+            provider_label=localized(m.provider.label, language),
             model=m.model,
             model_type=str(m.model_type),
-            label=localized(m.label.model_dump(), language),
+            label=localized(m.label, language),
             status=str(m.status),
             features=[str(f) for f in m.features or []],
             node_model=LlmModelBlock(provider=m.provider.provider, name=m.model, mode=str(mode))
@@ -213,7 +200,7 @@ class ModelProviderApi(Resource):
     def get(self, ctx: Context, workspace_id: str, provider: str):
         response = _provider(ctx.workspace.id, provider)
         language = ctx.account.interface_language
-        form = _form_fields(
+        form = _form(
             response.provider_credential_schema.credential_form_schemas if response.provider_credential_schema else [],
             language,
         )
@@ -247,7 +234,7 @@ class ModelProviderApi(Resource):
             **_row(response, language),
             credential_form=form,
             credentials=credentials,
-            custom_model_form=_form_fields(model_schema.credential_form_schemas, language) if model_schema else None,
+            custom_model_form=_form(model_schema.credential_form_schemas, language) if model_schema else None,
             custom_models=[
                 CustomModelRow(
                     model=custom.model,
@@ -281,12 +268,12 @@ class ModelProviderCredentialsApi(Resource):
         returns=(HTTPStatus.CREATED, CredentialWriteResponse, "Credential saved"),
     )
     def post(self, ctx: Context, workspace_id: str, provider: str, *, body: ProviderCredentialCreatePayload):
-        _provider(ctx.workspace.id, provider)
-        with _credential_errors():
+        with _model_provider_errors():
             credential_id = ModelProviderService().create_provider_credential(
                 tenant_id=ctx.workspace.id, provider=provider, credentials=body.credentials, credential_name=body.name
             )
-        return _provider_write_response(ctx.workspace.id, provider, credential_id), HTTPStatus.CREATED
+        response = _provider(ctx.workspace.id, provider)
+        return _provider_write_response(ctx.workspace.id, response, credential_id), HTTPStatus.CREATED
 
 
 @openapi_ns.route(f"{_PROVIDER_PATH}/credentials/<string:credential_id>")
@@ -318,7 +305,7 @@ class ModelProviderCredentialApi(Resource):
         *,
         body: ProviderCredentialUpdatePayload,
     ):
-        with _credential_errors():
+        with _model_provider_errors():
             ModelProviderService().update_provider_credential(
                 tenant_id=ctx.workspace.id,
                 provider=provider,
@@ -326,7 +313,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_id=credential_id,
                 credential_name=body.name,
             )
-        return _provider_write_response(ctx.workspace.id, provider, credential_id)
+        return _provider_write_response(ctx.workspace.id, _provider(ctx.workspace.id, provider), credential_id)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/models")
@@ -344,10 +331,9 @@ class ModelsApi(Resource):
         returns=(HTTPStatus.OK, ModelListResponse, "Models"),
     )
     def get(self, ctx: Context, workspace_id: str, *, query: ModelListQuery):
-        with _credential_errors():
-            models = ModelProviderService().list_models(
-                ctx.workspace.id, provider=query.provider, model_type=query.model_type
-            )
+        models = ModelProviderService().list_models(
+            ctx.workspace.id, provider=query.provider, model_type=query.model_type
+        )
         rows = model_rows(models, words=query.query, language=ctx.account.interface_language)
         page = ModelListResponse.page_of(rows, query=query)
         unready = sorted({row.provider for row in page.data if row.status != ModelStatus.ACTIVE})
@@ -367,7 +353,8 @@ class ModelCredentialsApi(Resource):
     @endpoint(
         op="create.model.credential",
         kind=Kind.OBJECT,
-        summary="Save a credential for one model you name, for providers such as OpenAI-compatible or Ollama",
+        summary="Save a credential for one model you name, for providers such as OpenAI-compatible or Ollama; "
+        "it becomes the model's active credential when the model has none",
         examples=(
             Example(
                 title="A self-hosted model",
@@ -384,8 +371,7 @@ class ModelCredentialsApi(Resource):
         returns=(HTTPStatus.CREATED, CredentialWriteResponse, "Credential saved"),
     )
     def post(self, ctx: Context, workspace_id: str, provider: str, *, body: ModelCredentialCreatePayload):
-        _provider(ctx.workspace.id, provider)
-        with _credential_errors():
+        with _model_provider_errors():
             credential_id = ModelProviderService().create_model_credential(
                 tenant_id=ctx.workspace.id,
                 provider=provider,
@@ -393,9 +379,10 @@ class ModelCredentialsApi(Resource):
                 model=body.model,
                 credentials=body.credentials,
                 credential_name=body.name,
+                activate_if_none=True,
             )
-        _activate_if_none(ctx.workspace.id, provider, body, credential_id)
-        return _model_write_response(ctx.workspace.id, provider, body, credential_id), HTTPStatus.CREATED
+        response = _provider(ctx.workspace.id, provider)
+        return _model_write_response(ctx.workspace.id, response, body, credential_id), HTTPStatus.CREATED
 
 
 @openapi_ns.route(f"{_PROVIDER_PATH}/models/credentials/<string:credential_id>")
@@ -423,7 +410,7 @@ class ModelCredentialApi(Resource):
     def patch(
         self, ctx: Context, workspace_id: str, provider: str, credential_id: str, *, body: ModelCredentialUpdatePayload
     ):
-        with _credential_errors():
+        with _model_provider_errors():
             ModelProviderService().update_model_credential(
                 tenant_id=ctx.workspace.id,
                 provider=provider,
@@ -433,4 +420,4 @@ class ModelCredentialApi(Resource):
                 credential_id=credential_id,
                 credential_name=body.name,
             )
-        return _model_write_response(ctx.workspace.id, provider, body, credential_id)
+        return _model_write_response(ctx.workspace.id, _provider(ctx.workspace.id, provider), body, credential_id)

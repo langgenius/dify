@@ -15,6 +15,8 @@ class WebAppAccessQuery(Protocol):
 class WebAppAccessPolicyGateway(Protocol):
     def get_access_mode(self, app_id: str) -> WebAppAccessMode: ...
 
+    def update_access_mode(self, app_id: str, access_mode: WebAppAccessMode) -> None: ...
+
     def is_user_allowed(self, *, user_id: str, app_id: str) -> bool: ...
 
 
@@ -71,6 +73,9 @@ class WebAppAccessQueryService:
             raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
 
         return self._policy.get_access_mode(app_id)
+
+    def update_access_mode(self, *, app_id: str, access_mode: WebAppAccessMode) -> None:
+        self._policy.update_access_mode(app_id, access_mode)
 
     def find_app_id_by_code(self, app_code: str) -> str | None:
         return self._access.find_app_id_by_code(app_code)
