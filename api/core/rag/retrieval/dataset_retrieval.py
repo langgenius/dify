@@ -95,6 +95,7 @@ from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
 from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
 from services.knowledge.external.service import ExternalDatasetService
@@ -317,9 +318,12 @@ class DatasetRetrieval:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = retrieval_session.scalars(
-                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                ).all()
+                documents = get_retrieval_source_documents(
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    document_ids=document_ids,
+                    session=retrieval_session,
+                )
 
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}

@@ -650,6 +650,7 @@ class TestWeightRerankRunner:
     def mock_cache_embedding(self):
         """Mock CacheEmbedding for vector operations."""
         with patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache:
+            mock_cache.get_cached_query_embedding.return_value = None
             yield mock_cache
 
     @pytest.fixture
@@ -669,6 +670,56 @@ class TestWeightRerankRunner:
             ),
             keyword_setting=KeywordSetting(keyword_weight=0.4),
         )
+
+    @pytest.mark.parametrize("scores", [[], [0.0, 0.95, -0.2]])
+    def test_cosine_skips_embedding_when_scores_are_available(
+        self, scores, weights_config, mock_model_manager, mock_cache_embedding
+    ):
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [Document(page_content="content", metadata={"score": score}) for score in scores]
+
+        result = runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
+        assert result == scores
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+        mock_cache_embedding.get_cached_query_embedding.assert_not_called()
+
+    @pytest.mark.parametrize("cache_hit", [True, False])
+    def test_cosine_resolves_query_vector_once_for_mixed_documents(
+        self, cache_hit, weights_config, mock_model_manager, mock_cache_embedding
+    ):
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [
+            Document(page_content="scored", metadata={"score": 0.25}),
+            Document(page_content="orthogonal", vector=[0.0, 1.0]),
+            Document(page_content="parallel", vector=[1.0, 0.0]),
+        ]
+        query_vector = [1.0, 0.0]
+        mock_cache_embedding.get_cached_query_embedding.return_value = query_vector if cache_hit else None
+        mock_cache_embedding.return_value.embed_query.return_value = query_vector
+
+        result = runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
+        assert result == pytest.approx([0.25, 0.0, 1.0])
+        mock_cache_embedding.get_cached_query_embedding.assert_called_once_with(
+            "openai", "text-embedding-ada-002", "query"
+        )
+        if cache_hit:
+            mock_model_manager.assert_not_called()
+            mock_cache_embedding.assert_not_called()
+        else:
+            mock_model_manager.assert_called_once_with(tenant_id="tenant123")
+            mock_model_manager.return_value.get_model_instance.assert_called_once_with(
+                tenant_id="tenant123",
+                provider="openai",
+                model_type=ModelType.TEXT_EMBEDDING,
+                model="text-embedding-ada-002",
+            )
+            mock_cache_embedding.assert_called_once_with(
+                mock_model_manager.return_value.get_model_instance.return_value
+            )
+            mock_cache_embedding.return_value.embed_query.assert_called_once_with("query")
 
     @pytest.fixture
     def sample_documents_with_vectors(self):
@@ -1577,6 +1628,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             mock_cache_instance = MagicMock()
             mock_cache_instance.embed_query.return_value = [0.1, 0.2, 0.3]
             mock_cache.return_value = mock_cache_instance
+            mock_cache.get_cached_query_embedding.return_value = None
 
             # Act: Run reranking
             result = runner.run(query="test", documents=documents)
@@ -1721,6 +1773,7 @@ class TestRerankPerformance(_UsesSQLiteSession):
             mock_cache_instance = MagicMock()
             mock_cache_instance.embed_query.return_value = [0.1, 0.2]
             mock_cache.return_value = mock_cache_instance
+            mock_cache.get_cached_query_embedding.return_value = None
 
             # Act: Run reranking
             result = runner.run(query="test", documents=documents)
@@ -1860,6 +1913,7 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             mock_cache_instance = MagicMock()
             mock_cache_instance.embed_query.return_value = [0.1, 0.2]
             mock_cache.return_value = mock_cache_instance
+            mock_cache.get_cached_query_embedding.return_value = None
 
             # Act & Assert: Should raise TypeError when processing None vector
             # The numpy array() call on None vector will fail
