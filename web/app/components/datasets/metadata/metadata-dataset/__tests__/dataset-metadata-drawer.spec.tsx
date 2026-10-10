@@ -288,14 +288,6 @@ describe('DatasetMetadataDrawer', () => {
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
       })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
-      })
     })
 
     it('should close rename modal when cancel is clicked', async () => {

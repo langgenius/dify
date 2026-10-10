@@ -528,7 +528,6 @@
   "singleRun.testRun": "ทดสอบการทํางาน",
   "snippet.confirm": "ยืนยัน",
   "snippet.createDialogTitle": "สร้างตัวอย่าง",
-  "snippet.createSuccess": "สร้างข้อมูลโค้ดแล้ว",
   "snippet.descriptionLabel": "คำอธิบาย (ไม่บังคับ)",
   "snippet.descriptionPlaceholder": "อธิบายตัวอย่างข้อมูลของคุณโดยย่อ",
   "snippet.nameLabel": "ชื่อตัวอย่าง",

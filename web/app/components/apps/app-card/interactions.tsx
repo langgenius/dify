@@ -421,7 +421,6 @@ export function AppCardInteractions({
           },
         })
         setActiveDialog(null)
-        toast.success(t(($) => $.editDone, { ns: 'app' }))
       } catch (e) {
         toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
       }

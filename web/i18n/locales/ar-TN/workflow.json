@@ -528,7 +528,6 @@
   "singleRun.testRun": "تشغيل اختياري",
   "snippet.confirm": "تأكيد",
   "snippet.createDialogTitle": "إنشاء مقتطف",
-  "snippet.createSuccess": "تم إنشاء المقتطف",
   "snippet.descriptionLabel": "الوصف (اختياري)",
   "snippet.descriptionPlaceholder": "قم بوصف مقتطفك بإيجاز",
   "snippet.nameLabel": "اسم المقتطف",

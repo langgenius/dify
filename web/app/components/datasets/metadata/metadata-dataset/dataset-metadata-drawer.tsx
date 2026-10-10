@@ -197,10 +197,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
         ...item,
         name: templeName,
       })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     }
     setIsShowRenameModal(false)
-  }, [userMetadata, currPayload?.id, onRename, templeName, t])
+  }, [userMetadata, currPayload?.id, onRename, templeName])
 
   const handleDelete = useCallback(
     (payload: MetadataItemWithValueLength) => {

@@ -528,7 +528,6 @@
   "singleRun.testRun": "测试运行",
   "snippet.confirm": "确认",
   "snippet.createDialogTitle": "创建 Snippet",
-  "snippet.createSuccess": "Snippet 已创建",
   "snippet.descriptionLabel": "描述（可选）",
   "snippet.descriptionPlaceholder": "简要描述你的 snippet",
   "snippet.nameLabel": "Snippet 名称",

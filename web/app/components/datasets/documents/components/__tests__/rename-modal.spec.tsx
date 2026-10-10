@@ -125,7 +125,6 @@ describe('RenameModal', () => {
       await waitFor(() => {
         expect(handleSaved).toHaveBeenCalledTimes(1)
         expect(handleClose).toHaveBeenCalledTimes(1)
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
