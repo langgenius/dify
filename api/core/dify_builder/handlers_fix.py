@@ -38,6 +38,7 @@ from core.dify_builder.contract import (
     FormField,
     NoticeItem,
     TestResultCard,
+    decode_testdata_http_fixtures,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
@@ -1014,6 +1015,15 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Prepare inputs for the verify run. Port of
     ``handlers_fix.go:176``."""
+    submitted_fixtures = decode_testdata_http_fixtures(turn.action.payload if turn.action is not None else {})
+    http_fixtures = None
+    if submitted_fixtures is not None:
+        http_fixtures = env.dify.stamp_http_fixtures(
+            s.app_id,
+            turn.actor,
+            base_app_revision=turn.action.base_app_revision if turn.action is not None else "",
+            fixtures=submitted_fixtures,
+        )
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
@@ -1040,7 +1050,13 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc))
-    ti = TestInput(session_id=s.id, source=_mode_or_default(mode), inputs=inputs, start_schema_hash=schema_hash(schema))
+    ti = TestInput(
+        session_id=s.id,
+        source=_mode_or_default(mode),
+        inputs=inputs,
+        start_schema_hash=schema_hash(schema),
+        http_fixtures=http_fixtures,
+    )
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
@@ -1051,6 +1067,12 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     to ``fix.await_decision`` on pass or graph failure; Chatflow input
     failures return to ``fix.await_testdata``. Never touches the original
     failed run. Port of ``handlers_fix.go:206``."""
+    if not fc.test_input_ref:
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+        schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
+        return input_gate_result(
+            env, s, fc, schema, {}, PcState.FIX_AWAIT_TESTDATA, "Provide test data before validation"
+        )
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,

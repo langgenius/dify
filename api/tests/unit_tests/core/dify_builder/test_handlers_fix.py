@@ -34,7 +34,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent, saved_test_context
 
 # ---- shared fixtures / helpers -------------------------------------------
 
@@ -1280,7 +1280,7 @@ def test_verify_keeps_the_ports_run_error():
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
-    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
 
     assert res.next == PcState.FIX_AWAIT_DECISION
     assert res.run.status == "failed"
@@ -1294,7 +1294,7 @@ def test_verify_survives_a_run_draft_that_raises():
     env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
     s = _session(current_state=PcState.FIX_VERIFY)
 
-    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
 
     assert res.next == PcState.FIX_AWAIT_DECISION
     assert res.run.status == "failed"
@@ -1329,7 +1329,7 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
-    res = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
 
     assert res.next == PcState.FIX_AWAIT_DECISION
     assert res.run.culprit_node_id == "node2"
@@ -1424,7 +1424,7 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_fix_decision_gate():
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
-    first = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
     assert first.next == PcState.FIX_AWAIT_TESTDATA
     second = handle_verify(env, Turn(actor=_actor()), s, first.context)
 
@@ -1447,7 +1447,7 @@ def test_re_fix_starts_a_fresh_unknown_outcome_count():
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
-    first = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
     second = handle_verify(env, Turn(actor=_actor()), s, first.context)
     assert second.next == PcState.FIX_AWAIT_DECISION
     assert second.context.unknown_outcome_count == 2
@@ -1521,3 +1521,21 @@ def test_a_staged_repair_still_carries_no_error_card():
     assert [i for i in result.items if i.kind == "error"] == []
     turns = [i for i in result.items if i.kind == "assistant_turn"]
     assert turns[-1].payload["cards"] == []
+
+
+def test_missing_test_input_ref_requests_test_data_without_launch():
+    from core.dify_builder.handlers_fix import handle_verify
+
+    env, repo = _new_env()
+    s = Session(
+        app_id="app",
+        tenant_id="tenant",
+        owner_account_id="actor",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_VERIFY,
+    )
+    calls = []
+    env.dify.run_draft = lambda *args, **_kwargs: calls.append(args)
+    result = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    assert result.next == PcState.FIX_AWAIT_TESTDATA
+    assert not calls

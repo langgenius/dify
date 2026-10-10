@@ -112,6 +112,7 @@ def build_service() -> DifyBuilderService:
         subscribe_fn=progress_bus.subscribe,
         authorize_app_fn=_authorize_app,
         get_app_revision_fn=_get_app_revision,
+        stamp_http_fixtures_fn=WorkflowServiceDifyPort().stamp_http_fixtures,
         get_verification_identity_fn=_get_verification_identity,
         get_app_name_fn=_get_app_name,
     )

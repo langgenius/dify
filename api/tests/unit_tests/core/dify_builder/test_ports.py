@@ -169,6 +169,9 @@ class _StubDifyPort:
     def get_app_mode(self, _app_id, _actor):
         return "workflow"
 
+    def stamp_http_fixtures(self, _app_id, _actor, *, base_app_revision, fixtures):
+        raise NotImplementedError
+
     def read_graph(self, _app_id, _actor):
         return {}, "hash-1"
 

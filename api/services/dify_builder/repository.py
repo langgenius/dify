@@ -337,6 +337,7 @@ class SqlDifyBuilderRepository:
                 source=ti.source,
                 inputs=ti.inputs,
                 start_schema_hash=ti.start_schema_hash,
+                http_fixtures=ti.http_fixtures.model_dump(mode="json") if ti.http_fixtures is not None else None,
             )
             ti.id = self._add(db_session, row, ti.id)
 
@@ -543,12 +544,17 @@ class SqlDifyBuilderRepository:
 
     @staticmethod
     def _to_domain_test_input(row: DifyBuilderTestInput) -> TestInput:
-        return TestInput(
-            id=row.id,
-            session_id=row.session_id,
-            source=row.source,
-            inputs=row.inputs,
-            start_schema_hash=row.start_schema_hash,
+        from services.dify_builder.serde import test_input_from_dict
+
+        return test_input_from_dict(
+            {
+                "id": row.id,
+                "session_id": row.session_id,
+                "source": row.source,
+                "inputs": row.inputs,
+                "start_schema_hash": row.start_schema_hash,
+                "http_fixtures": row.http_fixtures,
+            }
         )
 
     @staticmethod
