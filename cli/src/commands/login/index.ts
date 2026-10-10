@@ -1,11 +1,13 @@
 import type { PollSuccess } from '@/auth/device-api'
+import type { Pending, PendingLoginStore } from '@/auth/pending-login'
 import type { CommandContext } from '@/plugins/base'
-import type { YamlStore } from '@/store/store'
+import type { Login as SavedLogin } from '@/plugins/session'
 import { hostname } from 'node:os'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
-import { assertNotEnvLogin, pendingLoginStore, revokeAndClearSession } from '@/auth/logout'
+import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
+import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Command } from '@/plugins/commands/command'
@@ -18,6 +20,7 @@ import { resolveHost, validateVerificationURI } from '@/util/host'
 const INPUT = z.object({
   server: z
     .string()
+    .trim()
     .optional()
     .describe('Dify server base URL. Required to start a login; there is no default'),
   no_browser: z
@@ -47,13 +50,6 @@ const INPUT = z.object({
 })
 
 const PENDING_STATUS = 'pending'
-const PENDING_SCHEMA = z.object({
-  server: z.string(),
-  insecure: z.boolean(),
-  no_keyring: z.boolean(),
-  device_code: z.string(),
-})
-type Pending = z.infer<typeof PENDING_SCHEMA>
 const FINAL_POLL_ERRORS: readonly string[] = [ErrorCode.AuthExpired, ErrorCode.AccessDenied]
 
 const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
@@ -87,26 +83,23 @@ export default class Login extends Command<typeof INPUT> {
       },
     },
     {
-      title:
-        'Finish a --no-wait login once the user says they approved; with no pending login, reports the saved login or fails with not_logged_in',
+      title: 'Finish a --no-wait login once the user says they approved',
       input: { resume: true },
     },
   ]
 
   async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
-    const pendingStore = await pendingLoginStore(ctx)
-    if (input.resume) return resume(ctx, pendingStore)
+    const pendingLogin = await pendingLoginStore(ctx)
+    if (input.resume) return resume(ctx, pendingLogin)
 
-    if (input.server === undefined || input.server.trim() === '')
+    const sessionService = await ctx.get(session)
+    assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
+    if (input.server === undefined || input.server === '')
       throw new BaseError({
         code: ErrorCode.UsageMissingArg,
         message: NO_SERVER_MESSAGE,
         hint: NO_SERVER_HINT,
       })
-
-    const sessionService = await ctx.get(session)
-    assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
-    await pendingStore.rm()
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
@@ -135,7 +128,7 @@ export default class Login extends Command<typeof INPUT> {
       device_code: code.device_code,
     }
     if (input.no_wait) {
-      await pendingStore.setTyped(pending)
+      await pendingLogin.save(pending)
       return {
         status: PENDING_STATUS,
         verification_uri: code.verification_uri,
@@ -144,35 +137,46 @@ export default class Login extends Command<typeof INPUT> {
       }
     }
 
+    await pendingLogin.clear()
     const success = await awaitAuthorization(api, code, { clock: realClock() })
     return finish(ctx, pending, success)
   }
 }
 
-async function resume(ctx: CommandContext, pendingStore: YamlStore) {
-  const parsed = PENDING_SCHEMA.safeParse(await pendingStore.getTyped<unknown>())
-  if (!parsed.success) {
-    const current = await (await ctx.get(session)).require()
-    await (await ctx.get(token)).get()
-    return {
-      server: current.server,
-      email: current.email,
-      account: current.account,
-      workspace_id: current.workspaceId,
-    }
+function loginReport(login: SavedLogin) {
+  return {
+    server: login.server,
+    email: login.email,
+    account: login.account,
+    workspace_id: login.workspaceId,
   }
-  const pending = parsed.data
+}
+
+// `get` throws not_logged_in when the saved login's token is gone from the store.
+async function assertTokenSaved(ctx: CommandContext): Promise<void> {
+  await (await ctx.get(token)).get()
+}
+
+async function resume(ctx: CommandContext, pendingLogin: PendingLoginStore) {
+  const sessionService = await ctx.get(session)
+  const pending = await pendingLogin.read()
+  if (pending === undefined) {
+    const current = await sessionService.require()
+    await assertTokenSaved(ctx)
+    return loginReport(current)
+  }
+  assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
   const api = deviceApi(pending.server, { insecure: pending.insecure })
   let success: PollSuccess | undefined
   try {
     success = await pollAuthorization(api, pending.device_code, { clock: realClock() })
   } catch (err) {
-    if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code)) await pendingStore.rm()
+    if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code)) await pendingLogin.clear()
     throw err
   }
   if (success === undefined) return { status: PENDING_STATUS }
   const result = await finish(ctx, pending, success)
-  await pendingStore.rm()
+  await pendingLogin.clear()
   return result
 }
 
@@ -185,7 +189,7 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
     throw new BaseError({ code: ErrorCode.ServerError, message: NO_EMAIL_MESSAGE })
   }
 
-  const login = {
+  const login: SavedLogin = {
     server: pending.server,
     email,
     account: success.account ?? null,
@@ -196,11 +200,5 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
 
   await sessionService.save(login)
   await tokenService.write(login, success.token)
-
-  return {
-    server: pending.server,
-    email,
-    account: login.account,
-    workspace_id: login.workspaceId,
-  }
+  return loginReport(login)
 }

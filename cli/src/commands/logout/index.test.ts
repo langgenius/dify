@@ -3,7 +3,7 @@ import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
-import { PENDING_FILE_NAME } from '@/auth/logout'
+import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
 import { session } from '@/plugins/session'
@@ -39,6 +39,15 @@ it('drops a pending --no-wait login', async () => {
   const pendingFile = join(w.dir, PENDING_FILE_NAME)
   writeFileSync(pendingFile, 'device_code: stale\n')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(existsSync(pendingFile)).toBe(false)
+})
+
+it('drops a pending --no-wait login when nobody is logged in', async () => {
+  const w = await testContext({ login: false, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: stale\n')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
   expect(existsSync(pendingFile)).toBe(false)
 })
 
