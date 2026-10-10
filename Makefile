@@ -82,6 +82,7 @@ lint:
 	@$(MAKE) api-contract-lint
 	@uv run --project api python scripts/check_no_spec_mock.py
 	@uv run --directory api --dev lint-imports
+	@$(MAKE) api-import-baseline-lint
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
 
@@ -89,6 +90,11 @@ api-contract-lint:
 	@echo "🔎 Linting Flask response contracts..."
 	@uv run --project api --dev python api/dev/lint_response_contracts.py
 	@echo "✅ Response contract lint complete"
+
+api-import-baseline-lint:
+	@echo "🏗️ Checking import-linter baseline..."
+	@uv run --project api --dev python scripts/lint_imports_baseline.py --baseline import_linter_baseline.json
+	@echo "✅ Import baseline lint complete"
 
 type-check:
 	@echo "📝 Running type checks (pyrefly)..."
