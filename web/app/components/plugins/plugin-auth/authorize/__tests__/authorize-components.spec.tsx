@@ -670,36 +670,6 @@ describe('AddOAuthButton', () => {
     })
   })
 
-  describe('Clipboard Operations', () => {
-    it('should have clipboard API available for copy operations', async () => {
-      const pluginPayload = createPluginPayload()
-      const mockWriteText = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: mockWriteText },
-        configurable: true,
-      })
-
-      mockGetPluginOAuthClientSchema.mockReturnValue({
-        schema: [createFormSchema({ name: 'client_id', label: 'Client ID', required: true })],
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: false,
-        redirect_uri: 'https://example.com/callback',
-      })
-
-      render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-
-      fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
-
-      await waitFor(() => {
-        // OAuthClientSettings modal opens
-        expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
-      })
-
-      // Verify clipboard API is available
-      expect(navigator.clipboard.writeText).toBeDefined()
-    })
-  })
-
   describe('__auth_client__ Logic', () => {
     it('should return default when not configured and system OAuth params exist', () => {
       const pluginPayload = createPluginPayload()

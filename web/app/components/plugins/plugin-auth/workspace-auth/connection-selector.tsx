@@ -165,24 +165,9 @@ const ConnectionSelector = ({
   }
   const oauthClient = oauthSchema.data
   const oauthClientParams = oauthClient?.client_params || {}
-  const oauthFormSchemas: FormSchema[] = (oauthClient?.schema || []).map((field, index) => ({
+  const oauthFormSchemas: FormSchema[] = (oauthClient?.schema || []).map((field) => ({
     ...field,
-    label:
-      index === 0 && oauthClient?.redirect_uri ? (
-        <div>
-          <p className="mb-2 system-xs-regular text-text-tertiary">
-            {t(($) => $['auth.clientInfo'], { ns: 'plugin' })}
-          </p>
-          <p className="mb-3 system-sm-regular break-all text-text-secondary">
-            {oauthClient.redirect_uri}
-          </p>
-          {field.label ? renderI18nObject(field.label) : field.name}
-        </div>
-      ) : field.label ? (
-        renderI18nObject(field.label)
-      ) : (
-        field.name
-      ),
+    label: field.label ? renderI18nObject(field.label) : field.name,
     required: !!field.required,
     default: oauthClientParams[field.name] ?? field.default,
     help: field.help ? renderI18nObject(field.help) : undefined,
@@ -387,6 +372,7 @@ const ConnectionSelector = ({
           onOpenChange={setOauthSettingsOpen}
           pluginPayload={pluginPayload}
           schemas={oauthFormSchemas}
+          redirectUri={oauthClient?.redirect_uri}
           disabled={!canManageCredential || oauthSchema.isPending}
           editValues={{
             ...oauthClientParams,

@@ -11,7 +11,6 @@ const mockGetPluginOAuthUrl = vi
   .fn()
   .mockResolvedValue({ authorization_url: 'https://auth.example.com' })
 const mockOpenOAuthPopup = vi.fn()
-const mockWriteText = vi.fn()
 const mockOAuthClientSettingsProps: OAuthClientSettingsProps[] = []
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -54,7 +53,7 @@ vi.mock('../../hooks/use-credential', () => ({
 vi.mock('../oauth-client-settings', () => ({
   default: (props: OAuthClientSettingsProps) => {
     mockOAuthClientSettingsProps.push(props)
-    const { open = true, onClose, onOpenChange, onRequestAuthorization, schemas } = props
+    const { open = true, onClose, onOpenChange, onRequestAuthorization } = props
 
     if (!open) return null
 
@@ -75,14 +74,6 @@ vi.mock('../oauth-client-settings', () => ({
         <button type="button" onClick={handleSaveAndAuthorize}>
           plugin.auth.saveAndAuth
         </button>
-        {schemas.map((schema) => (
-          <div key={schema.name} data-testid={`oauth-schema-${schema.name}`}>
-            <div data-testid={`oauth-schema-label-${schema.name}`}>
-              {React.isValidElement(schema.label) ? schema.label : String(schema.label || '')}
-            </div>
-            {String(schema.default || '')}
-          </div>
-        ))}
       </div>
     )
   },
@@ -107,10 +98,6 @@ describe('AddOAuthButton', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     mockOAuthClientSettingsProps.length = 0
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: mockWriteText },
-    })
     const mod = await import('../add-oauth-button')
     AddOAuthButton = mod.default
   })
@@ -445,7 +432,7 @@ describe('AddOAuthButton', () => {
     expect(screen.getByText('plugin.auth.custom')).toBeInTheDocument()
   })
 
-  it('should build custom OAuth schema and edit values for settings modal', () => {
+  it('should pass custom OAuth defaults, conditional fields and redirect URI to settings', () => {
     const schema = [
       {
         name: 'client_id',
@@ -492,10 +479,6 @@ describe('AddOAuthButton', () => {
         },
       ],
     })
-    expect(screen.getByText('https://redirect.example.com')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-
-    expect(mockWriteText).toHaveBeenCalledWith('https://redirect.example.com')
+    expect(settingsProps?.redirectUri).toBe('https://redirect.example.com')
   })
 })

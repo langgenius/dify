@@ -65,15 +65,6 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
   }
 })
 
-vi.mock('@tanstack/react-form', () => ({
-  useForm: (config: Record<string, unknown>) => ({
-    store: { subscribe: vi.fn(), getState: () => ({ values: config.defaultValues || {} }) },
-  }),
-  useStore: (_store: unknown, selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({ values: { __oauth_client__: 'custom' } })
-  },
-}))
-
 const basePayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
@@ -168,6 +159,32 @@ describe('OAuthClientSettings', () => {
 
     expect(screen.getByTestId('auth-form')).toBeInTheDocument()
   })
+
+  it.each([
+    { mode: 'custom', redirectUri: 'https://example.com/oauth/callback', visible: true },
+    { mode: undefined, redirectUri: 'https://example.com/oauth/callback', visible: true },
+    { mode: 'default', redirectUri: 'https://example.com/oauth/callback', visible: false },
+    { mode: 'custom', redirectUri: undefined, visible: false },
+  ])(
+    'shows redirect guidance for client mode $mode when applicable',
+    ({ mode, redirectUri, visible }) => {
+      render(
+        <OAuthClientSettings
+          pluginPayload={basePayload}
+          schemas={defaultSchemas}
+          editValues={mode ? { __oauth_client__: mode } : undefined}
+          redirectUri={redirectUri}
+        />,
+      )
+
+      if (visible) {
+        expect(screen.getByText('plugin.auth.clientInfo')).toBeInTheDocument()
+        expect(screen.getByText(redirectUri!)).toBeInTheDocument()
+      } else {
+        expect(screen.queryByText('plugin.auth.clientInfo')).not.toBeInTheDocument()
+      }
+    },
+  )
 
   it('should render backdrop when nested inside another dialog', () => {
     render(
@@ -356,7 +373,7 @@ describe('OAuthClientSettings', () => {
       <OAuthClientSettings
         pluginPayload={basePayload}
         schemas={defaultSchemas}
-        editValues={{ client_id: 'test-id' }}
+        editValues={{ __oauth_client__: 'custom', client_id: 'test-id' }}
         hasOriginalClientParams
         onClose={mockOnClose}
         onUpdate={mockOnUpdate}

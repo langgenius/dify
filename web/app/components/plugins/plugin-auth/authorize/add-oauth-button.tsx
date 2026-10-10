@@ -9,7 +9,6 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { PermissionLevel } from '@/models/permission'
 import {
@@ -60,7 +59,6 @@ const AddOAuthButton = ({
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation(['common', 'plugin'])
-  const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)
   // Only expose the picker where the OAuth callback persists the selection.
@@ -137,51 +135,8 @@ const AddOAuthButton = ({
     if (didOpenOAuthPopup) setIsVisibilityModalOpen(false)
   }, [handleOAuth])
 
-  const renderCustomLabel = useCallback(
-    (item: FormSchema) => {
-      return (
-        <div className="w-full">
-          <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
-            <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-              <span className="i-ri-information-2-fill size-5 text-text-accent" />
-            </div>
-            <div className="w-0 grow">
-              <div className="mb-1.5 system-sm-regular">
-                {t(($) => $['auth.clientInfo'], { ns: 'plugin' })}
-              </div>
-              {redirect_uri && (
-                <div className="flex w-full py-0.5 system-sm-medium">
-                  <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
-                  <IconButton
-                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-                    className="shrink-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(redirect_uri || '')
-                    }}
-                  >
-                    <span aria-hidden className="i-ri-clipboard-line size-4" />
-                  </IconButton>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex h-6 items-center system-sm-medium text-text-secondary">
-            {renderI18nObject(item.label as Record<string, string>)}
-            {item.required && <span className="ml-1 text-text-destructive-secondary">*</span>}
-          </div>
-        </div>
-      )
-    },
-    [t, redirect_uri, renderI18nObject],
-  )
   const memorizedSchemas = useMemo(() => {
-    const result: FormSchema[] = (schema as FormSchema[]).map((item, index) => {
-      return {
-        ...item,
-        label: index === 0 ? renderCustomLabel(item) : item.label,
-        labelClassName: index === 0 ? 'h-auto' : undefined,
-      }
-    })
+    const result = schema.map((item) => ({ ...item }))
     if (is_system_oauth_params_exists) {
       result.unshift({
         name: '__oauth_client__',
@@ -214,14 +169,7 @@ const AddOAuthButton = ({
     }
 
     return result
-  }, [
-    schema,
-    renderCustomLabel,
-    t,
-    is_system_oauth_params_exists,
-    is_oauth_custom_client_enabled,
-    client_params,
-  ])
+  }, [schema, t, is_system_oauth_params_exists, is_oauth_custom_client_enabled, client_params])
 
   const __auth_client__ = useMemo(() => {
     if (isConfigured) {
@@ -307,6 +255,7 @@ const AddOAuthButton = ({
           onClose={() => setIsOAuthSettingsOpen(false)}
           disabled={disabled || isLoading}
           schemas={memorizedSchemas}
+          redirectUri={redirect_uri}
           onRequestAuthorization={handleAuthorizationRequest}
           editValues={{
             ...client_params,

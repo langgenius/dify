@@ -5,6 +5,7 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -87,7 +88,15 @@ const credentials: Credential[] = [
 ]
 
 const oauthClient = {
-  schema: [],
+  schema: [
+    {
+      name: 'client_id',
+      label: { en_US: 'Client ID' },
+      type: FormTypeEnum.textInput,
+      required: true,
+      multiple: false,
+    },
+  ],
   is_oauth_custom_client_enabled: false,
   is_system_oauth_params_exists: true,
   client_params: {},
@@ -312,6 +321,51 @@ describe('ConnectionSelector', () => {
       )
     },
   )
+
+  it('copies the custom OAuth redirect URI without saving settings or starting authorization', async () => {
+    const user = userEvent.setup()
+    renderSelector()
+    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
+    const settingsButton = screen.getByRole('button', {
+      name: 'plugin.auth.connection.oauthClientSettings',
+    })
+    await waitFor(() => expect(settingsButton).toBeEnabled())
+    await user.click(settingsButton)
+
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    expect(within(dialog).getByRole('radio', { name: 'plugin.auth.default' })).toBeChecked()
+    expect(within(dialog).queryByText(oauthClient.redirect_uri)).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.operation.copy' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('radio', { name: 'plugin.auth.custom' }))
+
+    expect(within(dialog).getByText('plugin.auth.clientInfo')).toBeVisible()
+    expect(within(dialog).getByText(oauthClient.redirect_uri)).toBeVisible()
+    const clientId = within(dialog).getByRole('textbox', { name: 'Client ID' })
+    expect(clientId).toBeRequired()
+    expect(clientId).toHaveValue('')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.copy' }))
+
+    expect(await navigator.clipboard.readText()).toBe(oauthClient.redirect_uri)
+    expect(within(dialog).getByRole('button', { name: 'common.operation.copied' })).toBeVisible()
+    expect(dialog).toBeVisible()
+    expect(mocks.setOAuthClient).not.toHaveBeenCalled()
+    expect(mocks.deleteOAuthClient).not.toHaveBeenCalled()
+    expect(
+      mocks.consoleCall.mock.calls.filter(([path]) => path.includes('authorizationUrl')),
+    ).toEqual([])
+    expect(mocks.openOAuthPopup).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'plugin.auth.whoCanUse' })).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('radio', { name: 'plugin.auth.default' }))
+
+    expect(within(dialog).queryByText(oauthClient.redirect_uri)).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.operation.copied' }),
+    ).not.toBeInTheDocument()
+  })
 
   it.each([
     {

@@ -6,6 +6,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useForm, useStore } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
@@ -23,6 +24,7 @@ export type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
+  redirectUri?: string
   onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
@@ -35,6 +37,7 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
+  redirectUri,
   onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
@@ -166,6 +169,22 @@ const OAuthClientSettings = ({
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 pt-0">
             {pluginPayload.detail && (
               <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
+            )}
+            {redirectUri && __oauth_client__ !== 'default' && (
+              <div className="mb-4 flex rounded-xl bg-background-section-burn p-4 text-text-secondary">
+                <div className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
+                  <span aria-hidden className="i-ri-information-2-fill size-5 text-text-accent" />
+                </div>
+                <div className="min-w-0 grow">
+                  <div className="mb-1.5 system-sm-regular">
+                    {t(($) => $['auth.clientInfo'], { ns: 'plugin' })}
+                  </div>
+                  <div className="flex w-full py-0.5 system-sm-medium">
+                    <div className="min-w-0 grow wrap-break-word break-all">{redirectUri}</div>
+                    <CopyFeedback content={redirectUri} className="shrink-0" />
+                  </div>
+                </div>
+              </div>
             )}
             <AuthForm
               formFromProps={form}
