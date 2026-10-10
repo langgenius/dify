@@ -25,6 +25,7 @@ from models.account import (
 from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
+from models.skill import Skill
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
@@ -516,6 +517,11 @@ class WorkspaceRepository(
             session.execute(
                 update(Dataset)
                 .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
+                .values(maintainer=owner_id)
+            )
+            session.execute(
+                update(Skill)
+                .where(Skill.tenant_id == workspace_id, Skill.maintainer == account_id)
                 .values(maintainer=owner_id)
             )
             from services.knowledge_fs.membership_changes import (
