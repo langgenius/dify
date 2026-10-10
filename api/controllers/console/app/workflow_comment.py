@@ -311,7 +311,7 @@ class WorkflowCommentListApi(Resource):
     @console_ns.doc("create_workflow_comment")
     @console_ns.doc(description="Create a new workflow comment")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentCreatePayload.__name__])
+    @console_ns.expect_model(WorkflowCommentCreatePayload)
     @console_ns.response(201, "Comment created successfully", console_ns.models[WorkflowCommentCreate.__name__])
     @login_required
     @setup_required
@@ -368,7 +368,7 @@ class WorkflowCommentDetailApi(Resource):
     @console_ns.doc("update_workflow_comment")
     @console_ns.doc(description="Update a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentUpdatePayload.__name__])
+    @console_ns.expect_model(WorkflowCommentUpdatePayload)
     @console_ns.response(200, "Comment updated successfully", console_ns.models[WorkflowCommentUpdate.__name__])
     @login_required
     @setup_required
@@ -458,7 +458,7 @@ class WorkflowCommentReplyApi(Resource):
     @console_ns.doc("create_workflow_comment_reply")
     @console_ns.doc(description="Add a reply to a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
+    @console_ns.expect_model(WorkflowCommentReplyPayload)
     @console_ns.response(201, "Reply created successfully", console_ns.models[WorkflowCommentReplyCreate.__name__])
     @login_required
     @setup_required
@@ -499,7 +499,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @console_ns.doc("update_workflow_comment_reply")
     @console_ns.doc(description="Update a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
+    @console_ns.expect_model(WorkflowCommentReplyPayload)
     @console_ns.response(200, "Reply updated successfully", console_ns.models[WorkflowCommentReplyUpdate.__name__])
     @login_required
     @setup_required

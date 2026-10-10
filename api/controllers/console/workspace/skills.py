@@ -295,7 +295,7 @@ def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object]
 
 @console_ns.route("/workspaces/current/skills")
 class WorkspaceSkillsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(WorkspaceSkillsQuery))
+    @console_ns.doc_query(WorkspaceSkillsQuery)
     @console_ns.response(200, "Workspace skills", console_ns.models[SkillListResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
@@ -320,7 +320,7 @@ class WorkspaceSkillsApi(Resource):
         )
         return dump_response(SkillListResponse, result)
 
-    @console_ns.expect(console_ns.models[SkillCreatePayload.__name__])
+    @console_ns.expect_model(SkillCreatePayload)
     @console_ns.response(201, "Skill created", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
@@ -425,7 +425,7 @@ class WorkspaceSkillApi(Resource):
         except SkillManagementServiceError as exc:
             return _error_response(exc)
 
-    @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
+    @console_ns.expect_model(SkillMetadataPayload)
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
@@ -449,7 +449,7 @@ class WorkspaceSkillApi(Resource):
         except SkillManagementServiceError as exc:
             return _error_response(exc)
 
-    @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
+    @console_ns.expect_model(SkillDeletePayload)
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
@@ -517,7 +517,7 @@ class WorkspaceSkillExportApi(Resource):
 class WorkspaceSkillAssistMessageApi(Resource):
     """Stream read-only Skill Authoring suggestions from the default workspace model."""
 
-    @console_ns.expect(console_ns.models[SkillAssistMessagePayload.__name__])
+    @console_ns.expect_model(SkillAssistMessagePayload)
     @console_ns.response(200, "Skill Authoring assistant event stream")
     @console_account_admission()
     @with_session
@@ -543,7 +543,7 @@ class WorkspaceSkillAssistMessageApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/check")
 class WorkspaceSkillFilesCheckApi(Resource):
-    @console_ns.expect(console_ns.models[SkillDraftFileCheckPayload.__name__])
+    @console_ns.expect_model(SkillDraftFileCheckPayload)
     @console_ns.response(200, "Draft files checked", console_ns.models[SkillFileCheckResponse.__name__])
     @console_account_admission()
     @edit_permission_required
@@ -567,7 +567,7 @@ class WorkspaceSkillFilesCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")
 class WorkspaceSkillFilesApi(Resource):
-    @console_ns.expect(console_ns.models[SkillDraftFileOperationPayload.__name__])
+    @console_ns.expect_model(SkillDraftFileOperationPayload)
     @console_ns.response(200, "Draft file operation applied", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
     @edit_permission_required
@@ -589,7 +589,7 @@ class WorkspaceSkillFilesApi(Resource):
         except SkillManagementServiceError as exc:
             return _error_response(exc)
 
-    @console_ns.expect(console_ns.models[SkillDraftTreePayload.__name__])
+    @console_ns.expect_model(SkillDraftTreePayload)
     @console_ns.response(200, "Draft files replaced", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
     @edit_permission_required
@@ -614,7 +614,7 @@ class WorkspaceSkillFilesApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/preview")
 class WorkspaceSkillFilePreviewApi(Resource):
-    @console_ns.doc(params=query_params_from_model(SkillFileQuery))
+    @console_ns.doc_query(SkillFileQuery)
     @console_ns.response(200, "Skill file text preview", console_ns.models[SkillFilePreviewResponse.__name__])
     @console_account_admission()
     @with_session
@@ -677,7 +677,7 @@ class WorkspaceSkillFileContentApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/publish")
 class WorkspaceSkillPublishApi(Resource):
-    @console_ns.expect(console_ns.models[SkillPublishPayload.__name__])
+    @console_ns.expect_model(SkillPublishPayload)
     @console_ns.response(200, "Skill published", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
@@ -702,7 +702,7 @@ class WorkspaceSkillPublishApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/restore")
 class WorkspaceSkillRestoreApi(Resource):
-    @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
+    @console_ns.expect_model(SkillRestorePayload)
     @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
@@ -771,7 +771,7 @@ class WorkspaceSkillVersionApi(Resource):
         except SkillManagementServiceError as exc:
             return _error_response(exc)
 
-    @console_ns.expect(console_ns.models[SkillVersionUpdatePayload.__name__])
+    @console_ns.expect_model(SkillVersionUpdatePayload)
     @console_ns.response(200, "Skill version updated", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission()
     @edit_permission_required
@@ -819,7 +819,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
         )
         return dump_response(AgentSkillBindingsResponse, result)
 
-    @console_ns.expect(console_ns.models[AgentSkillBindingsPayload.__name__])
+    @console_ns.expect_model(AgentSkillBindingsPayload)
     @console_ns.response(200, "Agent Skill bindings replaced", console_ns.models[AgentSkillBindingsResponse.__name__])
     @console_account_admission()
     @edit_permission_required

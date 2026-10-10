@@ -17,7 +17,7 @@ from controllers.common.fields import (
     SimpleResultResponse,
     VerificationTokenResponse,
 )
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -289,7 +289,7 @@ def _update_account_profile(request_context: RequestContext, changes: AccountPro
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
-    @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
+    @console_ns.expect_model(AccountInitPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_initialized=False)
     @model_validate(AccountInitPayload)
@@ -324,7 +324,7 @@ class AccountProfileApi(Resource):
             raise AccountNotFound() from error
         return dump_response(AccountResponse, account)
 
-    @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
+    @console_ns.expect_model(AccountProfilePatchPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountProfilePatchPayload)
@@ -339,7 +339,7 @@ class AccountNameApi(Resource):
     @console_ns.doc("update_account_name_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
+    @console_ns.expect_model(AccountNamePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountNamePayload)
@@ -351,7 +351,7 @@ class AccountNameApi(Resource):
 class AccountAvatarApi(Resource):
     @console_ns.doc("get_account_avatar")
     @console_ns.doc(description="Get account avatar url")
-    @console_ns.doc(params=query_params_from_model(AccountAvatarQuery))
+    @console_ns.doc_query(AccountAvatarQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AvatarUrlResponse.__name__])
     @console_account_admission()
     @model_validate(AccountAvatarQuery)
@@ -362,7 +362,7 @@ class AccountAvatarApi(Resource):
             raise NotFound("Avatar file not found") from error
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
+    @console_ns.expect_model(AccountAvatarPayload)
     @console_ns.doc("update_account_avatar_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
@@ -380,7 +380,7 @@ class AccountInterfaceLanguageApi(Resource):
     @console_ns.doc("update_account_interface_language_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
+    @console_ns.expect_model(AccountInterfaceLanguagePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountInterfaceLanguagePayload)
@@ -398,7 +398,7 @@ class AccountInterfaceThemeApi(Resource):
     @console_ns.doc("update_account_interface_theme_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
+    @console_ns.expect_model(AccountInterfaceThemePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountInterfaceThemePayload)
@@ -416,7 +416,7 @@ class AccountTimezoneApi(Resource):
     @console_ns.doc("update_account_timezone_deprecated")
     @console_ns.doc(deprecated=True)
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
+    @console_ns.expect_model(AccountTimezonePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountTimezonePayload)
@@ -426,7 +426,7 @@ class AccountTimezoneApi(Resource):
 
 @console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
-    @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
+    @console_ns.expect_model(AccountPasswordPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountPasswordPayload)
@@ -486,7 +486,7 @@ class AccountDeleteVerifyApi(Resource):
 
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
+    @console_ns.expect_model(AccountDeletePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @model_validate(AccountDeletePayload)
@@ -505,7 +505,7 @@ class AccountDeleteApi(Resource):
 
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
-    @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
+    @console_ns.expect_model(AccountDeletionFeedbackPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @model_validate(AccountDeletionFeedbackPayload)
@@ -531,7 +531,7 @@ class EducationVerifyApi(Resource):
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
-    @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
+    @console_ns.expect_model(EducationActivatePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationActivatePayload)
@@ -557,7 +557,7 @@ class EducationApi(Resource):
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
+    @console_ns.doc_query(EducationAutocompleteQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationAutocompleteQuery)
@@ -575,7 +575,7 @@ class EducationAutoCompleteApi(Resource):
 
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
-    @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
+    @console_ns.expect_model(ChangeEmailSendPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailSendPayload)
@@ -606,7 +606,7 @@ class ChangeEmailSendEmailApi(Resource):
 
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
-    @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
+    @console_ns.expect_model(ChangeEmailValidityPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailValidityPayload)
@@ -633,7 +633,7 @@ class ChangeEmailCheckApi(Resource):
 
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
-    @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
+    @console_ns.expect_model(ChangeEmailResetPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailResetPayload)
@@ -660,7 +660,7 @@ class ChangeEmailResetApi(Resource):
 
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
-    @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
+    @console_ns.expect_model(CheckEmailUniquePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @model_validate(CheckEmailUniquePayload)

@@ -99,7 +99,7 @@ class AppSite(Resource):
     @console_ns.doc("update_app_site")
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
+    @console_ns.expect_model(AppSiteUpdatePayload)
     @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")

@@ -6,7 +6,6 @@ from controllers.common.fields import SimpleDataResponse
 from controllers.common.rbac import DatasetByPipeline, RBACCheck, Workspace
 from controllers.common.schema import (
     JsonResponseWithStatus,
-    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -73,7 +72,7 @@ register_response_schema_models(
 
 @console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
-    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
+    @console_ns.expect_model(RagPipelineImportPayload)
     @console_ns.response(200, "Import completed", console_ns.models[RagPipelineImportResponse.__name__])
     @console_ns.response(202, "Import pending confirmation", console_ns.models[RagPipelineImportResponse.__name__])
     @console_ns.response(400, "Import failed", console_ns.models[RagPipelineImportResponse.__name__])
@@ -167,7 +166,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/exports")
 class RagPipelineExportApi(Resource):
-    @console_ns.doc(params=query_params_from_model(IncludeSecretQuery))
+    @console_ns.doc_query(IncludeSecretQuery)
     @console_ns.response(200, "Pipeline exported", console_ns.models[SimpleDataResponse.__name__])
     @setup_required
     @login_required

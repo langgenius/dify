@@ -131,7 +131,7 @@ class ChatAudioApi(Resource):
     endpoint="installed_app_text",
 )
 class ChatTextApi(Resource):
-    @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
+    @console_ns.expect_model(TextToAudioPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_installed_app

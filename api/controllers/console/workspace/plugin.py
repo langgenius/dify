@@ -13,7 +13,6 @@ from configs import dify_config
 from controllers.common.fields import BinaryFileResponse, SuccessResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     register_enum_models,
     register_response_schema_models,
     register_schema_models,
@@ -586,7 +585,7 @@ class PluginDebuggingKeyApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserList))
+    @console_ns.doc_query(ParserList)
     @console_ns.response(200, "Success", console_ns.models[PluginListResponse.__name__])
     @setup_required
     @login_required
@@ -605,7 +604,7 @@ class PluginListApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/<string:category>/list")
 class PluginCategoryListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(PluginCategoryListQuery))
+    @console_ns.doc_query(PluginCategoryListQuery)
     @console_ns.response(200, "Success", console_ns.models[PluginCategoryListResponse.__name__])
     @setup_required
     @login_required
@@ -655,7 +654,7 @@ class PluginCategoryListApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/installed-ids")
 class PluginInstalledIdsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(PluginInstalledIdsQuery))
+    @console_ns.doc_query(PluginInstalledIdsQuery)
     @console_ns.response(200, "Success", console_ns.models[PluginInstalledIdsResponse.__name__])
     @setup_required
     @login_required
@@ -673,7 +672,7 @@ class PluginInstalledIdsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
-    @console_ns.expect(console_ns.models[ParserLatest.__name__])
+    @console_ns.expect_model(ParserLatest)
     @console_ns.response(200, "Success", console_ns.models[PluginVersionsResponse.__name__])
     @setup_required
     @login_required
@@ -691,7 +690,7 @@ class PluginListLatestVersionsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/list/installations/ids")
 class PluginListInstallationsFromIdsApi(Resource):
-    @console_ns.expect(console_ns.models[ParserLatest.__name__])
+    @console_ns.expect_model(ParserLatest)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallationsResponse.__name__])
     @setup_required
     @login_required
@@ -710,7 +709,7 @@ class PluginListInstallationsFromIdsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserIcon))
+    @console_ns.doc_query(ParserIcon)
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @model_validate(ParserIcon)
@@ -727,7 +726,7 @@ class PluginIconApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/asset")
 class PluginAssetApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserAsset))
+    @console_ns.doc_query(ParserAsset)
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
@@ -766,7 +765,7 @@ class PluginUploadFromPkgApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGithubUpload.__name__])
+    @console_ns.expect_model(ParserGithubUpload)
     @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
@@ -809,7 +808,7 @@ class PluginUploadFromBundleApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
+    @console_ns.expect_model(ParserPluginIdentifiers)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
@@ -830,7 +829,7 @@ class PluginInstallFromPkgApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGithubInstall.__name__])
+    @console_ns.expect_model(ParserGithubInstall)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
@@ -857,7 +856,7 @@ class PluginInstallFromGithubApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
+    @console_ns.expect_model(ParserPluginIdentifiers)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
@@ -878,7 +877,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/marketplace/pkg")
 class PluginFetchMarketplacePkgApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
+    @console_ns.doc_query(ParserPluginIdentifierQuery)
     @console_ns.response(200, "Success", console_ns.models[PluginManifestResponse.__name__])
     @setup_required
     @login_required
@@ -904,7 +903,7 @@ class PluginFetchMarketplacePkgApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
 class PluginFetchManifestApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
+    @console_ns.doc_query(ParserPluginIdentifierQuery)
     @console_ns.response(200, "Success", console_ns.models[PluginManifestResponse.__name__])
     @setup_required
     @login_required
@@ -929,7 +928,7 @@ class PluginFetchManifestApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/tasks")
 class PluginFetchInstallTasksApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserTasks))
+    @console_ns.doc_query(ParserTasks)
     @console_ns.response(200, "Success", console_ns.models[PluginTasksResponse.__name__])
     @setup_required
     @login_required
@@ -1009,7 +1008,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
-    @console_ns.expect(console_ns.models[ParserMarketplaceUpgrade.__name__])
+    @console_ns.expect_model(ParserMarketplaceUpgrade)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
@@ -1032,7 +1031,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGithubUpgrade.__name__])
+    @console_ns.expect_model(ParserGithubUpgrade)
     @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
@@ -1060,7 +1059,7 @@ class PluginUpgradeFromGithubApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
-    @console_ns.expect(console_ns.models[ParserUninstall.__name__])
+    @console_ns.expect_model(ParserUninstall)
     @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
@@ -1085,7 +1084,7 @@ class PluginUninstallApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPermissionChange.__name__])
+    @console_ns.expect_model(ParserPermissionChange)
     @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
@@ -1133,7 +1132,7 @@ class PluginFetchPermissionApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
 class PluginFetchDynamicSelectOptionsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserDynamicOptions))
+    @console_ns.doc_query(ParserDynamicOptions)
     @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
     @setup_required
     @login_required
@@ -1164,7 +1163,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options-with-credentials")
 class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
-    @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
+    @console_ns.expect_model(ParserDynamicOptionsWithCredentials)
     @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
     @setup_required
     @login_required
@@ -1196,7 +1195,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/change")
 class PluginChangeAutoUpgradeApi(Resource):
-    @console_ns.expect(console_ns.models[ParserAutoUpgradeChange.__name__])
+    @console_ns.expect_model(ParserAutoUpgradeChange)
     @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeChangeResponse.__name__])
     @setup_required
     @login_required
@@ -1228,7 +1227,7 @@ class PluginChangeAutoUpgradeApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/fetch")
 class PluginFetchAutoUpgradeApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserAutoUpgradeFetch))
+    @console_ns.doc_query(ParserAutoUpgradeFetch)
     @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeFetchResponse.__name__])
     @setup_required
     @login_required
@@ -1251,7 +1250,7 @@ class PluginFetchAutoUpgradeApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
-    @console_ns.expect(console_ns.models[ParserExcludePlugin.__name__])
+    @console_ns.expect_model(ParserExcludePlugin)
     @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
@@ -1273,7 +1272,7 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/readme")
 class PluginReadmeApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserReadme))
+    @console_ns.doc_query(ParserReadme)
     @console_ns.response(200, "Success", console_ns.models[PluginReadmeResponse.__name__])
     @setup_required
     @login_required

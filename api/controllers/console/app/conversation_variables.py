@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -90,7 +90,7 @@ class ConversationVariablesApi(Resource):
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
+    @console_ns.doc_query(ConversationVariablesQuery)
     @console_ns.response(
         200,
         "Conversation variables retrieved successfully",

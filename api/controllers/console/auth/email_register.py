@@ -93,7 +93,7 @@ register_response_schema_models(
 
 @console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):
-    @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
+    @console_ns.expect_model(EmailRegisterSendPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_email_registration_admission
     @model_validate(EmailRegisterSendPayload)
@@ -117,7 +117,7 @@ class EmailRegisterSendEmailApi(Resource):
 
 @console_ns.route("/email-register/validity")
 class EmailRegisterCheckApi(Resource):
-    @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
+    @console_ns.expect_model(EmailRegisterValidityPayload)
     @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_email_registration_admission
     @model_validate(EmailRegisterValidityPayload)
@@ -148,7 +148,7 @@ class EmailRegisterCheckApi(Resource):
 
 @console_ns.route("/email-register")
 class EmailRegisterResetApi(Resource):
-    @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
+    @console_ns.expect_model(EmailRegisterResetPayload)
     @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
     @console_email_registration_admission
     @model_validate(EmailRegisterResetPayload)

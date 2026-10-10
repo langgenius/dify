@@ -119,7 +119,7 @@ def _unauthorized_response(error: str) -> Response:
 
 @console_ns.route("/oauth/provider")
 class OAuthServerAppApi(Resource):
-    @console_ns.expect(console_ns.models[OAuthProviderRequest.__name__])
+    @console_ns.expect_model(OAuthProviderRequest)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[OAuthProviderAppResponse.__name__])
     @setup_required
     def post(self):
@@ -136,7 +136,7 @@ class OAuthServerAppApi(Resource):
 
 @console_ns.route("/oauth/provider/authorize")
 class OAuthServerUserAuthorizeApi(Resource):
-    @console_ns.expect(console_ns.models[OAuthClientPayload.__name__])
+    @console_ns.expect_model(OAuthClientPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[OAuthProviderAuthorizeResponse.__name__])
     @console_account_admission()
     def post(self, request_context: RequestContext):
@@ -153,7 +153,7 @@ class OAuthServerUserAuthorizeApi(Resource):
 
 @console_ns.route("/oauth/provider/token")
 class OAuthServerUserTokenApi(Resource):
-    @console_ns.expect(console_ns.models[OAuthTokenRequest.__name__])
+    @console_ns.expect_model(OAuthTokenRequest)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[OAuthProviderTokenResponse.__name__])
     @setup_required
     def post(self):
@@ -174,7 +174,7 @@ class OAuthServerUserTokenApi(Resource):
 
 @console_ns.route("/oauth/provider/account")
 class OAuthServerUserAccountApi(Resource):
-    @console_ns.expect(console_ns.models[OAuthClientPayload.__name__])
+    @console_ns.expect_model(OAuthClientPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[OAuthProviderAccountResponse.__name__])
     @setup_required
     def post(self):

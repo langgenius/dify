@@ -87,7 +87,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
     endpoint="installed_app_completion",
 )
 class CompletionApi(Resource):
-    @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
+    @console_ns.expect_model(CompletionMessageExplorePayload)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
@@ -167,7 +167,7 @@ class CompletionStopApi(Resource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(Resource):
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @console_ns.expect_model(ChatMessagePayload)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app

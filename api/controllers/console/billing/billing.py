@@ -3,7 +3,7 @@ from typing import Literal
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.billing.error import (
     BillingOperationFailedErrorResponse,
@@ -50,7 +50,7 @@ register_response_schema_models(
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
-    @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
+    @console_ns.doc_query(SubscriptionQuery)
     @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
     @console_ns.response(403, "Forbidden")
     @console_ns.response(

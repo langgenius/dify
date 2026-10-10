@@ -96,7 +96,7 @@ class AppMCPServerController(Resource):
     @console_ns.doc("create_app_mcp_server")
     @console_ns.doc(description="Create MCP server configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MCPServerCreatePayload.__name__])
+    @console_ns.expect_model(MCPServerCreatePayload)
     @console_ns.response(
         201, "MCP server configuration created successfully", console_ns.models[AppMCPServerResponse.__name__]
     )
@@ -118,7 +118,7 @@ class AppMCPServerController(Resource):
     @console_ns.doc("update_app_mcp_server")
     @console_ns.doc(description="Update MCP server configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MCPServerUpdatePayload.__name__])
+    @console_ns.expect_model(MCPServerUpdatePayload)
     @console_ns.response(
         200, "MCP server configuration updated successfully", console_ns.models[AppMCPServerResponse.__name__]
     )

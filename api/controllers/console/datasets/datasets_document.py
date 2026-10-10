@@ -366,7 +366,7 @@ class DatasetDocumentListApi(Resource):
             _raise_document_error(error)
         return dump_response(DocumentWithSegmentsListResponse, result)
 
-    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
+    @console_ns.expect_model(KnowledgeConfig)
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_USE, DatasetId()),)
@@ -403,7 +403,7 @@ class DatasetDocumentListApi(Resource):
 class DatasetInitApi(Resource):
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
-    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
+    @console_ns.expect_model(KnowledgeConfig)
     @console_ns.response(
         200, "Dataset initialized successfully", console_ns.models[DatasetAndDocumentResponse.__name__]
     )
@@ -618,7 +618,7 @@ class DocumentBatchDownloadZipApi(Resource):
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
     @console_ns.response(200, "ZIP archive downloaded successfully")
-    @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @console_ns.expect_model(DocumentBatchDownloadZipPayload)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()),),
@@ -682,7 +682,7 @@ class DocumentMetadataApi(Resource):
     @console_ns.doc("update_document_metadata")
     @console_ns.doc(description="Update document metadata")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.expect(console_ns.models[DocumentMetadataUpdatePayload.__name__])
+    @console_ns.expect_model(DocumentMetadataUpdatePayload)
     @console_ns.response(
         200,
         "Document metadata updated successfully",
@@ -780,7 +780,7 @@ class DocumentRecoverApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(Resource):
-    @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
+    @console_ns.expect_model(DocumentRetryPayload)
     @console_ns.response(204, "Documents retry started successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -801,7 +801,7 @@ class DocumentRetryApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 class DocumentRenameApi(Resource):
     @console_ns.response(200, "Document renamed successfully", console_ns.models[DocumentResponse.__name__])
-    @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
+    @console_ns.expect_model(DocumentRenamePayload)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
     )
@@ -858,7 +858,7 @@ class DocumentGenerateSummaryApi(Resource):
     @console_ns.doc("generate_summary_for_documents")
     @console_ns.doc(description="Generate summary index for documents")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(console_ns.models[GenerateSummaryPayload.__name__])
+    @console_ns.expect_model(GenerateSummaryPayload)
     @console_ns.response(
         200,
         "Summary generation started successfully",

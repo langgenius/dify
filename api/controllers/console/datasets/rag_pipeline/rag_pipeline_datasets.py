@@ -42,7 +42,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
-    @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
+    @console_ns.expect_model(RagPipelineDatasetImportPayload)
     @console_ns.response(
         201,
         "RAG pipeline dataset import started",

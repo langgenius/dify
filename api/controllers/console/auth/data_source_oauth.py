@@ -11,7 +11,6 @@ from configs import dify_config
 from controllers.common.fields import RedirectResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     query_params_from_request,
     register_response_schema_model,
     register_response_schema_models,
@@ -133,7 +132,7 @@ class OAuthDataSourceCallback(Resource):
     @console_ns.doc("oauth_data_source_callback")
     @console_ns.doc(description="Handle OAuth callback from data source provider")
     @console_ns.doc(params={"provider": "Data source provider name (notion)"})
-    @console_ns.doc(params=query_params_from_model(OAuthDataSourceCallbackQuery))
+    @console_ns.doc_query(OAuthDataSourceCallbackQuery)
     @console_ns.response(
         HTTPStatus.FOUND, "Redirect to console with result", console_ns.models[RedirectResponse.__name__]
     )
@@ -156,7 +155,7 @@ class OAuthDataSourceBinding(Resource):
     @console_ns.doc("oauth_data_source_binding")
     @console_ns.doc(description="Bind OAuth data source with authorization code")
     @console_ns.doc(params={"provider": "Data source provider name (notion)"})
-    @console_ns.doc(params=query_params_from_model(OAuthDataSourceBindingQuery))
+    @console_ns.doc_query(OAuthDataSourceBindingQuery)
     @console_ns.response(
         HTTPStatus.OK,
         "Data source binding success",

@@ -54,7 +54,7 @@ register_schema_models(
 class ForgotPasswordSendEmailApi(Resource):
     @console_ns.doc("send_forgot_password_email")
     @console_ns.doc(description="Send password reset email")
-    @console_ns.expect(console_ns.models[ForgotPasswordSendPayload.__name__])
+    @console_ns.expect_model(ForgotPasswordSendPayload)
     @console_ns.response(
         200,
         "Email sent successfully",
@@ -85,7 +85,7 @@ class ForgotPasswordSendEmailApi(Resource):
 class ForgotPasswordCheckApi(Resource):
     @console_ns.doc("check_forgot_password_code")
     @console_ns.doc(description="Verify password reset code")
-    @console_ns.expect(console_ns.models[ForgotPasswordCheckPayload.__name__])
+    @console_ns.expect_model(ForgotPasswordCheckPayload)
     @console_ns.response(
         200,
         "Code verified successfully",
@@ -121,7 +121,7 @@ class ForgotPasswordCheckApi(Resource):
 class ForgotPasswordResetApi(Resource):
     @console_ns.doc("reset_password")
     @console_ns.doc(description="Reset password with verification token")
-    @console_ns.expect(console_ns.models[ForgotPasswordResetPayload.__name__])
+    @console_ns.expect_model(ForgotPasswordResetPayload)
     @console_ns.response(
         200,
         "Password reset successfully",

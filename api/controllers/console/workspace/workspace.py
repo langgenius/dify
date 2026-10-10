@@ -14,7 +14,6 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.common.schema import (
-    query_params_from_model,
     query_params_from_request,
     register_response_schema_models,
     register_schema_models,
@@ -216,7 +215,7 @@ class TenantListApi(Resource):
 
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
+    @console_ns.doc_query(WorkspaceListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePaginationResponse.__name__])
     @console_admin_admission
     def get(self):
@@ -242,7 +241,7 @@ class CurrentWorkspaceSummaryApi(Resource):
 
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
-    @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
+    @console_ns.expect_model(SwitchWorkspacePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @console_account_admission()
     def post(self, context: RequestContext):
@@ -267,7 +266,7 @@ class CustomConfigWorkspaceApi(Resource):
             raise NotFound() from exc
         return dump_response(WorkspaceCustomConfigResponse, config)
 
-    @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
+    @console_ns.expect_model(WorkspaceCustomConfigPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @console_account_admission(billing_resource="workspace_custom")
     def post(self, context: RequestContext):
@@ -310,7 +309,7 @@ class WebappLogoWorkspaceApi(Resource):
 
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
-    @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
+    @console_ns.expect_model(WorkspaceInfoPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @console_account_admission()
     def post(self, context: RequestContext):
