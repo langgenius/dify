@@ -661,7 +661,7 @@ class BuilderExecutionPolicyService:
         nodes: list[WorkflowNodeExecutionModel],
         observations: list[BuilderExecutionObservation],
     ) -> bool:
-        """Check the admitted single chain, including every persisted retry attempt."""
+        """Check graph/index chain coverage and retries; optional predecessors must agree."""
         from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 
         try:
@@ -707,10 +707,13 @@ class BuilderExecutionPolicyService:
             ordered = sorted(nodes, key=lambda n: n.index)
             expected, previous, attempts = start, None, 0
             for index, node in enumerate(ordered, 1):
+                # Graphon leaves predecessor unset on ordinary start events. The
+                # admitted graph and persisted indices prove order; a supplied
+                # predecessor must corroborate it rather than replace that proof.
                 if (
                     node.node_id != expected
                     or node.index != index
-                    or node.predecessor_node_id not in ({None, ""} if previous is None else {previous})
+                    or node.predecessor_node_id not in ({None, ""} if previous is None else {None, previous})
                 ):
                     return False
                 if node.node_id not in by_id or node.node_type != by_id[node.node_id]["data"]["type"]:
