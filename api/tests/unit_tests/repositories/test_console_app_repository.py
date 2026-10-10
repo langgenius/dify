@@ -55,6 +55,27 @@ def repository(sqlite_session_factory: sessionmaker[Session]) -> ConsoleAppRepos
     return ConsoleAppRepository(session_factory=sqlite_session_factory)
 
 
+def test_rbac_maintainer_lookup_requires_owning_workspace(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    app = persist_app(sqlite_session, maintainer=ACTOR)
+    assert repository.get_maintainer_id(WORKSPACE, app.id) == ACTOR
+    assert repository.get_maintainer_id("other-workspace", app.id) is None
+    assert repository.get_maintainer_id(WORKSPACE, "missing") is None
+
+
+@pytest.mark.parametrize("normal", [True, False])
+def test_authorization_maintainer_requires_normal_app(
+    repository: ConsoleAppRepository, sqlite_session: Session, normal: bool
+) -> None:
+    app = persist_app(sqlite_session, maintainer=ACTOR)
+    if not normal:
+        sqlite_session.execute(text("UPDATE apps SET status = 'disabled' WHERE id = :id"), {"id": app.id})
+        sqlite_session.commit()
+    assert repository.get_maintainer_id(WORKSPACE, app.id) == ACTOR
+    assert repository.get_maintainer_id(WORKSPACE, app.id, normal_only=True) == (ACTOR if normal else None)
+
+
 @pytest.mark.parametrize(
     "operation",
     [
@@ -220,6 +241,18 @@ def test_writes_use_explicit_actor_and_preserve_omitted_icon_type(
     persisted = sqlite_session.get(App, app.id)
     assert persisted is not None
     assert persisted.name == "Updated"
+
+
+def test_openapi_visible_app_list_only_includes_apps_with_api_enabled(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    visible = persist_app(sqlite_session, name="Visible")
+    persist_app(sqlite_session, name="API disabled", enable_api=False)
+
+    page = repository.list_apps(CONTEXT, AppListParams(openapi_visible=True))
+
+    assert [app.id for app in page.data] == [visible.id]
+    assert page.total == 1
 
 
 def test_trace_settings_commit_and_default(repository: ConsoleAppRepository, sqlite_session: Session) -> None:

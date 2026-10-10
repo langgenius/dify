@@ -32,7 +32,7 @@ from models.provider import Provider, ProviderType
 
 
 @contextmanager
-def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
+def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     sessions = []
 

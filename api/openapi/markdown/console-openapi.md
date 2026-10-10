@@ -345,6 +345,7 @@ Check if activation token is valid
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | publication_status | query | Filter by published or draft Agent configuration status | No | string, <br>**Available values:** "drafts", "published" |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -1512,6 +1513,7 @@ Get list of applications with pagination and filtering
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -1611,6 +1613,7 @@ Get applications starred by the current account
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -8364,6 +8367,67 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
+### [GET] /resource-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access tokens | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [POST] /resource-access-tokens
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenCreatePayload](#resourceaccesstokencreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Resource access token created | **application/json**: [ResourceAccessTokenCreateResponse](#resourceaccesstokencreateresponse)<br> |
+
+### [PATCH] /resource-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenUpdatePayload](#resourceaccesstokenupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access token updated | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [DELETE] /resource-access-tokens/{token_id}/relations/{relation_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| relation_id | path |  | Yes | string (uuid) |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Resource access token relation deleted |
+
 ### [POST] /rule-code-generate
 Generate code rules using LLM
 
@@ -11245,9 +11309,9 @@ Update a plugin endpoint
 ### [GET] /workspaces/current/rbac/access-policies
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
 
 ### [POST] /workspaces/current/rbac/access-policies
 #### Request Body
@@ -11271,9 +11335,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11284,9 +11348,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11316,9 +11380,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
 #### Parameters
@@ -11329,9 +11393,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
 #### Parameters
@@ -11342,9 +11406,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
 
 ### [DELETE] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11364,7 +11428,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11508,7 +11572,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11652,7 +11716,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11848,16 +11912,16 @@ Update a plugin endpoint
 ### [GET] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
 
 ### [POST] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
 
 ### [DELETE] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11868,9 +11932,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11881,9 +11945,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
 
 ### [PUT] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11894,9 +11958,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
 
 ### [POST] /workspaces/current/rbac/roles/{role_id}/copy
 #### Parameters
@@ -11907,9 +11971,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}/members
 #### Parameters
@@ -13840,6 +13904,7 @@ default (the config form sends the full desired feature state on save).
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | publication_status | string, <br>**Available values:** "drafts", "published" | Filter by published or draft Agent configuration status | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
@@ -16505,6 +16570,7 @@ This class is used to store the schema information of an api based tool.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -22744,6 +22810,74 @@ Resource types understood by access policies.
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
 
+#### ResourceAccessTokenCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
+
+#### ResourceAccessTokenCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| token | string |  | Yes |
+
+#### ResourceAccessTokenListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### ResourceAccessTokenListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ResourceAccessTokenResourcePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+
+#### ResourceAccessTokenResourceType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResourceAccessTokenResourceType | string |  |  |
+
+#### ResourceAccessTokenRowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| last_used_at | integer |  | No |
+| masked_token | string |  | Yes |
+| name | string |  | Yes |
+| relation_id | string |  | Yes |
+| resource_id | string |  | Yes |
+| resource_name | string |  | Yes |
+| resource_type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+| token | string |  | No |
+| token_id | string |  | Yes |
+| track_id | string |  | Yes |
+
+#### ResourceAccessTokenUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
+
 #### ResourcePermissionKeys
 
 | Name | Type | Description | Required |
@@ -23828,6 +23962,7 @@ Query parameters for listing snippet published workflows.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -23983,6 +24118,7 @@ The subscription constructor of the trigger provider
 | conversation_variables | [ object ] |  | No |
 | environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
+| force | boolean | Explicitly confirm saving an empty workflow graph. | No |
 | graph | object |  | Yes |
 | hash | string |  | No |
 
@@ -26345,13 +26481,6 @@ Workflow tool configuration
 | data | [ [MembersInRole](#membersinrole) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
 
-#### _RBACRoleAccountList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
-| pagination | [Pagination](#pagination) |  | No |
-
 #### _RBACRoleList
 
 | Name | Type | Description | Required |
@@ -26452,13 +26581,13 @@ FastOpenAPI proof of concept for Dify API
 ##### [GET] /console/api/setup
 **Get system setup status.
 
-    NOTE: This endpoint is unauthenticated by design.
+NOTE: This endpoint is unauthenticated by design.
 
-    During first-time bootstrap there is no admin account yet, so frontend initialization must be
-    able to query setup progress before any login flow exists.
+During first-time bootstrap there is no admin account yet, so frontend initialization must be
+able to query setup progress before any login flow exists.
 
-    Only bootstrap-safe status information should be returned by this endpoint.
-    **
+Only bootstrap-safe status information should be returned by this endpoint.
+**
 
 ###### Responses
 
@@ -26469,10 +26598,10 @@ FastOpenAPI proof of concept for Dify API
 ##### [POST] /console/api/setup
 **Initialize system setup with admin account.
 
-    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
-    and init-password validation rather than user session authentication.
-    **
+NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
+and init-password validation rather than user session authentication.
+**
 
 ###### Request Body
 

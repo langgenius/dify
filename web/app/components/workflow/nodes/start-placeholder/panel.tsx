@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
@@ -134,13 +134,12 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({ id }) => {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="px-3 py-2">
-        <SearchBox
-          search={searchText}
-          onSearchChange={setSearchText}
+        <PluginSearchInput
+          value={searchText}
+          onValueChange={setSearchText}
           tags={tags}
           onTagsChange={setTags}
           placeholder={t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })}
-          inputClassName="grow"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">

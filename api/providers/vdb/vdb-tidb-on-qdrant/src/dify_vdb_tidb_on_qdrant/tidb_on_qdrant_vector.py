@@ -196,7 +196,7 @@ class TidbOnQdrantVector(BaseVector):
         ids: Sequence[str] | None = None,
         batch_size: int = 64,
         group_id: str | None = None,
-    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]]]:
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)

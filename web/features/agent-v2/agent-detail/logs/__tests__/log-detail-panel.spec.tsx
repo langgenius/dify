@@ -198,7 +198,6 @@ describe('AgentLogDetailPanel', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-logs'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-log-messages'] })
-    expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {

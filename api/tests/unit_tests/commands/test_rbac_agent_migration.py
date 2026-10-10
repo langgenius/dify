@@ -1,22 +1,16 @@
+"""Exercise migration queries against SQLite and the shared RBAC transport fake."""
+
 import json
-from collections.abc import Iterator
-from contextlib import ExitStack
-from dataclasses import dataclass, field
-from unittest.mock import MagicMock, patch
 
 import pytest
-from click.testing import CliRunner, Result
+from click.testing import CliRunner
 
-from commands.rbac import migrate_agent_permissions_to_rbac
-from services.enterprise.rbac_service import (
-    LegacyAgentMigrationReport,
-    LegacyAgentRoleMigration,
-    MemberRolesResponse,
-    RBACRole,
-    _LegacyResourceWhitelistConfig,
-)
-
-MODULE = "commands.rbac"
+from commands import rbac
+from enums.account import TenantAccountRole
+from models import TenantAccountJoin
+from models.agent import Agent, AgentScope, AgentSource
+from tests.unit_tests.model_factories import make_tenant
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 def _events(output: str) -> list[dict[str, object]]:
@@ -24,207 +18,114 @@ def _events(output: str) -> list[dict[str, object]]:
 
 
 @pytest.fixture(autouse=True)
-def _no_agents() -> Iterator[None]:
-    with patch(f"{MODULE}._iter_agent_row_batches", return_value=iter(())):
-        yield
+def migration_database(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
+    monkeypatch.setattr(rbac.session_factory, "create_session", rbac_domain.sessions)
 
 
-def _roles() -> list[LegacyAgentRoleMigration]:
-    return [
-        LegacyAgentRoleMigration(
-            role_id="r1",
-            role_name="ops",
-            added_keys=["agent.create"],
-            removed_keys=["agent.manage"],
-            bound_policies=["agent.full_access"],
-        ),
-        LegacyAgentRoleMigration(role_id="r2", role_name="stuck", skipped="policy row missing"),
-    ]
+def test_apply_flag_writes_and_reports_applied(rbac_domain: RBACDomain) -> None:
+    with rbac_domain.sessions.begin() as session:
+        session.add_all([make_tenant(tenant_id="t1"), make_tenant(tenant_id="t2")])
+    rbac_domain.transport.response = {"roles": [{"role_id": "r1", "role_name": "ops", "added_keys": ["agent.create"]}]}
 
-
-def test_apply_flag_writes_and_reports_applied() -> None:
-    with (
-        patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1", "t2"])),
-        patch(
-            f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles",
-            return_value=LegacyAgentMigrationReport(roles=_roles()[:1]),
-        ) as migrate,
-    ):
-        result = CliRunner().invoke(migrate_agent_permissions_to_rbac, ["--apply"])
+    result = CliRunner().invoke(rbac.migrate_agent_permissions_to_rbac, ["--apply"])
 
     assert result.exit_code == 0, result.output
-    assert migrate.call_count == 2
-    assert all(call.kwargs == {"apply": True} for call in migrate.call_args_list)
+    assert len(rbac_domain.transport.requests) == 2
+    for request in rbac_domain.transport.requests:
+        assert (request.method, request.endpoint) == ("POST", "/rbac/migrations/agent-manage-roles")
+        assert request.json == {"apply": True}
     events = _events(result.output)
-    assert [e["event"] for e in events] == ["agent_manage_role_migration_applied"] * 2
-    assert {e["tenant_id"] for e in events} == {"t1", "t2"}
+    assert [event["event"] for event in events] == ["agent_manage_role_migration_applied"] * 2
+    assert {event["tenant_id"] for event in events} == {"t1", "t2"}
     assert "changed" in result.output
 
 
-def _whitelist_config(
-    scope: str | None = "all",
-    account_ids: list[str] | None = None,
-) -> _LegacyResourceWhitelistConfig:
-    return _LegacyResourceWhitelistConfig(rbac_whitelist_scope=scope, account_ids=account_ids or [])
-
-
-@dataclass
-class _AgentPhaseMocks:
-    agent_whitelist_config: MagicMock
-    app_whitelist_config: MagicMock
-    replace_whitelist: MagicMock
-    replace_user_access_policies: MagicMock
-    sync_creator_bindings: MagicMock
-    owner_account_id: MagicMock
-    member_batches: MagicMock
-    write_order: MagicMock
-
-
-@dataclass
-class _AgentPhaseSetup:
-    agents: list[tuple[str, str | None, str | None]]
-    configured_agent_ids: list[str] = field(default_factory=list)
-    agent_configs: list[_LegacyResourceWhitelistConfig] | None = None
-    app_config: _LegacyResourceWhitelistConfig = field(default_factory=_whitelist_config)
-    workspace_members: list[str] = field(default_factory=lambda: ["m1", "m2", "m3"])
-    protected_members: list[str] = field(default_factory=list)
-    owner_account_id: str = "owner-1"
-
-
-def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, _AgentPhaseMocks]:
-    def _member_batches(_tenant_id: str, batch_size: int) -> Iterator[list[str]]:
-        for start in range(0, len(setup.workspace_members), batch_size):
-            yield setup.workspace_members[start : start + batch_size]
-
-    with ExitStack() as stack:
-        stack.enter_context(patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1"])))
-        stack.enter_context(
-            patch(
-                f"{MODULE}.RBACService.Migrations.migrate_agent_manage_roles",
-                return_value=LegacyAgentMigrationReport(),
+def _seed_agent(domain: RBACDomain) -> None:
+    with domain.sessions.begin() as session:
+        session.add(make_tenant(tenant_id="t1"))
+        session.add(
+            Agent(
+                id="ag1",
+                tenant_id="t1",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.ROSTER,
+                created_by="c1",
             )
         )
-        stack.enter_context(patch(f"{MODULE}._iter_agent_row_batches", return_value=iter([setup.agents])))
-        stack.enter_context(
-            patch(
-                f"{MODULE}.RBACService.Migrations.list_configured_agent_ids",
-                return_value=setup.configured_agent_ids,
-            )
-        )
-        agent_whitelist_config = stack.enter_context(patch(f"{MODULE}.RBACService.AgentAccess.legacy_whitelist_config"))
-        if setup.agent_configs is None:
-            agent_whitelist_config.return_value = _whitelist_config()
-        else:
-            agent_whitelist_config.side_effect = setup.agent_configs
-        mocks = _AgentPhaseMocks(
-            agent_whitelist_config=agent_whitelist_config,
-            app_whitelist_config=stack.enter_context(
-                patch(f"{MODULE}.RBACService.AppAccess.legacy_whitelist_config", return_value=setup.app_config)
-            ),
-            replace_whitelist=stack.enter_context(patch(f"{MODULE}.RBACService.AgentAccess.replace_whitelist")),
-            replace_user_access_policies=stack.enter_context(
-                patch(f"{MODULE}.RBACService.AgentAccess.replace_user_access_policies")
-            ),
-            sync_creator_bindings=stack.enter_context(
-                patch(f"{MODULE}.RBACService.AccessPolicies.sync_creator_access_policy_member_bindings")
-            ),
-            owner_account_id=stack.enter_context(
-                patch(f"{MODULE}._owner_account_id", return_value=setup.owner_account_id)
-            ),
-            member_batches=stack.enter_context(
-                patch(f"{MODULE}._workspace_member_account_id_batches", side_effect=_member_batches)
-            ),
-            write_order=MagicMock(),
-        )
-
-        def _member_roles(
-            *, tenant_id: str, account_id: str | None, member_account_ids: list[str]
-        ) -> list[MemberRolesResponse]:
-            del tenant_id, account_id
-            return [
-                MemberRolesResponse(
-                    account_id=account_id,
-                    roles=[
-                        RBACRole(
-                            id=f"role-{account_id}",
-                            type="workspace",
-                            category="global_system_default",
-                            name=account_id,
-                            is_builtin=True,
-                            role_tag="owner" if account_id == "owner-1" else "admin",
-                        )
-                    ],
-                )
-                for account_id in member_account_ids
-                if account_id in setup.protected_members
-            ]
-
-        stack.enter_context(patch(f"{MODULE}.RBACService.MemberRoles.batch_get", side_effect=_member_roles))
-        mocks.write_order.attach_mock(mocks.replace_user_access_policies, "seed_members")
-        mocks.write_order.attach_mock(mocks.sync_creator_bindings, "sync_creator")
-        mocks.write_order.attach_mock(mocks.replace_whitelist, "replace_whitelist")
-        result = CliRunner().invoke(migrate_agent_permissions_to_rbac, args)
-    return result, mocks
+        for index, account_id in enumerate(("owner-1", "m1", "admin-1", "m2", "m3")):
+            membership = TenantAccountJoin(tenant_id="t1", account_id=account_id, role=TenantAccountRole.NORMAL)
+            membership.id = f"membership-{index}"
+            session.add(membership)
+        session.add(TenantAccountJoin(tenant_id="other", account_id="foreign", role=TenantAccountRole.NORMAL))
+    domain.transport.responses["/rbac/agents/whitelist"] = {"rbac_whitelist_scope": "all"}
+    # Remote RBAC bindings protect administrators even when the local role is normal.
+    domain.transport.responses["/rbac/members/rbac-roles/batch"] = {
+        f"{role_tag}-1": [
+            {
+                "id": f"role-{role_tag}",
+                "type": "workspace",
+                "category": "global_system_default",
+                "name": role_tag,
+                "is_builtin": True,
+                "role_tag": role_tag,
+            }
+        ]
+        for role_tag in ("owner", "admin")
+    }
 
 
-def _write_order(mocks: _AgentPhaseMocks) -> list[str]:
-    return [name for name, _, _ in mocks.write_order.mock_calls]
+def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(rbac_domain: RBACDomain) -> None:
+    _seed_agent(rbac_domain)
 
-
-def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync() -> None:
-    result, mocks = _run_agent_phase(
-        ["--apply", "--member-batch-size", "2"],
-        _AgentPhaseSetup(
-            agents=[("ag1", "c1", None)],
-            workspace_members=["owner-1", "m1", "admin-1", "m2", "m3"],
-            protected_members=["owner-1", "admin-1"],
-        ),
-    )
+    result = CliRunner().invoke(rbac.migrate_agent_permissions_to_rbac, ["--apply", "--member-batch-size", "2"])
 
     assert result.exit_code == 0, result.output
-    assert [e["event"] for e in _events(result.output)] == ["agent_access_bootstrap_applied"]
+    assert [event["event"] for event in _events(result.output)] == ["agent_access_bootstrap_applied"]
     assert _events(result.output)[0]["dry_run"] is False
-
-    mocks.replace_whitelist.assert_called_once()
-    assert mocks.replace_whitelist.call_args.kwargs["agent_id"] == "ag1"
-    assert mocks.replace_whitelist.call_args.kwargs["account_id"] == "c1"
-    assert mocks.replace_whitelist.call_args.kwargs["payload"].automatic_include_workspace_members is True
-
-    mocks.member_batches.assert_called_once_with("t1", 2)
-    assert mocks.replace_user_access_policies.call_count == 3
-    calls = mocks.replace_user_access_policies.call_args_list
-    assert [call.kwargs["payload"].account_ids for call in calls] == [["m1"], ["m2"], ["m3"]]
-    assert all(call.kwargs["payload"].access_policy_ids == ["default"] for call in calls)
-    assert all(call.kwargs["target_account_id"] is None for call in calls)
-
-    mocks.sync_creator_bindings.assert_called_once()
-    assert mocks.sync_creator_bindings.call_args.kwargs["resource_id"] == "ag1"
-    assert mocks.sync_creator_bindings.call_args.kwargs["account_id"] == "c1"
+    role_queries = [
+        request for request in rbac_domain.transport.requests if request.endpoint == "/rbac/members/rbac-roles/batch"
+    ]
+    assert [request.json for request in role_queries] == [
+        {"member_ids": ["owner-1", "m1"]},
+        {"member_ids": ["admin-1", "m2"]},
+        {"member_ids": ["m3"]},
+    ]
+    for request in role_queries:
+        assert (request.method, request.tenant_id, request.account_id) == ("POST", "t1", "c1")
+    writes = [request for request in rbac_domain.transport.requests if request.method == "PUT"]
+    assert [request.endpoint for request in writes] == [
+        "/rbac/agents/user-access-policies",
+        "/rbac/agents/user-access-policies",
+        "/rbac/agents/user-access-policies",
+        "/rbac/access-policies/creator-member-bindings",
+        "/rbac/agents/whitelist",
+    ]
+    first, second, third, creator, whitelist = writes
+    for request in writes:
+        assert (request.tenant_id, request.account_id) == ("t1", "c1")
+    for request, account_ids in ((first, ["m1"]), (second, ["m2"]), (third, ["m3"])):
+        assert request.params == {"agent_id": "ag1", "account_id": None}
+        assert request.json == {"account_ids": account_ids, "access_policy_ids": ["default"]}
+    assert creator.params == {"resource_type": "agent", "agent_id": "ag1"}
+    assert whitelist.params == {"agent_id": "ag1"}
+    assert whitelist.json == {"automatic_include_workspace_members": True}
     assert "1 agent(s) changed, 0 already initialised" in result.output
 
-    assert _write_order(mocks) == [
-        "seed_members",
-        "seed_members",
-        "seed_members",
-        "sync_creator",
-        "replace_whitelist",
-    ]
 
+def test_agent_bootstrap_is_idempotent_on_a_second_apply(rbac_domain: RBACDomain) -> None:
+    _seed_agent(rbac_domain)
+    first = CliRunner().invoke(rbac.migrate_agent_permissions_to_rbac, ["--apply"])
+    assert first.exit_code == 0, first.output
+    assert any(request.method == "PUT" for request in rbac_domain.transport.requests)
+    rbac_domain.transport.requests.clear()
+    rbac_domain.transport.responses["/rbac/migrations/agent-access-state"] = {"configured_agent_ids": ["ag1"]}
 
-def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
-    result, mocks = _run_agent_phase(
-        ["--apply"],
-        _AgentPhaseSetup(
-            agents=[("ag1", "c1", None), ("ag2", "c2", None)],
-            configured_agent_ids=["ag1", "ag2"],
-        ),
-    )
+    result = CliRunner().invoke(rbac.migrate_agent_permissions_to_rbac, ["--apply"])
 
     assert result.exit_code == 0, result.output
     events = _events(result.output)
-    assert [e["event"] for e in events] == ["agent_access_bootstrap_skipped"] * 2
-    assert {e["reason"] for e in events} == {"already_initialized"}
-    mocks.replace_whitelist.assert_not_called()
-    mocks.sync_creator_bindings.assert_not_called()
-    mocks.replace_user_access_policies.assert_not_called()
-    assert "0 agent(s) changed, 2 already initialised" in result.output
+    assert [event["event"] for event in events] == ["agent_access_bootstrap_skipped"]
+    assert events[0]["reason"] == "already_initialized"
+    assert not any(request.method == "PUT" for request in rbac_domain.transport.requests)
+    assert "0 agent(s) changed, 1 already initialised" in result.output

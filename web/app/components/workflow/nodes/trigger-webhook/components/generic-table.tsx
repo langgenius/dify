@@ -127,7 +127,7 @@ const renderInputCell = (
       disabled={readonly}
       className={cn(
         'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
-        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
+        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
     />
@@ -317,7 +317,7 @@ const GenericTable: FC<GenericTableProps> = ({
                   <div
                     key={column.key}
                     className={cn(
-                      'shrink-0 pl-3',
+                      'shrink-0 pl-3 has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:ring-inset',
                       column.width,
                       // Add right border except for last column
                       columnIndex < columns.length - 1 && 'border-r border-divider-regular',

@@ -4,11 +4,12 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.config import DifyConfigSkillConfig
+from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -709,11 +710,8 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["type"] == "dify.plugin.tools"
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {
-        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "shell": DIFY_SHELL_LAYER_ID,
-    }
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["shell"] == DIFY_SHELL_LAYER_ID
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["tools"][0]["tool_name"] == "current_time"
     assert result.metadata["agent_tools"] == {
         "dify_tool_count": 1,
@@ -813,8 +811,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     knowledge_layer = layers["knowledge"]
-    assert knowledge_layer["type"] == "dify.knowledge_base"
-    assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert knowledge_layer["config"]["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
     assert knowledge_layer["config"]["sets"] == [
         {
             "id": "support",
@@ -954,7 +951,7 @@ def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
 
 
 def test_build_passes_saved_session_snapshot_to_agent_backend_request():
-    session_snapshot = CompositorSessionSnapshot(layers=[])
+    session_snapshot = SessionSnapshot(layers={})
     context = replace(_context(), session_snapshot=session_snapshot)
 
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
@@ -1458,6 +1455,7 @@ def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
 
     assert config is not None
     assert config.model_dump(mode="json") == {
+        "shell": "shell",
         "agent_id": None,
         "config_version": {"id": None, "kind": "snapshot", "writable": False},
         "skills": [],
@@ -1478,6 +1476,7 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_CONFIG_LAYER_ID]["config"] == {
+        "shell": "shell",
         "agent_id": "agent-1",
         "config_version": {"id": "snapshot-1", "kind": "snapshot", "writable": False},
         "skills": [],
@@ -1487,10 +1486,8 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
         "mentioned_skill_names": [],
         "mentioned_file_names": [],
     }
-    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
-        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "runtime": "runtime",
-    }
+    assert layers[DIFY_SHELL_LAYER_ID]["config"]["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert layers[DIFY_SHELL_LAYER_ID]["config"]["runtime"] == "runtime"
 
 
 def test_workflow_run_request_contains_config_layer():
@@ -1507,9 +1504,9 @@ def test_workflow_run_request_contains_config_layer():
     assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 2
     assert layer_names.index(DIFY_CONFIG_LAYER_ID) == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
     config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
-    assert config["type"] == "dify.config"
-    assert config["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
+    assert config["config"]["shell"] == DIFY_SHELL_LAYER_ID
     assert config["config"] == {
+        "shell": "shell",
         "agent_id": "agent-1",
         "config_version": {"id": "snapshot-1", "kind": "snapshot", "writable": False},
         "skills": [
@@ -1551,10 +1548,10 @@ def test_workflow_run_request_includes_bound_workspace_skills(monkeypatch: pytes
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
-    assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
-    assert config.config.mentioned_skill_names == ["workspace-skill"]
+    assert [skill.name for skill in DifyConfigLayerConfig.model_validate(config.config).skills] == ["workspace-skill"]
+    assert DifyConfigLayerConfig.model_validate(config.config).mentioned_skill_names == ["workspace-skill"]
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "Use workspace-skill."
+    assert PromptConfig.model_validate(soul_prompt.config).prefix == "Use workspace-skill."
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():
@@ -1564,8 +1561,10 @@ def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "You are careful. Use tender-analyzer and sample.pdf."
-    assert "[§" not in soul_prompt.config.prefix
+    assert (
+        PromptConfig.model_validate(soul_prompt.config).prefix == "You are careful. Use tender-analyzer and sample.pdf."
+    )
+    assert "[§" not in PromptConfig.model_validate(soul_prompt.config).prefix
 
 
 def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name():
@@ -1582,8 +1581,8 @@ def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name()
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
-    assert "[§" not in soul_prompt.config.prefix
+    assert PromptConfig.model_validate(soul_prompt.config).prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
+    assert "[§" not in PromptConfig.model_validate(soul_prompt.config).prefix
     assert [warning["code"] for warning in result.metadata["runtime_support"]["unsupported_runtime_warnings"]] == [
         "mention_target_missing",
         "mention_target_missing",
@@ -1629,37 +1628,17 @@ def test_build_config_layer_config_excludes_missing_assets_from_runtime():
     ]
 
 
-# ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
-
-
-def test_build_ask_human_layer_config_gated_on_human_contacts():
-    from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
-
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_ask_human_layer_config
-
-    # no human involvement configured -> tool stays off
-    assert build_ask_human_layer_config(AgentSoulConfig()) is None
-
-    soul = AgentSoulConfig.model_validate(
-        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
-    )
-    config = build_ask_human_layer_config(soul)
-    assert isinstance(config, DifyAskHumanLayerConfig)
-    assert config.enabled is True
-
-
-def test_feature_manifest_marks_human_supported_when_configured():
+def test_feature_manifest_marks_human_reserved_when_configured():
     from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
 
     soul = AgentSoulConfig.model_validate(
         {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
     )
     manifest = build_runtime_feature_manifest(soul)
-    assert "human" in manifest["supported"]
-    assert "human" not in manifest["reserved"]
-    assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
-    # configured human no longer produces a "not executed" warning
-    assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+    assert "human" not in manifest["supported"]
+    assert "human" in manifest["reserved"]
+    assert manifest["reserved_status"]["human"] == "reserved_not_executed"
+    assert any("human" in w["section"] for w in manifest["unsupported_runtime_warnings"])
 
 
 def test_feature_manifest_marks_knowledge_supported_without_warning_when_configured():

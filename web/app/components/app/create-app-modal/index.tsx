@@ -15,8 +15,12 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -60,7 +64,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     icon: '🤖',
     background: '#FFEAD5',
   })
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() =>
@@ -130,7 +133,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         // Analytics should not turn a successful app creation into a failed flow.
       }
 
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       onClose()
       getRedirection(app, push, {
         currentUserId,
@@ -178,7 +180,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     },
     {
       target: contentRef,
-      enabled: !createDisabled && !isCreating && !showIconPicker,
+      enabled: !createDisabled && !isCreating,
       ignoreInputs: false,
       preventDefault: false,
       stopPropagation: false,
@@ -324,30 +326,15 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                     placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
-                <button
-                  type="button"
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => setShowIconPicker(true)}
-                >
-                  <AppIcon
-                    decorative
-                    iconType={appIcon.type}
-                    icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
-                    background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                    imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                    size="xxl"
-                    className="rounded-2xl"
-                  />
-                </button>
-                <IconPickerDialog
-                  open={showIconPicker}
-                  defaultValue={appIcon}
-                  onOpenChange={setShowIconPicker}
-                  onConfirm={(payload) => {
-                    setAppIcon(payload)
-                  }}
-                />
+                <IconPicker value={appIcon} onValueChange={setAppIcon}>
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                    className="shrink-0 cursor-pointer rounded-2xl"
+                  >
+                    <IconPickerIcon size="xxl" className="rounded-2xl" />
+                  </IconPickerTrigger>
+                  <IconPickerContent />
+                </IconPicker>
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">

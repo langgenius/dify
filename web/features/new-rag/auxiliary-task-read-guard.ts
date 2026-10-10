@@ -1,5 +1,5 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskVersionIsAfter } from './document-model'
 
 type RefetchDocuments = (options: { cancelRefetch: true }) => Promise<{ error: unknown }>
@@ -56,9 +56,7 @@ export function useAuxiliaryTaskReadGuard({
     previousDocumentPermissionDeniedRef.current = documentPermissionDenied
     if (!wasDenied || documentPermissionDenied) return
     guard.clear()
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative document permission transition retires the local denial.
     setPermissionDenied(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Guard mutations need one render so blocked readers are reconsidered.
     setGuardRevision((current) => current + 1)
   }, [documentPermissionDenied, guard])
 

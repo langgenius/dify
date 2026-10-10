@@ -236,21 +236,6 @@ describe('CustomCreateCard', () => {
       })
     })
 
-    it('should show success toast after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-
     it('should close modal after successful creation', async () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 

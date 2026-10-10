@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
@@ -168,10 +169,7 @@ describe('BasicInfoSection', () => {
     description: 'Test description',
     setDescription: vi.fn(),
     iconInfo: mockIconInfo,
-    showIconPicker: false,
-    handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    setShowIconPicker: vi.fn(),
     permission: DatasetPermission.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
@@ -218,16 +216,13 @@ describe('BasicInfoSection', () => {
 
     it('names the icon action and opens it with the keyboard', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
-      )
+      render(<BasicInfoSection {...defaultProps} />)
 
       const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
       await user.tab()
       expect(trigger).toHaveFocus()
       await user.keyboard('{Enter}')
-      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
+      expect(screen.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeInTheDocument()
     })
 
     it('associates the permissions field label without losing the selected value', () => {
@@ -242,19 +237,12 @@ describe('BasicInfoSection', () => {
 
     it('does not open the icon picker when settings are read-only', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          readonly
-          handleOpenAppIconPicker={handleOpenAppIconPicker}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} readonly />)
 
       const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
       expect(trigger).toBeDisabled()
       await user.click(trigger)
-      expect(handleOpenAppIconPicker).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -323,53 +311,12 @@ describe('BasicInfoSection', () => {
   })
 
   describe('App Icon', () => {
-    it('should call handleOpenAppIconPicker when icon is clicked', async () => {
+    it('opens the icon picker from the fixed icon action', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
-      )
+      render(<BasicInfoSection {...defaultProps} />)
 
       await user.click(screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' }))
-      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
-    })
-
-    it('should not render IconPickerDialog when showIconPicker is false', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} showIconPicker={false} />)
-
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeInTheDocument()
     })
 
     it('should render image icon when icon_type is image', () => {
@@ -505,3 +452,5 @@ describe('BasicInfoSection', () => {
     })
   })
 })
+
+mockEmojiData()

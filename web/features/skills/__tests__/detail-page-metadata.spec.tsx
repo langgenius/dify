@@ -429,9 +429,6 @@ describe('SkillDetailPage metadata', () => {
     })
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
     expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      'skill.skillManagement.detail.renameSkillSuccess',
-    )
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
         'Renamed skill',
@@ -473,7 +470,6 @@ describe('SkillDetailPage metadata', () => {
           expect.anything(),
         )
       })
-      expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
       expect(mocks.routerPush).toHaveBeenCalledWith('/skills/copied-skill?rename=true')
     },
   )

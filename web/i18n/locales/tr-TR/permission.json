@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Erişim izni",
   "accessRule.actions": "Eylemler",
-  "accessRule.addMemberAria": "{{name}} ekle",
   "accessRule.addMembersTitle": "Üye ekle",
   "accessRule.agentDescription": "Bu ajana kimlerin erişebileceğini ve izinlerini yönetin.",
   "accessRule.agentTitle": "Ajan izin kümesi",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "Rol izinlerine göre",
   "accessRule.deleteDescription": "Bu erişim kuralı kalıcı olarak silinecek ve kaynak yetkilendirme listesinden kaldırılacaktır.",
   "accessRule.deleteTitle": "\"{{name}}\" silinsin mi?",
-  "accessRule.deleted": "Erişim kuralı başarıyla silindi",
   "accessRule.exceptionPermissionFor": "{{name}} için istisna izni",
   "accessRule.expandSection": "{{title}} genişlet",
   "accessRule.maintainer": "Bakımcı",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" {{count}} üyeye atanmış. Yeni rol kopyasının aynı üyeleri içermesini istiyor musunuz?",
   "role.copyMembersLoading": "Üye atamaları yükleniyor...",
   "role.copyMembersTitle": "Üye atamaları kopyalansın mı?",
-  "role.created": "Rol başarıyla oluşturuldu",
   "role.deleteDescription": "Bu rol kalıcı olarak silinecek ve onu kullanan tüm üyelerden veya erişim kurallarından kaldırılacaktır.",
   "role.deleteTitle": "\"{{name}}\" silinsin mi?",
-  "role.deleted": "Rol başarıyla silindi",
-  "role.duplicated": "Rol başarıyla çoğaltıldı",
   "role.groups.builtin": "Sistem Rolleri",
   "role.groups.custom": "Özel Roller",
   "role.loading": "Roller yükleniyor...",
@@ -104,7 +99,6 @@
   "role.noDescription": "Açıklama yok",
   "role.noMatchingRoles": "Eşleşen rol yok",
   "role.searchPlaceholder": "Rolleri ara...",
-  "role.updated": "Rol başarıyla güncellendi",
   "role.workspaceRoles.description": "Roller oluşturun ve bu çalışma alanında her rolün ne yapabileceğini tanımlayın.",
   "role.workspaceRoles.title": "Çalışma Alanı Rolleri"
 }

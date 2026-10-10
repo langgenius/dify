@@ -7,9 +7,10 @@ from pytest_mock import MockerFixture
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from graphon.node_events import StreamCompletedEvent
+from graphon.runtime import VariablePool
 
 
-def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:
+def _gen_var_stream() -> Generator[DatasourceMessage]:
     # produce a streamed variable "a"="xy"
     yield DatasourceMessage(
         type=DatasourceMessage.MessageType.VARIABLE,
@@ -35,10 +36,11 @@ def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None
             tenant_id="t",
             parameters_for_log={},
             datasource_info={"user_id": "u"},
-            variable_pool=mocker.Mock(),
-            datasource_param=type("P", (), {"workspace_id": "w", "page_id": "pg", "type": "t"})(),
+            variable_pool=VariablePool(),
+            datasource_param=None,
             online_drive_request=None,
             credentials={},
         )
     )
     assert isinstance(events[-1], StreamCompletedEvent)
+    assert events[-1].node_run_result.outputs["a"] == "xy"

@@ -6,8 +6,7 @@ from typing import cast
 import pytest
 from pydantic import JsonValue
 
-from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
-from agenton.layers import LifecycleState
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     RUN_EVENT_ADAPTER,
@@ -189,7 +188,7 @@ def _terminal_event(
             run_id=run_id,
             data=RunSucceededEventData(
                 output="done",
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
     if event_type == "run_failed":
@@ -277,7 +276,7 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
         store.finalize_cancellation(
             "run-1",
             intent,
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
             usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
         )
     )
@@ -295,7 +294,7 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
     assert payload["type"] == "run_cancelled"
     assert payload["data"]["reason"] == "workflow_aborted"
     assert payload["data"]["message"] == "workflow stopped"
-    assert payload["data"]["session_snapshot"] == {"schema_version": 1, "layers": []}
+    assert payload["data"]["session_snapshot"] == {"schema_version": 2, "layers": {}}
     assert payload["data"]["usage"]["prompt_tokens"] == 13
     assert payload["data"]["usage"]["completion_tokens"] == 8
     assert payload["data"]["usage"]["total_tokens"] == 21
@@ -444,15 +443,7 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
     output = cast(JsonValue, {"answer": ["done", 1], "ok": True})
-    session_snapshot = CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(
-                name="prompt",
-                lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state={"resource_id": "abc"},
-            )
-        ]
-    )
+    session_snapshot = SessionSnapshot(layers={"prompt": {"resource_id": "abc"}})
 
     async def scenario() -> tuple[str, RunSucceededEvent]:
         record = await store.create_run()

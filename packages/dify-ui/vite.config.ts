@@ -17,12 +17,10 @@ export default defineConfig({
   },
   test: {
     browser: {
-      expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },
       enabled: true,
       provider: playwright(),
       instances: [{ browser: 'chromium' }],
       headless: true,
-      screenshotDirectory: './.vitest-browser/screenshots',
       screenshotFailures: true,
     },
     coverage: {

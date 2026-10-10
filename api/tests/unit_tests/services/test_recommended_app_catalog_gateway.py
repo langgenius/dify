@@ -1,8 +1,11 @@
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from typing import Never
+from unittest.mock import patch
 
+import httpx
 import pytest
 import yaml
 
@@ -14,6 +17,7 @@ from services.recommended_app_catalog_gateway import (
 )
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
+    RecommendedAppCatalogQuery,
     RecommendedAppDetailRecord,
     RecommendedAppInfoRecord,
     RecommendedAppRecord,
@@ -99,6 +103,48 @@ def _expected_page(*, categories: tuple[str, ...] = ("Workflow",)) -> Recommende
         ),
         categories=categories,
     )
+
+
+@dataclass
+class RecordingCatalog(RecommendedAppCatalogQuery):
+    recommended_pages: list[RecommendedAppCatalogPage] = field(default_factory=lambda: [_expected_page()])
+    learn_dify_page: RecommendedAppCatalogPage = field(default_factory=_expected_page)
+    detail: RecommendedAppDetailRecord | None = None
+    member: bool = False
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def list_recommended(self, language: str) -> RecommendedAppCatalogPage:
+        self.calls.append(("recommended", language))
+        return self.recommended_pages.pop(0) if len(self.recommended_pages) > 1 else self.recommended_pages[0]
+
+    def list_learn_dify(self, language: str) -> RecommendedAppCatalogPage:
+        self.calls.append(("learn_dify", language))
+        return self.learn_dify_page
+
+    def get_detail(self, app_id: str) -> RecommendedAppDetailRecord | None:
+        self.calls.append(("detail", app_id))
+        return self.detail
+
+    def contains(self, app_id: str) -> bool:
+        self.calls.append(("contains", app_id))
+        return self.member
+
+
+def _fetch_timeout(_key: str) -> Never:
+    raise ConnectionError("timeout")
+
+
+def _install_http_get(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
+) -> list[tuple[str, dict[str, str], httpx.Timeout]]:
+    requests: list[tuple[str, dict[str, str], httpx.Timeout]] = []
+
+    def get(url: str, *, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Response:
+        requests.append((url, headers, timeout))
+        return response
+
+    monkeypatch.setattr(gateway_module.httpx, "get", get)
+    return requests
 
 
 class TestBuiltinRecommendedAppCatalogGateway:
@@ -248,8 +294,8 @@ class TestRemoteRecommendedAppCatalogGateway:
         gateway = RemoteRecommendedAppCatalogGateway()
         payload = _page_payload("app-2", "app-1")
         payload["categories"] = ["Writing", "Agent"]
-        monkeypatch.setattr(gateway, "_fetch_page", MagicMock(return_value=payload))
-        monkeypatch.setattr(gateway, "_fetch_learn_dify_page", MagicMock(return_value=payload))
+        monkeypatch.setattr(gateway, "_fetch_page", lambda _language: payload)
+        monkeypatch.setattr(gateway, "_fetch_learn_dify_page", lambda _language: payload)
 
         recommended = gateway.list_recommended("en-US")
         learn_dify = gateway.list_learn_dify("en-US")
@@ -259,58 +305,57 @@ class TestRemoteRecommendedAppCatalogGateway:
         assert learn_dify.categories == ()
 
     def test_list_fetch_error_falls_back_through_builtin_en_us(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         empty_page = RecommendedAppCatalogPage(recommended_apps=(), categories=())
         fallback_page = _expected_page(categories=("builtin",))
-        fallback.list_recommended.side_effect = [empty_page, fallback_page]
+        fallback.recommended_pages = [empty_page, fallback_page]
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
 
-        monkeypatch.setattr(remote, "_fetch_page", MagicMock(side_effect=ConnectionError("timeout")))
+        monkeypatch.setattr(remote, "_fetch_page", _fetch_timeout)
 
         assert router.list_recommended("fr-FR") == fallback_page
-        assert fallback.list_recommended.call_args_list == [call("fr-FR"), call("en-US")]
+        assert fallback.calls == [("recommended", "fr-FR"), ("recommended", "en-US")]
 
     def test_json_decode_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         expected_page = _expected_page()
-        fallback.list_recommended.return_value = expected_page
+        fallback.recommended_pages = [expected_page]
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=200)
-        response.json.side_effect = ValueError("invalid JSON")
-        monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
+        response = httpx.Response(status_code=200, content=b"invalid JSON")
+        _install_http_get(monkeypatch, response)
 
         assert router.list_recommended("en-US") == expected_page
-        fallback.list_recommended.assert_called_once_with("en-US")
+        assert fallback.calls == [("recommended", "en-US")]
 
     def test_payload_mapping_error_does_not_fall_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        monkeypatch.setattr(remote, "_fetch_page", MagicMock(return_value=object()))
+        monkeypatch.setattr(remote, "_fetch_page", lambda _key: object())
 
         with pytest.raises(TypeError, match="recommended app page must be a mapping"):
             router.list_recommended("en-US")
-        fallback.list_recommended.assert_not_called()
+        assert fallback.calls == []
 
     def test_learn_dify_fetch_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        builtin = MagicMock()
-        database = MagicMock()
+        builtin = RecordingCatalog()
+        database = RecordingCatalog()
         page = RecommendedAppCatalogPage(recommended_apps=(), categories=())
-        builtin.list_learn_dify.return_value = page
+        builtin.learn_dify_page = page
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
@@ -318,31 +363,31 @@ class TestRemoteRecommendedAppCatalogGateway:
             builtin=builtin,
         )
 
-        monkeypatch.setattr(remote, "_fetch_learn_dify_page", MagicMock(side_effect=ConnectionError("timeout")))
+        monkeypatch.setattr(remote, "_fetch_learn_dify_page", _fetch_timeout)
 
         assert router.list_learn_dify("ja-JP") == page
-        builtin.list_learn_dify.assert_called_once_with("ja-JP")
-        database.list_learn_dify.assert_not_called()
+        assert builtin.calls == [("learn_dify", "ja-JP")]
+        assert database.calls == []
 
     def test_empty_remote_learn_dify_page_does_not_fall_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        database = MagicMock()
+        database = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
             database=database,
-            builtin=MagicMock(),
+            builtin=RecordingCatalog(),
         )
         monkeypatch.setattr(
             remote,
             "_fetch_learn_dify_page",
-            MagicMock(return_value={"recommended_apps": [], "categories": []}),
+            lambda _language: {"recommended_apps": [], "categories": []},
         )
 
         assert router.list_learn_dify("en-US") == RecommendedAppCatalogPage(
             recommended_apps=(),
             categories=(),
         )
-        database.list_learn_dify.assert_not_called()
+        assert database.calls == []
 
     @pytest.mark.parametrize("status_code", [404, 500])
     def test_detail_non_200_returns_none_without_builtin_fallback(
@@ -350,21 +395,21 @@ class TestRemoteRecommendedAppCatalogGateway:
         monkeypatch: pytest.MonkeyPatch,
         status_code: int,
     ) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=status_code)
-        monkeypatch.setattr("services.recommended_app_catalog_gateway.httpx.get", MagicMock(return_value=response))
+        response = httpx.Response(status_code=status_code)
+        _install_http_get(monkeypatch, response)
 
         assert router.get_detail("missing") is None
-        fallback.get_detail.assert_not_called()
+        assert fallback.calls == []
 
     def test_detail_fetch_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         fallback_detail = RecommendedAppDetailRecord(
             id="fallback",
             name="Fallback",
@@ -373,50 +418,50 @@ class TestRemoteRecommendedAppCatalogGateway:
             mode="chat",
             export_data="{}",
         )
-        fallback.get_detail.return_value = fallback_detail
+        fallback.detail = fallback_detail
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
 
-        monkeypatch.setattr(remote, "_fetch_detail", MagicMock(side_effect=ConnectionError("timeout")))
+        monkeypatch.setattr(remote, "_fetch_detail", _fetch_timeout)
 
         assert router.get_detail("app-1") == fallback_detail
-        fallback.get_detail.assert_called_once_with("app-1")
+        assert fallback.calls == [("detail", "app-1")]
 
     def test_detail_mapping_error_does_not_fall_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        monkeypatch.setattr(remote, "_fetch_detail", MagicMock(return_value=object()))
+        monkeypatch.setattr(remote, "_fetch_detail", lambda _key: object())
 
         with pytest.raises(TypeError, match="recommended app detail must be a mapping"):
             router.get_detail("app-1")
-        fallback.get_detail.assert_not_called()
+        assert fallback.calls == []
 
     def test_learn_dify_mapping_error_does_not_fall_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        database = MagicMock()
+        database = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
             database=database,
-            builtin=MagicMock(),
+            builtin=RecordingCatalog(),
         )
-        monkeypatch.setattr(remote, "_fetch_learn_dify_page", MagicMock(return_value=object()))
+        monkeypatch.setattr(remote, "_fetch_learn_dify_page", lambda _key: object())
 
         with pytest.raises(TypeError, match="Learn Dify app page must be a mapping"):
             router.list_learn_dify("en-US")
-        database.list_learn_dify.assert_not_called()
+        assert database.calls == []
 
     def test_membership_accepts_raw_non_none_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gateway = RemoteRecommendedAppCatalogGateway()
-        monkeypatch.setattr(gateway, "_fetch_detail", MagicMock(return_value=object()))
+        monkeypatch.setattr(gateway, "_fetch_detail", lambda _key: object())
 
         assert gateway.contains("app-1") is True
 
@@ -426,41 +471,39 @@ class TestRemoteRecommendedAppCatalogGateway:
         monkeypatch: pytest.MonkeyPatch,
         status_code: int,
     ) -> None:
-        fallback = MagicMock()
+        fallback = RecordingCatalog()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=status_code)
-        monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
+        response = httpx.Response(status_code=status_code)
+        _install_http_get(monkeypatch, response)
 
         assert router.contains("missing") is False
-        fallback.contains.assert_not_called()
+        assert fallback.calls == []
 
     def test_membership_fetch_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
-        fallback.contains.return_value = True
+        fallback = RecordingCatalog()
+        fallback.member = True
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
-        monkeypatch.setattr(remote, "_fetch_detail", MagicMock(side_effect=ConnectionError("timeout")))
+        monkeypatch.setattr(remote, "_fetch_detail", _fetch_timeout)
 
         assert router.contains("app-1") is True
-        fallback.contains.assert_called_once_with("app-1")
+        assert fallback.calls == [("contains", "app-1")]
 
     def test_remote_request_uses_configured_origin_and_timeouts(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _detail_payload()
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=200, json=_detail_payload())
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(
             monkeypatch,
             HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN="https://catalog.example.com",
@@ -469,18 +512,16 @@ class TestRemoteRecommendedAppCatalogGateway:
         gateway = RemoteRecommendedAppCatalogGateway()
         gateway.get_detail("app-1")
 
-        http_get.assert_called_once()
-        call = http_get.call_args
-        assert call.args == ("https://catalog.example.com/apps/app-1",)
-        assert call.kwargs["headers"] == {"Origin": "https://console.example.com"}
-        assert call.kwargs["timeout"].connect == 3.0
-        assert call.kwargs["timeout"].read == 10.0
+        assert len(requests) == 1
+        url, headers, timeout = requests[0]
+        assert url == "https://catalog.example.com/apps/app-1"
+        assert headers == {"Origin": "https://console.example.com"}
+        assert timeout.connect == 3.0
+        assert timeout.read == 10.0
 
     def test_remote_request_uses_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=200, json=_page_payload())
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(
             monkeypatch,
             HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN="https://catalog.example.com",
@@ -490,46 +531,41 @@ class TestRemoteRecommendedAppCatalogGateway:
 
         assert gateway.list_recommended("en-US") == _expected_page()
         assert gateway.list_recommended("en-US") == _expected_page()
-        http_get.assert_called_once()
+        assert len(requests) == 1
 
     def test_remote_request_does_not_cache_failed_responses(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=500)
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=500)
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
         expected_page = _expected_page()
-        fallback = MagicMock()
-        fallback.list_recommended.return_value = expected_page
+        fallback = RecordingCatalog()
+        fallback.recommended_pages = [expected_page]
         router = RecommendedAppCatalogRouter(
             remote=RemoteRecommendedAppCatalogGateway(),
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=fallback,
         )
 
         assert router.list_recommended("en-US") == expected_page
         assert router.list_recommended("en-US") == expected_page
-        assert http_get.call_count == 2
+        assert len(requests) == 2
 
     def test_remote_request_skips_cache_when_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=200, json=_page_payload())
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=0)
         gateway = RemoteRecommendedAppCatalogGateway()
 
         gateway.list_recommended("en-US")
         gateway.list_recommended("en-US")
-        assert http_get.call_count == 2
+        assert len(requests) == 2
 
     def test_remote_request_cache_isolated_by_configured_origin(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=200, json=_page_payload())
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
         gateway = RemoteRecommendedAppCatalogGateway()
         apply_config_overrides(monkeypatch, CONSOLE_WEB_URL="https://cloud-a.example.com")
@@ -537,7 +573,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         apply_config_overrides(monkeypatch, CONSOLE_WEB_URL="https://cloud-b.example.com")
         gateway.list_recommended("en-US")
 
-        assert http_get.call_count == 2
+        assert len(requests) == 2
 
     @pytest.mark.parametrize(
         ("console_web_url", "expected_headers"),
@@ -553,15 +589,13 @@ class TestRemoteRecommendedAppCatalogGateway:
         console_web_url: str,
         expected_headers: dict[str, str],
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _detail_payload()
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=200, json=_detail_payload())
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(monkeypatch, CONSOLE_WEB_URL=console_web_url)
         gateway = RemoteRecommendedAppCatalogGateway()
         gateway.get_detail("app-1")
 
-        assert http_get.call_args.kwargs["headers"] == expected_headers
+        assert requests[-1][1] == expected_headers
 
     @pytest.mark.parametrize(
         ("operation", "expected_url"),
@@ -576,18 +610,17 @@ class TestRemoteRecommendedAppCatalogGateway:
         operation: str,
         expected_url: str,
     ) -> None:
-        response = MagicMock(status_code=500)
-        http_get = MagicMock(return_value=response)
-        monkeypatch.setattr(gateway_module.httpx, "get", http_get)
+        response = httpx.Response(status_code=500)
+        requests = _install_http_get(monkeypatch, response)
         apply_config_overrides(
             monkeypatch,
             HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN="https://catalog.example.com",
         )
-        fallback = MagicMock()
-        database = MagicMock()
+        fallback = RecordingCatalog()
+        database = RecordingCatalog()
         expected_page = _expected_page()
-        fallback.list_recommended.return_value = expected_page
-        fallback.list_learn_dify.return_value = expected_page
+        fallback.recommended_pages = [expected_page]
+        fallback.learn_dify_page = expected_page
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
             remote=remote,
@@ -596,36 +629,35 @@ class TestRemoteRecommendedAppCatalogGateway:
         )
 
         result = router.list_recommended("ja-JP") if operation == "recommended" else router.list_learn_dify("ja-JP")
-        fallback_call = fallback.list_recommended if operation == "recommended" else fallback.list_learn_dify
 
         assert result == expected_page
-        assert http_get.call_args.args == (expected_url,)
-        fallback_call.assert_called_once_with("ja-JP")
-        database.list_learn_dify.assert_not_called()
+        assert requests[-1][0] == expected_url
+        assert fallback.calls == [(operation, "ja-JP")]
+        assert database.calls == []
 
 
 class TestRecommendedAppCatalogRouter:
     def test_empty_page_falls_back_to_builtin_en_us(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        remote = MagicMock()
-        builtin = MagicMock()
-        remote.list_recommended.return_value = RecommendedAppCatalogPage(recommended_apps=(), categories=())
+        remote = RecordingCatalog()
+        builtin = RecordingCatalog()
+        remote.recommended_pages = [RecommendedAppCatalogPage(recommended_apps=(), categories=())]
         expected_page = _expected_page(categories=("builtin",))
-        builtin.list_recommended.return_value = expected_page
+        builtin.recommended_pages = [expected_page]
         gateway = RecommendedAppCatalogRouter(
             remote=remote,
-            database=MagicMock(),
+            database=RecordingCatalog(),
             builtin=builtin,
         )
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="remote")
 
         assert gateway.list_recommended("ja-JP") == expected_page
-        remote.list_recommended.assert_called_once_with("ja-JP")
-        builtin.list_recommended.assert_called_once_with("en-US")
+        assert remote.calls == [("recommended", "ja-JP")]
+        assert builtin.calls == [("recommended", "en-US")]
 
     def test_resolves_mode_for_every_operation(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        remote = MagicMock()
-        database = MagicMock()
-        builtin = MagicMock()
+        remote = RecordingCatalog()
+        database = RecordingCatalog()
+        builtin = RecordingCatalog()
         gateway = RecommendedAppCatalogRouter(
             remote=remote,
             database=database,
@@ -641,32 +673,31 @@ class TestRecommendedAppCatalogRouter:
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="remote")
         gateway.contains("app-1")
 
-        remote.list_recommended.assert_called_once_with("en-US")
-        database.list_learn_dify.assert_called_once_with("en-US")
-        builtin.get_detail.assert_called_once_with("app-1")
-        remote.contains.assert_called_once_with("app-1")
+        assert remote.calls == [("recommended", "en-US"), ("contains", "app-1")]
+        assert database.calls == [("learn_dify", "en-US")]
+        assert builtin.calls == [("detail", "app-1")]
 
     def test_builtin_mode_reads_builtin_learn_dify(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        builtin = MagicMock()
-        database = MagicMock()
+        builtin = RecordingCatalog()
+        database = RecordingCatalog()
         expected_page = RecommendedAppCatalogPage(recommended_apps=(), categories=())
-        builtin.list_learn_dify.return_value = expected_page
+        builtin.learn_dify_page = expected_page
         gateway = RecommendedAppCatalogRouter(
-            remote=MagicMock(),
+            remote=RecordingCatalog(),
             database=database,
             builtin=builtin,
         )
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
 
         assert gateway.list_learn_dify("en-US") == expected_page
-        builtin.list_learn_dify.assert_called_once_with("en-US")
-        database.list_learn_dify.assert_not_called()
+        assert builtin.calls == [("learn_dify", "en-US")]
+        assert database.calls == []
 
     def test_rejects_invalid_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gateway = RecommendedAppCatalogRouter(
-            remote=MagicMock(),
-            database=MagicMock(),
-            builtin=MagicMock(),
+            remote=RecordingCatalog(),
+            database=RecordingCatalog(),
+            builtin=RecordingCatalog(),
         )
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
 

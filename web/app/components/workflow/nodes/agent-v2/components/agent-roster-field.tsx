@@ -27,11 +27,14 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
+import {
+  AgentSelectorMenu,
+  AgentSelectorMenuContent,
+  AgentSelectorMenuTrigger,
+} from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
@@ -376,7 +379,6 @@ export function AgentRosterField({
 }) {
   const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
   const inlineSetupName = t(($) => $[`${i18nPrefix}.roster.inlineSetup.name`], {
@@ -432,53 +434,25 @@ export function AgentRosterField({
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
         </FieldLabel>
-        <Popover
-          open={isPending ? false : isSelectorOpen}
-          onOpenChange={(open) => {
-            if (!isPending) setIsSelectorOpen(open)
-          }}
-        >
-          <PopoverTrigger
+        <AgentSelectorMenu>
+          <AgentSelectorMenuTrigger
             render={
-              <button
-                type="button"
-                disabled={isPending}
-                className={cn(
-                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  isPending &&
-                    'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary',
-                )}
-              >
-                {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
-              </button>
+              <Button
+                variant="ghost"
+                size="small"
+                loading={isPending}
+                className="shrink-0 text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+              />
             }
-          />
-          <PopoverContent
-            placement="bottom-end"
-            sideOffset={4}
-            className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
-            <PopoverTitle className="sr-only">
-              {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-            </PopoverTitle>
-            <AgentSelectorContent
-              open={isSelectorOpen}
-              onOpenChange={setIsSelectorOpen}
-              onSelect={(nextAgent) => {
-                setIsSelectorOpen(false)
-                onChange(nextAgent)
-              }}
-              onStartFromScratch={
-                onStartFromScratch
-                  ? () => {
-                      setIsSelectorOpen(false)
-                      onStartFromScratch()
-                    }
-                  : undefined
-              }
-            />
-          </PopoverContent>
-        </Popover>
+            {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
+          </AgentSelectorMenuTrigger>
+          <AgentSelectorMenuContent
+            placement="bottom-end"
+            onSelect={onChange}
+            onStartFromScratch={onStartFromScratch}
+          />
+        </AgentSelectorMenu>
       </div>
       {errorMessage ? (
         <div

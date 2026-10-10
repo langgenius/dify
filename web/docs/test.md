@@ -40,8 +40,8 @@ Web defaults to the `unit` project in `happy-dom`. This is a project tradeoff, n
 
 A new browser test must establish all three:
 
-- **Value:** name the user-visible failure or stable visual requirement worth protecting. Layout, focus, portals, observers, and “happy-dom cannot do this” alone are not justification.
-- **Additional evidence:** identify what existing owner tests miss and what real rendering or browser interaction adds. Do not repeat a state matrix just because a browser fixture exists.
+- **Value:** name the user-visible failure or stable visual requirement worth protecting. Layout, focus, portals, observers, and “happy-dom cannot do this” alone are not justification; neither are primitive or native defaults such as focus returning to the trigger that opened an overlay or Space activating a button.
+- **Additional evidence:** identify what existing owner tests miss and what real rendering or browser interaction adds. Do not repeat a state matrix just because a browser fixture exists; a viewport, theme, key, or variant row needs its own failure mode, otherwise keep the hardest row.
 - **Faithful boundary:** exercise the production owner and assert the claimed result. A copied layout cannot prove page integration; cursor or hover styling cannot prove that clicking performs an action.
 
 Use the smallest scenario that supplies that evidence. Native selection, focus restoration to CSS-hidden controls, hit testing, scrolling, and animation completion can justify browser coverage. Ordinary event handling and DOM state usually belong in `unit`. Synthetic events can test handler responses but do not prove native gesture generation, capture, or event ordering; use the [Vitest Interactivity API] when those are the contract.
@@ -49,6 +49,8 @@ Use the smallest scenario that supplies that evidence. Native selection, focus r
 Do not add permanent tests solely to freeze decorative spacing, radii, or artwork dimensions from a one-off visual adjustment. Geometry and computed styles are appropriate when they prove the chosen contract, such as readable content, unobstructed controls, or visible keyboard focus. Visual baselines need an explicit stable requirement and controlled rendering environment.
 
 Each `*.browser.spec.{ts,tsx}` must make its regression and additional evidence clear from its scenario and assertions; add a short explanation only when needed. Do not use forced interaction, fixed sleeps, private DOM assertions, or real network requests.
+
+Browser input is real and nothing waits between keys. Split a `userEvent.keyboard` sequence wherever a later key depends on state an earlier key produces, such as an opened menu or moved focus, and await that state with `expect.element` before continuing.
 
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
@@ -78,7 +80,7 @@ When repeated content creates ambiguity, narrow to a semantic container, then qu
 If an interactive control cannot be found semantically, first check whether the production markup needs a real button, link, label, landmark, or accessible name.
 
 - In React Testing Library tests, use a `userEvent.setup()` instance inside the test. Use `fireEvent` only when the low-level event itself is the contract.
-- In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose.
+- In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose; it does not wait, so await the element with `expect.element` first.
 - Semantic queries and automated checks do not constitute complete accessibility conformance.
 - Exact copy assertions are valid when the copy or translation key is the contract; otherwise prefer a semantic query or resilient match.
 - In React Testing Library, use `queryBy*` for synchronous absence, `findBy*` for asynchronous appearance, and `waitForElementToBeRemoved` or `waitFor` for asynchronous disappearance. In Browser Mode, use `expect.element` for eventual assertions.
@@ -113,6 +115,7 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
+- Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.

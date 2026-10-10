@@ -203,7 +203,6 @@ describe('SnippetInfoDropdown', () => {
           onError: expect.any(Function),
         }),
       )
-      expect(mockToastSuccess).toHaveBeenCalledWith('snippet.editDone')
     })
   })
 

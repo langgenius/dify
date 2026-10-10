@@ -1,8 +1,8 @@
 import type { ChatConfig, ChatItem } from '../../../types'
 import type { ChatContextValue } from '../../context'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
+import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
 const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(() => {
@@ -13,7 +13,14 @@ const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(
   }
 })
 
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
+const mockCopy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copy: mockCopy,
+    copied: false,
+  }),
+}))
 
 vi.mock('@/app/notifications', () => ({
   toast: { success: vi.fn() },
@@ -151,10 +158,6 @@ const mockContextValue: ChatContextValue = {
   readonly: false,
 }
 
-vi.mock('../../context', () => ({
-  useChatContext: () => mockContextValue,
-}))
-
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
@@ -219,6 +222,11 @@ describe('Operation', () => {
       <div className="group">
         <Operation {...props} />
       </div>,
+      {
+        wrapper: ({ children }) => (
+          <ChatContextProvider {...mockContextValue}>{children}</ChatContextProvider>
+        ),
+      },
     )
   }
 
@@ -235,6 +243,71 @@ describe('Operation', () => {
     mockContextValue.onOpenLog = undefined
 
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
+  })
+
+  describe('feedback submission sessions', () => {
+    it.each([{ admin: false }, { admin: true }])(
+      'preserves the draft after a failed submission and retries successfully (admin: $admin)',
+      async ({ admin }) => {
+        mockContextValue.config = makeChatConfig({
+          supportFeedback: true,
+          supportAnnotation: admin,
+        })
+        const onFeedback = vi.fn<NonNullable<ChatContextValue['onFeedback']>>()
+        onFeedback.mockRejectedValueOnce(new Error('Feedback failed')).mockResolvedValueOnce()
+        mockContextValue.onFeedback = onFeedback
+        const user = userEvent.setup()
+        renderOperation()
+        const name = `${admin ? 'table.header.adminRate' : 'table.header.userRate'}: detail.operation.dislike`
+        await user.click(screen.getByRole('button', { name }))
+        const input = screen.getByRole('textbox', { name: 'feedback.content' })
+        await user.type(input, 'Needs more detail')
+        await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+        await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(input).toHaveValue('Needs more detail')
+        await user.type(input, ' please')
+        await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(onFeedback).toHaveBeenLastCalledWith('msg-1', {
+          rating: 'dislike',
+          content: 'Needs more detail please',
+        })
+        expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
+      },
+    )
+
+    it('keeps one pending submission open and prevents edits or duplicate submissions', async () => {
+      let resolve!: () => void
+      const pending = new Promise<void>((done) => {
+        resolve = done
+      })
+      const onFeedback = vi.fn().mockReturnValue(pending)
+      mockContextValue.onFeedback = onFeedback
+      const user = userEvent.setup()
+      renderOperation()
+      await user.click(
+        screen.getByRole('button', { name: 'table.header.userRate: detail.operation.dislike' }),
+      )
+      const input = screen.getByRole('textbox', { name: 'feedback.content' })
+      await user.type(input, 'Original draft')
+      const submit = screen.getByRole('button', { name: 'operation.submit' })
+      await user.click(submit)
+      expect(submit).toHaveAttribute('aria-disabled', 'true')
+      expect(input).toHaveAttribute('readonly')
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('button', { name: 'operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: 'operation.close' }))
+      await user.click(document.body)
+      await user.click(submit)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(onFeedback).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        resolve()
+        await pending
+      })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 
   describe('Rendering', () => {
@@ -366,7 +439,7 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello world')
+      expect(mockCopy).toHaveBeenCalledWith('Hello world')
     })
 
     it('should copy the visible answer instead of agent thought summaries', async () => {
@@ -399,7 +472,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Final answer')
+      expect(mockCopy).toHaveBeenCalledWith('Final answer')
     })
 
     it('should copy public response parts after an interrupted response', async () => {
@@ -407,7 +480,7 @@ describe('Operation', () => {
       const item = createInterruptedItem(['First public update', 'Second public update'])
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('First public update\n\nSecond public update')
+      expect(mockCopy).toHaveBeenCalledWith('First public update\n\nSecond public update')
     })
 
     it('should copy public thought answers for legacy messages without content', async () => {
@@ -431,7 +504,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Public legacy answer')
+      expect(mockCopy).toHaveBeenCalledWith('Public legacy answer')
     })
   })
 
@@ -1146,7 +1219,7 @@ describe('Operation', () => {
       const item: ChatItem = { ...baseItem, agent_thoughts: [] }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello world')
+      expect(mockCopy).toHaveBeenCalledWith('Hello world')
     })
 
     it('should hide cached annotation edit controls when chat is readonly', () => {

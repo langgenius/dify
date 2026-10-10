@@ -64,7 +64,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: false
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock
@@ -177,7 +177,7 @@ jobs:
     name: Web Style
     if: ${{ always() && !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-web-style) }}
     needs: [web-build, web-style-checks]
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     permissions: {}
     steps:
       - name: Verify web checks

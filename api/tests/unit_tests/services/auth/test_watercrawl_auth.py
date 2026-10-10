@@ -22,22 +22,24 @@ def _credentials(
 
 class TestWatercrawlAuth:
     @pytest.fixture
-    def valid_credentials(self):
+    def valid_credentials(self) -> DataSourceApiKeyAuthCredentials:
         """Fixture for valid x-api-key credentials"""
         return _credentials()
 
     @pytest.fixture
-    def auth_instance(self, valid_credentials):
+    def auth_instance(self, valid_credentials: DataSourceApiKeyAuthCredentials) -> WatercrawlAuth:
         """Fixture for WatercrawlAuth instance with valid credentials"""
         return WatercrawlAuth(valid_credentials)
 
-    def test_should_initialize_with_valid_x_api_key_credentials(self, valid_credentials):
+    def test_should_initialize_with_valid_x_api_key_credentials(
+        self, valid_credentials: DataSourceApiKeyAuthCredentials
+    ) -> None:
         """Test successful initialization with valid x-api-key credentials"""
         auth = WatercrawlAuth(valid_credentials)
         assert auth.api_key == "test_api_key_123"
         assert auth.base_url == "https://app.watercrawl.dev"
 
-    def test_should_initialize_with_custom_base_url(self):
+    def test_should_initialize_with_custom_base_url(self) -> None:
         """Test initialization with custom base URL"""
         credentials = _credentials(base_url="https://custom.watercrawl.dev")
         auth = WatercrawlAuth(credentials)
@@ -52,19 +54,21 @@ class TestWatercrawlAuth:
             ("", "Invalid auth type, WaterCrawl auth type must be x-api-key"),
         ],
     )
-    def test_should_raise_error_for_invalid_auth_type(self, auth_type, expected_error):
+    def test_should_raise_error_for_invalid_auth_type(self, auth_type: str, expected_error: str) -> None:
         """Test that non-x-api-key auth types raise a credential error."""
         credentials = _credentials(auth_type=auth_type)
         with pytest.raises(InvalidDataSourceApiKeyAuthCredentialsError) as exc_info:
             WatercrawlAuth(credentials)
         assert str(exc_info.value) == expected_error
 
-    def test_should_raise_error_for_empty_api_key(self):
+    def test_should_raise_error_for_empty_api_key(self) -> None:
         with pytest.raises(InvalidDataSourceApiKeyAuthCredentialsError, match="No API key provided"):
             WatercrawlAuth(_credentials(api_key=""))
 
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_validate_valid_credentials_successfully(self, mock_get, auth_instance):
+    def test_should_validate_valid_credentials_successfully(
+        self, mock_get: MagicMock, auth_instance: WatercrawlAuth
+    ) -> None:
         """Test successful credential validation"""
         mock_get.return_value = httpx.Response(200)
 
@@ -85,7 +89,9 @@ class TestWatercrawlAuth:
         ],
     )
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_handle_http_errors(self, mock_get, status_code, error_message, auth_instance):
+    def test_should_handle_http_errors(
+        self, mock_get: MagicMock, status_code: int, error_message: str, auth_instance: WatercrawlAuth
+    ) -> None:
         """Test handling of various HTTP error codes"""
         mock_get.return_value = httpx.Response(status_code, json={"error": error_message})
 
@@ -100,7 +106,7 @@ class TestWatercrawlAuth:
         mock_get: MagicMock,
         status_code: int,
         auth_instance: WatercrawlAuth,
-    ):
+    ) -> None:
         mock_get.return_value = httpx.Response(status_code)
 
         with pytest.raises(DataSourceApiKeyAuthProviderUnavailableError) as exc_info:
@@ -110,7 +116,9 @@ class TestWatercrawlAuth:
         assert exc_info.value.status_code == status_code
 
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_handle_http_error_with_non_json_text_response(self, mock_get, auth_instance):
+    def test_should_handle_http_error_with_non_json_text_response(
+        self, mock_get: MagicMock, auth_instance: WatercrawlAuth
+    ) -> None:
         """Test handling of known HTTP errors with non-JSON text response."""
         mock_get.return_value = httpx.Response(402, text="Payment required")
 
@@ -128,8 +136,13 @@ class TestWatercrawlAuth:
     )
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
     def test_should_handle_unexpected_errors(
-        self, mock_get, status_code, response_text, expected_error_contains, auth_instance
-    ):
+        self,
+        mock_get: MagicMock,
+        status_code: int,
+        response_text: str,
+        expected_error_contains: str,
+        auth_instance: WatercrawlAuth,
+    ) -> None:
         """Test handling of unexpected errors with various response formats"""
         mock_get.return_value = httpx.Response(status_code, text=response_text)
 
@@ -147,7 +160,13 @@ class TestWatercrawlAuth:
         ],
     )
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_handle_network_errors(self, mock_get, exception_type, exception_message, auth_instance):
+    def test_should_handle_network_errors(
+        self,
+        mock_get: MagicMock,
+        exception_type: type[httpx.HTTPError],
+        exception_message: str,
+        auth_instance: WatercrawlAuth,
+    ) -> None:
         """Test handling of various network-related errors including timeouts"""
         mock_get.side_effect = exception_type(exception_message)
 
@@ -155,7 +174,7 @@ class TestWatercrawlAuth:
             auth_instance.validate_credentials()
         assert exception_message in str(exc_info.value)
 
-    def test_should_not_expose_api_key_in_error_messages(self):
+    def test_should_not_expose_api_key_in_error_messages(self) -> None:
         """Test that API key is not exposed in error messages"""
         credentials = _credentials(api_key="super_secret_key_12345")
         auth = WatercrawlAuth(credentials)
@@ -169,7 +188,7 @@ class TestWatercrawlAuth:
         assert "super_secret_key_12345" not in str(exc_info.value)
 
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_use_custom_base_url_in_validation(self, mock_get):
+    def test_should_use_custom_base_url_in_validation(self, mock_get: MagicMock) -> None:
         """Test that custom base URL is used in validation"""
         mock_get.return_value = httpx.Response(200)
 
@@ -189,7 +208,9 @@ class TestWatercrawlAuth:
         ],
     )
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_use_urljoin_for_url_construction(self, mock_get, base_url, expected_url):
+    def test_should_use_urljoin_for_url_construction(
+        self, mock_get: MagicMock, base_url: str, expected_url: str
+    ) -> None:
         """Test that urljoin is used correctly for URL construction with various base URLs"""
         mock_get.return_value = httpx.Response(200)
 
@@ -201,7 +222,9 @@ class TestWatercrawlAuth:
         assert mock_get.call_args[0][0] == expected_url
 
     @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
-    def test_should_handle_timeout_with_retry_suggestion(self, mock_get, auth_instance):
+    def test_should_handle_timeout_with_retry_suggestion(
+        self, mock_get: MagicMock, auth_instance: WatercrawlAuth
+    ) -> None:
         """Test that timeout errors are handled gracefully with appropriate error message"""
         mock_get.side_effect = httpx.TimeoutException("The request timed out after 30 seconds")
 

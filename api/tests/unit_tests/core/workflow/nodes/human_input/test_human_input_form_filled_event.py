@@ -344,7 +344,7 @@ def test_human_input_filter_forwards_traversals_without_waiting_for_completion(e
     edge = event_type(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
     edge_forwarded = False
 
-    def source() -> Generator[GraphEngineEvent, None, None]:
+    def source() -> Generator[GraphEngineEvent]:
         yield started
         yield edge
         assert edge_forwarded, "The traversal must be forwarded before consuming more upstream events"

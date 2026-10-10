@@ -77,7 +77,7 @@ class Blob(BaseModel):
                 raise ValueError(f"Unable to get bytes for blob {self}")
 
     @contextlib.contextmanager
-    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader, None, None]:
+    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader]:
         """Read data as a byte stream."""
         match self.data:
             case bytes():

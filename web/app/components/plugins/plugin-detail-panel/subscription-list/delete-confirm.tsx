@@ -47,7 +47,6 @@ export const DeleteConfirm = (props: Props) => {
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        toast.success(t(($) => $[`${tPrefix}.success`], { ns: 'pluginTrigger', name: currentName }))
         refetch?.()
         onClose(true)
       },

@@ -17,19 +17,18 @@ from copy import deepcopy
 import json
 import mimetypes
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
-from typing import ClassVar
+from dataclasses import dataclass, field, replace
+from typing import ClassVar, override
 from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
-from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PlainLayer
+from pydantic_ai.toolsets import FunctionToolset
+from dify_agent.runtime.context import Deps
 from dify_agent.layers.dify_plugin.configs import (
-    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginToolConfig,
     DifyPluginToolParameter,
     DifyPluginToolParameterForm,
@@ -42,8 +41,7 @@ from dify_agent.layers.dify_plugin.tool_client import (
     DifyPluginToolInvokeMessage,
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -56,13 +54,6 @@ _FILE_UPLOAD_BEGIN = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_BEGIN>>>"
 _FILE_UPLOAD_END = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_END>>>"
 _FILE_UPLOAD_TIMEOUT_SECONDS = 60.0
 _SUPPORTED_REMOTE_URL_PREFIXES = ("http://", "https://")
-
-
-class DifyPluginToolsDeps(LayerDeps):
-    """Dependencies required by ``DifyPluginToolsLayer``."""
-
-    execution_context: DifyExecutionContextLayer  # pyright: ignore[reportUninitializedInstanceVariable]
-    shell: DifyShellLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 class DifyPluginToolsClientConfigurationError(ValueError):
@@ -154,81 +145,64 @@ class _DifyPluginToolFileClient:
             raise DifyPluginToolClientError("Invalid Dify API file download data.") from exc
 
 
-@dataclass(slots=True)
-class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerConfig]):
-    """Layer that resolves Dify plugin tools into Pydantic AI tools."""
+class Config(DifyPluginToolsLayerConfig):
+    pass
 
-    type_id: ClassVar[str | None] = DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
 
-    config: DifyPluginToolsLayerConfig
-    inner_api_url: str
-    inner_api_key: str
+class State(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @classmethod
+
+class Toolset(FunctionToolset[Deps]):
+    """Prepare native tools once per run; all clients and shell resources are borrowed."""
+
+    def __init__(self, name: str):
+        super().__init__(id=name)
+        self.name = name
+        self._loaded = False
+
     @override
-    def from_config(cls, config: DifyPluginToolsLayerConfig) -> Self:
-        """Reject construction without server-injected Dify API settings."""
-        del config
-        raise TypeError("DifyPluginToolsLayer requires server-side Dify API settings and must use a provider factory.")
-
-    @classmethod
-    def from_config_with_settings(
-        cls,
-        config: DifyPluginToolsLayerConfig,
-        *,
-        inner_api_url: str,
-        inner_api_key: str,
-    ) -> Self:
-        return cls(
-            config=DifyPluginToolsLayerConfig.model_validate(config),
-            inner_api_url=inner_api_url,
-            inner_api_key=inner_api_key,
-        )
-
-    async def get_tools(
-        self,
-        *,
-        http_client: httpx.AsyncClient,
-        dify_api_http_client: httpx.AsyncClient,
-    ) -> list[Tool[object]]:
-        """Build Pydantic AI tool adapters from prepared plugin tool config."""
-        if dify_api_http_client.is_closed:
-            raise RuntimeError("DifyPluginToolsLayer.get_tools() requires an open shared Dify API HTTP client.")
-
-        tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
-        tools: list[Tool[object]] = []
-        file_client = _DifyPluginToolFileClient(
-            base_url=self.inner_api_url,
-            api_key=self.inner_api_key,
-            http_client=dify_api_http_client,
-        )
-        file_context = _PluginToolFileContext(
-            file_client=file_client,
-            execution_context=self.deps.execution_context.config,
-            shell=self.deps.shell,
-        )
-
-        for tool_config in self.config.tools:
-            client = tool_clients.get(tool_config.plugin_id)
-            if client is None:
-                client = self.deps.execution_context.create_tool_client(
-                    plugin_id=tool_config.plugin_id,
-                    http_client=http_client,
-                )
-                tool_clients[tool_config.plugin_id] = client
-            effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
-            _validate_required_hidden_parameters(tool_config, effective_parameters)
-
-            tools.append(
-                _build_pydantic_ai_tool(
-                    client=client,
-                    tool_config=tool_config,
-                    effective_parameters=effective_parameters,
-                    file_context=file_context,
-                )
+    async def get_tools(self, ctx: RunContext[Deps]):
+        if not self._loaded:
+            config = Config.model_validate(ctx.deps.layers[self.name]["config"])
+            services = ctx.deps.services
+            if services.dify_api_http_client.is_closed:
+                raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
+            tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
+            file_context = _PluginToolFileContext(
+                file_client=_DifyPluginToolFileClient(
+                    base_url=services.inner_api_url,
+                    api_key=services.inner_api_key,
+                    http_client=services.dify_api_http_client,
+                ),
+                execution_context=DifyExecutionContextLayerConfig.model_validate(
+                    ctx.deps.layers[config.execution_context]["config"]
+                ),
+                deps=ctx.deps,
+                shell=config.shell,
             )
-
-        return tools
+            for tool_config in config.tools:
+                client = tool_clients.get(tool_config.plugin_id)
+                if client is None:
+                    client = ExecutionContextCapability.create_tool_client(
+                        ctx.deps,
+                        config.execution_context,
+                        plugin_id=tool_config.plugin_id,
+                        http_client=services.plugin_daemon_http_client,
+                    )
+                    tool_clients[tool_config.plugin_id] = client
+                effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
+                _validate_required_hidden_parameters(tool_config, effective_parameters)
+                self.add_tool(
+                    _build_pydantic_ai_tool(
+                        client=client,
+                        tool_config=tool_config,
+                        effective_parameters=effective_parameters,
+                        file_context=file_context,
+                    )
+                )
+            self._loaded = True
+        return await super().get_tools(ctx)
 
 
 def _validate_required_hidden_parameters(
@@ -254,12 +228,12 @@ def _build_pydantic_ai_tool(
     tool_config: DifyPluginToolConfig,
     effective_parameters: Sequence[DifyPluginToolParameter],
     file_context: "_PluginToolFileContext",
-) -> Tool[object]:
+) -> Tool[Deps]:
     tool_name = tool_config.name or tool_config.tool_name
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -280,20 +254,8 @@ def _build_pydantic_ai_tool(
         except ValueError as exc:
             return f"tool parameters validation error: {exc}, please check your tool parameters"
 
-    async def prepare_tool_definition(_ctx: RunContext[object], tool_def: ToolDefinition) -> ToolDefinition:
-        return ToolDefinition(
-            name=tool_def.name,
-            description=tool_def.description,
-            parameters_json_schema=tool_schema,
-            strict=PLUGIN_TOOL_STRICT,
-            sequential=tool_def.sequential,
-            metadata=tool_def.metadata,
-            timeout=tool_def.timeout,
-            defer_loading=tool_def.defer_loading,
-            kind=tool_def.kind,
-            return_schema=tool_def.return_schema,
-            include_return_schema=tool_def.include_return_schema,
-        )
+    async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition:
+        return replace(tool_def, parameters_json_schema=tool_schema, strict=PLUGIN_TOOL_STRICT)
 
     return Tool(
         invoke_tool,
@@ -352,7 +314,8 @@ async def _prepare_tool_arguments(
 class _PluginToolFileContext:
     file_client: _DifyPluginToolFileClient
     execution_context: DifyExecutionContextLayerConfig
-    shell: DifyShellLayer | None
+    deps: Deps
+    shell: str | None
 
     async def to_plugin_file_parameter(self, value: object) -> dict[str, object]:
         if isinstance(value, str):
@@ -389,7 +352,7 @@ class _PluginToolFileContext:
             f"print('{_FILE_UPLOAD_BEGIN}' + json.dumps(payload, separators=(',', ':')) + '{_FILE_UPLOAD_END}')\n"
             "PY"
         )
-        result = await self.shell.run_remote_script_complete(
+        result = await self.deps.resources.shells[self.shell].run_remote_script_complete(
             script,
             timeout=_FILE_UPLOAD_TIMEOUT_SECONDS,
             inject_agent_stub_env=True,
@@ -678,4 +641,4 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
     return "".join(parts)
 
 
-__all__ = ["DifyPluginToolsDeps", "DifyPluginToolsLayer"]
+__all__ = ["Config", "State", "Toolset"]

@@ -91,6 +91,7 @@ from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGate
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
+from services.app.console_gateway import EnterpriseConsoleAppAccess
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
@@ -122,9 +123,11 @@ from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
@@ -284,6 +287,25 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.trial_apps.access._apps is trial_apps
     assert services.trial_apps.generation._usage is trial_apps
     assert services.recommended_app_queries._trial_apps is trial_apps
+
+    assert services.rbac.resources._apps is services.apps.console._apps
+    assert services.rbac.queries._apps is services.rbac.resources._apps
+    assert services.rbac.queries._datasets is services.rbac.resources._datasets
+    dataset_access = services.knowledge.datasets._dataset_access
+    assert isinstance(dataset_access, DatasetAccessService)
+    assert services.rbac.resources._datasets is dataset_access._datasets
+    assert services.rbac.members._members is services.rbac.resources._members
+    assert services.rbac.members._members is services.workspaces.members._workspaces
+    assert services.rbac.members._workspace_roles is services.workspaces.members
+    app_access = services.apps.console._access
+    assert isinstance(app_access, EnterpriseConsoleAppAccess)
+    assert app_access._members is services.rbac.members
+    dataset_operations = services.knowledge.datasets._operations
+    assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+    assert dataset_operations._members_service is services.rbac.members
+    external_operations = services.knowledge.external._operations
+    assert isinstance(external_operations, SQLAlchemyExternalKnowledgeOperations)
+    assert external_operations._members is services.rbac.members
 
 
 @pytest.mark.parametrize(

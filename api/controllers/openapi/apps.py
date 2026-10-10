@@ -33,7 +33,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_application_services import application_services
@@ -115,7 +115,7 @@ class AppDescribeApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
@@ -143,7 +143,7 @@ class AppListApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckScope(Scope.APPS_READ),
             CheckWorkspaceMember(),
         ),
@@ -152,7 +152,7 @@ class AppListApi(Resource):
     )
     def get(self, ctx: Context, *, query: AppListQuery):
         workspace_id = query.workspace_id
-        account_id = str(ctx.subject.account_id)
+        account_id = str(ctx.subject.account_id or ctx.subject.token_id)
 
         empty = AppListResponse.build(page=query.page, limit=query.limit, total=0, items=[])
 
@@ -165,15 +165,22 @@ class AppListApi(Resource):
             parsed_uuid = None
 
         access_filter = (
-            resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
-            if dify_config.RBAC_ENABLED
+            resolve_app_access_filter(workspace_id, account_id)
+            if dify_config.RBAC_ENABLED and isinstance(ctx.subject, AccountSubject)
             else AppAccessFilter.unrestricted()
         )
+
+        if ctx.resource_app_ids is not None:
+            access_filter = AppAccessFilter(set(ctx.resource_app_ids), can_manage_own_apps=False)
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
             app = application_services().apps.queries.get_visible_app_by_id(str(parsed_uuid), workspace_id)
             if app is None or str(app.tenant_id) != workspace_id:
+                return empty
+            if ctx.resource_app_ids is not None and (
+                str(app.id) not in ctx.resource_app_ids or app.status != AppStatus.NORMAL
+            ):
                 return empty
             if not _is_listable(app):
                 return empty

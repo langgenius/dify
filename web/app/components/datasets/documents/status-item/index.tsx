@@ -80,7 +80,6 @@ const StatusItem = ({
       opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
     )
     if (!e) {
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate?.(operationName)
     } else {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

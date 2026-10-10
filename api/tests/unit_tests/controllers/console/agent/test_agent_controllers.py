@@ -54,7 +54,7 @@ from controllers.console.agent.roster import (
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
-from controllers.console.app.error import AgentSessionConfigurationChangedError, CompletionRequestError
+from controllers.console.app.error import CompletionRequestError
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
@@ -68,6 +68,7 @@ from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, A
 from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
 from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
+from services.enterprise.rbac_service import RBACService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -78,6 +79,12 @@ from services.entities.agent_entities import (
 from services.entities.app_entities import AgentAppPublicationCounts, AppListParams, CreateAppParams
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
+from tests.unit_tests.rbac_fakes import RBACDomain
+
+
+@pytest.fixture(autouse=True)
+def rbac_services(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
+    monkeypatch.setattr(roster_controller, "application_services", lambda: rbac_domain)
 
 
 def _persist_conversation_message(
@@ -343,10 +350,10 @@ def test_agent_app_list_and_create_use_agent_route(
         ]
     )
     sqlite_session.flush()
-    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse(
-        agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+    permissions = roster_controller.rbac_contracts.MyPermissionsResponse(
+        agent=roster_controller.rbac_contracts.ResourcePermissionSnapshot(
             overrides=[
-                roster_controller.enterprise_rbac_service.ResourcePermissionKeys(
+                roster_controller.rbac_contracts.ResourcePermissionKeys(
                     resource_id="agent-list",
                     permission_keys=["agent.acl.preview"],
                 )
@@ -360,7 +367,7 @@ def test_agent_app_list_and_create_use_agent_route(
             params.accessible_app_ids = ["app-list"]
 
     monkeypatch.setattr(
-        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        RBACService.MyPermissions,
         "get",
         lambda *_args, **_kwargs: permissions,
     )
@@ -642,11 +649,12 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "agent_has_workflow_callable_active_snapshot",
         lambda **_kwargs: False,
     )
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
-        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        RBACService.MyPermissions,
         "get",
-        lambda *_args, **_kwargs: roster_controller.enterprise_rbac_service.MyPermissionsResponse(
-            agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+        lambda *_args, **_kwargs: roster_controller.rbac_contracts.MyPermissionsResponse(
+            agent=roster_controller.rbac_contracts.ResourcePermissionSnapshot(
                 default_permission_keys=["agent.acl.preview"]
             )
         ),
@@ -1096,10 +1104,10 @@ def test_invite_options_get_applies_resource_visibility(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, object] = {}
-    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse()
+    permissions = roster_controller.rbac_contracts.MyPermissionsResponse()
 
     monkeypatch.setattr(
-        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        RBACService.MyPermissions,
         "get",
         lambda *_args, **_kwargs: permissions,
     )
@@ -1746,39 +1754,6 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     assert stream.closed is True
 
 
-def test_agent_chat_stream_preflight_preserves_session_configuration_error() -> None:
-    class ClosableStream:
-        def __init__(self) -> None:
-            self.closed = False
-            self._chunks = iter(
-                [
-                    "event: ping\n\n",
-                    (
-                        'data: {"event":"error","message":"Start a new conversation to continue.",'
-                        '"code":"agent_session_configuration_changed","status":409}\n\n'
-                    ),
-                ]
-            )
-
-        def __iter__(self) -> Self:
-            return self
-
-        def __next__(self) -> str:
-            return next(self._chunks)
-
-        def close(self) -> None:
-            self.closed = True
-
-    stream = ClosableStream()
-    with pytest.raises(AgentSessionConfigurationChangedError) as exc_info:
-        completion_controller._raise_agent_stream_error_before_response(stream)
-    assert exc_info.value.code == 409
-    assert exc_info.value.error_code == "agent_session_configuration_changed"
-    assert exc_info.value.description is not None
-    assert "Start a new conversation" in exc_info.value.description
-    assert stream.closed is True
-
-
 def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
     stream = iter(
         ["event: ping\n\n", 'data: {"event":"message","answer":"hello"}\n\n', 'data: {"event":"message_end"}\n\n']
@@ -1879,7 +1854,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:
     closed: list[bool] = []
 
-    def generate_response() -> Generator[str, None, None]:
+    def generate_response() -> Generator[str]:
         try:
             yield "event: ping\n\n"
             yield 'data: {"event":"message","answer":"working"}\n\n'

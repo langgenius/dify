@@ -1494,13 +1494,6 @@ describe('CommonCreateModal', () => {
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'pluginTrigger.subscription.createSuccess',
-        })
-      })
-
-      await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled()
       })
 

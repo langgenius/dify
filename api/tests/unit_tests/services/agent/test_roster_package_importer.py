@@ -85,7 +85,7 @@ class _MemoryStorage:
         self.deleted.append(filename)
         self.files.pop(filename, None)
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
 
@@ -345,7 +345,7 @@ def test_template_url_rejects_failed_or_unsafe_download_before_writes(
 
     class OversizedDownload(httpx.SyncByteStream):
         @override
-        def __iter__(self) -> Generator[bytes, None, None]:
+        def __iter__(self) -> Generator[bytes]:
             yield b"x" * (2 * 1024 * 1024)
             pytest.fail("An oversized Agent package must stop downloading before reading the tail")
 

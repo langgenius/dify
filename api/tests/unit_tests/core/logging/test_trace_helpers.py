@@ -3,6 +3,8 @@
 import re
 from unittest import mock
 
+from opentelemetry.trace import NonRecordingSpan, SpanContext, use_span
+
 
 class TestGetSpanIdFromOtelContext:
     def test_returns_none_without_span(self):
@@ -15,15 +17,10 @@ class TestGetSpanIdFromOtelContext:
     def test_returns_span_id_when_available(self):
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
-        mock_span = mock.MagicMock()
-        mock_context = mock.MagicMock()
-        mock_context.span_id = 0x051581BF3BB55C45
-        mock_span.get_span_context.return_value = mock_context
-
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True):
-            with mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0):
-                result = get_span_id_from_otel_context()
-                assert result == "051581bf3bb55c45"
+        span = NonRecordingSpan(SpanContext(trace_id=1, span_id=0x051581BF3BB55C45, is_remote=False))
+        with use_span(span):
+            result = get_span_id_from_otel_context()
+            assert result == "051581bf3bb55c45"
 
     def test_returns_none_on_exception(self):
         from core.helper.trace_id_helper import get_span_id_from_otel_context
@@ -52,20 +49,16 @@ class TestGenerateTraceparentHeader:
     def test_uses_otel_context_when_available(self):
         from core.helper.trace_id_helper import generate_traceparent_header
 
-        mock_span = mock.MagicMock()
-        mock_context = mock.MagicMock()
-        mock_context.trace_id = 0x5B8AA5A2D2C872E8321CF37308D69DF2
-        mock_context.span_id = 0x051581BF3BB55C45
-        mock_span.get_span_context.return_value = mock_context
-
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True):
-            with (
-                mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
-                mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0),
-            ):
-                result = generate_traceparent_header()
-
-                assert result == "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
+        span = NonRecordingSpan(
+            SpanContext(
+                trace_id=0x5B8AA5A2D2C872E8321CF37308D69DF2,
+                span_id=0x051581BF3BB55C45,
+                is_remote=False,
+            )
+        )
+        with use_span(span):
+            result = generate_traceparent_header()
+            assert result == "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
 
     def test_generates_hex_only_values(self):
         from core.helper.trace_id_helper import generate_traceparent_header

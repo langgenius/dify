@@ -184,7 +184,9 @@ const Operations = ({
         opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
       )
       if (!e) {
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+        // The switch already shows the result of enable and disable.
+        if (operationName !== 'enable' && operationName !== 'disable')
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         // If it is a delete operation, need to update the selectedIds state
         if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
           onSelectedIdChange(selectedIds.filter((selectedId) => selectedId !== id))

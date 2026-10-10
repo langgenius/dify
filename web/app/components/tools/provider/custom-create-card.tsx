@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
@@ -16,7 +15,6 @@ type Props = Readonly<{
 }>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
-  const { t } = useTranslation(['common'])
   const canManageTools = useCanManageTools()
   const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
@@ -24,7 +22,6 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
     if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }

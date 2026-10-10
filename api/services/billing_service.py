@@ -3,11 +3,11 @@ import logging
 import os
 from collections.abc import Sequence
 from typing import Any, Literal, NotRequired, TypedDict
+from warnings import deprecated
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client

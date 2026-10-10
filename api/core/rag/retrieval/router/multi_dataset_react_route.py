@@ -160,7 +160,7 @@ class ReactMultiDatasetRouter:
             model_type=ModelType.LLM,
             model=model_instance.model_name,
         )
-        invoke_result: Generator[LLMResult, None, None] = bound_model_instance.invoke_llm(
+        invoke_result: Generator[LLMResult] = bound_model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=completion_param,
             stop=stop,

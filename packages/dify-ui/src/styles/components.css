@@ -44,7 +44,7 @@
 
 [data-dify-scroll-area-scrollbar][data-orientation='horizontal']::before {
   top: 50%;
-  left: 4px;
+  inset-inline-start: 4px;
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
@@ -53,11 +53,19 @@
 
 [data-dify-scroll-area-scrollbar][data-orientation='horizontal']::after {
   top: 50%;
-  right: 4px;
+  inset-inline-end: 4px;
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
   background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scroll-area-scrollbar][data-orientation='horizontal']:dir(rtl)::before {
+  background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scroll-area-scrollbar][data-orientation='horizontal']:dir(rtl)::after {
+  background: linear-gradient(to right, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scroll-area-scrollbar][data-orientation='vertical']:not(

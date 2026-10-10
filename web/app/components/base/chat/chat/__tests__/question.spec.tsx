@@ -3,9 +3,7 @@ import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { toast } from '@/app/notifications'
 import { createTheme } from '../../embedded-chatbot/theme/theme'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
@@ -52,7 +50,14 @@ vi.mock('../content-switch', () => ({
     )
   },
 }))
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
+const mockCopy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copy: mockCopy,
+    copied: false,
+  }),
+}))
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div className="markdown-body">{content}</div>,
 }))
@@ -188,19 +193,15 @@ describe('Question component', () => {
     expect(disconnectMock).toHaveBeenCalled()
   })
 
-  it('should call copy-to-clipboard and show a toast when copy action is clicked', async () => {
+  it('should copy the question content when copy action is clicked', async () => {
     const user = userEvent.setup()
-    const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
     renderWithProvider(makeItem())
 
     const copyBtn = screen.getByRole('button', { name: 'common.operation.copy' })
     await user.click(copyBtn)
 
-    await waitFor(() => {
-      expect(copy).toHaveBeenCalledWith('This is the question content')
-      expect(toastSpy).toHaveBeenCalled()
-    })
+    expect(mockCopy).toHaveBeenCalledWith('This is the question content')
   })
 
   it('should not show edit action when enableEdit is false', () => {
