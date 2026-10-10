@@ -355,6 +355,18 @@ def test_active_execution_snapshot_failure_is_not_published_as_a_pause(sqlite_en
         assert session.scalar(select(WorkflowPause)) is None
 
 
+def test_legacy_caller_rejects_human_input_before_creating_run_or_form(sqlite_engine: Engine) -> None:
+    from models.human_input import HumanInputForm
+
+    runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
+    runner.application_generate_entity.allow_human_input = False
+    with pytest.raises(ValueError, match="require Engine-managed container execution"):
+        WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
+    with Session(sqlite_engine) as session:
+        assert session.scalar(select(WorkflowRun)) is None
+        assert session.scalar(select(HumanInputForm)) is None
+
+
 @pytest.mark.usefixtures("_local_storage")
 @pytest.mark.parametrize("stop_timing", ["before_summary", "during_upload"])
 def test_stop_wins_while_engine_is_persisting_a_pause(
@@ -418,15 +430,3 @@ def test_stop_wins_while_engine_is_persisting_a_pause(
         forms = session.scalars(select(HumanInputForm).where(HumanInputForm.workflow_run_id == run.id)).all()
         assert forms
         assert all(form.status == HumanInputFormStatus.EXPIRED for form in forms)
-
-
-def test_legacy_caller_rejects_human_input_before_creating_run_or_form(sqlite_engine: Engine) -> None:
-    from models.human_input import HumanInputForm
-
-    runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
-    runner.application_generate_entity.allow_human_input = False
-    with pytest.raises(ValueError, match="require Engine-managed container execution"):
-        WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
-    with Session(sqlite_engine) as session:
-        assert session.scalar(select(WorkflowRun)) is None
-        assert session.scalar(select(HumanInputForm)) is None

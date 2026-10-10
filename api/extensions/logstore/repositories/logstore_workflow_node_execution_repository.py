@@ -304,21 +304,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
-    def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
-        # Assign ordering before checking SQL so an in-flight pause cannot sort
-        # after a stop that commits while the LogStore upload is pending.
-        version = time.time_ns()
-        if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
-            execution = execution.model_copy()
-            with self._session_factory() as session:
-                apply_workflow_stop_to_node(
-                    execution,
-                    get_stopped_workflow_run(
-                        session, tenant_id=self._tenant_id, workflow_run_id=execution.workflow_execution_id
-                    ),
-                )
-        return execution, version
-
     @override
     def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
         """Append each record through the existing writer and batch the SQL backup."""
@@ -336,6 +321,21 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 self.sql_repository.save_many(controlled_executions)
             except Exception:
                 logger.exception("Failed to dual-write workflow node execution batch: %s", [e.id for e in executions])
+
+    def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
+        # Assign ordering before checking SQL so an in-flight pause cannot sort
+        # after a stop that commits while the LogStore upload is pending.
+        version = time.time_ns()
+        if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+            execution = execution.model_copy()
+            with self._session_factory() as session:
+                apply_workflow_stop_to_node(
+                    execution,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=execution.workflow_execution_id
+                    ),
+                )
+        return execution, version
 
     @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
