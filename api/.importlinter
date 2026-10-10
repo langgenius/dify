@@ -1151,3 +1151,31 @@ forbidden_modules =
     extensions.application_services
     extensions.ext_application_services
 allow_indirect_imports = True
+
+[importlinter:contract:workflow-agent-application-boundary]
+name = Workflow Agent binding rules consume ports without ORM or infrastructure adapters
+type = forbidden
+source_modules =
+    services.agent.workflow_publish_service
+    services.agent.workflow_validator
+    services.agent.workflow_contracts
+    services.agent.publication_contracts
+forbidden_modules =
+    sqlalchemy
+    flask
+    extensions
+    repositories
+    services.agent.workflow_resources_gateway
+    services.agent.dsl_service
+    services.skill_management_service
+allow_indirect_imports = True
+
+[importlinter:contract:agent-binding-persistence-boundary]
+name = Agent binding persistence does not call binding orchestration
+type = forbidden
+source_modules =
+    repositories.agent.workflow_binding_repository
+    repositories.agent.creation_repository
+forbidden_modules =
+    services.agent
+allow_indirect_imports = True
