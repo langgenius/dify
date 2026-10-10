@@ -783,8 +783,6 @@ overrides:
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.7
-  postcss-selector-parser@>=6.0.0 <6.1.3: 6.1.4
-  postcss-selector-parser@>=7.0.0 <7.1.3: 7.1.6
   postcss@<8.5.10: ^8.5.10
   rollup@>=4.0.0 <4.59.0: 4.63.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
