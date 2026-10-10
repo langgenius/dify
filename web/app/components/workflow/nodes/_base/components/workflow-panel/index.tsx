@@ -697,6 +697,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             <>
               {needsToolAuth && (
                 <PluginAuth
+                  showAuthorizationTabs
                   className="px-4 pb-2"
                   pluginPayload={{
                     provider: currToolCollection?.name || '',

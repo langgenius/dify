@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import PluginAuth from '../plugin-auth'
@@ -85,7 +87,8 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorize')).not.toBeInTheDocument()
   })
 
-  it('renders children when authorized and children provided', () => {
+  it('keeps authorized children connected to the outer tabs when authorization tabs are enabled', async () => {
+    const user = userEvent.setup()
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: true,
       canOAuth: false,
@@ -96,12 +99,80 @@ describe('PluginAuth', () => {
     })
 
     render(
-      <PluginAuth pluginPayload={defaultPayload}>
-        <div data-testid="custom-children">Custom Content</div>
-      </PluginAuth>,
+      <Tabs defaultValue="settings">
+        <PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs>
+          <TabsList>
+            <TabsTab value="settings">Settings</TabsTab>
+            <TabsTab value="last-run">Last run</TabsTab>
+          </TabsList>
+        </PluginAuth>
+        <TabsPanel value="settings">Custom Content</TabsPanel>
+        <TabsPanel value="last-run">Last run content</TabsPanel>
+      </Tabs>,
     )
-    expect(screen.getByTestId('custom-children')).toBeInTheDocument()
+
+    expect(screen.getByRole('tabpanel', { name: 'Settings' })).toHaveTextContent('Custom Content')
+    expect(
+      screen.queryByRole('heading', { name: 'plugin.auth.authorization' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'plugin.auth.workspaceAuth' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Last run' }))
+
+    expect(screen.getByRole('tab', { name: 'Last run' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Last run' })).toHaveTextContent('Last run content')
+    expect(screen.queryByRole('tabpanel', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+
+  it('shows workspace authorization controls only in the Workspace Auth tab', async () => {
+    const user = userEvent.setup()
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs />)
+
+    expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
+    const workspaceTab = screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' })
+    expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
+    const workspacePanel = screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })
+    expect(
+      within(workspacePanel).getByRole('button', { name: 'plugin.auth.useApiAuth' }),
+    ).toBeDisabled()
+    expect(within(workspacePanel).getByText('plugin.auth.permissionHint.title')).toBeVisible()
+
+    for (const label of ['plugin.auth.appUserAuth', 'plugin.auth.reuseFromNode']) {
+      const tab = screen.getByRole('tab', { name: label })
+      await user.click(tab)
+
+      expect(tab).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('tabpanel', { name: label })).toBeEmptyDOMElement()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.permissionHint.action' }),
+      ).not.toBeInTheDocument()
+    }
+
+    await user.click(workspaceTab)
+
+    const restoredWorkspacePanel = screen.getByRole('tabpanel', {
+      name: 'plugin.auth.workspaceAuth',
+    })
+    expect(
+      within(restoredWorkspacePanel).getByRole('button', { name: 'plugin.auth.useApiAuth' }),
+    ).toBeDisabled()
+    expect(
+      within(restoredWorkspacePanel).getByText('plugin.auth.permissionHint.title'),
+    ).toBeVisible()
   })
 
   it('passes pluginPayload.provider to usePluginAuth', () => {
