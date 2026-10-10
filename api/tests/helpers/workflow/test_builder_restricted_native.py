@@ -4,20 +4,26 @@ import hashlib
 import hmac
 import json
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import override
+from unittest.mock import Mock
 
 import pytest
 import yaml
 from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
 
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.dify_builder.execution_policy import canonical_digest
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError, canonical_digest
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.entities import GraphInitParams
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType
+from graphon.enums import ErrorStrategy
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
@@ -58,9 +64,10 @@ class ThrowingLayer(GraphEngineLayer):
         raise RuntimeError("observer is unavailable")
 
 
-def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None):
+def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, graph_config=None):
     db_factory, actor, app, workflow, sid, tid = owned
-    graph_config = yaml.safe_load((FIXTURES / name).read_text())
+    if graph_config is None:
+        graph_config = yaml.safe_load((FIXTURES / name).read_text())
     if http_data is not None:
         graph_config["nodes"][1]["data"].update(http_data)
     inputs = inputs if inputs is not None else {"path": "resolved-secret"}
@@ -106,8 +113,27 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None):
     return factory, context, recorder
 
 
-def execute_native(factory, *, throwing=False):
-    graph = Graph.init(graph_config=factory.graph_init_params.graph_config, node_factory=factory, root_node_id="start")
+def init_runner_graph(owned, factory, context, recorder):
+    _, actor, app, workflow, _, _ = owned
+    runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id=app.id)
+    return runner._init_graph(
+        graph_config=factory.graph_init_params.graph_config,
+        graph_runtime_state=factory.graph_runtime_state,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_id=workflow.id,
+        tenant_id=actor.tenant_id,
+        user_id=actor.account_id,
+        builder_execution=context,
+        execution_recorder=recorder,
+    )
+
+
+def execute_native(factory, *, throwing=False, graph=None):
+    if graph is None:
+        graph = Graph.init(
+            graph_config=factory.graph_init_params.graph_config, node_factory=factory, root_node_id="start"
+        )
     engine = GraphEngine(
         workflow_id=factory.graph_init_params.workflow_id,
         graph=graph,
@@ -142,7 +168,10 @@ def forbid_live(monkeypatch):
     from core.plugin.impl import oauth
     from core.tools.tool_manager import ToolManager
 
+    calls = []
+
     def forbidden(*_args, **_kwargs):
+        calls.append("live owner reached")
         raise AssertionError("live owner reached")
 
     for name in (
@@ -167,6 +196,7 @@ def forbid_live(monkeypatch):
     monkeypatch.setattr(CodeExecutor, "execute_workflow_code_template", forbidden)
     monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", forbidden)
     monkeypatch.setattr(oauth, "OAuthHandler", forbidden)
+    return calls
 
 
 @pytest.mark.parametrize("throwing", [False, True])
@@ -284,6 +314,67 @@ def test_native_default_output_success_keeps_blocked_evidence(owned, throwing):
     assert any(isinstance(e, NodeRunSucceededEvent) and e.node_id == "end" for e in events)
     assert [e.exceptions_count for e in events if isinstance(e, GraphRunPartialSucceededEvent)] == [1]
     assert receipts(owned)[0]["kind"] == "effect_blocked"
+
+
+def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(owned, forbid_live):
+    graph_config = yaml.safe_load((FIXTURES / "http_default_output.yml").read_text())
+    for target in (graph_config, graph_config["nodes"][1], graph_config["nodes"][1]["data"], graph_config["edges"][0]):
+        target["undeclared_metadata"] = {"nested": ["preserved", 1]}
+    factory, context, recorder = prepare_native(owned, "http_default_output.yml", graph_config=graph_config)
+    raw_graph = factory.graph_init_params.graph_config
+    original = deepcopy(raw_graph)
+    graph = init_runner_graph(owned, factory, context, recorder)
+    _, events, error = execute_native(factory, graph=graph)
+    assert error is None
+    assert type(graph.nodes["http"]) is HttpRequestNode
+    assert type(graph.nodes["end"]) is EndNode
+    assert graph.nodes["http"].graph_init_params.graph_config == original
+    assert raw_graph == original
+    assert type(raw_graph["nodes"][1]["data"]["error_strategy"]) is str
+    assert type(raw_graph["nodes"][1]["data"]["default_value"][0]["type"]) is str
+    assert type(raw_graph["nodes"][1]["data"]["default_value"][0]["value"]) is int
+    assert [e.outputs for e in events if isinstance(e, GraphRunPartialSucceededEvent)] == [
+        {"status": 599, "text": "denied default"}
+    ]
+    assert [e.exceptions_count for e in events if isinstance(e, GraphRunPartialSucceededEvent)] == [1]
+    assert any(isinstance(e, NodeRunSucceededEvent) and e.node_id == "end" for e in events)
+    observations = receipts(owned)
+    assert len(observations) == 1
+    assert observations[0]["kind"] == "effect_blocked"
+    assert observations[0]["reason_code"] == "http_fixture_missing"
+    assert observations[0]["request_id"] == context.request_id
+    assert recorder.healthy
+    assert forbid_live == []
+
+
+def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned, forbid_live):
+    factory, context, recorder = prepare_native(owned, "http_default_output.yml")
+    raw_graph = factory.graph_init_params.graph_config
+    raw_graph["nodes"][1]["data"]["undeclared_metadata"] = {"nested": ["changed", 1]}
+    changed = deepcopy(raw_graph)
+    with pytest.raises(BuilderExecutionPolicyError, match="execution_binding_mismatch"):
+        init_runner_graph(owned, factory, context, recorder)
+    assert raw_graph == changed
+    assert receipts(owned) == []
+    assert recorder.healthy
+    assert forbid_live == []
+
+
+@pytest.mark.parametrize("value", ["strategy_enum", "default_type_enum", "default_model"])
+def test_runner_refuses_non_json_objects_even_when_json_serialization_is_equivalent(owned, forbid_live, value):
+    factory, context, recorder = prepare_native(owned, "http_default_output.yml")
+    data = factory.graph_init_params.graph_config["nodes"][1]["data"]
+    if value == "strategy_enum":
+        data["error_strategy"] = ErrorStrategy.DEFAULT_VALUE
+    elif value == "default_type_enum":
+        data["default_value"][0]["type"] = DefaultValueType.NUMBER
+    else:
+        data["default_value"][0] = DefaultValue.model_validate(data["default_value"][0])
+    with pytest.raises(BuilderExecutionPolicyError, match="invalid_canonical_json"):
+        init_runner_graph(owned, factory, context, recorder)
+    assert receipts(owned) == []
+    assert recorder.healthy
+    assert forbid_live == []
 
 
 def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(owned):
