@@ -20,7 +20,7 @@ import BatchAction from '../detail/completed/common/batch-action'
 import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import RenameModal from './rename-modal'
+import { RenameModal } from './rename-modal'
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
@@ -305,12 +305,13 @@ const DocumentList = ({
         />
       )}
 
-      {isShowRenameModal && currDocument && (
+      {currDocument && (
         <RenameModal
           datasetId={datasetId}
           documentId={currDocument.id}
           name={currDocument.name}
-          onClose={setShowRenameModalFalse}
+          open={isShowRenameModal}
+          onOpenChange={(open) => !open && setShowRenameModalFalse()}
           onSaved={handleRenamed}
         />
       )}

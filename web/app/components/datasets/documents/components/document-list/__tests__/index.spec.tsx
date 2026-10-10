@@ -1,7 +1,9 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import * as datasetsService from '@/service/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import DocumentList from '../../list'
@@ -421,14 +423,37 @@ describe('DocumentList', () => {
       )!.toBeInTheDocument()
     })
 
-    it('should call onUpdate when document is renamed', () => {
-      const onUpdate = vi.fn()
-      const props = { ...defaultProps, onUpdate }
-      render(<DocumentList {...props} />, { wrapper: createWrapper() })
-
-      // The handleRenamed callback wraps onUpdate
-      // The handleRenamed callback wraps onUpdate
-      expect(screen.getByRole('table'))!.toBeInTheDocument()
+    it('renames from the row entry and closes without awaiting the owner refresh', async () => {
+      const user = userEvent.setup()
+      const rename = vi
+        .spyOn(datasetsService, 'renameDocumentName')
+        .mockResolvedValue({ result: 'success' })
+      let resolveRefresh!: () => void
+      const refresh = new Promise<void>((resolve) => {
+        resolveRefresh = resolve
+      })
+      const onUpdate = vi.fn(() => refresh)
+      const view = render(<DocumentList {...defaultProps} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
+      try {
+        await user.click(
+          screen.getAllByRole('button', { name: 'datasetDocuments.list.table.rename' })[0]!,
+        )
+        await user.clear(screen.getByRole('textbox'))
+        await user.type(screen.getByRole('textbox'), 'Renamed document{Enter}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(rename).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          documentId: 'doc-1',
+          name: 'Renamed document',
+        })
+        expect(onUpdate).toHaveBeenCalledTimes(1)
+      } finally {
+        await act(async () => resolveRefresh())
+        view.unmount()
+        rename.mockRestore()
+      }
     })
   })
 

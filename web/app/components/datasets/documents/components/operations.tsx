@@ -47,7 +47,7 @@ import {
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
-import RenameModal from './rename-modal'
+import { RenameModal } from './rename-modal'
 
 type OperationsProps = {
   embeddingAvailable: boolean
@@ -554,12 +554,13 @@ const Operations = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {isShowRenameModal && currDocument && (
+      {currDocument && (
         <RenameModal
           datasetId={datasetId}
           documentId={currDocument.id}
           name={currDocument.name}
-          onClose={setShowRenameModalFalse}
+          open={isShowRenameModal}
+          onOpenChange={(open) => !open && setShowRenameModalFalse()}
           onSaved={handleRenamed}
         />
       )}

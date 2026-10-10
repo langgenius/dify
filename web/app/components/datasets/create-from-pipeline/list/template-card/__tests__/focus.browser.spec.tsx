@@ -31,12 +31,12 @@ vi.mock('@/service/use-pipeline', () => ({
   useDeleteTemplate: () => ({ mutateAsync: vi.fn() }),
   useExportTemplateDSL: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useInvalidCustomizedTemplateList: () => vi.fn(),
+  useUpdateTemplateInfo: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/app/components/workflow/workflow-preview', () => ({
   default: () => <div>Workflow preview</div>,
 }))
-vi.mock('../edit-pipeline-info', () => ({ default: () => null }))
 
 const pipeline: PipelineTemplate = {
   id: 'template-1',

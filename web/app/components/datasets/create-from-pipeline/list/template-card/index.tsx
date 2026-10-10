@@ -28,7 +28,7 @@ import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
-import EditPipelineInfo from './edit-pipeline-info'
+import { EditPipelineInfo } from './edit-pipeline-info'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -95,10 +95,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(true)
   }, [])
 
-  const closeEditModal = useCallback(() => {
-    setShowEditModal(false)
-  }, [])
-
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
@@ -160,18 +156,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           />
         </DialogContent>
       </Dialog>
-      {showEditModal && (
-        <Dialog
-          open={showEditModal}
-          onOpenChange={(open) => {
-            if (!open) closeEditModal()
-          }}
-        >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-130! overflow-hidden! border-none p-0 text-left align-middle">
-            <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
-          </DialogContent>
-        </Dialog>
-      )}
+      <EditPipelineInfo pipeline={pipeline} open={showEditModal} onOpenChange={setShowEditModal} />
       <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

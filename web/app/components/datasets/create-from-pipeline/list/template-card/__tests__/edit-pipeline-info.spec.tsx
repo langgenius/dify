@@ -1,27 +1,25 @@
 import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { useMutation } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
-import EditPipelineInfo from '../edit-pipeline-info'
+import { EditPipelineInfo } from '../edit-pipeline-info'
 
 const render = (ui: ReactElement) =>
-  testingLibraryRender(
-    <Dialog open>
-      <DialogContent>{ui}</DialogContent>
-    </Dialog>,
-  )
+  testingLibraryRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const mockUpdatePipeline = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
 
 vi.mock('@/service/use-pipeline', () => ({
-  useUpdateTemplateInfo: () => ({
-    mutateAsync: mockUpdatePipeline,
-  }),
+  useUpdateTemplateInfo: () =>
+    useMutation({
+      mutationFn: (request: unknown) => mockUpdatePipeline(request, { onSuccess: () => {} }),
+    }),
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
 
@@ -73,7 +71,8 @@ const createImagePipelineTemplate = (): PipelineTemplate => ({
 
 describe('EditPipelineInfo', () => {
   const defaultProps = {
-    onClose: vi.fn(),
+    open: true,
+    onOpenChange: vi.fn(),
     pipeline: createPipelineTemplate(),
   }
   const getIconButton = () =>
@@ -84,6 +83,8 @@ describe('EditPipelineInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockToastError.mockReset()
+    mockUpdatePipeline.mockReset()
+    mockInvalidCustomizedTemplateList.mockReset()
   })
 
   describe('Rendering', () => {
@@ -127,22 +128,22 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', async () => {
+    it('should call onOpenChange when close button is clicked', async () => {
       const user = userEvent.setup()
       render(<EditPipelineInfo {...defaultProps} />)
 
       await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-      expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when cancel button is clicked', () => {
+    it('should call onOpenChange when cancel button is clicked', () => {
       render(<EditPipelineInfo {...defaultProps} />)
 
       const cancelButton = screen.getByText(/operation\.cancel/i)
       fireEvent.click(cancelButton)
 
-      expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1)
     })
 
     it('should update name when input changes', () => {
@@ -196,7 +197,7 @@ describe('EditPipelineInfo', () => {
       })
     })
 
-    it('should call onClose on successful save', async () => {
+    it('should call onOpenChange on successful save', async () => {
       mockUpdatePipeline.mockImplementation((_data, callbacks) => {
         callbacks.onSuccess()
         return Promise.resolve()
@@ -208,7 +209,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(defaultProps.onClose).toHaveBeenCalled()
+        expect(defaultProps.onOpenChange).toHaveBeenCalled()
       })
     })
   })
@@ -260,7 +261,8 @@ describe('EditPipelineInfo', () => {
       expect(imagePipeline.icon.icon_url).toBe('https://example.com/icon.png')
 
       const props = {
-        onClose: vi.fn(),
+        open: true,
+        onOpenChange: vi.fn(),
         pipeline: imagePipeline,
       }
       render(<EditPipelineInfo {...props} />)
@@ -465,12 +467,17 @@ describe('EditPipelineInfo', () => {
         return Promise.resolve()
       })
 
+      const user = userEvent.setup()
       render(<EditPipelineInfo {...defaultProps} />)
 
       // Open picker and select new emoji
-      fireEvent.click(getIconButton())
-      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await user.click(getIconButton())
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() =>
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument(),
+      )
+      expect(mockUpdatePipeline).not.toHaveBeenCalled()
 
       const saveButton = screen.getByText(/operation\.save/i)
       fireEvent.click(saveButton)
@@ -586,6 +593,62 @@ describe('EditPipelineInfo', () => {
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton).toHaveClass('right-5', 'top-5')
     })
+  })
+  it('blocks dismissal and duplicate submits while pending, keeps a failed draft, and does not await invalidation', async () => {
+    const user = userEvent.setup()
+    let rejectRequest: (reason: Error) => void = () => {}
+    mockUpdatePipeline
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            rejectRequest = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
+    mockInvalidCustomizedTemplateList.mockReturnValue(new Promise<void>(() => {}))
+    const onOpenChange = vi.fn()
+    render(
+      <EditPipelineInfo open pipeline={createPipelineTemplate()} onOpenChange={onOpenChange} />,
+    )
+    const name = screen.getByLabelText('datasetPipeline.pipelineNameAndIcon')
+    await user.clear(name)
+    await user.type(name, 'Retry template')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(mockUpdatePipeline).toHaveBeenCalledTimes(1))
+    expect(name).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(getIconButton()).toBeDisabled()
+    await user.keyboard('{Enter}{Escape}')
+    expect(mockUpdatePipeline).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await act(async () => rejectRequest(new Error('Save failed')))
+    await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+    expect(name).toHaveValue('Retry template')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(mockUpdatePipeline).toHaveBeenCalledTimes(2)
+    expect(mockInvalidCustomizedTemplateList).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards a cancelled draft and reads the latest template after the popup exits', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<EditPipelineInfo {...defaultProps} />)
+    await user.clear(screen.getByLabelText('datasetPipeline.pipelineNameAndIcon'))
+    await user.type(screen.getByLabelText('datasetPipeline.pipelineNameAndIcon'), 'Cancelled')
+    await user.keyboard('{Escape}')
+    expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false)
+    rerender(<EditPipelineInfo {...defaultProps} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <EditPipelineInfo
+        {...defaultProps}
+        pipeline={createPipelineTemplate({ name: 'Latest template' })}
+      />,
+    )
+    expect(screen.getByLabelText('datasetPipeline.pipelineNameAndIcon')).toHaveValue(
+      'Latest template',
+    )
   })
 })
 

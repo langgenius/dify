@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import RenameDatasetModal from '../../../rename-modal'
+import { RenameDatasetModal } from '../../../rename-modal'
 
 type ModalState = {
   showRenameModal: boolean
@@ -41,14 +41,12 @@ const DatasetCardModals = ({
 
   return (
     <>
-      {modalState.showRenameModal && (
-        <RenameDatasetModal
-          show={modalState.showRenameModal}
-          dataset={dataset}
-          onClose={onCloseRename}
-          onSuccess={onSuccess}
-        />
-      )}
+      <RenameDatasetModal
+        open={modalState.showRenameModal}
+        dataset={dataset}
+        onOpenChange={(open) => !open && onCloseRename()}
+        onSuccess={onSuccess}
+      />
       <AlertDialog
         open={modalState.showConfirmDelete}
         onOpenChange={(open) => !open && onCloseConfirm()}
