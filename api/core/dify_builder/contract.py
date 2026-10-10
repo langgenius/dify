@@ -16,6 +16,7 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
+from core.dify_builder.execution_policy import HttpResponseFixtureV1, decode_http_fixture_submission
 from core.dify_builder.models import ConversationItem, EntryMode
 
 
@@ -699,6 +700,14 @@ class TestdataPayload:
 
     mode: str
     inputs: dict | None = None
+    http_fixtures: tuple[HttpResponseFixtureV1, ...] | None = None
+
+
+def decode_testdata_http_fixtures(payload: dict[str, Any]) -> tuple[HttpResponseFixtureV1, ...] | None:
+    """Absence preserves historical inputs; explicit null is invalid."""
+    if "http_fixtures" not in payload:
+        return None
+    return decode_http_fixture_submission(payload["http_fixtures"])
 
 
 # ---------------------------------------------------------------------------

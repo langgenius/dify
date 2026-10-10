@@ -21,7 +21,13 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    FakeEditDifyPort,
+    InMemoryRepository,
+    StubAgent,
+    saved_test_context,
+)
 
 
 @pytest.mark.parametrize(
@@ -49,7 +55,12 @@ def test_all_test_flows_forward_native_events(handler, state, mode):
     )
     session = Session(app_id="app", tenant_id="tenant", entry_mode=mode, current_state=state)
 
-    handler(env, Turn(actor=Actor(account_id="account", tenant_id="tenant")), session, DifyBuilderContext())
+    handler(
+        env,
+        Turn(actor=Actor(account_id="account", tenant_id="tenant")),
+        session,
+        saved_test_context(env.repo, session.id),
+    )
 
     assert received == port.workflow_events
 

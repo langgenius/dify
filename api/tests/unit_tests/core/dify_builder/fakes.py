@@ -38,6 +38,7 @@ from collections.abc import Callable, Mapping
 from core.dify_builder import node_defaults
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError, HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -321,6 +322,13 @@ class FakeDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
+    def stamp_http_fixtures(
+        self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1:
+        if base_app_revision != self.hash:
+            raise BuilderExecutionPolicyError("stale_http_fixtures")
+        return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
+
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
 
@@ -542,6 +550,13 @@ class FakeBuildDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
+    def stamp_http_fixtures(
+        self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1:
+        if base_app_revision != self.hash:
+            raise BuilderExecutionPolicyError("stale_http_fixtures")
+        return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
+
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
 
@@ -726,3 +741,10 @@ def seed_verified_run(repo: InMemoryRepository, session: Session, dify) -> None:
     )
     repo.save_run(session.id, run)
     repo._contexts[session.id].verify_run_id = run.id
+
+
+def saved_test_context(repo, session_id: str, **overrides) -> DifyBuilderContext:
+    """Give verification-focused tests a saved input identity, including empty inputs."""
+    test_input = TestInput(session_id=session_id, source="mock", inputs={})
+    repo.save_test_input(test_input)
+    return DifyBuilderContext(test_input_ref=test_input.id, **overrides)

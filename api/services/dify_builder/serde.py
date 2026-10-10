@@ -20,6 +20,7 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     MutationIntent,
     Risk,
+    TestInput,
 )
 
 
@@ -84,4 +85,18 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
         model_config=dict(d.get("model_config") or {}),
         reply_language=d.get("reply_language", ""),
+    )
+
+
+def test_input_from_dict(d: dict[str, Any]) -> TestInput:
+    """Decode historical inputs without inventing fixture provenance."""
+    from core.dify_builder.execution_policy import decode_http_fixture_set
+
+    return TestInput(
+        id=d.get("id", ""),
+        session_id=d.get("session_id", ""),
+        source=d.get("source", ""),
+        inputs=d.get("inputs", {}),
+        start_schema_hash=d.get("start_schema_hash", ""),
+        http_fixtures=decode_http_fixture_set(d.get("http_fixtures")),
     )

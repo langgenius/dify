@@ -8,7 +8,7 @@ from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMod
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, saved_test_context
 
 FLOWS = [
     (handlers_build, EntryMode.BUILD, PcState.BUILD_REVIEW, "publish_workflow", "run_test"),
@@ -83,7 +83,7 @@ def test_verification_latest_attempt_and_truthful_outputs(flow):
         or getattr(module, "handle_test_affected_paths", None)
         or module.handle_verify
     )
-    fc = DifyBuilderContext()
+    fc = saved_test_context(env.repo, s.id)
     first = handler(env, turn, s, fc)
     assert first.context.verify_run_id == first.run.id
     assert first.run.session_id == s.id
@@ -145,7 +145,7 @@ def test_verification_unresolved_output_never_invents_repair(flow):
         or getattr(module, "handle_test_affected_paths", None)
         or module.handle_verify
     )
-    fc = DifyBuilderContext()
+    fc = saved_test_context(env.repo, s.id)
     out = handler(env, turn, s, fc)
     assert out.run.status == "succeeded"
     assert not out.context.staged_repair
@@ -163,7 +163,7 @@ def test_verification_failed_card_preserves_execution_outcome(flow):
         or getattr(module, "handle_test_affected_paths", None)
         or module.handle_verify
     )
-    result = handler(env, turn, s, DifyBuilderContext())
+    result = handler(env, turn, s, saved_test_context(env.repo, s.id))
     card = next(i.payload for i in result.items if i.kind == "test_result")
     assert card["outcome"] == "execution_failed"
 
@@ -190,7 +190,7 @@ def test_verification_unbound_success_reply_requires_retest(flow):
         or getattr(module, "handle_test_affected_paths", None)
         or module.handle_verify
     )
-    result = handler(env, turn, session, DifyBuilderContext())
+    result = handler(env, turn, session, saved_test_context(env.repo, session.id))
     reply = next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn")
     assert "Execution succeeded; output needs review" in reply
     assert "run again before publishing" in reply

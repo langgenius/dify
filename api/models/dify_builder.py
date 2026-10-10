@@ -187,5 +187,40 @@ class DifyBuilderTestInput(Base):
     source: Mapped[str] = mapped_column(String(50), nullable=False)
     inputs: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     start_schema_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    http_fixtures: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DifyBuilderExecutionRequest(Base):
+    """Immutable prepared policy and bounded append-only runtime observations.
+
+    Launch and append mutations require a row lock. Native Run rows remain
+    authoritative; completion sealing is owned by the later native adapter.
+    """
+
+    __tablename__ = "dify_builder_execution_requests"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dify_builder_execution_request_pkey"),
+        sa.Index("dify_builder_execution_request_session_idx", "session_id"),
+        sa.Index("dify_builder_execution_request_app_idx", "tenant_id", "app_id"),
+        sa.CheckConstraint("state IN ('prepared', 'running', 'sealed')", name="builder_execution_request_state"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    actor_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    test_input_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    context: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    context_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="prepared")
+    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    observations: Mapped[list] = mapped_column(AdjustedJSON, nullable=False, default=list)
+    completion_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    completion_summary: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
