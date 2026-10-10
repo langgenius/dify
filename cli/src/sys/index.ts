@@ -8,20 +8,14 @@ export function getEnv(name: string): string | undefined {
 
 export type EmbeddedFile = Blob & { readonly name: string }
 
-type BunGlobal = { embeddedFiles?: readonly EmbeddedFile[]; main?: string }
-
-const COMPILED_ENTRY = /^(?:\/\$bunfs\/|[A-Z]:[\\/]~BUN[\\/])/i
-
-function bun(): BunGlobal | undefined {
-  return (globalThis as { Bun?: BunGlobal }).Bun
-}
+type BunGlobal = { embeddedFiles?: readonly EmbeddedFile[] }
 
 export function embeddedFiles(): readonly EmbeddedFile[] {
-  return bun()?.embeddedFiles ?? []
+  return (globalThis as { Bun?: BunGlobal }).Bun?.embeddedFiles ?? []
 }
 
 export function isCompiledBinary(): boolean {
-  return COMPILED_ENTRY.test(bun()?.main ?? '')
+  return __DIFYCTL_COMPILED__
 }
 
 export function env(): NodeJS.ProcessEnv {

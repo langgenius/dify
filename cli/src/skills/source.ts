@@ -11,7 +11,7 @@ export const SKILL_NAME = 'difyctl'
 export const SKILL_FILE = 'SKILL.md'
 const EMBED_PREFIX = `${SKILL_NAME}/`
 const REPO_SKILL_DIR = fileURLToPath(new URL(`../../../skills/${EMBED_PREFIX}`, import.meta.url))
-export const NO_EMBEDDED_SKILL =
+const NO_EMBEDDED_SKILL =
   'this difyctl build has no embedded skill; reinstall difyctl or pass --from <folder>'
 
 export type SkillSource = {
@@ -44,27 +44,28 @@ export async function openDir(root: string): Promise<SkillSource> {
   return { paths, read: (path) => readFile(join(root, path)) }
 }
 
-export function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
+function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
   const byPath = new Map(files.map((file) => [file.name.slice(EMBED_PREFIX.length), file]))
   return {
     paths: [...byPath.keys()],
-    read: async (path) => new Uint8Array(await (byPath.get(path) as EmbeddedFile).arrayBuffer()),
+    read: async (path) => {
+      const file = byPath.get(path)
+      if (file === undefined)
+        throw new BaseError({
+          code: ErrorCode.SkillMissing,
+          message: `the embedded skill has no ${path}`,
+        })
+      return new Uint8Array(await file.arrayBuffer())
+    },
   }
 }
 
-export type SourceInputs = Readonly<{ files: readonly EmbeddedFile[]; compiled: boolean }>
-
-export async function pickSource({ files, compiled }: SourceInputs): Promise<SkillSource> {
+async function defaultSource(): Promise<SkillSource> {
+  const files = embeddedFiles().filter((file) => file.name.startsWith(EMBED_PREFIX))
   if (files.length > 0) return embeddedSource(files)
-  if (compiled) throw new BaseError({ code: ErrorCode.Unknown, message: NO_EMBEDDED_SKILL })
+  if (isCompiledBinary())
+    throw new BaseError({ code: ErrorCode.SkillMissing, message: NO_EMBEDDED_SKILL })
   return openDir(REPO_SKILL_DIR)
-}
-
-export function defaultSource(): Promise<SkillSource> {
-  return pickSource({
-    files: embeddedFiles().filter((file) => file.name.startsWith(EMBED_PREFIX)),
-    compiled: isCompiledBinary(),
-  })
 }
 
 export function openSource(from: string | undefined): Promise<SkillSource> {
