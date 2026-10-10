@@ -1462,3 +1462,163 @@ def test_withholding_by_path_leaves_an_ordinary_value_exactly_as_it_was():
     intent = MutationIntent(op="set_node_config", args={"node_id": "branch", "path": "cases", "value": cases})
 
     assert _withheld_args(intent)["value"] == cases
+
+
+# These nodes pass native node-data validation: Builder's first-phase boundary
+# must refuse their proposed addition independently of the native whitelist.
+_FIRST_PHASE_CONFIGS = [
+    ("knowledge-retrieval", {"dataset_ids": ["kb-1"]}),
+    ("human-input", _human_input_graph([])["nodes"][1]["data"]),
+    ("agent", {"agent_strategy_name": "legacy"}),
+    ("agent", {"version": "2", "agent_node_kind": "dify_agent", "agent_task": "fabricated"}),
+]
+
+
+@pytest.mark.parametrize(("node_type", "config"), _FIRST_PHASE_CONFIGS)
+@pytest.mark.parametrize("op", ["create_node", "insert_between"])
+def test_candidate_refuses_first_phase_additions_without_losing_valid_batch_operations(node_type, config, op):
+    from graphon.enums import BUILT_IN_NODE_TYPES
+
+    graph = {
+        "nodes": [
+            {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [{"id": "se", "source": "s", "target": "e"}],
+    }
+    args = {"node_type": node_type, "node_id": "new", "config": config}
+    if op == "insert_between":
+        args["edge"] = {"source": "s", "target": "e"}
+    good = MutationIntent(op="set_node_config", args={"node_id": "s", "path": "title", "value": "Begin"})
+    forbidden = MutationIntent(op=op, args=args)
+
+    vetted = vet_intents(graph, [good, forbidden], set(BUILT_IN_NODE_TYPES))
+
+    assert vetted.would_run_wrong, "native-valid unsupported additions must condemn the whole candidate batch"
+    assert good in vetted.applicable
+    assert forbidden in vetted.applicable
+    assert any(node_type in reason for reason in vetted.rejections)
+
+
+@pytest.mark.parametrize(("node_type", "config"), _FIRST_PHASE_CONFIGS)
+def test_candidate_refuses_type_conversion_into_first_phase_nodes(node_type, config):
+    graph = {
+        "nodes": [
+            {
+                "id": "n",
+                "type": "custom",
+                "data": {
+                    "title": "Convert",
+                    "code_language": "python3",
+                    "code": "",
+                    "variables": [],
+                    "outputs": {},
+                    "retrieval_mode": "multiple",
+                    **config,
+                    "type": "code",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "n", "path": "type", "value": node_type})
+
+    vetted = vet_intents(graph, [intent])
+
+    assert vetted.would_run_wrong
+    assert any(node_type in reason for reason in vetted.rejections)
+
+
+@pytest.mark.parametrize(
+    ("path", "value"), [("dataset_ids", ["kb-2"]), ("retrieval_mode", "single"), ("title", "New title")]
+)
+def test_candidate_refuses_retrieval_configuration_changes(path, value):
+    graph = {
+        "nodes": [
+            {
+                "id": "r",
+                "type": "custom",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": "Existing",
+                    "dataset_ids": ["kb-1"],
+                    "retrieval_mode": "multiple",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "r", "path": path, "value": value})
+
+    assert vet_intents(graph, [intent]).would_run_wrong
+
+
+def test_candidate_refuses_legacy_agent_conversion_to_native_new_agent():
+    graph = {"nodes": [{"id": "a", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}], "edges": []}
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "version", "value": "2"}),
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "agent_node_kind", "value": "dify_agent"}),
+    ]
+
+    assert vet_intents(graph, intents).would_run_wrong
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("start", {"variables": []}),
+        ("end", {"outputs": []}),
+        ("code", {}),
+        ("llm", {}),
+        (
+            "list-operator",
+            {
+                "variable": ["s", "items"],
+                "filter_by": {"enabled": False},
+                "extract_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            },
+        ),
+        ("if-else", {}),
+        ("iteration-start", {}),
+        ("loop-start", {}),
+        ("loop-end", {}),
+    ],
+)
+def test_first_phase_keeps_supported_native_node_candidates(node_type, config):
+    intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "new", "config": config})
+
+    vetted = vet_intents({"nodes": [], "edges": []}, [intent])
+
+    assert vetted.applicable == [intent]
+    assert vetted.rejections == []
+    assert vetted.would_run_wrong == []
+
+
+def test_edge_only_wiring_of_historical_retrieval_does_not_change_native_binding_config():
+    graph = {
+        "nodes": [
+            {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "r",
+                "type": "custom",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": "Knowledge",
+                    "dataset_ids": ["kb-1"],
+                    "query_variable_selector": ["s", "query"],
+                    "retrieval_mode": "multiple",
+                },
+            },
+        ],
+        "edges": [],
+    }
+    before = copy.deepcopy(graph)
+    intent = MutationIntent(op="connect", args={"from_node": "s", "to_node": "r"})
+
+    vetted = vet_intents(graph, [intent])
+
+    assert vetted.applicable == [intent]
+    assert vetted.rejections == []
+    assert graph == before

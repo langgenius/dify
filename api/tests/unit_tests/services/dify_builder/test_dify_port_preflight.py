@@ -418,3 +418,190 @@ def test_wiring_an_already_broken_node_is_still_written(mock_session: MagicMock)
 
     sync.assert_called_once()
     assert result.changed_nodes == ["node1", "node2"]  # the change set still names both
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("knowledge-retrieval", {"dataset_ids": ["kb-1"]}),
+        (
+            "human-input",
+            {
+                "form_content": "Review",
+                "inputs": [],
+                "user_actions": [{"id": "approve", "title": "Approve"}],
+                "timeout": 3,
+            },
+        ),
+        ("agent", {"agent_strategy_name": "legacy"}),
+        ("agent", {"version": "2", "agent_node_kind": "dify_agent", "agent_task": "fabricated"}),
+    ],
+)
+@pytest.mark.parametrize("op", ["create_node", "insert_between"])
+def test_direct_write_refuses_first_phase_additions_before_sync(mock_session, node_type, config, op):
+    graph = {
+        "nodes": [_START, {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}}],
+        "edges": [{"id": "edge", "source": "node1", "target": "end"}],
+    }
+    args = {"node_type": node_type, "node_id": "new", "config": config}
+    if op == "insert_between":
+        args["edge"] = {"source": "node1", "target": "end"}
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"}),
+        MutationIntent(op=op, args=args),
+    ]
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, intents)
+        sync.assert_not_called()
+    assert graph["nodes"][0]["data"]["title"] == "Start"
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("knowledge-retrieval", {"dataset_ids": ["kb-1"], "retrieval_mode": "multiple"}),
+        (
+            "human-input",
+            {
+                "form_content": "Review",
+                "inputs": [],
+                "user_actions": [{"id": "approve", "title": "Approve"}],
+                "timeout": 3,
+            },
+        ),
+        ("agent", {}),
+        ("agent", {"version": "2", "agent_node_kind": "dify_agent"}),
+    ],
+)
+def test_direct_write_refuses_disguised_type_conversion(mock_session, node_type, config):
+    graph = {
+        "nodes": [
+            {
+                "id": "n",
+                "type": "custom",
+                "data": {
+                    "type": "code",
+                    "title": "Convert",
+                    "variables": [],
+                    "outputs": {},
+                    "code": "",
+                    "code_language": "python3",
+                    **config,
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "n", "path": "type", "value": node_type})
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()
+
+
+def test_direct_write_refuses_retrieval_binding_change(mock_session):
+    graph = {
+        "nodes": [
+            {
+                "id": "r",
+                "type": "custom",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": "Existing",
+                    "dataset_ids": ["kb-1"],
+                    "retrieval_mode": "multiple",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "r", "path": "dataset_ids", "value": ["kb-2"]})
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()
+
+
+def test_direct_write_refuses_legacy_agent_to_native_new_agent_conversion(mock_session):
+    graph = {"nodes": [{"id": "a", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}], "edges": []}
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "version", "value": "2"}),
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "agent_node_kind", "value": "dify_agent"}),
+    ]
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, intents)
+        sync.assert_not_called()
+
+
+@pytest.mark.parametrize("node_id", ["node1", "agent", "hitl"])
+def test_direct_write_retains_historical_nodes_and_allows_permitted_repairs(mock_session, node_id):
+    from tests.unit_tests.services.dify_builder.test_preflight import _human_input_graph
+
+    hitl = {**_human_input_graph([])["nodes"][1], "id": "hitl"}
+    retrieval = {
+        "id": "retrieval",
+        "type": "custom",
+        "data": {
+            "type": "knowledge-retrieval",
+            "title": "Knowledge",
+            "dataset_ids": ["kb-1"],
+            "retrieval_mode": "multiple",
+        },
+    }
+    agent = {"id": "agent", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}
+    graph = {"nodes": [_START, agent, hitl, retrieval], "edges": []}
+    intent = MutationIntent(op="set_node_config", args={"node_id": node_id, "path": "title", "value": "Repaired"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == [node_id]
+    written = sync.call_args.kwargs["graph"]
+    assert {n["id"] for n in written["nodes"]} == {"node1", "agent", "hitl", "retrieval"}
+    assert next(n for n in written["nodes"] if n["id"] == "retrieval") == retrieval
+    for node in graph["nodes"]:
+        if node["id"] != node_id:
+            assert next(n for n in written["nodes"] if n["id"] == node["id"]) == node
+
+
+@pytest.mark.parametrize("node_type", ["knowledge-retrieval", "human-input", "agent"])
+def test_direct_write_preserves_already_present_create_replay(mock_session, node_type):
+    graph = {"nodes": [{"id": "existing", "type": "custom", "data": {"type": node_type}}], "edges": []}
+    intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "existing", "config": {}})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == []
+    sync.assert_not_called()
+
+
+def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(mock_session):
+    retrieval = {
+        "id": "r",
+        "type": "custom",
+        "data": {
+            "type": "knowledge-retrieval",
+            "title": "Knowledge",
+            "dataset_ids": ["kb-1"],
+            "query_variable_selector": ["node1", "query"],
+            "retrieval_mode": "multiple",
+        },
+    }
+    graph = {"nodes": [_START, retrieval], "edges": []}
+    intent = MutationIntent(op="connect", args={"from_node": "node1", "to_node": "r"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == ["node1", "r"]
+    written = sync.call_args.kwargs["graph"]
+    assert written["nodes"] == graph["nodes"]
+    assert [(edge["source"], edge["target"]) for edge in written["edges"]] == [("node1", "r")]
