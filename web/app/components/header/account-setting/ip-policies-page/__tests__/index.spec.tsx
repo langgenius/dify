@@ -433,7 +433,7 @@ describe('IpPoliciesPage', () => {
       if (action === 'create' || action === 'create_empty') {
         await user.click(
           screen.getByRole('button', {
-            name: action === 'create_empty' ? 'Create IP Policy' : 'Add',
+            name: action === 'create_empty' ? 'Create an IP policy' : 'Add',
           }),
         )
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'New policy')
@@ -453,7 +453,9 @@ describe('IpPoliciesPage', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
-        expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'Create an IP policy' }),
+        ).not.toBeInTheDocument()
         expect(
           screen.queryByRole('button', { name: /^(Create|Save|Delete)$/ }),
         ).not.toBeInTheDocument()
@@ -511,10 +513,12 @@ describe('IpPoliciesPage', () => {
         },
       )
 
-      expect(screen.getByRole('heading', { name: 'No IP policies yet' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'No IP policies in this workspace yet' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
       await user.tab()
-      expect(screen.getByRole('button', { name: 'Create IP Policy' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Create an IP policy' })).toHaveFocus()
       await user.keyboard('{Enter}')
       expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
@@ -529,7 +533,7 @@ describe('IpPoliciesPage', () => {
       await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Unsaved policy')
       await user.click(screen.getByRole('button', { name: 'Cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+      await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
       expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
       expect(vi.mocked(trackEvent).mock.calls).toEqual([
         ['ip_policy_interaction', { action: 'settings_tab_viewed' }],
@@ -582,7 +586,7 @@ describe('IpPoliciesPage', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: source === 'list_empty_state' ? 'Create IP Policy' : 'Add',
+          name: source === 'list_empty_state' ? 'Create an IP policy' : 'Add',
         }),
       )
       await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
@@ -604,8 +608,10 @@ describe('IpPoliciesPage', () => {
       })
       expect(await screen.findByRole('button', { name: 'Office' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'No IP policies in this workspace yet' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
         action: 'form_opened',
         mode: 'create',
@@ -649,7 +655,7 @@ describe('IpPoliciesPage', () => {
       { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Office')
     const entry = screen.getByPlaceholderText('10.0.0.0/8')
     await user.click(entry)
@@ -704,8 +710,10 @@ describe('IpPoliciesPage', () => {
       },
     )
 
-    expect(screen.getByRole('heading', { name: 'No IP policies yet' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'No IP policies in this workspace yet' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
     expect(trackEvent).toHaveBeenCalledExactlyOnceWith('ip_policy_interaction', {
       action: 'settings_tab_viewed',
@@ -724,7 +732,7 @@ describe('IpPoliciesPage', () => {
       { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Create IP Policy' }))
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -748,15 +756,19 @@ describe('IpPoliciesPage', () => {
     )
 
     expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'No IP policies in this workspace yet' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
     await act(async () => {
       resolveGroups(Response.json({ message: 'Unavailable' }, { status: 503 }))
     })
     expect(await screen.findByText(deploymentTranslations['common.loadFailed'])).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'No IP policies yet' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create IP Policy' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'No IP policies in this workspace yet' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
   })
 
   it('lists existing policies and opens edit from the row', async () => {

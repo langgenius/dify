@@ -240,16 +240,14 @@ function AccessControlSession({
       : chip.kind === 'paused'
         ? t(($) => $['studio.accessControl.tooltipPaused'], {
             ns: 'deployments',
-            name: chip.policyName ?? '',
           })
         : chip.kind === 'on'
-          ? t(($) => $['studio.accessControl.tooltipProtected'], {
+          ? t(($) => $['studio.accessControl.tooltipAllProtected'], {
               ns: 'deployments',
-              n: chip.coveredCount,
               total: chip.inServiceCount,
             })
           : chip.kind === 'partial'
-            ? t(($) => $['studio.accessControl.tooltipProtectedPartial'], {
+            ? t(($) => $['studio.accessControl.tooltipProtected'], {
                 ns: 'deployments',
                 n: chip.coveredCount,
                 total: chip.inServiceCount,
@@ -685,25 +683,27 @@ function AccessControlSession({
         }}
       >
         <AlertDialogContent className="w-100">
-          <AlertDialogTitle>
-            {t(($) => $['studio.accessControl.saveWithoutOwnIp'], { ns: 'deployments' })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t(($) => $['studio.accessControl.lockoutWarning'], {
-              ns: 'deployments',
-              ip: confirmation?.clientIp ?? '',
-            })}
-          </AlertDialogDescription>
-          {confirmation?.changed && (
-            <p role="status" className="system-sm-regular text-text-warning">
-              {t(($) => $['studio.accessControl.policyChanged'], { ns: 'deployments' })}
-            </p>
-          )}
-          {saveCheck.isError && (
-            <p role="alert" className="system-sm-regular text-text-warning">
-              {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
-            </p>
-          )}
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {t(($) => $['studio.accessControl.saveWithoutOwnIp'], { ns: 'deployments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-secondary">
+              {t(($) => $['studio.accessControl.lockoutWarning'], {
+                ns: 'deployments',
+                ip: confirmation?.clientIp ?? '',
+              })}
+            </AlertDialogDescription>
+            {confirmation?.changed && (
+              <p role="status" className="system-sm-regular text-text-warning">
+                {t(($) => $['studio.accessControl.policyChanged'], { ns: 'deployments' })}
+              </p>
+            )}
+            {saveCheck.isError && (
+              <p role="alert" className="system-sm-regular text-text-warning">
+                {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+              </p>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

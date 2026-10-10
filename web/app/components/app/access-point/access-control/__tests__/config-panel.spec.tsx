@@ -142,9 +142,9 @@ describe('AccessControlConfigPanel', () => {
 
       if (selectedPolicyId) {
         await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-        await user.click(await screen.findByRole('option', { name: 'Add an IP policy' }))
+        await user.click(await screen.findByRole('option', { name: 'Create an IP policy' }))
       } else {
-        await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
+        await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
       }
 
       expect(onCreatePolicy).toHaveBeenCalledOnce()
@@ -160,7 +160,7 @@ describe('AccessControlConfigPanel', () => {
     ({ manageLabel, ...permissions }) => {
       render(<PanelHarness {...permissions} />)
 
-      expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: manageLabel })).toBeEnabled()
     },
   )
@@ -190,7 +190,7 @@ describe('AccessControlConfigPanel', () => {
 
     expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Apply to' })).toHaveAccessibleDescription(
-      'Please choose at least one access point.',
+      'Please select at least one access point.',
     )
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
@@ -205,7 +205,7 @@ describe('AccessControlConfigPanel', () => {
     await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
     await user.click(screen.getByRole('switch', { name: 'Trigger' }))
 
-    expect(screen.getByText('Please choose at least one access point.')).toBeInTheDocument()
+    expect(screen.getByText('Please select at least one access point.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
@@ -223,7 +223,7 @@ describe('AccessControlConfigPanel', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
 
-  it('lets the user turn any access point off without a Not enabled label', async () => {
+  it('lets the user turn any access point off without a Not protected label', async () => {
     const user = userEvent.setup()
     render(
       <PanelHarness
@@ -235,7 +235,7 @@ describe('AccessControlConfigPanel', () => {
       />,
     )
 
-    expect(screen.queryByText('Not enabled')).not.toBeInTheDocument()
+    expect(screen.queryByText('Not protected')).not.toBeInTheDocument()
     await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
     expect(screen.getByRole('switch', { name: 'MCP Server' })).not.toBeChecked()
     await user.click(screen.getByRole('switch', { name: 'Trigger' }))
