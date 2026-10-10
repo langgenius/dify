@@ -64,7 +64,7 @@ from tasks.generate_summary_index_task import generate_summary_index_task
 
 
 @contextmanager
-def _translate_errors() -> Generator[None, None, None]:
+def _translate_errors() -> Generator[None]:
     try:
         yield
     except NotFound as error:
@@ -319,7 +319,7 @@ class SQLAlchemyDocumentOperations:
             return DocumentService.get_document_download_url(_require_document(session, ref), session)
 
     @contextmanager
-    def build_download_zip(self, ref: DatasetRef, document_ids: Sequence[str]) -> Generator[DocumentZip, None, None]:
+    def build_download_zip(self, ref: DatasetRef, document_ids: Sequence[str]) -> Generator[DocumentZip]:
         with _translate_errors(), self._sessions() as session:
             files_by_document = DocumentService._get_upload_files_by_document_id_for_zip_download(
                 dataset_id=ref.dataset_id, document_ids=document_ids, tenant_id=ref.tenant_id, session=session

@@ -74,12 +74,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-icon-picker</button>
-  ),
-}))
-
 const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'app-123',
   name: 'Demo App',
@@ -288,7 +282,7 @@ describe('SwitchAppModal', () => {
         permission_keys: ['app.acl.view_layout'],
       })
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -318,7 +312,7 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })

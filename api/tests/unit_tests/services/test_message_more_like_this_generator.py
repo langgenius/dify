@@ -331,7 +331,7 @@ def test_legacy_tool_reference_is_recovered_without_changing_the_stored_referenc
 def test_event_stream_encodes_events_and_closes_its_source(termination: str) -> None:
     closed: list[bool] = []
 
-    def source() -> Generator[Mapping[str, object] | str, None, None]:
+    def source() -> Generator[Mapping[str, object] | str]:
         try:
             yield {"event": "message", "answer": "hello"}
             yield "ping"
@@ -359,7 +359,7 @@ def test_flask_response_close_releases_its_real_event_iterator(consume_all: bool
 
     closed: list[bool] = []
 
-    def events() -> Generator[Mapping[str, object] | str, None, None]:
+    def events() -> Generator[Mapping[str, object] | str]:
         try:
             yield {"event": "message", "answer": "hello"}
             yield {"event": "message_end"}

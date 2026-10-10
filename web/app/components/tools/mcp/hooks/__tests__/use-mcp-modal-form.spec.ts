@@ -336,18 +336,6 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.appIcon).toEqual(newIcon)
     })
 
-    it('should toggle showIconPicker', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      expect(result.current.state.showIconPicker).toBe(false)
-
-      act(() => {
-        result.current.actions.setShowIconPicker(true)
-      })
-
-      expect(result.current.state.showIconPicker).toBe(true)
-    })
-
     it('should reset icon to default', () => {
       const { result } = renderHook(() => useMCPModalForm())
 

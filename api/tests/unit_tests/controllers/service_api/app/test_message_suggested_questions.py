@@ -9,27 +9,31 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask_login import LoginManager, current_user
-from sqlalchemy import Connection, Engine, event, select, text
+from sqlalchemy import Connection, Engine, delete, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
 from werkzeug.test import TestResponse
 
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.ext_database import db
 from libs.external_api import ExternalApi
-from machinery.context import ServiceApiEndUserContext
+from machinery.context import RequestContext, ServiceApiEndUserContext
 from models import Tenant, TenantStatus
 from models.agent import Agent, AgentScope, AgentSource
 from models.enums import ConversationFromSource, EndUserType
 from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, EndUser, Message
 from models.provider import Provider
+from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
 from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -38,6 +42,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
 )
+from services.resource_access_token_service import ResourceAccessTokenService
 from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
@@ -51,6 +56,7 @@ class _Services:
     app_definitions: AppDefinitionQueryService
     message_suggested_questions: MessageSuggestedQuestions
     app_scoped_end_users: _EndUsers
+    resource_access_tokens: ResourceAccessTokenService
 
 
 @dataclass(frozen=True)
@@ -69,8 +75,16 @@ class _Harness:
     queries: list[Session]
     scoped_sessions: list[Session]
 
-    def get(self, *, user: str | None = "alice", authorization: str | None = "Bearer test-token") -> TestResponse:
+    def get(
+        self,
+        *,
+        user: str | None = "alice",
+        authorization: str | None = "Bearer test-token",
+        requested_app_id: str | None = None,
+    ) -> TestResponse:
         headers: dict[str, str] = {"Authorization": authorization} if authorization is not None else {}
+        if requested_app_id is not None:
+            headers["X-Dify-App-ID"] = requested_app_id
         query: dict[str, str] = {"user": user} if user is not None else {}
         return self.app.test_client().get(f"/messages/{self.message_id}/suggested", query_string=query, headers=headers)
 
@@ -171,6 +185,7 @@ def harness(
         app_scoped_end_users=_EndUsers(
             AppScopedEndUserService(end_users=AppScopedEndUserRepo(session_factory=provision_factory))
         ),
+        resource_access_tokens=build_resource_access_token_service(database_client=admission_factory),
     )
     api = ExternalApi(app)
     api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
@@ -558,3 +573,171 @@ def test_admission_injects_immutable_scope_and_provisions_request_user(
             "app_mode": harness.target.mode,
             "end_user_id": end_user.id,
         }
+
+
+def _create_resource_token(harness: _Harness, *, app_ids: tuple[str, ...]) -> ResourceAccessTokenCreateResult:
+    services = harness.app.extensions["application_services"]
+    assert isinstance(services, _Services)
+    result = services.resource_access_tokens.create(
+        RequestContext(
+            request_id="resource-token-regression",
+            trace_id=None,
+            account_id=str(uuid4()),
+            active_workspace_id=harness.tenant.id,
+        ),
+        name="Suggested questions integration",
+        resources=tuple(ResourceAccessTokenResource(ResourceAccessTokenResourceType.APP, app_id) for app_id in app_ids),
+    )
+    assert result.token.startswith("sk-")
+    assert all(row.last_used_at is None for row in result.rows)
+    harness.assert_closed()
+    return result
+
+
+@pytest.mark.parametrize("multiple_apps", [False, True], ids=["implicit-single-app", "explicit-multiple-apps"])
+def test_resource_access_token_admits_bound_app_and_records_usage(harness: _Harness, multiple_apps: bool) -> None:
+    app_ids = (harness.target.id,)
+    if multiple_apps:
+        other = make_app(app_id=str(uuid4()), tenant_id=harness.tenant.id)
+        with harness.factory.begin() as session:
+            session.add(other)
+        app_ids = (other.id, harness.target.id)
+    token = _create_resource_token(harness, app_ids=app_ids)
+
+    response = harness.get(
+        authorization=f"Bearer {token.token}",
+        requested_app_id=harness.target.id if multiple_apps else None,
+    )
+
+    assert response.status_code == 200
+    assert response.json == {"result": "success", "data": []}
+    assert response.headers["Content-Type"] == "application/json"
+    assert len(harness.provisions) == len(harness.queries) == 1
+    harness.assert_closed()
+    with harness.factory() as session:
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is not None
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+
+
+def test_multiple_app_resource_token_requires_app_header_before_provisioning(harness: _Harness) -> None:
+    other = make_app(app_id=str(uuid4()), tenant_id=harness.tenant.id)
+    with harness.factory.begin() as session:
+        session.add(other)
+    token = _create_resource_token(harness, app_ids=(harness.target.id, other.id))
+
+    response = harness.get(authorization=f"Bearer {token.token}", user="new-user")
+
+    assert response.status_code == 400
+    assert response.json == {
+        "code": "bad_request",
+        "message": "App ID is required when a resource access token is bound to multiple apps.",
+        "status": 400,
+    }
+    assert harness.provisions == harness.queries == []
+    harness.assert_closed()
+    with harness.factory() as session:
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is None
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+
+
+@pytest.mark.parametrize(
+    ("failure", "status", "code", "message"),
+    [
+        ("unbound_app", 403, "forbidden", "Resource access token is not allowed to access this app."),
+        ("foreign_app", 403, "forbidden", "Resource access token is not allowed to access this app."),
+        ("no_bindings", 403, "forbidden", "Resource access token is not allowed to access this app."),
+        ("foreign_binding", 403, "forbidden", "The app no longer exists."),
+        ("deleted_app", 403, "forbidden", "The app no longer exists."),
+        ("invalid_token", 401, "unauthorized", "Resource access token is invalid."),
+    ],
+)
+def test_resource_token_denials_stop_before_end_user_provisioning(
+    harness: _Harness, failure: str, status: int, code: str, message: str
+) -> None:
+    token = _create_resource_token(harness, app_ids=(harness.target.id,))
+    requested_app_id = None
+    authorization = f"Bearer {token.token}"
+    with harness.factory.begin() as session:
+        if failure in {"unbound_app", "foreign_app", "foreign_binding"}:
+            tenant_id = harness.tenant.id
+            if failure != "unbound_app":
+                foreign_tenant = Tenant(name="Other resource owner")
+                session.add(foreign_tenant)
+                tenant_id = foreign_tenant.id
+            other = make_app(app_id=str(uuid4()), tenant_id=tenant_id)
+            session.add(other)
+            if failure == "foreign_binding":
+                relation = session.scalar(
+                    select(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.token_id)
+                )
+                assert relation is not None
+                relation.app_id = other.id
+            else:
+                requested_app_id = other.id
+        elif failure == "no_bindings":
+            session.execute(
+                delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.token_id)
+            )
+        elif failure == "deleted_app":
+            session.execute(delete(App).where(App.id == harness.target.id))
+        else:
+            authorization = f"Bearer sk-{uuid4()}"
+
+    response = harness.get(authorization=authorization, requested_app_id=requested_app_id, user="new-user")
+
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    assert harness.provisions == harness.queries == []
+    harness.assert_closed()
+    with harness.factory() as session:
+        stored_token = session.get(ResourceAccessToken, token.token_id)
+        assert stored_token is not None
+        assert stored_token.last_used_at is None
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+
+
+@pytest.mark.parametrize(
+    ("failure", "code", "message"),
+    [
+        ("disabled_api", "app_api_disabled", "The app's API service has been disabled."),
+        ("archived_tenant", "workspace_archived", "The workspace's status is archived."),
+    ],
+)
+def test_resource_token_keeps_app_and_workspace_policy_errors(
+    harness: _Harness, failure: str, code: str, message: str
+) -> None:
+    token = _create_resource_token(harness, app_ids=(harness.target.id,))
+    with harness.factory.begin() as session:
+        if failure == "disabled_api":
+            target = session.get(App, harness.target.id)
+            assert target is not None
+            target.enable_api = False
+        else:
+            tenant = session.get(Tenant, harness.tenant.id)
+            assert tenant is not None
+            tenant.status = TenantStatus.ARCHIVE
+
+    response = harness.get(authorization=f"Bearer {token.token}", user="new-user")
+
+    assert response.status_code == 403
+    assert response.json == {"code": code, "message": message, "status": 403}
+    assert harness.provisions == harness.queries == []
+    harness.assert_closed()
+    with harness.factory() as session:
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+
+
+def test_explicit_service_api_app_tenant_scope_excludes_foreign_apps(harness: _Harness) -> None:
+    services = harness.app.extensions["application_services"]
+    assert isinstance(services, _Services)
+    record = services.app_definitions.get_service_api_app(harness.target.id, tenant_id=harness.tenant.id)
+    assert (record.app_id, record.tenant_id) == (harness.target.id, harness.tenant.id)
+    with pytest.raises(AppDefinitionUnavailableError):
+        services.app_definitions.get_service_api_app(harness.target.id, tenant_id=str(uuid4()))
+    assert services.app_definitions.get_service_api_app(harness.target.id) == record
+    assert harness.provisions == harness.queries == []
+    harness.assert_closed()

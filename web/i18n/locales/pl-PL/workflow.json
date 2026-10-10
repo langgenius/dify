@@ -117,6 +117,8 @@
   "common.branch": "GAŁĄŹ",
   "common.chooseDSL": "Wybierz plik DSL(yml)",
   "common.chooseStartNodeToRun": "Wybierz węzeł początkowy, aby uruchomić",
+  "common.clearCanvasConfirmDescription": "Zapisanie wyczyści ten przepływ pracy. Kontynuować?",
+  "common.clearCanvasConfirmTitle": "Wyczyścić obszar roboczy?",
   "common.clipboardVersionCompatibilityWarning": "Ta zawartość została skopiowana z innej wersji aplikacji Dify. Niektóre elementy mogą być niekompatybilne.",
   "common.commentMode": "Tryb komentarzy",
   "common.configure": "Skonfiguruj",

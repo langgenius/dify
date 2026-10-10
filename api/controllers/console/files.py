@@ -85,7 +85,7 @@ def _parse_file_upload() -> tuple[FileStorage, str, Literal["datasets"] | None]:
 
 
 @contextmanager
-def _file_upload_errors() -> Generator[None, None, None]:
+def _file_upload_errors() -> Generator[None]:
     try:
         yield
     except services.errors.file.FileTooLargeError as file_too_large_error:

@@ -35,6 +35,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
@@ -161,6 +162,7 @@ from services.recommended_app_catalog_gateway import (
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
@@ -251,6 +253,7 @@ class ApplicationServices:
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
+    resource_access_tokens: ResourceAccessTokenService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -526,6 +529,7 @@ def build_application_services(
             database_client=database_client,
             dataset_access=dataset_dependencies.access,
         ),
+        resource_access_tokens=build_resource_access_token_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),

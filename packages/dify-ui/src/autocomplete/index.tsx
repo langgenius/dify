@@ -6,7 +6,7 @@ import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { textControlGroupClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
@@ -20,6 +20,7 @@ type AutocompleteActions = BaseAutocomplete.Root.Actions
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
+type AutocompleteOpenChangeEventDetails = BaseAutocomplete.Root.OpenChangeEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
   AutocompleteProps<Items[number]['items'][number]>,
   'items'
@@ -66,8 +67,10 @@ function AutocompleteCollection<Value = unknown>(props: AutocompleteCollectionPr
   return <BaseAutocomplete.Collection {...props} />
 }
 
+// The popup is limited to the available height and lays its parts out in a column, so a status or input
+// sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
 const autocompletePopupClassName = [
-  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
 const autocompleteListClassName = [
@@ -82,16 +85,7 @@ const autocompleteItemClassName = [
 ]
 
 const autocompleteInputGroupVariants = cva(
-  [
-    'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundInputFocusClassName,
-    'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
-    'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
-    'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
-    'motion-reduce:transition-none',
-  ],
+  [textControlGroupClassName, 'group/autocomplete items-center'],
   {
     variants: {
       size: {
@@ -129,7 +123,7 @@ const autocompleteInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -446,6 +440,7 @@ export type {
   AutocompleteItemProps,
   AutocompleteItemTextProps,
   AutocompleteListProps,
+  AutocompleteOpenChangeEventDetails,
   AutocompletePopupProps,
   AutocompletePortalProps,
   AutocompletePositionerProps,

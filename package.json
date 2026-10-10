@@ -20,7 +20,6 @@
     "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
   },
   "devDependencies": {
-    "@eslint-community/eslint-plugin-eslint-comments": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",
     "@eslint/markdown": "catalog:",
     "@iconify-json/heroicons": "catalog:",
@@ -36,7 +35,6 @@
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
-    "eslint-plugin-command": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -46,8 +44,6 @@
     "eslint-plugin-pnpm": "catalog:",
     "eslint-plugin-regexp": "catalog:",
     "eslint-plugin-storybook": "catalog:",
-    "eslint-plugin-toml": "catalog:",
-    "eslint-plugin-unicorn": "catalog:",
     "eslint-plugin-yml": "catalog:",
     "knip": "catalog:",
     "typescript": "catalog:",
@@ -64,5 +60,5 @@
   "engines": {
     "node": "^24.20.0"
   },
-  "packageManager": "pnpm@12.6.0"
+  "packageManager": "pnpm@12.10.1"
 }

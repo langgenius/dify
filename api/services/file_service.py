@@ -434,7 +434,7 @@ class FileService:
     def build_upload_files_zip_tempfile(
         *,
         upload_files: Sequence[UploadFile],
-    ) -> Generator[str, None, None]:  # Changed from Iterator[str]
+    ) -> Generator[str]:  # Changed from Iterator[str]
         """
         Build a ZIP from `UploadFile`s and yield a tempfile path.
 

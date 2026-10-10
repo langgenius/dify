@@ -84,15 +84,18 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
         self._session_factory = session_factory
 
     @override
-    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None:
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
         with self._session_factory() as session:
-            row = session.execute(
+            statement = (
                 # Let admission reject abnormal historical statuses with a domain
                 # error instead of failing enum deserialization before policy runs.
                 select(App.id, App.tenant_id, App.mode, sql_cast(App.status, String), App.enable_api, Tenant.status)
                 .outerjoin(Tenant, Tenant.id == App.tenant_id)
                 .where(App.id == app_id)
-            ).one_or_none()
+            )
+            if tenant_id is not None:
+                statement = statement.where(App.tenant_id == tenant_id)
+            row = session.execute(statement).one_or_none()
             if row is None:
                 return None
             resolved_id, tenant_id, mode, status, enable_api, tenant_status = row

@@ -6,7 +6,7 @@ import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName, textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { formLabelClassName, textControlGroupClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
@@ -26,6 +26,7 @@ type ComboboxProps<
 > = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+type ComboboxOpenChangeEventDetails = BaseCombobox.Root.OpenChangeEventDetails
 
 function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
   props: ComboboxProps<Value, Multiple, Item>,
@@ -39,7 +40,7 @@ const useComboboxFilter = BaseCombobox.useFilter
 const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
 type ComboboxSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 
 type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
@@ -75,8 +76,10 @@ function ComboboxCollection<Item = unknown>(props: ComboboxCollectionProps<Item>
 
 type ComboboxRowProps = BaseCombobox.Row.Props
 
+// The popup is limited to the available height and lays its parts out in a column, so an input or status
+// sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
 const comboboxPopupClassName = [
-  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
 const comboboxListClassName = [
@@ -105,31 +108,18 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   )
 }
 
-const comboboxInputGroupVariants = cva(
-  [
-    'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundInputFocusClassName,
-    'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
-    'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
-    'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
-    'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'min-h-6 rounded-md',
-        medium: 'min-h-8 rounded-lg',
-        large: 'min-h-9 rounded-[10px]',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
+const comboboxInputGroupVariants = cva([textControlGroupClassName, 'group/combobox items-center'], {
+  variants: {
+    size: {
+      small: 'min-h-6 rounded-md',
+      medium: 'min-h-8 rounded-lg',
+      large: 'min-h-9 rounded-[10px]',
     },
   },
-)
+  defaultVariants: {
+    size: 'medium',
+  },
+})
 
 type ComboboxInputGroupProps = BaseCombobox.InputGroup.Props &
   VariantProps<typeof comboboxInputGroupVariants>
@@ -150,7 +140,7 @@ const comboboxInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -544,6 +534,7 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxOpenChangeEventDetails,
   ComboboxPopupProps,
   ComboboxPortalProps,
   ComboboxPositionerProps,
