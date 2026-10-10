@@ -92,6 +92,7 @@ function Entries({
       >
         Open opener
       </button>
+      <button onClick={modal.setShowAnnotationFullModal}>Open annotation limit</button>
     </>
   )
 }
@@ -99,6 +100,7 @@ function Entries({
 function createProviderWrapper() {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'COMMUNITY' },
+    features: { annotation_quota_limit: { size: 100, limit: 100 } },
   })
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -125,19 +127,25 @@ it('activates each dynamic owner only on first use and retains it across close a
   renderEntries()
   expect(loadDialog).not.toHaveBeenCalled()
 
-  for (const entry of ['Open moderation', 'Open external tool', 'Open opener']) {
+  for (const entry of [
+    'Open moderation',
+    'Open external tool',
+    'Open opener',
+    'Open annotation limit',
+  ]) {
+    const closeName = entry === 'Open annotation limit' ? 'common.operation.close' : cancelName
     const callsBeforeOpen = loadDialog.mock.calls.length
     await user.click(screen.getByRole('button', { name: entry }))
     await screen.findByRole('dialog')
     expect(loadDialog).toHaveBeenCalledTimes(callsBeforeOpen + 1)
     expect(screen.getByText('blocked')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: cancelName }))
+    await user.click(screen.getByRole('button', { name: closeName }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByText('clear')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: entry }))
     await screen.findByRole('dialog')
     expect(loadDialog).toHaveBeenCalledTimes(callsBeforeOpen + 1)
-    await user.click(screen.getByRole('button', { name: cancelName }))
+    await user.click(screen.getByRole('button', { name: closeName }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   }
 })

@@ -1,5 +1,7 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'
 
@@ -47,17 +49,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: ({ show, onHide }: { show: boolean; onHide: () => void }) =>
-    show ? (
-      <div data-testid="annotation-full-modal">
-        <button data-testid="full-hide" onClick={onHide}>
-          Hide
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
 }))
@@ -99,10 +90,16 @@ const renderWithProvider = (
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
-  return render(
-    <FeaturesProvider features={features}>
-      <AnnotationReply disabled={props.disabled} onChange={props.onChange} />
-    </FeaturesProvider>,
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <FeaturesProvider features={features}>
+        <AnnotationReply disabled={props.disabled} onChange={props.onChange} />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
+    {
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: 10, limit: 10 } },
+    },
   )
 }
 
@@ -370,16 +367,20 @@ describe('AnnotationReply', () => {
     mockIsShowAnnotationFullModal = true
     renderWithProvider()
 
-    expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', {
+        name: /annotatedResponse\.fullTipLine1.*annotatedResponse\.fullTipLine2/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('should hide annotation full modal when hide is clicked', () => {
     mockIsShowAnnotationFullModal = true
     renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('full-hide'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(mockSetIsShowAnnotationFullModal).toHaveBeenCalledWith(false)
+    expect(mockSetIsShowAnnotationFullModal).toHaveBeenCalledWith(false, expect.anything())
   })
 
   it('should call handleEnableAnnotation and hide config modal on save', async () => {
@@ -537,6 +538,10 @@ describe('AnnotationReply', () => {
     mockIsShowAnnotationFullModal = false
     renderWithProvider()
 
-    expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', {
+        name: /annotatedResponse\.fullTipLine1.*annotatedResponse\.fullTipLine2/,
+      }),
+    ).not.toBeInTheDocument()
   })
 })

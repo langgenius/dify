@@ -103,7 +103,7 @@
   },
   "web/app/components/app/annotation/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {

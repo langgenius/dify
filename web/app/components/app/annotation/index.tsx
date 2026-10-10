@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { AnnotationFullModal } from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
@@ -334,12 +334,10 @@ const Annotation: FC<Props> = (props) => {
             annotationConfig={annotationConfig!}
           />
         )}
-        {isShowAnnotationFullModal && (
-          <AnnotationFullModal
-            show={isShowAnnotationFullModal}
-            onHide={() => setIsShowAnnotationFullModal(false)}
-          />
-        )}
+        <AnnotationFullModal
+          open={isShowAnnotationFullModal}
+          onOpenChange={setIsShowAnnotationFullModal}
+        />
       </div>
     </div>
   )
