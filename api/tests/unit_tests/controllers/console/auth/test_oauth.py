@@ -173,7 +173,7 @@ def test_callback_passes_stable_values_and_serializes_session_cookies(
         response = OAuthCallback().get("github")
 
     assert response.status_code == 302
-    assert response.headers["Location"] == "/apps?oauth_new_user=false"
+    assert response.headers["Location"] == f"{CONSOLE_WEB_URL}/apps?oauth_new_user=false"
     assert service.callback_calls == [
         OAuthCallbackCommand(
             provider="github",
@@ -195,7 +195,13 @@ def test_callback_passes_stable_values_and_serializes_session_cookies(
 @pytest.mark.parametrize(
     ("redirect_url", "expected"),
     [
+        ("/", f"{CONSOLE_WEB_URL}/?oauth_new_user=false"),
+        ("/apps", f"{CONSOLE_WEB_URL}/apps?oauth_new_user=false"),
+        ("apps", f"{CONSOLE_WEB_URL}/apps?oauth_new_user=false"),
+        ("/apps?tab=workflow", f"{CONSOLE_WEB_URL}/apps?tab=workflow&oauth_new_user=false"),
         ("https://console.example.com/apps", "https://console.example.com/apps?oauth_new_user=false"),
+        ("http://console.example.com/apps", f"{CONSOLE_WEB_URL}?oauth_new_user=false"),
+        ("https://console.example.com:8443/apps", f"{CONSOLE_WEB_URL}?oauth_new_user=false"),
         ("https://console.example.com.malicious.example/apps", f"{CONSOLE_WEB_URL}?oauth_new_user=false"),
         ("//malicious.example.com/apps", f"{CONSOLE_WEB_URL}?oauth_new_user=false"),
         ("///malicious.example.com/apps", f"{CONSOLE_WEB_URL}?oauth_new_user=false"),
@@ -212,7 +218,10 @@ def test_callback_serializes_safe_redirect_target(
     _install_service(monkeypatch, service)
     state = encode_oauth_state(redirect_url=redirect_url)
 
-    with app.test_request_context(f"/oauth/authorize/github?code=code-1&state={state}"):
+    with app.test_request_context(
+        f"/oauth/authorize/github?code=code-1&state={state}",
+        base_url="https://api.example.com",
+    ):
         response = OAuthCallback().get("github")
 
     assert response.headers["Location"] == expected
