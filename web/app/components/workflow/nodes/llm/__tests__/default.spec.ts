@@ -125,7 +125,7 @@ describe('llm default node validation', () => {
     expect(result.errorMessage).toBe('errorMsg.fieldRequired')
   })
 
-  it('should require sys.query in memory user prompt outside snippet flows', () => {
+  it('should accept a memory template that omits sys.query', () => {
     const result = nodeDefault.checkValid(
       createPayload({
         memory: {
@@ -140,11 +140,49 @@ describe('llm default node validation', () => {
       { flowType: FlowType.appFlow },
     )
 
-    expect(result.isValid).toBe(false)
-    expect(result.errorMessage).toBe('nodes.llm.sysQueryInUser')
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
   })
 
-  it('should not require sys.query in memory user prompt for snippet flows', () => {
+  it('should accept a memory template seeded by another workflow variable', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({
+        memory: {
+          window: {
+            enabled: false,
+            size: 10,
+          },
+          query_prompt_template: '{{#start.completed#}}',
+        },
+      }),
+      t,
+      { flowType: FlowType.appFlow },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should accept a files-only memory template', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({
+        memory: {
+          window: {
+            enabled: false,
+            size: 10,
+          },
+          query_prompt_template: '{{#sys.files#}}',
+        },
+      }),
+      t,
+      { flowType: FlowType.appFlow },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should accept a memory template without sys.query in snippet flows', () => {
     const result = nodeDefault.checkValid(
       createPayload({
         memory: {

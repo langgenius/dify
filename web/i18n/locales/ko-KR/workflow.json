@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "필터 조건 키",
   "nodes.listFilter.inputVar": "입력 변수",
   "nodes.llm.prompt": "프롬프트",
-  "nodes.llm.sysQueryInUser": "사용자 메시지에 sys.query 가 필요합니다",
   "nodes.loop.deleteDesc": "루프 노드를 삭제하면 모든 자식 노드가 제거됩니다.",
   "nodes.loop.deleteTitle": "루프 노드를 삭제하시겠습니까?",
   "nodes.loop.loopMaxCountError": "유효한 최대 루프 수를 입력하십시오. 범위는 1 에서 {{maxCount}}입니다.",

@@ -26,7 +26,6 @@ type Props = Readonly<{
   handleMemoryChange: (memory?: Memory) => void
 }>
 
-const i18nPrefix = 'nodes.llm'
 const DEFAULT_MEMORY: Memory = {
   window: {
     enabled: false,
@@ -60,7 +59,6 @@ const PanelMemorySection: FC<Props> = ({
 
   const { t } = useTranslation(['workflow', 'workflowModels'])
   const isSnippetFlow = flowType === FlowType.snippet
-  const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
 
   if (!isChatMode) return null
@@ -117,14 +115,6 @@ const PanelMemorySection: FC<Props> = ({
               availableNodes={availableNodesWithParent}
               isSupportFileVar
             />
-
-            {shouldCheckSysQuery &&
-              inputs.memory.query_prompt_template &&
-              !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-                <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
-                  {t(($) => $[`${i18nPrefix}.sysQueryInUser`], { ns: 'workflow' })}
-                </div>
-              )}
           </div>
         </div>
       )}

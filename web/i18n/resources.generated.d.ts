@@ -5177,7 +5177,6 @@ export default interface Resources {
     'nodes.listFilter.filterConditionKey': 'Filter Condition Key'
     'nodes.listFilter.inputVar': 'Input Variable'
     'nodes.llm.prompt': 'prompt'
-    'nodes.llm.sysQueryInUser': 'sys.query in user message is required'
     'nodes.loop.deleteDesc': 'Deleting the loop node will remove all child nodes'
     'nodes.loop.deleteTitle': 'Delete Loop Node?'
     'nodes.loop.loopMaxCountError': 'Please enter a valid maximum loop count, ranging from 1 to {{maxCount}}'

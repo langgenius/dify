@@ -104,7 +104,7 @@ describe('llm/panel-memory-section', () => {
     )
   })
 
-  it('shows the sys query warning when the memory prompt omits the required placeholder', () => {
+  it('does not show a memory prompt warning when the template omits sys.query', () => {
     render(
       <PanelMemorySection
         {...baseProps}
@@ -120,11 +120,31 @@ describe('llm/panel-memory-section', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.llm.sysQueryInUser')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveTextContent('custom prompt')
   })
 
-  it('does not show the sys query warning in snippet flows', () => {
+  it('does not show the sys query warning when the memory prompt uses another variable', () => {
+    render(
+      <PanelMemorySection
+        {...baseProps}
+        inputs={createInputs({
+          memory: {
+            window: {
+              enabled: false,
+              size: 10,
+            },
+            query_prompt_template: '{{#start.completed#}}',
+          },
+        })}
+      />,
+    )
+
+    expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
+    expect(screen.getByTestId('editor')).toHaveTextContent('{{#start.completed#}}')
+  })
+
+  it('does not show a memory prompt warning in snippet flows', () => {
     render(
       <PanelMemorySection
         {...baseProps}

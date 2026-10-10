@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Clé de condition de filtre",
   "nodes.listFilter.inputVar": "Variable d’entrée",
   "nodes.llm.prompt": "invite",
-  "nodes.llm.sysQueryInUser": "sys.query dans le message utilisateur est requis",
   "nodes.loop.deleteDesc": "Supprimer le nœud de boucle supprimera tous les nœuds enfants.",
   "nodes.loop.deleteTitle": "Supprimer le nœud de boucle ?",
   "nodes.loop.loopMaxCountError": "Veuillez entrer un nombre maximal de boucles valide, compris entre 1 et {{maxCount}}.",

@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "کلید شرط فیلتر",
   "nodes.listFilter.inputVar": "متغیر ورودی",
   "nodes.llm.prompt": "پرامپت",
-  "nodes.llm.sysQueryInUser": "وجود sys.query در پیام کاربر الزامی است",
   "nodes.loop.deleteDesc": "حذف گره حلقه باعث حذف تمام گره‌های فرزند می‌شود",
   "nodes.loop.deleteTitle": "حذف گره حلقه؟",
   "nodes.loop.loopMaxCountError": "لطفاً عددی معتبر بین ۱ تا {{maxCount}} وارد کنید.",

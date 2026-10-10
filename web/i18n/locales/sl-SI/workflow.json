@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Ključ pogoja filtra",
   "nodes.listFilter.inputVar": "Vhodna spremenljivka",
   "nodes.llm.prompt": "ukaz",
-  "nodes.llm.sysQueryInUser": "vprašanje v uporabniškem sporočilu je obvezno",
   "nodes.loop.deleteDesc": "Izbris vozlišča zanke bo odstranil vse otroške vozlišča.",
   "nodes.loop.deleteTitle": "Izbriši vozlišče zanke?",
   "nodes.loop.loopMaxCountError": "Prosimo, vnesite veljavno največje število ponovitev, ki mora biti med 1 in {{maxCount}}",

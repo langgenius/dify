@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Süzgəc şərtinin açarı",
   "nodes.listFilter.inputVar": "Giriş dəyişəni",
   "nodes.llm.prompt": "Təlimat mətni",
-  "nodes.llm.sysQueryInUser": "İstifadəçi mesajında sys.query tələb olunur",
   "nodes.loop.deleteDesc": "Dövr düyününün silinməsi bütün alt düyünləri siləcək",
   "nodes.loop.deleteTitle": "Loop düyünü silinsin?",
   "nodes.loop.loopMaxCountError": "Maksimum dövr sayı üçün 1 ilə {{maxCount}} arasında etibarlı dəyər daxil edin",

@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "مفتاح شرط التصفية",
   "nodes.listFilter.inputVar": "متغير الإدخال",
   "nodes.llm.prompt": "المطالبة",
-  "nodes.llm.sysQueryInUser": "sys.query في رسالة المستخدم مطلوب",
   "nodes.loop.deleteDesc": "سيؤدي حذف عقدة الحلقة إلى إزالة جميع العقد الفرعية",
   "nodes.loop.deleteTitle": "حذف عقدة الحلقة؟",
   "nodes.loop.loopMaxCountError": "الرجاء إدخال حد أقصى صالح لعدد الحلقات، يتراوح بين 1 و {{maxCount}}",

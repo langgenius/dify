@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "ຄີເງື່ອນໄຂການກັ່ນຕອງ",
   "nodes.listFilter.inputVar": "ຕົວປ່ຽນນຳເຂົ້າ",
   "nodes.llm.prompt": "ຄຳສັ່ງ (Prompt)",
-  "nodes.llm.sysQueryInUser": "ຈຳເປັນຕ້ອງມີ sys.query ໃນຂໍ້ຄວາມຜູ້ໃຊ້",
   "nodes.loop.deleteDesc": "ການລຶບໂນດລູບຈະລຶບໂນດຍ່ອຍທັງໝົດ",
   "nodes.loop.deleteTitle": "ລຶບໂນດລູບບໍ?",
   "nodes.loop.loopMaxCountError": "ກະລຸນາປ້ອນຈຳນວນຮອບສູງສຸດທີ່ຖືກຕ້ອງ, ລະຫວ່າງ 1 ຫາ {{maxCount}}",

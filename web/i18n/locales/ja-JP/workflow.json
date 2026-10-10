@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "フィルター条件キー",
   "nodes.listFilter.inputVar": "入力変数",
   "nodes.llm.prompt": "プロンプト",
-  "nodes.llm.sysQueryInUser": "ユーザーメッセージに sys.query を含めてください",
   "nodes.loop.deleteDesc": "ループノードを削除すると、全ての子ノードが削除されます。",
   "nodes.loop.deleteTitle": "ループノードを削除しますか？",
   "nodes.loop.loopMaxCountError": "最大ループ回数は 1 から{{maxCount}}の範囲で正しく入力してください。",

@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Clave de condición de filtro",
   "nodes.listFilter.inputVar": "Variable de entrada",
   "nodes.llm.prompt": "indicación",
-  "nodes.llm.sysQueryInUser": "se requiere sys.query en el mensaje del usuario",
   "nodes.loop.deleteDesc": "Eliminar el nodo de bucle eliminará todos los nodos hijos",
   "nodes.loop.deleteTitle": "¿Eliminar nodo de bucle?",
   "nodes.loop.loopMaxCountError": "Por favor, introduce un conteo máximo de bucles válido, que varíe entre 1 y {{maxCount}}.",

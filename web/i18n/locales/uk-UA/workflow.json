@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Клавіша умови фільтра",
   "nodes.listFilter.inputVar": "Вхідна змінна",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query у повідомленні користувача є обов'язковим",
   "nodes.loop.deleteDesc": "Видалення вузла циклу призведе до видалення всіх дочірніх вузлів.",
   "nodes.loop.deleteTitle": "Видалити вузол циклу?",
   "nodes.loop.loopMaxCountError": "Будь ласка, введіть дійсне максимальне значення циклу, яке коливається від 1 до {{maxCount}}",
