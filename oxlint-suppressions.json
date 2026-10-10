@@ -2464,11 +2464,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow-app/components/__tests__/workflow-children.spec.tsx": {
-    "eslint-react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow-app/components/__tests__/workflow-main.spec.tsx": {
     "dify/no-app-store-imports": {
       "count": 1
