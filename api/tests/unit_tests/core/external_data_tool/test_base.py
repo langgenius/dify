@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any, override
 
 import pytest
+from flask_sqlalchemy.session import Session as FlaskSession
 from sqlalchemy.orm import Session, scoped_session
 
 from core.extension.extensible import ExtensionModule
@@ -18,12 +19,17 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[FlaskSession]
+            ) -> None:
                 return super().validate_config(tenant_id, config, session)
 
             @override
             def query(
-                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[FlaskSession],
+                query: str | None = None,
             ) -> str:
                 return super().query(inputs, session, query)
 
@@ -38,12 +44,17 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[FlaskSession]
+            ) -> None:
                 pass
 
             @override
             def query(
-                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[FlaskSession],
+                query: str | None = None,
             ) -> str:
                 return ""
 
@@ -57,12 +68,17 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[FlaskSession]
+            ) -> None:
                 return super().validate_config(tenant_id, config, session)
 
             @override
             def query(
-                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[FlaskSession],
+                query: str | None = None,
             ) -> str:
                 return ""
 
@@ -73,12 +89,17 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[FlaskSession]
+            ) -> None:
                 pass
 
             @override
             def query(
-                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[FlaskSession],
+                query: str | None = None,
             ) -> str:
                 return super().query(inputs, session, query)
 
