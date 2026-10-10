@@ -3,7 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
-import { PENDING_FILE_NAME } from '@/auth/logout'
+import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
 import { session } from '@/plugins/session'
@@ -177,3 +177,45 @@ it.each([[[]], [['--server', '  ']]])(
     expect(existsSync(pendingPath)).toBe(true)
   },
 )
+
+it('keeps a pending login when the new --server is rejected', async () => {
+  const seed = await testContext({ login: false })
+  worlds.push(seed)
+  const pendingPath = join(seed.dir, PENDING_FILE_NAME)
+  writeFileSync(
+    pendingPath,
+    `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: kept\n`,
+  )
+  const w = await testContext({
+    login: false,
+    argv: ['login', '--server', 'http://plain.example.com', '--no-wait'],
+    reuseDirOf: seed,
+  })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+  })
+  expect(existsSync(pendingPath)).toBe(true)
+})
+
+it('resume under an env login refuses a pending login before polling', async () => {
+  const seed = await testContext({ login: false, env: true })
+  worlds.push(seed)
+  const pendingPath = join(seed.dir, PENDING_FILE_NAME)
+  writeFileSync(
+    pendingPath,
+    `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: kept\n`,
+  )
+  const w = await testContext({
+    login: false,
+    env: true,
+    argv: ['login', '--resume'],
+    reuseDirOf: seed,
+  })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'unset DIFY_TOKEN to log in interactively',
+  })
+  expect(existsSync(pendingPath)).toBe(true)
+})
