@@ -1,5 +1,6 @@
 from typing import override
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
@@ -18,7 +19,14 @@ from core.app.entities.queue_entities import (
 
 class PipelineQueueManager(AppQueueManager):
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom, app_mode: str) -> None:
-        super().__init__(task_id, user_id, invoke_from)
+        # #39602: a pipeline run is a workflow and must follow
+        # WORKFLOW_MAX_EXECUTION_TIME, not the chat-style default.
+        super().__init__(
+            task_id,
+            user_id,
+            invoke_from,
+            listen_timeout=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+        )
 
         self._app_mode = app_mode
 
