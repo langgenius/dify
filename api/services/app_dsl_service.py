@@ -702,18 +702,29 @@ class AppDslService:
                 # The source canvas position should not determine the imported app's initial view.
                 graph = graph.copy()
                 graph.pop("viewport", None)
-                for node in graph.get("nodes", []):
+                for node_index, node in enumerate(graph.get("nodes", [])):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
-                        node["data"]["dataset_ids"] = [
-                            decrypted_id
-                            for dataset_id in dataset_ids
-                            if (
-                                decrypted_id := self.decrypt_dataset_id(
-                                    encrypted_data=dataset_id, tenant_id=app.tenant_id
+                        resolved_dataset_ids: list[str] = []
+                        for dataset_id in dataset_ids:
+                            decrypted_id = self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id)
+                            if decrypted_id:
+                                resolved_dataset_ids.append(decrypted_id)
+                            elif dataset_id:
+                                self._warnings.append(
+                                    DslImportWarning(
+                                        code="workflow_knowledge_retrieval_dataset_unresolved",
+                                        path=f"workflow.graph.nodes.{node_index}.data.dataset_ids",
+                                        message=(
+                                            "Knowledge retrieval dataset could not be restored in the target workspace."
+                                        ),
+                                        details={
+                                            "node_id": node.get("id"),
+                                            "node_title": node.get("data", {}).get("title", ""),
+                                        },
+                                    )
                                 )
-                            )
-                        ]
+                        node["data"]["dataset_ids"] = resolved_dataset_ids
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
