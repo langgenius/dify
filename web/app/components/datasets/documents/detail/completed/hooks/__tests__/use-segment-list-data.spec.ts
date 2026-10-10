@@ -192,7 +192,7 @@ const defaultOptions = {
   importStatus: undefined as SegmentImportStatus | undefined,
   currentPage: 1,
   limit: 10,
-  onCloseSegmentDetail: vi.fn(),
+  onCloseSegmentDetailIfCurrent: vi.fn(),
   clearSelection: vi.fn(),
 }
 
@@ -676,12 +676,12 @@ describe('useSegmentListData', () => {
         },
       )
 
-      const onCloseSegmentDetail = vi.fn()
+      const onCloseSegmentDetailIfCurrent = vi.fn()
       const { result } = renderHook(
         () =>
           useSegmentListData({
             ...defaultOptions,
-            onCloseSegmentDetail,
+            onCloseSegmentDetailIfCurrent,
           }),
         {
           wrapper: createWrapper(),
@@ -693,11 +693,12 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockUpdateSegment).toHaveBeenCalled()
+      expect(onCloseSegmentDetailIfCurrent).toHaveBeenCalledWith('seg-1')
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
-      expect(onCloseSegmentDetail).toHaveBeenCalled()
+      expect(onCloseSegmentDetailIfCurrent).toHaveBeenCalled()
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment')
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment-success')
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment-done')
@@ -711,12 +712,12 @@ describe('useSegmentListData', () => {
         },
       )
 
-      const onCloseSegmentDetail = vi.fn()
+      const onCloseSegmentDetailIfCurrent = vi.fn()
       const { result } = renderHook(
         () =>
           useSegmentListData({
             ...defaultOptions,
-            onCloseSegmentDetail,
+            onCloseSegmentDetailIfCurrent,
           }),
         {
           wrapper: createWrapper(),
@@ -727,7 +728,7 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'content', '', [], [], 'summary', true)
       })
 
-      expect(onCloseSegmentDetail).not.toHaveBeenCalled()
+      expect(onCloseSegmentDetailIfCurrent).not.toHaveBeenCalled()
     })
 
     it('should include attachments in params', async () => {
