@@ -27,7 +27,9 @@ export function validateRedirectUrl(url: string): void {
 export function isPrivateOrLocalAddress(url: string): boolean {
   try {
     const urlObj = new URL(url)
-    const hostname = urlObj.hostname.toLowerCase()
+    // WHATWG URL keeps the square brackets in `hostname` for IPv6 hosts
+    // (e.g. '[::1]'), so strip them before comparing against bare names.
+    const hostname = urlObj.hostname.toLowerCase().replaceAll('[', '').replaceAll(']', '')
 
     // Check for localhost
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true

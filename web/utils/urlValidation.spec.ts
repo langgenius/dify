@@ -1,4 +1,4 @@
-import { validateRedirectUrl } from './urlValidation'
+import { isPrivateOrLocalAddress, validateRedirectUrl } from './urlValidation'
 
 describe('URL Validation', () => {
   describe('validateRedirectUrl', () => {
@@ -54,6 +54,46 @@ describe('URL Validation', () => {
 
     it('should reject protocol-relative URLs', () => {
       expect(() => validateRedirectUrl('//example.com')).toThrow('Invalid URL')
+    })
+  })
+
+  describe('isPrivateOrLocalAddress', () => {
+    it('should return true for localhost', () => {
+      expect(isPrivateOrLocalAddress('http://localhost:5001')).toBe(true)
+    })
+
+    it('should return true for the IPv4 loopback', () => {
+      expect(isPrivateOrLocalAddress('http://127.0.0.1/x')).toBe(true)
+    })
+
+    it('should return true for the IPv6 loopback with brackets', () => {
+      expect(isPrivateOrLocalAddress('http://[::1]/x')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://[::1]:5001/webhook')).toBe(true)
+    })
+
+    it('should return true for private IPv4 ranges', () => {
+      expect(isPrivateOrLocalAddress('http://10.0.0.1/x')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://172.16.0.1/x')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://172.31.255.255/x')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://192.168.1.1/x')).toBe(true)
+      expect(isPrivateOrLocalAddress('http://169.254.1.1/x')).toBe(true)
+    })
+
+    it('should return false for public IPv4 addresses', () => {
+      expect(isPrivateOrLocalAddress('http://8.8.8.8/x')).toBe(false)
+      expect(isPrivateOrLocalAddress('http://172.32.0.1/x')).toBe(false)
+    })
+
+    it('should return true for .local domains', () => {
+      expect(isPrivateOrLocalAddress('http://myhost.local/x')).toBe(true)
+    })
+
+    it('should return false for public hostnames', () => {
+      expect(isPrivateOrLocalAddress('https://example.com/x')).toBe(false)
+    })
+
+    it('should return false for invalid URLs', () => {
+      expect(isPrivateOrLocalAddress('not a url')).toBe(false)
     })
   })
 })
