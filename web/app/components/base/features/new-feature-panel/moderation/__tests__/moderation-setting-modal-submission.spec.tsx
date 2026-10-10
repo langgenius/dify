@@ -4,7 +4,7 @@ import type { ConsoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import ModerationSettingModal from '../moderation-setting-modal'
+import { ModerationSettingModal } from '../moderation-setting-modal'
 
 const { getExtensions, createExtension } = vi.hoisted(() => ({
   getExtensions: vi.fn<ConsoleClient['apiBasedExtension']['get']>(),
@@ -68,7 +68,7 @@ const renderModal = async () => {
   const onCancel = vi.fn()
   await act(async () => {
     renderWithConsoleQuery(
-      <ModerationSettingModal data={moderation} onSave={onSave} onCancel={onCancel} />,
+      <ModerationSettingModal open data={moderation} onSave={onSave} onOpenChange={onCancel} />,
     )
   })
   return { onSave, onCancel }

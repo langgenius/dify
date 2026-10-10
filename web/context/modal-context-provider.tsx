@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ModalState, ModelModalType } from './modal-context'
+import type { ModalContextState, ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
@@ -16,13 +16,18 @@ import { ModalContext } from './modal-context'
 
 const ModerationSettingModal = dynamic(
   () =>
-    import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'),
+    import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal').then(
+      (module) => module.ModerationSettingModal,
+    ),
   {
     ssr: false,
   },
 )
 const ExternalDataToolModal = dynamic(
-  () => import('@/app/components/app/configuration/tools/external-data-tool-modal'),
+  () =>
+    import('@/app/components/app/configuration/tools/external-data-tool-modal').then(
+      (module) => module.ExternalDataToolModal,
+    ),
   {
     ssr: false,
   },
@@ -46,7 +51,10 @@ const ExternalAPIModal = dynamic(
   },
 )
 const OpeningSettingModal = dynamic(
-  () => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'),
+  () =>
+    import('@/app/components/base/features/new-feature-panel/conversation-opener/modal').then(
+      (module) => module.OpeningSettingModal,
+    ),
   {
     ssr: false,
   },
@@ -62,18 +70,23 @@ const TriggerEventsLimitModal = dynamic(
   },
 )
 
+type DialogSession<T> = {
+  open: boolean
+  modal: ModalState<T>
+}
+
 type ModalContextProviderProps = {
   children: ReactNode
 }
 export const ModalContextProvider = ({ children }: ModalContextProviderProps) => {
-  const [showModerationSettingModal, setShowModerationSettingModal] =
-    useState<ModalState<ModerationConfig> | null>(null)
-  const [showExternalDataToolModal, setShowExternalDataToolModal] =
-    useState<ModalState<ExternalDataTool> | null>(null)
+  const [moderationSession, setModerationSession] =
+    useState<DialogSession<ModerationConfig> | null>(null)
+  const [externalDataToolSession, setExternalDataToolSession] =
+    useState<DialogSession<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] =
     useState<ModalState<CreateExternalAPIReq> | null>(null)
-  const [showOpeningModal, setShowOpeningModal] = useState<ModalState<
+  const [openingSession, setOpeningSession] = useState<DialogSession<
     OpeningStatement & {
       promptVariables?: PromptVariable[]
       workflowVariables?: InputVar[]
@@ -84,6 +97,44 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal()
+
+  const setShowModerationSettingModal = useCallback<
+    ModalContextState['setShowModerationSettingModal']
+  >((action) => {
+    setModerationSession((previous) => {
+      const current = previous?.open ? previous.modal : null
+      const next = typeof action === 'function' ? action(current) : action
+      if (next === current) return previous
+      if (next) return { open: true, modal: next }
+      return previous ? { ...previous, open: false } : null
+    })
+  }, [])
+  const setShowExternalDataToolModal = useCallback<
+    ModalContextState['setShowExternalDataToolModal']
+  >((action) => {
+    setExternalDataToolSession((previous) => {
+      const current = previous?.open ? previous.modal : null
+      const next = typeof action === 'function' ? action(current) : action
+      if (next === current) return previous
+      if (next) return { open: true, modal: next }
+      return previous ? { ...previous, open: false } : null
+    })
+  }, [])
+  const setShowOpeningModal = useCallback<ModalContextState['setShowOpeningModal']>((action) => {
+    setOpeningSession((previous) => {
+      const current = previous?.open ? previous.modal : null
+      const next = typeof action === 'function' ? action(current) : action
+      if (next === current) return previous
+      if (next) return { open: true, modal: next }
+      return previous ? { ...previous, open: false } : null
+    })
+  }, [])
+
+  const showModerationSettingModal = moderationSession?.open ? moderationSession.modal : null
+  const showExternalDataToolModal = externalDataToolSession?.open
+    ? externalDataToolSession.modal
+    : null
+  const showOpeningModal = openingSession?.open ? openingSession.modal : null
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
@@ -145,7 +196,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const handleCancelOpeningModal = useCallback(() => {
     setShowOpeningModal(null)
     if (showOpeningModal?.onCancelCallback) showOpeningModal.onCancelCallback()
-  }, [showOpeningModal])
+  }, [setShowOpeningModal, showOpeningModal])
 
   const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
@@ -196,17 +247,23 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     >
       <>
         {children}
-        {!!showModerationSettingModal && (
+        {moderationSession && (
           <ModerationSettingModal
-            data={showModerationSettingModal.payload}
-            onCancel={handleCancelModerationSettingModal}
+            open={moderationSession.open}
+            onOpenChange={(open) => {
+              if (!open) handleCancelModerationSettingModal()
+            }}
+            data={moderationSession.modal.payload}
             onSave={handleSaveModeration}
           />
         )}
-        {!!showExternalDataToolModal && (
+        {externalDataToolSession && (
           <ExternalDataToolModal
-            data={showExternalDataToolModal.payload}
-            onCancel={handleCancelExternalDataToolModal}
+            open={externalDataToolSession.open}
+            onOpenChange={(open) => {
+              if (!open) handleCancelExternalDataToolModal()
+            }}
+            data={externalDataToolSession.modal.payload}
             onSave={handleSaveExternalDataTool}
             onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
           />
@@ -244,14 +301,17 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             isEditMode={showExternalKnowledgeAPIModal.isEditMode ?? false}
           />
         )}
-        {showOpeningModal && (
+        {openingSession && (
           <OpeningSettingModal
-            data={showOpeningModal.payload}
+            open={openingSession.open}
+            onOpenChange={(open) => {
+              if (!open) handleCancelOpeningModal()
+            }}
+            data={openingSession.modal.payload}
             onSave={handleSaveOpeningModal}
-            onCancel={handleCancelOpeningModal}
-            promptVariables={showOpeningModal.payload.promptVariables}
-            workflowVariables={showOpeningModal.payload.workflowVariables}
-            onAutoAddPromptVariable={showOpeningModal.payload.onAutoAddPromptVariable}
+            promptVariables={openingSession.modal.payload.promptVariables}
+            workflowVariables={openingSession.modal.payload.workflowVariables}
+            onAutoAddPromptVariable={openingSession.modal.payload.onAutoAddPromptVariable}
           />
         )}
 

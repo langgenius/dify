@@ -31,7 +31,7 @@ const FeatureCard = ({
 
   return (
     <div
-      className="mb-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-3"
+      className="group/feature relative mb-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-3"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >

@@ -1,9 +1,9 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
-import OpeningSettingModal from '../modal'
+import { OpeningSettingModal } from '../modal'
 
 const getPromptEditor = () => {
   const editor = document.querySelector('[data-lexical-editor="true"]')
@@ -77,26 +77,34 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should render the modal title', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(screen.getByText(/feature\.conversationOpener\.title/)).toBeInTheDocument()
   })
 
   it('should render the opening statement in the editor', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(getPromptEditor()).toHaveTextContent('Hello, how can I help?')
   })
 
   it('should render suggested questions', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Question 2')).toBeInTheDocument()
   })
 
   it('should render cancel and save buttons', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
     expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
@@ -104,7 +112,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onCancel when cancel is clicked', async () => {
     const onCancel = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={onCancel} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={onCancel} />,
+    )
 
     await userEvent.click(screen.getByText(/operation\.cancel/))
 
@@ -113,7 +123,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onCancel when close icon is clicked', async () => {
     const onCancel = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={onCancel} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={onCancel} />,
+    )
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     await userEvent.click(closeButton)
@@ -123,7 +135,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onCancel when close icon receives Enter key', async () => {
     const onCancel = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={onCancel} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={onCancel} />,
+    )
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
@@ -134,7 +148,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onCancel when close icon receives Space key', async () => {
     const onCancel = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={onCancel} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={onCancel} />,
+    )
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
@@ -145,7 +161,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onCancel when Escape is pressed on the dialog close control', async () => {
     const onCancel = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={onCancel} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={onCancel} />,
+    )
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
@@ -156,7 +174,9 @@ describe('OpeningSettingModal', () => {
 
   it('should call onSave with updated data when save is clicked', async () => {
     const onSave = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={onSave} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={vi.fn()} />,
+    )
 
     await userEvent.click(screen.getByText(/operation\.save/))
 
@@ -171,9 +191,10 @@ describe('OpeningSettingModal', () => {
   it('should disable save when opening statement is empty', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: '' }}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -182,7 +203,9 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should add a new suggested question', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     // Before adding: 2 existing questions
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
@@ -199,7 +222,9 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should focus a new suggested question without destructive styling', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     await userEvent.click(screen.getByText(/variableConfig\.addOption/))
 
@@ -217,9 +242,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, suggested_questions: ['Question 1'] }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -235,7 +261,9 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should update a suggested question value', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     const input = screen.getByDisplayValue('Question 1')
     await userEvent.clear(input)
@@ -247,9 +275,10 @@ describe('OpeningSettingModal', () => {
   it('should show confirm dialog when variables are not in prompt', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -262,9 +291,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -275,14 +305,18 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should show question count', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     // Count is displayed as "2/10" across child elements
     expect(screen.getByText('appDebug.openingStatement.openingQuestion')).toBeInTheDocument()
   })
 
   it('should render separate opener and question sections', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(screen.getByTestId('opener-input-section')).toBeInTheDocument()
     expect(screen.getByTestId('opener-questions-section')).toBeInTheDocument()
@@ -296,7 +330,9 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should show the opening questions description in an infotip', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     await userEvent.hover(screen.getByRole('button', { name: /openingStatement\.openingQuestion/ }))
 
@@ -309,9 +345,10 @@ describe('OpeningSettingModal', () => {
     const onAutoAddPromptVariable = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onAutoAddPromptVariable={onAutoAddPromptVariable}
       />,
     )
@@ -329,13 +366,17 @@ describe('OpeningSettingModal', () => {
       opening_statement: 'Hello',
       suggested_questions: Array.from({ length: 10 }, (_, i) => `Q${i + 1}`),
     }
-    await render(<OpeningSettingModal data={questionsAtMax} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={questionsAtMax} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     expect(screen.queryByText(/variableConfig\.addOption/)).not.toBeInTheDocument()
   })
 
   it('should apply and remove focused styling on question input focus/blur', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     const input = screen.getByDisplayValue('Question 1') as HTMLInputElement
     const questionRow = input.parentElement
@@ -352,7 +393,9 @@ describe('OpeningSettingModal', () => {
   })
 
   it('should apply and remove deleting styling on delete icon hover', async () => {
-    await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={vi.fn()} onOpenChange={vi.fn()} />,
+    )
 
     const questionInput = screen.getByDisplayValue('Question 1') as HTMLInputElement
     const questionRow = questionInput.parentElement
@@ -372,9 +415,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, suggested_questions: [] }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -391,9 +435,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: '   ' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -406,9 +451,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         promptVariables={[{ key: 'name', name: 'Name', type: 'string', required: true }]}
       />,
     )
@@ -424,9 +470,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         workflowVariables={[createMockInputVar()]}
       />,
     )
@@ -441,9 +488,10 @@ describe('OpeningSettingModal', () => {
   it('should show confirm dialog when variables not in workflow variables', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{unknown}}' }}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         workflowVariables={[createMockInputVar()]}
       />,
     )
@@ -456,15 +504,16 @@ describe('OpeningSettingModal', () => {
   it('should use updated opening statement after prop changes', async () => {
     const onSave = vi.fn()
     const view = await render(
-      <OpeningSettingModal data={defaultData} onSave={onSave} onCancel={vi.fn()} />,
+      <OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={vi.fn()} />,
     )
 
     await act(async () => {
       view.rerender(
         <OpeningSettingModal
+          open
           data={{ ...defaultData, opening_statement: 'New greeting!' }}
           onSave={onSave}
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
       await Promise.resolve()
@@ -482,9 +531,10 @@ describe('OpeningSettingModal', () => {
   it('should render empty opening statement with placeholder in editor', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: '' }}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -498,9 +548,10 @@ describe('OpeningSettingModal', () => {
   it('should render with empty suggested questions when field is missing', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, suggested_questions: undefined } as unknown as OpeningStatement}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -511,9 +562,10 @@ describe('OpeningSettingModal', () => {
   it('should render prompt variable fallback key when name is empty', async () => {
     await render(
       <OpeningSettingModal
+        open
         data={defaultData}
         onSave={vi.fn()}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         promptVariables={[{ key: 'account_id', name: '', type: 'string', required: true }]}
       />,
     )
@@ -523,7 +575,9 @@ describe('OpeningSettingModal', () => {
 
   it('should save reordered suggested questions after sortable setList', async () => {
     const onSave = vi.fn()
-    await render(<OpeningSettingModal data={defaultData} onSave={onSave} onCancel={vi.fn()} />)
+    await render(
+      <OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={vi.fn()} />,
+    )
 
     await userEvent.click(screen.getByTestId('mock-sortable-apply'))
     await userEvent.click(screen.getByText(/operation\.save/))
@@ -539,9 +593,10 @@ describe('OpeningSettingModal', () => {
     const onSave = vi.fn()
     const view = await render(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -550,9 +605,10 @@ describe('OpeningSettingModal', () => {
 
     view.rerender(
       <OpeningSettingModal
+        open
         data={{ ...defaultData, opening_statement: '   ' }}
         onSave={onSave}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -563,7 +619,7 @@ describe('OpeningSettingModal', () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     const onCancel = vi.fn()
-    render(<OpeningSettingModal data={defaultData} onSave={onSave} onCancel={onCancel} />)
+    render(<OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={onCancel} />)
     const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
     await user.click(handle)
     await user.keyboard('{Enter}{ArrowDown}{Escape}')
@@ -580,4 +636,36 @@ describe('OpeningSettingModal', () => {
       expect.objectContaining({ suggested_questions: ['Question 2', 'Question 1'] }),
     )
   })
+})
+
+it('keeps Enter in its editors and discards cancelled question drafts on reopening', async () => {
+  const user = userEvent.setup()
+  const onSave = vi.fn()
+  const onOpenChange = vi.fn()
+  const view = render(
+    <OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={onOpenChange} />,
+  )
+  const question = screen.getByDisplayValue('Question 1')
+  await user.clear(question)
+  await user.type(question, 'Unsaved question{Enter}')
+  await user.click(getPromptEditor())
+  await user.keyboard('{Enter}')
+  expect(onSave).not.toHaveBeenCalled()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+  view.rerender(
+    <OpeningSettingModal
+      open={false}
+      data={defaultData}
+      onSave={onSave}
+      onOpenChange={onOpenChange}
+    />,
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  view.rerender(
+    <OpeningSettingModal open data={defaultData} onSave={onSave} onOpenChange={onOpenChange} />,
+  )
+  expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
+  expect(getPromptEditor()).toHaveTextContent(defaultData.opening_statement!)
 })
