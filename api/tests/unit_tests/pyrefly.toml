@@ -515,7 +515,6 @@ project-excludes = [
   "core/trigger/utils/test_utils_locks.py",
   "core/variables/test_segment.py",
   "core/variables/test_segment_type.py",
-  "core/variables/test_segment_type_validation.py",
   "core/variables/test_variables.py",
   "core/workflow/context/test_execution_context.py",
   "core/workflow/context/test_flask_app_context.py",
