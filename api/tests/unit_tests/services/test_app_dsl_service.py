@@ -783,6 +783,185 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
+def _knowledge_import(
+    monkeypatch: pytest.MonkeyPatch,
+    dataset_ids: list[str] | None = None,
+    *,
+    node_title: str = "Knowledge Retrieval",
+    nodes: list[dict[str, object]] | None = None,
+) -> tuple[AppDslService, Mock]:
+    """Import a workflow and return the service plus the ``sync_draft_workflow`` mock it called.
+
+    By default the graph is two nodes: a start node, then a knowledge-retrieval node carrying
+    ``dataset_ids``. The leading start node is load-bearing: it is what makes the asserted warning
+    path end in ``nodes.1``, proving the index is the node's position in the graph rather than a
+    constant. Pass ``nodes`` to supply a different graph.
+    """
+    if nodes is None:
+        nodes = [
+            {"id": "start", "data": {"type": "start", "title": "Start"}},
+            {
+                "id": "kr",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": node_title,
+                    "dataset_ids": dataset_ids or [],
+                },
+            },
+        ]
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id=_TENANT_ID,
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": {"nodes": nodes, "edges": []}},
+        },
+        account=Mock(id="account-1"),
+    )
+    return service, workflow_service.sync_draft_workflow
+
+
+def test_create_or_update_app_warns_when_knowledge_reference_cannot_be_restored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, DSL_EXPORT_ENCRYPT_DATASET_ID=True)
+    readable = "55555555-5555-4555-8555-555555555555"
+    # Encrypted under a different tenant: the AES key is derived from the tenant id alone, so the
+    # importing tenant cannot decode it. This is what a cross-workspace export looks like.
+    foreign = AppDslService.encrypt_dataset_id(
+        dataset_id="66666666-6666-4666-8666-666666666666",
+        tenant_id="77777777-7777-4777-8777-777777777777",
+    )
+
+    service, sync_draft_workflow = _knowledge_import(monkeypatch, [readable, foreign], node_title="Company docs")
+
+    persisted = sync_draft_workflow.call_args.kwargs["graph"]["nodes"][1]["data"]["dataset_ids"]
+    assert persisted == [readable], "the unreadable reference is dropped, the readable one survives"
+
+    assert len(service._warnings) == 1
+    warning = service._warnings[0]
+    assert warning.code == "workflow_knowledge_unresolved"
+    assert warning.path == "workflow.graph.nodes.1.data.dataset_ids.1"
+    assert warning.message == (
+        "Knowledge base in node 'Company docs' is unavailable in the target workspace and must be reselected."
+    )
+    assert warning.details == {"node_id": "kr", "node_title": "Company docs"}
+
+
+def test_create_or_update_app_keeps_knowledge_reference_encrypted_for_this_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An id encrypted under the importing workspace's own tenant decodes and is not reported."""
+    apply_config_overrides(monkeypatch, DSL_EXPORT_ENCRYPT_DATASET_ID=True)
+    dataset_uuid = "55555555-5555-4555-8555-555555555555"
+    own = AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id=_TENANT_ID)
+    assert own != dataset_uuid
+
+    service, sync_draft_workflow = _knowledge_import(monkeypatch, [own])
+
+    assert sync_draft_workflow.call_args.kwargs["graph"]["nodes"][1]["data"]["dataset_ids"] == [dataset_uuid]
+    assert service._warnings == []
+
+
+def test_create_or_update_app_keeps_plaintext_knowledge_reference(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A plain dataset id, as exported with encryption off, passes through and is not reported."""
+    dataset_uuid = "66666666-6666-4666-8666-666666666666"
+
+    service, sync_draft_workflow = _knowledge_import(monkeypatch, [dataset_uuid])
+
+    assert sync_draft_workflow.call_args.kwargs["graph"]["nodes"][1]["data"]["dataset_ids"] == [dataset_uuid]
+    assert service._warnings == []
+
+
+def test_create_or_update_app_reports_one_warning_per_unresolved_knowledge_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, sync_draft_workflow = _knowledge_import(monkeypatch, ["not-base64", "also-not-base64"])
+
+    assert sync_draft_workflow.call_args.kwargs["graph"]["nodes"][1]["data"]["dataset_ids"] == []
+    assert [warning.path for warning in service._warnings] == [
+        "workflow.graph.nodes.1.data.dataset_ids.0",
+        "workflow.graph.nodes.1.data.dataset_ids.1",
+    ]
+
+
+def test_create_or_update_app_does_not_warn_about_empty_knowledge_references(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty string was never a reference, so dropping it is not a loss worth reporting."""
+    readable = "55555555-5555-4555-8555-555555555555"
+
+    service, sync_draft_workflow = _knowledge_import(monkeypatch, ["", readable, ""])
+
+    assert sync_draft_workflow.call_args.kwargs["graph"]["nodes"][1]["data"]["dataset_ids"] == [readable]
+    assert service._warnings == []
+
+
+def test_create_or_update_app_reports_each_knowledge_node_separately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two knowledge nodes must not be conflated: each warning names its own node, in its message too.
+
+    The message matters because the web client de-duplicates import warnings by message text; two
+    nodes reported with the same message would show as one.
+    """
+    service, _ = _knowledge_import(
+        monkeypatch,
+        nodes=[
+            {"id": "kr-a", "data": {"type": "knowledge-retrieval", "title": "Policies", "dataset_ids": ["not-base64"]}},
+            {"id": "start", "data": {"type": "start", "title": "Start"}},
+            {"id": "kr-b", "data": {"type": "knowledge-retrieval", "title": "Manuals", "dataset_ids": ["not-b64"]}},
+        ],
+    )
+
+    assert [(w.path, w.details["node_id"], w.details["node_title"]) for w in service._warnings] == [
+        ("workflow.graph.nodes.0.data.dataset_ids.0", "kr-a", "Policies"),
+        ("workflow.graph.nodes.2.data.dataset_ids.0", "kr-b", "Manuals"),
+    ]
+    messages = [w.message for w in service._warnings]
+    assert len(set(messages)) == 2
+    assert "'Policies'" in messages[0]
+    assert "'Manuals'" in messages[1]
+
+
+def test_create_or_update_app_reports_untitled_knowledge_node_under_default_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A node whose DSL carries no title is reported under the node type's default label."""
+    service, sync_draft_workflow = _knowledge_import(
+        monkeypatch,
+        nodes=[{"id": "kr", "data": {"type": "knowledge-retrieval", "dataset_ids": ["not-base64"]}}],
+    )
+
+    assert sync_draft_workflow.call_args.kwargs["graph"]["nodes"][0]["data"]["dataset_ids"] == []
+    [warning] = service._warnings
+    assert warning.message == (
+        "Knowledge base in node 'Knowledge Retrieval' is unavailable in the target workspace and must be reselected."
+    )
+    assert warning.details == {"node_id": "kr", "node_title": "Knowledge Retrieval"}
+
+
+def test_unresolved_knowledge_reference_promotes_the_import_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The status helper promotes the result once a warning has been collected."""
+    service, _ = _knowledge_import(monkeypatch, ["not-base64"])
+
+    assert service._status_with_warnings(ImportStatus.COMPLETED) == ImportStatus.COMPLETED_WITH_WARNINGS
+
+
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)

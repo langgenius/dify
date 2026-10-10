@@ -702,18 +702,32 @@ class AppDslService:
                 # The source canvas position should not determine the imported app's initial view.
                 graph = graph.copy()
                 graph.pop("viewport", None)
-                for node in graph.get("nodes", []):
+                for node_index, node in enumerate(graph.get("nodes", [])):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
-                        node["data"]["dataset_ids"] = [
-                            decrypted_id
-                            for dataset_id in dataset_ids
-                            if (
-                                decrypted_id := self.decrypt_dataset_id(
-                                    encrypted_data=dataset_id, tenant_id=app.tenant_id
+                        node_title = str(node["data"].get("title") or "Knowledge Retrieval")
+                        resolved_dataset_ids: list[str] = []
+                        for dataset_index, dataset_id in enumerate(dataset_ids):
+                            decrypted_id = self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id)
+                            if decrypted_id:
+                                resolved_dataset_ids.append(decrypted_id)
+                            elif dataset_id:
+                                # A non-empty reference that would not decode is dropped here. Report it
+                                # instead of letting the node come back silently unbound: at runtime an
+                                # empty dataset_ids yields a successful, empty retrieval that looks the
+                                # same as a query which legitimately matched nothing.
+                                self._warnings.append(
+                                    DslImportWarning(
+                                        code="workflow_knowledge_unresolved",
+                                        path=f"workflow.graph.nodes.{node_index}.data.dataset_ids.{dataset_index}",
+                                        message=(
+                                            f"Knowledge base in node {node_title!r} is unavailable in the "
+                                            f"target workspace and must be reselected."
+                                        ),
+                                        details={"node_id": node.get("id"), "node_title": node_title},
+                                    )
                                 )
-                            )
-                        ]
+                        node["data"]["dataset_ids"] = resolved_dataset_ids
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
