@@ -242,6 +242,27 @@ def test_invalid_packages_rejected(members: dict[str, bytes], filename: str, cod
     assert exc_info.value.status_code == 400
 
 
+@pytest.mark.parametrize(
+    "description_line",
+    [
+        'description: "Compare before---after reports."',
+        "description: Compare before---after reports.",
+    ],
+)
+def test_description_keeps_literal_dashes_inside_frontmatter(description_line: str) -> None:
+    skill_md = f"---\nname: toolkit\n{description_line}\n---\n# Instructions\nCompare reports.\n"
+    package = _normalize({"SKILL.md": skill_md.encode()})
+    assert package.manifest.name == "toolkit"
+    assert package.manifest.description == "Compare before---after reports."
+
+
+def test_opening_delimiter_with_trailing_text_is_not_frontmatter() -> None:
+    skill_md = b"---junk\nname: toolkit\ndescription: valid\n---\n# body\n"
+    with pytest.raises(SkillPackageError) as exc_info:
+        _normalize({"SKILL.md": skill_md})
+    assert exc_info.value.code == "missing_skill_name"
+
+
 def test_non_zip_content_rejected():
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"not a zip", filename="skill.zip")
