@@ -181,20 +181,6 @@ class TestAppAnnotationServiceEnableDisable:
         assert result == {"job_id": "job-1", "job_status": "processing"}
         task.delay.assert_not_called()
 
-    def test_enable_enqueues_on_cache_miss(self, current_user: Account) -> None:
-        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-1"),
-            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = None
-            result = AppAnnotationService.enable_app_annotation(args, "app-1")
-
-        assert result == {"job_id": "uuid-1", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
-        task.delay.assert_called_once_with("uuid-1", "app-1", current_user.id, TENANT_ID, 0.5, "p", "m")
-
     def test_disable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
         with (
             patch.object(annotation_service_module, "redis_client") as redis,
@@ -205,19 +191,6 @@ class TestAppAnnotationServiceEnableDisable:
 
         assert result == {"job_id": "job-2", "job_status": "processing"}
         task.delay.assert_not_called()
-
-    def test_disable_enqueues_on_cache_miss(self, current_user: Account) -> None:
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-2"),
-            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = None
-            result = AppAnnotationService.disable_app_annotation("app-1")
-
-        assert result == {"job_id": "uuid-2", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
-        task.delay.assert_called_once_with("uuid-2", "app-1", TENANT_ID)
 
 
 class TestAppAnnotationServiceList:

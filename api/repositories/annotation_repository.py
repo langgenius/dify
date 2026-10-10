@@ -30,12 +30,18 @@ from services.annotation_query import (
     AnnotationRecord,
     AnnotationSettingRecord,
 )
+from services.annotation_reply_service import AnnotationReplyAppQuery
 from services.errors.message import MessageNotExistsError
 
 
-class AnnotationRepository(AnnotationQuery, AnnotationWriteStore):
+class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationReplyAppQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def require_app(self, *, tenant_id: str, app_id: str) -> None:
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
 
     @override
     def count(self, *, tenant_id: str, app_id: str) -> int:

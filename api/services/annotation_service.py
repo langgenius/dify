@@ -15,6 +15,7 @@ from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
 from models.account import Account
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
+from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from services.app_ref_service import AnnotationRef
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -79,10 +80,11 @@ class AppAnnotationService:
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
-        # send batch add segments task
-        redis_client.setnx(enable_app_annotation_job_key, "waiting")
         current_user, current_tenant_id = current_account_with_tenant()
+        # TODO: Remove this bridge when the Service API migrates to AnnotationReplyService.
+        RedisAnnotationReplyJobRepository(redis=redis_client).create(
+            tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id
+        )
         enable_annotation_reply_task.delay(
             job_id,
             app_id,
@@ -104,9 +106,10 @@ class AppAnnotationService:
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
-        # send batch add segments task
-        redis_client.setnx(disable_app_annotation_job_key, "waiting")
+        # TODO: Remove this bridge when the Service API migrates to AnnotationReplyService.
+        RedisAnnotationReplyJobRepository(redis=redis_client).create(
+            tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id
+        )
         disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
         return {"job_id": job_id, "job_status": "waiting"}
 

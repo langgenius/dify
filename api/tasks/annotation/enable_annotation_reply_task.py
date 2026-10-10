@@ -14,6 +14,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
+from repositories.annotation_reply_job_repository import annotation_reply_job_owner_key
 from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ def enable_annotation_reply_task(
                 vector.create(documents)
             session.commit()
             redis_client.setex(enable_app_annotation_job_key, 600, "completed")
+            redis_client.expire(annotation_reply_job_owner_key(action="enable", job_id=job_id), 600)
             end_at = time.perf_counter()
             logger.info(
                 click.style(
@@ -131,6 +133,7 @@ def enable_annotation_reply_task(
         except Exception as e:
             logger.exception("Annotation batch created index failed")
             redis_client.setex(enable_app_annotation_job_key, 600, "error")
+            redis_client.expire(annotation_reply_job_owner_key(action="enable", job_id=job_id), 600)
             enable_app_annotation_error_key = f"enable_app_annotation_error_{job_id}"
             redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()

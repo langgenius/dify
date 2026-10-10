@@ -44,10 +44,8 @@ from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.annotation_command_service import AnnotationSettingNotFoundError
 from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
-from services.annotation_service import (
-    AppAnnotationService,
-    EnableAnnotationArgs,
-)
+from services.annotation_reply_service import AnnotationReplyJobNotFoundError
+from services.annotation_service import AppAnnotationService
 from services.errors.message import MessageNotExistsError
 
 
@@ -192,27 +190,39 @@ class AnnotationReplyActionApi(Resource):
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
     @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
-    @console_ns.response(200, "Action completed successfully", console_ns.models[AnnotationJobStatusResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @console_ns.response(
+        HTTPStatus.OK, "Action completed successfully", console_ns.models[AnnotationJobStatusResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid action")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid payload")
+    @console_account_admission(
+        billing_resource="annotation",
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_EDIT, PlainApp()),),
+    )
     @model_validate(AnnotationReplyPayload)
-    def post(self, req_data: AnnotationReplyPayload, app_id: UUID, action: Literal["enable", "disable"]):
-        match action:
-            case "enable":
-                enable_args: EnableAnnotationArgs = {
-                    "score_threshold": req_data.score_threshold,
-                    "embedding_provider_name": req_data.embedding_provider_name,
-                    "embedding_model_name": req_data.embedding_model_name,
-                }
-                result = AppAnnotationService.enable_app_annotation(enable_args, str(app_id))
-            case "disable":
-                result = AppAnnotationService.disable_app_annotation(str(app_id))
-        return dump_response(AnnotationJobStatusResponse, result), 200
+    def post(
+        self, req_data: AnnotationReplyPayload, context: RequestContext, app_id: UUID, action: str
+    ) -> tuple[dict[str, object], HTTPStatus]:
+        validated_action = AnnotationReplyStatusQuery.model_validate({"action": action}).action
+        service = application_services().annotation_reply
+        try:
+            if validated_action == "enable":
+                result = service.enable(
+                    tenant_id=context.active_workspace_id,
+                    app_id=str(app_id),
+                    account_id=context.account_id,
+                    score_threshold=req_data.score_threshold,
+                    embedding_provider_name=req_data.embedding_provider_name,
+                    embedding_model_name=req_data.embedding_model_name,
+                )
+            else:
+                result = service.disable(tenant_id=context.active_workspace_id, app_id=str(app_id))
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(AnnotationJobStatusResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-setting")
@@ -283,31 +293,34 @@ class AnnotationReplyActionStatusApi(Resource):
     @console_ns.doc(description="Get status of annotation reply action job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
     @console_ns.response(
-        200, "Job status retrieved successfully", console_ns.models[AnnotationJobStatusDetailResponse.__name__]
+        HTTPStatus.OK,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusDetailResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, app_id: UUID, job_id: UUID, action: str):
-        job_id_str = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
-        cache_result = redis_client.get(app_annotation_job_key)
-        if cache_result is None:
-            raise ValueError("The job does not exist.")
-
-        job_status = cache_result.decode()
-        error_msg = ""
-        if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
-
-        return AnnotationJobStatusDetailResponse(
-            job_id=job_id_str, job_status=job_status, error_msg=error_msg
-        ).model_dump(mode="json"), 200
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or owned job not found")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid action")
+    @console_account_admission(
+        billing_resource="annotation",
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(
+        self, context: RequestContext, app_id: UUID, job_id: UUID, action: str
+    ) -> tuple[dict[str, object], HTTPStatus]:
+        validated_action = AnnotationReplyStatusQuery.model_validate({"action": action}).action
+        try:
+            result = application_services().annotation_reply.get_status(
+                tenant_id=context.active_workspace_id,
+                app_id=str(app_id),
+                action=validated_action,
+                job_id=str(job_id),
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationReplyJobNotFoundError as exc:
+            raise NotFoundError("The job does not exist.") from exc
+        return dump_response(AnnotationJobStatusDetailResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations")

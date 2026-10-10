@@ -11,6 +11,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
+from repositories.annotation_reply_job_repository import annotation_reply_job_owner_key
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             except Exception:
                 logger.exception("Delete annotation index failed when annotation deleted.")
             redis_client.setex(disable_app_annotation_job_key, 600, "completed")
+            redis_client.expire(annotation_reply_job_owner_key(action="disable", job_id=job_id), 600)
 
             # delete annotation setting
             session.delete(app_annotation_setting)
@@ -73,6 +75,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         except Exception as e:
             logger.exception("Annotation batch deleted index failed")
             redis_client.setex(disable_app_annotation_job_key, 600, "error")
+            redis_client.expire(annotation_reply_job_owner_key(action="disable", job_id=job_id), 600)
             disable_app_annotation_error_key = f"disable_app_annotation_error_{job_id}"
             redis_client.setex(disable_app_annotation_error_key, 600, str(e))
         finally:

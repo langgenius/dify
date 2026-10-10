@@ -50,6 +50,7 @@ from models.model import EndUser
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
@@ -97,6 +98,7 @@ from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_query import AnnotationQuery
+from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -197,6 +199,8 @@ from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
+from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
+from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.mail_inner_task import enqueue_inner_mail
 
@@ -250,6 +254,7 @@ class AppScopedEndUserServices:
 class ApplicationServices:
     annotation_commands: AnnotationCommandService
     annotation_queries: AnnotationQuery
+    annotation_reply: AnnotationReplyService
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -512,6 +517,12 @@ def build_application_services(
             delete_index=delete_annotation_index_task.delay,
         ),
         annotation_queries=annotations,
+        annotation_reply=AnnotationReplyService(
+            apps=annotations,
+            jobs=RedisAnnotationReplyJobRepository(redis=redis),
+            enable_task=enable_annotation_reply_task.delay,
+            disable_task=disable_annotation_reply_task.delay,
+        ),
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
