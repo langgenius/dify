@@ -9,7 +9,7 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 from collections.abc import Callable
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -21,8 +21,17 @@ from core.plugin.impl.exc import PluginDaemonInternalServerError
 @pytest.fixture(autouse=True)
 def _patch_shared_httpx_client():
     """Patch module-level client methods to delegate to module httpx.request/stream."""
+
+    def request[**P](*args: P.args, **kwargs: P.kwargs) -> httpx.Response:
+        response = httpx.request(*args, **kwargs)
+        method, url = kwargs["method"], kwargs["url"]
+        assert isinstance(method, str)
+        assert isinstance(url, str)
+        response.request = httpx.Request(method, url)
+        return response
+
     with (
-        patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+        patch("core.plugin.impl.base._httpx_client.request", side_effect=request),
         patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
     ):
         yield
@@ -64,13 +73,14 @@ class TestPluginEndpointClientDelete:
         user_id = "user-456"
         endpoint_id = "endpoint-789"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": 0,
-            "message": "success",
-            "data": True,
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": True,
+            },
+        )
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
@@ -100,15 +110,16 @@ class TestPluginEndpointClientDelete:
         user_id = "user-456"
         endpoint_id = "endpoint-789"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": -1,
-            "message": (
-                '{"error_type": "PluginDaemonInternalServerError", '
-                '"message": "failed to remove endpoint: record not found"}'
-            ),
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "code": -1,
+                "message": (
+                    '{"error_type": "PluginDaemonInternalServerError", '
+                    '"message": "failed to remove endpoint: record not found"}'
+                ),
+            },
+        )
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
@@ -137,15 +148,16 @@ class TestPluginEndpointClientDelete:
         user_id = "user-456"
         endpoint_id = "endpoint-789"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": -1,
-            "message": (
-                '{"error_type": "PluginDaemonInternalServerError", '
-                '"message": "failed to remove endpoint: internal server error"}'
-            ),
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "code": -1,
+                "message": (
+                    '{"error_type": "PluginDaemonInternalServerError", '
+                    '"message": "failed to remove endpoint: internal server error"}'
+                ),
+            },
+        )
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
@@ -175,12 +187,13 @@ class TestPluginEndpointClientDelete:
         user_id = "user-456"
         endpoint_id = "endpoint-789"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": -1,
-            "message": '{"error_type": "PluginDaemonInternalServerError", "message": "Record Not Found"}',
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "code": -1,
+                "message": '{"error_type": "PluginDaemonInternalServerError", "message": "Record Not Found"}',
+            },
+        )
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
@@ -211,24 +224,26 @@ class TestPluginEndpointClientDelete:
         endpoint_id = "endpoint-789"
 
         # First call - success
-        mock_response_success = MagicMock()
-        mock_response_success.status_code = 200
-        mock_response_success.json.return_value = {
-            "code": 0,
-            "message": "success",
-            "data": True,
-        }
+        mock_response_success = httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": True,
+            },
+        )
 
         # Second call - record not found
-        mock_response_not_found = MagicMock()
-        mock_response_not_found.status_code = 200
-        mock_response_not_found.json.return_value = {
-            "code": -1,
-            "message": (
-                '{"error_type": "PluginDaemonInternalServerError", '
-                '"message": "failed to remove endpoint: record not found"}'
-            ),
-        }
+        mock_response_not_found = httpx.Response(
+            200,
+            json={
+                "code": -1,
+                "message": (
+                    '{"error_type": "PluginDaemonInternalServerError", '
+                    '"message": "failed to remove endpoint: record not found"}'
+                ),
+            },
+        )
 
         with patch("httpx.request", autospec=True) as mock_request:
             # Act - first call
@@ -267,12 +282,13 @@ class TestPluginEndpointClientDelete:
         user_id = "user-456"
         endpoint_id = "endpoint-789"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": -1,
-            "message": '{"error_type": "PluginDaemonUnauthorizedError", "message": "unauthorized access"}',
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "code": -1,
+                "message": '{"error_type": "PluginDaemonUnauthorizedError", "message": "unauthorized access"}',
+            },
+        )
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
