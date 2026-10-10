@@ -14,7 +14,7 @@ import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleSection from './access-rule-section'
-import PermissionSetModal from './permission-set-modal'
+import { PermissionSetModal } from './permission-set-modal'
 
 const resourceQueries = {
   app: consoleQuery.workspaces.current.rbac.workspace.apps.accessPolicy.get,
@@ -33,9 +33,11 @@ export function ResourceAccessRuleSection({
     useAtomValue(workspacePermissionKeysAtom),
     'workspace.role.manage',
   )
-  const [modal, setModal] = useState<{ mode: PermissionSetModalMode; rule?: AccessRule } | null>(
-    null,
-  )
+  const [modal, setModal] = useState<{
+    mode: PermissionSetModalMode
+    rule?: AccessRule
+    open: boolean
+  } | null>(null)
   const rulesQuery = useInfiniteQuery(
     resourceQueries[resourceType].infiniteOptions({
       input: (page) => ({ query: { language, page, limit: 20 } }),
@@ -81,13 +83,13 @@ export function ResourceAccessRuleSection({
         error={rulesQuery.error}
         onRetry={() => void rulesQuery.refetch()}
         defaultExpanded={resourceType === 'app'}
-        onCreate={() => setModal({ mode: 'create' })}
-        onViewRule={(rule) => setModal({ mode: 'view', rule })}
-        onEditRule={(rule) => setModal({ mode: 'edit', rule })}
+        onCreate={() => setModal({ mode: 'create', open: true })}
+        onViewRule={(rule) => setModal({ mode: 'view', rule, open: true })}
+        onEditRule={(rule) => setModal({ mode: 'edit', rule, open: true })}
       />
       {modal && (modal.mode === 'view' || canManage) && (
         <PermissionSetModal
-          open
+          open={modal.open}
           mode={modal.mode}
           resourceType={resourceType}
           initialValues={
@@ -99,7 +101,7 @@ export function ResourceAccessRuleSection({
                 }
               : undefined
           }
-          onClose={() => setModal(null)}
+          onOpenChange={(open) => setModal((current) => (current ? { ...current, open } : current))}
           onSubmit={submit}
         />
       )}

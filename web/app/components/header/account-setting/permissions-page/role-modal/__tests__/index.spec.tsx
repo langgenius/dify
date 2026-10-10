@@ -6,7 +6,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
-import RoleModal from '../index'
+import { RoleModal } from '../index'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -65,7 +65,13 @@ describe('RoleModal', () => {
   describe('Rendering', () => {
     it('should render edit mode with role values and selected permissions', () => {
       renderModal(
-        <RoleModal open mode="edit" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
+        <RoleModal
+          open
+          mode="edit"
+          role={createRole()}
+          onOpenChange={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
       )
 
       expect(screen.getByText('permission.role.modal.edit.title')).toBeInTheDocument()
@@ -80,7 +86,7 @@ describe('RoleModal', () => {
     })
 
     it('should disable confirm action when role name is empty', () => {
-      renderModal(<RoleModal open mode="create" onClose={vi.fn()} onSubmit={vi.fn()} />)
+      renderModal(<RoleModal open mode="create" onOpenChange={vi.fn()} onSubmit={vi.fn()} />)
 
       expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
     })
@@ -93,7 +99,9 @@ describe('RoleModal', () => {
       const handleClose = vi.fn()
       const handleSubmit = vi.fn()
 
-      renderModal(<RoleModal open mode="create" onClose={handleClose} onSubmit={handleSubmit} />)
+      renderModal(
+        <RoleModal open mode="create" onOpenChange={handleClose} onSubmit={handleSubmit} />,
+      )
 
       await user.type(screen.getByLabelText('permission.role.modal.nameLabel'), '  Support role  ')
       await user.type(
@@ -124,7 +132,7 @@ describe('RoleModal', () => {
             description: 'Original description',
             permission_keys: ['workspace.member.manage'],
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={handleSubmit}
         />,
       )
@@ -147,7 +155,13 @@ describe('RoleModal', () => {
   describe('Read-only Mode', () => {
     it('should render role details as read-only in view mode', () => {
       renderModal(
-        <RoleModal open mode="view" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
+        <RoleModal
+          open
+          mode="view"
+          role={createRole()}
+          onOpenChange={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
       )
 
       expect(screen.getByLabelText('permission.role.modal.nameLabel')).toBeDisabled()
