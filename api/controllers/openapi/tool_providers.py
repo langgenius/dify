@@ -44,7 +44,6 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
-from services.openapi.tool_credentials import add_api_key_credential
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -291,14 +290,15 @@ class ToolProviderCredentialsApi(Resource):
         if not _api_key_supported(_controller(ctx.workspace.id, provider)):
             raise CredentialOAuthOnly()
         with _credential_write_errors():
-            credential_id = add_api_key_credential(
+            saved = BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=ctx.account.id,
-                workspace_id=ctx.workspace.id,
+                tenant_id=ctx.workspace.id,
                 provider=provider,
                 credentials=body.credentials,
                 name=body.name,
+                api_type=CredentialType.API_KEY,
             )
-        return _write_response(ctx, provider, credential_id), HTTPStatus.CREATED
+        return _write_response(ctx, provider, saved["id"]), HTTPStatus.CREATED
 
 
 @openapi_ns.route(f"{_PROVIDER_PATH}/credentials/<string:credential_id>")
