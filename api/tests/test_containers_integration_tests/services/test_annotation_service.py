@@ -736,57 +736,6 @@ class TestAnnotationService:
         # Clean up
         redis_client.delete(enable_app_annotation_key)
 
-    def test_get_annotation_hit_histories_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful retrieval of annotation hit histories.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create an annotation first
-        annotation_args = {
-            "question": fake.sentence(),
-            "answer": fake.text(max_nb_chars=200),
-        }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
-
-        # Add some hit histories
-        for i in range(3):
-            AppAnnotationService.add_annotation_history(
-                annotation_id=annotation.id,
-                app_id=app.id,
-                annotation_question=annotation.question,
-                annotation_content=annotation.content,
-                query=f"Query {i}: {fake.sentence()}",
-                user_id=account.id,
-                message_id=fake.uuid4(),
-                from_source=ConversationFromSource.CONSOLE,
-                score=0.8 + (i * 0.1),
-                session=db_session_with_containers,
-            )
-
-        # Get hit histories
-        hit_histories, total = AppAnnotationService.get_annotation_hit_histories(
-            self._annotation_ref(app, annotation.id),
-            page=1,
-            limit=10,
-            session=db_session_with_containers,
-        )
-
-        # Verify results
-        assert len(hit_histories) == 3
-        assert total == 3
-
-        # Verify all histories belong to the correct annotation
-        for history in hit_histories:
-            assert history.annotation_id == annotation.id
-            assert history.app_id == app.id
-            assert history.account_id == account.id
-
     def test_add_annotation_history_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -1003,66 +952,6 @@ class TestAnnotationService:
         # Verify error result
         assert "error_msg" in result
         assert "limit" in result["error_msg"].lower()
-
-    def test_get_app_annotation_setting_by_app_id_enabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting enabled app annotation setting by app ID.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create annotation setting
-        from models.dataset import DatasetCollectionBinding
-        from models.model import AppAnnotationSetting
-
-        # Create a collection binding first
-        collection_binding = DatasetCollectionBinding(
-            provider_name="openai",
-            model_name="text-embedding-ada-002",
-            type="annotation",
-            collection_name=f"annotation_collection_{fake.uuid4()}",
-        )
-        collection_binding.id = str(fake.uuid4())
-        db_session_with_containers.add(collection_binding)
-        db_session_with_containers.flush()
-
-        # Create annotation setting
-        annotation_setting = AppAnnotationSetting(
-            app_id=app.id,
-            score_threshold=0.8,
-            collection_binding_id=collection_binding.id,
-            created_user_id=account.id,
-            updated_user_id=account.id,
-        )
-        db_session_with_containers.add(annotation_setting)
-        db_session_with_containers.commit()
-
-        # Get annotation setting
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
-
-        # Verify result structure
-        assert result["enabled"] is True
-        assert result["id"] == annotation_setting.id
-        assert result["score_threshold"] == 0.8
-        assert result["embedding_model"]["embedding_provider_name"] == "openai"
-        assert result["embedding_model"]["embedding_model_name"] == "text-embedding-ada-002"
-
-    def test_get_app_annotation_setting_by_app_id_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting disabled app annotation setting by app ID.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Get annotation setting (no setting exists)
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
-
-        # Verify result structure
-        assert result["enabled"] is False
 
     def test_update_app_annotation_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies

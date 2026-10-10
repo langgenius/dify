@@ -46,10 +46,6 @@ class AnnotationSettingDict(TypedDict):
     embedding_model: EmbeddingModelDict | dict
 
 
-class AnnotationSettingDisabledDict(TypedDict):
-    enabled: bool
-
-
 class EnableAnnotationArgs(TypedDict):
     """Expected shape of the args dict passed to enable_app_annotation."""
 
@@ -218,6 +214,7 @@ class AppAnnotationService:
 
     @classmethod
     def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str, session: Session):
+        # TODO: Migrate the Service API list caller off its shared session before removing this legacy query.
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
@@ -573,24 +570,6 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
 
     @classmethod
-    def get_annotation_hit_histories(cls, annotation_ref: AnnotationRef, page, limit, session: Session):
-        annotation = cls._get_annotation_by_ref(annotation_ref, session)
-
-        if not annotation:
-            raise NotFound("Annotation not found")
-
-        stmt = (
-            select(AppAnnotationHitHistory)
-            .where(
-                AppAnnotationHitHistory.app_id == annotation_ref.app.app_id,
-                AppAnnotationHitHistory.annotation_id == annotation_ref.annotation_id,
-            )
-            .order_by(AppAnnotationHitHistory.created_at.desc())
-        )
-        annotation_hit_histories = paginate_query(stmt, session=session, page=page, per_page=limit, max_per_page=100)
-        return annotation_hit_histories.items, annotation_hit_histories.total or 0
-
-    @classmethod
     def get_annotation_by_id(cls, annotation_id: str, session: Session) -> MessageAnnotation | None:
         annotation = session.get(MessageAnnotation, annotation_id)
 
@@ -644,43 +623,6 @@ class AppAnnotationService:
         )
         session.add(annotation_hit_history)
         session.flush()
-
-    @classmethod
-    def get_app_annotation_setting_by_app_id(
-        cls, app_id: str, session: Session
-    ) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
-        _, current_tenant_id = current_account_with_tenant()
-        # get app info
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            raise NotFound("App not found")
-
-        annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-        )
-        if annotation_setting:
-            collection_binding_detail = session.get(DatasetCollectionBinding, annotation_setting.collection_binding_id)
-            if collection_binding_detail:
-                return {
-                    "id": annotation_setting.id,
-                    "enabled": True,
-                    "score_threshold": annotation_setting.score_threshold,
-                    "embedding_model": {
-                        "embedding_provider_name": collection_binding_detail.provider_name,
-                        "embedding_model_name": collection_binding_detail.model_name,
-                    },
-                }
-            else:
-                return {
-                    "id": annotation_setting.id,
-                    "enabled": True,
-                    "score_threshold": annotation_setting.score_threshold,
-                    "embedding_model": {},
-                }
-        return {"enabled": False}
 
     @classmethod
     def update_app_annotation_setting(

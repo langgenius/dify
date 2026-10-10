@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
@@ -8,11 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.common.errors import NoFileUploadedError, TooManyFilesError
+from controllers.common.errors import NoFileUploadedError, NotFoundError, TooManyFilesError
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -24,6 +27,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
@@ -37,8 +41,10 @@ from fields.annotation_fields import (
 from fields.base import ResponseModel
 from libs.helper import dump_response, uuid_value
 from libs.login import current_account_with_tenant, login_required
-from libs.pagination import clamp_pagination
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from models.model import App
+from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
 from services.annotation_service import (
     AppAnnotationService,
     EnableAnnotationArgs,
@@ -130,6 +136,10 @@ class AnnotationSettingResponse(ResponseModel):
     embedding_model: AnnotationSettingEmbeddingModelResponse | None = None
 
 
+class AnnotationCountResponse(ResponseModel):
+    count: int = Field(description="Number of annotations")
+
+
 class AnnotationBatchImportResponse(ResponseModel):
     job_id: str | None = None
     job_status: str | None = None
@@ -165,7 +175,29 @@ register_response_schema_models(
     AnnotationSettingEmbeddingModelResponse,
     AnnotationSettingResponse,
     AnnotationBatchImportResponse,
+    AnnotationCountResponse,
 )
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotations/count")
+class MessageAnnotationCountApi(Resource):
+    @console_ns.doc("get_annotation_count")
+    @console_ns.doc(description="Get count of message annotations for the app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Annotation count retrieved successfully",
+        console_ns.models[AnnotationCountResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
+        try:
+            count = application_services().annotation_queries.count(
+                tenant_id=context.active_workspace_id, app_id=str(app_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise AppNotFoundError() from exc
+        return dump_response(AnnotationCountResponse, {"count": count})
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
@@ -203,20 +235,23 @@ class AppAnnotationSettingDetailApi(Resource):
     @console_ns.doc(description="Get annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotation settings retrieved successfully",
         console_ns.models[AnnotationSettingResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    def get(self, session: Session, app_id: UUID):
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id), session)
-        return dump_response(AnnotationSettingResponse, result), 200
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, context: RequestContext, app_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
+        try:
+            result = application_services().annotation_queries.get_setting(
+                tenant_id=context.active_workspace_id, app_id=str(app_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(AnnotationSettingResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
@@ -289,32 +324,29 @@ class AnnotationApi(Resource):
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(AnnotationListQuery))
-    @console_ns.response(200, "Annotations retrieved successfully", console_ns.models[AnnotationList.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
+    @console_ns.response(
+        HTTPStatus.OK, "Annotations retrieved successfully", console_ns.models[AnnotationList.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
     @model_validate(AnnotationListQuery)
-    def get(self, req_data: AnnotationListQuery, session: Session, app_id: UUID):
-        page = req_data.page
-        limit = req_data.limit
-        keyword = req_data.keyword
-        effective_page, effective_limit = clamp_pagination(page, limit, 100)
-
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            str(app_id), effective_page, effective_limit, keyword, session
-        )
-        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
-        return AnnotationList(
-            data=annotation_models,
-            has_more=effective_page * effective_limit < total,
-            limit=effective_limit,
-            total=total,
-            page=effective_page,
-        ).model_dump(mode="json"), 200
+    def get(
+        self, req_data: AnnotationListQuery, context: RequestContext, app_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus]:
+        try:
+            result = application_services().annotation_queries.get_page(
+                tenant_id=context.active_workspace_id,
+                app_id=str(app_id),
+                page=req_data.page,
+                limit=req_data.limit,
+                keyword=req_data.keyword,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        return dump_response(AnnotationList, result), HTTPStatus.OK
 
     @console_ns.doc("create_annotation")
     @console_ns.doc(description="Create a new annotation for an app")
@@ -543,38 +575,29 @@ class AnnotationHitHistoryListApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
     @console_ns.doc(params=query_params_from_model(AnnotationHitHistoryListQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Hit histories retrieved successfully",
         console_ns.models[AnnotationHitHistoryList.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    def get(self, session: Session, app_id: UUID, annotation_id: UUID):
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, context: RequestContext, app_id: UUID, annotation_id: UUID) -> dict[str, object]:
+        # Preserve this endpoint's forgiving parsing; the repository clamps bounds.
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        # This route takes both straight off the query string with no bounds, so
-        # clamp them the way the query itself will.
-        effective_page, effective_limit = clamp_pagination(page, limit, 100)
-        app_ref = _get_app_ref(session, str(app_id))
-        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
-            annotation_ref,
-            effective_page,
-            effective_limit,
-            session,
-        )
-        history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
-            annotation_hit_history_list, from_attributes=True
-        )
-        return AnnotationHitHistoryList(
-            data=history_models,
-            has_more=effective_page * effective_limit < total,
-            limit=effective_limit,
-            total=total,
-            page=effective_page,
-        ).model_dump(mode="json")
+        try:
+            result = application_services().annotation_queries.get_hit_history_page(
+                tenant_id=context.active_workspace_id,
+                app_id=str(app_id),
+                annotation_id=str(annotation_id),
+                page=page,
+                limit=limit,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationNotFoundError as exc:
+            raise NotFoundError("Annotation not found") from exc
+        return dump_response(AnnotationHitHistoryList, result)

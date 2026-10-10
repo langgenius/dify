@@ -770,33 +770,6 @@ class TestAppAnnotationServiceBatchImport:
 
 
 class TestAppAnnotationServiceHitHistoryAndSettings:
-    def test_hit_histories_are_annotation_and_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        other_annotation = _persist_annotation(sqlite_session, other_app)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.get_annotation_hit_histories(
-                _annotation_ref(app, other_annotation.id), 1, 10, sqlite_session
-            )
-
-        annotation = _persist_annotation(sqlite_session, app, annotation_id="own-ann")
-        now = datetime(2026, 1, 1)
-        old = _persist_history(sqlite_session, app, annotation, history_id="old", created_at=now)
-        new = _persist_history(sqlite_session, app, annotation, history_id="new", created_at=now + timedelta(seconds=1))
-        _persist_history(sqlite_session, other_app, other_annotation, history_id="decoy")
-
-        items, total = AppAnnotationService.get_annotation_hit_histories(
-            _annotation_ref(app, annotation.id), 1, 1, sqlite_session
-        )
-        assert total == 2
-        assert [item.id for item in items] == [new.id]
-        items, total = AppAnnotationService.get_annotation_hit_histories(
-            _annotation_ref(app, annotation.id), 2, 1, sqlite_session
-        )
-        assert total == 2
-        assert [item.id for item in items] == [old.id]
-
     def test_get_annotation_by_id_uses_real_identity_lookup(
         self, sqlite_session: Session, current_user: Account
     ) -> None:
@@ -835,49 +808,6 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             "a",
             0.8,
         )
-
-    def test_get_setting_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
-
-    def test_get_setting_returns_disabled_without_row(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-
-        assert AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session) == {"enabled": False}
-
-    def test_get_setting_returns_binding_detail(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        binding = _persist_binding(sqlite_session)
-        setting = _persist_setting(sqlite_session, app, binding_id=binding.id)
-
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
-
-        assert result == {
-            "id": setting.id,
-            "enabled": True,
-            "score_threshold": 0.5,
-            "embedding_model": {
-                "embedding_provider_name": binding.provider_name,
-                "embedding_model_name": binding.model_name,
-            },
-        }
-
-    def test_get_setting_returns_empty_detail_for_missing_binding(
-        self, sqlite_session: Session, current_user: Account
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        setting = _persist_setting(sqlite_session, app, binding_id="missing-binding")
-
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
-
-        assert result == {
-            "id": setting.id,
-            "enabled": True,
-            "score_threshold": 0.5,
-            "embedding_model": {},
-        }
 
     def test_update_setting_is_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session)

@@ -341,12 +341,6 @@ def test_feedback_export_query_rating_filter(app: Flask, monkeypatch: pytest.Mon
     assert query.rating == "like"
 
 
-def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test AnnotationCountResponse creation."""
-    response = message_module.AnnotationCountResponse(count=10)
-    assert response.count == 10
-
-
 def test_suggested_questions_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test SuggestedQuestionsResponse creation."""
     response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])

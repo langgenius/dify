@@ -50,6 +50,7 @@ from models.model import EndUser
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -94,6 +95,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.annotation_query import AnnotationQuery
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -242,6 +244,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    annotation_queries: AnnotationQuery
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -496,6 +499,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     return ApplicationServices(
+        annotation_queries=AnnotationRepository(session_factory=database_client),
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
