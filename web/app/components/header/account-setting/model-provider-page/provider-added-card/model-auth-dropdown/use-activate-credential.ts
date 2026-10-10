@@ -28,7 +28,6 @@ export function useActivateCredential(provider: ModelProvider) {
         { credential_id: credential.credential_id },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
             updateModelProviders()
             supportedModelTypesRef.current.forEach((type) => updateModelList(type))
           },

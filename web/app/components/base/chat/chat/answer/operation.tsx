@@ -15,14 +15,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import copy from 'copy-to-clipboard'
 import { memo, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import { toast } from '@/app/notifications'
 import { useChatContext } from '../context'
 
 type OperationProps = {
@@ -210,7 +209,6 @@ function Operation({
     t(($) => $['table.header.adminRate'], { ns: 'appLog' }) || 'Admin feedback'
   const likeLabel = t(($) => $['detail.operation.like'], { ns: 'appLog' }) || 'Like'
   const dislikeLabel = t(($) => $['detail.operation.dislike'], { ns: 'appLog' }) || 'Dislike'
-  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' }) || 'Copy'
   const regenerateLabel = t(($) => $['operation.regenerate'], { ns: 'common' }) || 'Regenerate'
 
   const buildFeedbackTooltip = (
@@ -495,15 +493,7 @@ function Operation({
                 <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
               )}
             {hasPublicContent && !humanInputFormDataList?.length && (
-              <IconButton
-                aria-label={copyLabel}
-                onClick={() => {
-                  copy(content)
-                  toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-                }}
-              >
-                <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-              </IconButton>
+              <CopyFeedback content={content} />
             )}
             {(!noChatInput || showRegenerate) && (
               <IconButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>

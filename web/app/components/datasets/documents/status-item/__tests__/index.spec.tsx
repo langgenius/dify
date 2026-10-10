@@ -335,38 +335,6 @@ describe('StatusItem', () => {
       vi.useRealTimers()
     })
 
-    it('should show success notification after successful operation', async () => {
-      vi.useFakeTimers()
-      render(
-        <StatusItem
-          status="available"
-          scene="detail"
-          detail={{
-            enabled: false,
-            archived: false,
-            id: 'doc-1',
-          }}
-          datasetId="dataset-1"
-          canEdit
-          onUpdate={mockOnUpdate}
-        />,
-      )
-      const switchElement = document.querySelector('[role="switch"]')
-      await act(async () => {
-        fireEvent.click(switchElement!)
-      })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-        // Flush promises
-        await Promise.resolve()
-      })
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
-      vi.useRealTimers()
-    })
-
     it('should call onUpdate after successful operation', async () => {
       vi.useFakeTimers()
       render(
