@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "値は空にできません",
   "errorMsg.authRequired": "認証が必要です",
   "errorMsg.configureModel": "モデルを設定してください",
+  "errorMsg.conflictingOutputVariableTypes": "出力ノード変数「{{variable}}」が、同時に実行されることのない分岐で {{types}} として宣言されています。公開される出力は名前ごとに 1 つの定義しか保持しないため、同じ変数名を再利用する出力ノードは同じ型を宣言する必要があります。",
   "errorMsg.duplicateOutputVariable": "出力ノード変数「{{variable}}」が重複しています。出力ノード変数名は一意である必要があります。",
   "errorMsg.fieldRequired": "{{field}} は必須です",
   "errorMsg.fields.code": "コード",

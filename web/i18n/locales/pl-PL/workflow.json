@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Wartość nie może być pusta",
   "errorMsg.authRequired": "Wymagana autoryzacja",
   "errorMsg.configureModel": "Skonfiguruj model",
+  "errorMsg.conflictingOutputVariableTypes": "Zmienna węzła wyjściowego \"{{variable}}\" jest zadeklarowana jako {{types}} w gałęziach, które nigdy nie działają razem. Węzły wyjściowe używające tej samej nazwy zmiennej muszą deklarować ten sam typ, ponieważ opublikowane wyjście zachowuje tylko jedną definicję dla każdej nazwy.",
   "errorMsg.duplicateOutputVariable": "Zduplikowana zmienna węzła wyjściowego \"{{variable}}\". Nazwy zmiennych węzła wyjściowego muszą być unikalne.",
   "errorMsg.fieldRequired": "{{field}} jest wymagane",
   "errorMsg.fields.code": "Kod",

@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "ค่าไม่สามารถเป็นค่าว่างได้",
   "errorMsg.authRequired": "ต้องได้รับอนุญาต",
   "errorMsg.configureModel": "กำหนดค่าโมเดล",
+  "errorMsg.conflictingOutputVariableTypes": "ตัวแปรของโหนดเอาต์พุต \"{{variable}}\" ถูกประกาศเป็น {{types}} ในแขนงที่ไม่เคยทำงานพร้อมกัน โหนดเอาต์พุตที่ใช้ชื่อตัวแปรซ้ำต้องประกาศชนิดเดียวกัน เพราะเอาต์พุตที่เผยแพร่จะเก็บคำจำกัดความเพียงหนึ่งรายการต่อหนึ่งชื่อ",
   "errorMsg.duplicateOutputVariable": "ตัวแปรของโหนดเอาต์พุต \"{{variable}}\" ซ้ำกัน ชื่อตัวแปรของโหนดเอาต์พุตต้องไม่ซ้ำกัน",
   "errorMsg.fieldRequired": "{{field}} เป็นสิ่งจําเป็น",
   "errorMsg.fields.code": "รหัส",

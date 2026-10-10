@@ -136,6 +136,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         data-has-trigger-node={String(Boolean(props.hasTriggerNode))}
         data-inputs={JSON.stringify(inputs)}
         data-outputs={JSON.stringify(props.outputs ?? [])}
+        data-non-conflicting-output-names={JSON.stringify(props.nonConflictingOutputNames ?? [])}
       >
         <button
           type="button"
@@ -415,6 +416,33 @@ describe('FeaturesTrigger', () => {
           source: { nodeId: 'end-2', nodeTitle: 'Fallback End', outputIndex: 0 },
         },
       ])
+    })
+
+    it('passes safe IF/ELSE output names to the publisher', () => {
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        { id: 'branch', data: { type: BlockEnum.IfElse } },
+        {
+          id: 'end-true',
+          data: { type: BlockEnum.End, outputs: [{ variable: 'result', value_type: 'string' }] },
+        },
+        {
+          id: 'end-false',
+          data: { type: BlockEnum.End, outputs: [{ variable: 'result', value_type: 'string' }] },
+        },
+      ])
+      mockUseEdges.mockReturnValue([
+        { source: 'start', target: 'branch' },
+        { source: 'branch', sourceHandle: 'true', target: 'end-true' },
+        { source: 'branch', sourceHandle: 'false', target: 'end-false' },
+      ])
+
+      renderWithToast(<FeaturesTrigger />)
+
+      expect(screen.getByTestId('app-publisher')).toHaveAttribute(
+        'data-non-conflicting-output-names',
+        '["result"]',
+      )
     })
 
     it('should append image input when file image upload is enabled', () => {

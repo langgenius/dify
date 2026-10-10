@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Waarde mag niet leeg zijn",
   "errorMsg.authRequired": "Authorization is required",
   "errorMsg.configureModel": "Configureer een model",
+  "errorMsg.conflictingOutputVariableTypes": "De variabele van de outputnode \"{{variable}}\" is gedeclareerd als {{types}} in takken die nooit samen worden uitgevoerd. Outputnodes die een variabelenaam hergebruiken, moeten hetzelfde type declareren, omdat de gepubliceerde output per naam maar één definitie bewaart.",
   "errorMsg.duplicateOutputVariable": "Dubbele variabele van de outputnode \"{{variable}}\". Namen van outputnode-variabelen moeten uniek zijn.",
   "errorMsg.fieldRequired": "{{field}} is required",
   "errorMsg.fields.code": "Code",

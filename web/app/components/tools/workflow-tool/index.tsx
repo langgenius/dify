@@ -72,6 +72,8 @@ export type WorkflowToolDrawerPayload = {
 export type WorkflowToolDrawerProps = {
   isAdd?: boolean
   payload: WorkflowToolDrawerPayload
+  /** Names verified safe by the workflow graph. Absent outside the workflow editor. */
+  nonConflictingOutputNames?: string[]
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -234,6 +236,7 @@ const WorkflowToolOutputName = React.memo(
 export function WorkflowToolDrawer({
   isAdd,
   payload,
+  nonConflictingOutputNames,
   onHide,
   onRemove,
   onSave,
@@ -259,11 +262,15 @@ export function WorkflowToolDrawer({
     const groups = getDuplicateWorkflowOutputGroups(outputParameters)
     const sourceGroups = new Map<string, WorkflowToolOutputSource[]>()
 
-    for (const [name, outputs] of groups)
-      sourceGroups.set(name, getUniqueWorkflowOutputSources(outputs))
+    const safeNames = new Set(nonConflictingOutputNames)
+    for (const [name, outputs] of groups) {
+      // Only the editor has the graph needed to prove mutual exclusivity. Keep the warning in
+      // standalone tool configuration (or whenever any Output node still has a conflict).
+      if (!safeNames.has(name)) sourceGroups.set(name, getUniqueWorkflowOutputSources(outputs))
+    }
 
     return sourceGroups
-  }, [outputParameters])
+  }, [outputParameters, nonConflictingOutputNames])
 
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {

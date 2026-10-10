@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "La valeur ne peut pas être vide",
   "errorMsg.authRequired": "Autorisation requise",
   "errorMsg.configureModel": "Configurez un modèle",
+  "errorMsg.conflictingOutputVariableTypes": "La variable du nœud de sortie \"{{variable}}\" est déclarée comme {{types}} dans des branches qui ne s'exécutent jamais ensemble. Les nœuds de sortie qui réutilisent un nom de variable doivent déclarer le même type, car la sortie publiée ne conserve qu'une seule définition par nom.",
   "errorMsg.duplicateOutputVariable": "Variable du nœud de sortie en double \"{{variable}}\". Les noms des variables du nœud de sortie doivent être uniques.",
   "errorMsg.fieldRequired": "{{field}} est requis",
   "errorMsg.fields.code": "Code",

@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "값은 비워둘 수 없습니다",
   "errorMsg.authRequired": "인증이 필요합니다",
   "errorMsg.configureModel": "모델을 구성하세요",
+  "errorMsg.conflictingOutputVariableTypes": "출력 노드 변수 \"{{variable}}\"가 함께 실행되지 않는 분기에서 {{types}}(으)로 선언되었습니다. 게시된 출력은 이름마다 하나의 정의만 유지하므로, 같은 변수 이름을 재사용하는 출력 노드는 같은 유형을 선언해야 합니다.",
   "errorMsg.duplicateOutputVariable": "출력 노드 변수 \"{{variable}}\"가 중복되었습니다. 출력 노드 변수 이름은 고유해야 합니다.",
   "errorMsg.fieldRequired": "{{field}}가 필요합니다",
   "errorMsg.fields.code": "코드",

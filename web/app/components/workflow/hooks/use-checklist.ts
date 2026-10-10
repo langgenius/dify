@@ -68,10 +68,10 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
+import { getEndOutputConflicts } from '../utils/end-output-conflicts'
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
-import { normalizeWorkflowOutputName } from '../utils/variable'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
@@ -130,33 +130,27 @@ const START_NODE_TYPES: BlockEnum[] = [
 
 const getDuplicateEndOutputMessages = (
   nodes: Node[],
+  edges: Edge[],
   t: ReturnType<typeof useTranslation>['t'],
 ) => {
-  const variableOccurrences = new Map<string, string[]>()
-
-  nodes.forEach((node) => {
-    if (node.type !== CUSTOM_NODE || node.data.type !== BlockEnum.End) return
-
-    const outputs = (node.data as { outputs?: Array<{ variable?: string }> }).outputs || []
-    outputs.forEach((output) => {
-      const variable = normalizeWorkflowOutputName(output.variable)
-      if (!variable) return
-
-      const occurrences = variableOccurrences.get(variable) || []
-      occurrences.push(node.id)
-      variableOccurrences.set(variable, occurrences)
-    })
-  })
-
   const nodeMessages = new Map<string, string[]>()
-  variableOccurrences.forEach((nodeIds, variable) => {
-    if (nodeIds.length <= 1) return
 
-    Array.from(new Set(nodeIds)).forEach((nodeId) => {
-      const messages = nodeMessages.get(nodeId) || []
-      messages.push(t(($) => $['errorMsg.duplicateOutputVariable'], { ns: 'workflow', variable }))
-      nodeMessages.set(nodeId, messages)
-    })
+  getEndOutputConflicts(
+    nodes.filter((node) => node.type === CUSTOM_NODE),
+    edges,
+  ).forEach((conflicts, nodeId) => {
+    nodeMessages.set(
+      nodeId,
+      conflicts.map(({ variable, kind, types }) =>
+        kind === 'conflictingTypes'
+          ? t(($) => $['errorMsg.conflictingOutputVariableTypes'], {
+              ns: 'workflow',
+              variable,
+              types: (types ?? []).join(', '),
+            })
+          : t(($) => $['errorMsg.duplicateOutputVariable'], { ns: 'workflow', variable }),
+      ),
+    )
   })
 
   return nodeMessages
@@ -361,7 +355,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const needWarningNodes = useMemo<ChecklistItem[]>(() => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
-    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, edges, t)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
     const installedPluginIds = new Set(modelProviders.map((p) => extractPluginId(p.provider)))
 
@@ -698,7 +692,7 @@ export const useChecklistBeforePublish = () => {
     const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
-    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, edges, t)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {

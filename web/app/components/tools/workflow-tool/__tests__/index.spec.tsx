@@ -262,6 +262,34 @@ describe('WorkflowToolDrawer', () => {
     expect(duplicateDetails).toHaveTextContent('Fallback End')
   })
 
+  it('does not warn on duplicate names proven safe by the workflow graph', () => {
+    const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
+      {
+        name: 'result',
+        description: 'True output',
+        source: { nodeId: 'end-true', nodeTitle: 'True End', outputIndex: 0 },
+      },
+      {
+        name: 'result',
+        description: 'False output',
+        source: { nodeId: 'end-false', nodeTitle: 'False End', outputIndex: 0 },
+      },
+    ]
+
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({ outputParameters })}
+        nonConflictingOutputNames={['result']}
+        onHide={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    )
+
+    expect(screen.getAllByRole('row', { name: /result/ })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'result' })).not.toBeInTheDocument()
+  })
+
   it('should combine reserved-name and duplicate-name issues into one warning per user output', async () => {
     const user = userEvent.setup()
     const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [

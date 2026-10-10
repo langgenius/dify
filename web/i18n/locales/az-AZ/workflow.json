@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Dəyər boş ola bilməz",
   "errorMsg.authRequired": "Avtorizasiya tələb olunur",
   "errorMsg.configureModel": "Model konfiqurasiya et",
+  "errorMsg.conflictingOutputVariableTypes": "Output düyünündə \"{{variable}}\" adlı dəyişən heç vaxt birlikdə işləməyən budaqlarda {{types}} kimi təyin olunub. Eyni dəyişən adını təkrar istifadə edən Output düyünləri eyni tipi təyin etməlidir, çünki dərc olunmuş çıxış hər ad üçün yalnız bir tərif saxlayır.",
   "errorMsg.duplicateOutputVariable": "Output düyünündə \"{{variable}}\" adlı dəyişən təkrarlanır. Output düyününün dəyişən adları unikal olmalıdır.",
   "errorMsg.fieldRequired": "{{field}} tələb olunur",
   "errorMsg.fields.code": "Kod",
