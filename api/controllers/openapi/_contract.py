@@ -54,9 +54,10 @@ def paginated(op: str) -> Callable:
                 return result
             path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
             page = page_after(page=result.page, limit=result.limit, has_more=result.has_more)
-            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), page=page)
-            if hint is not None:
-                result.hints = [*result.hints, hint]
+            result.hints = [
+                *result.hints,
+                *next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), page=page),
+            ]
             return result
 
         return wrapper

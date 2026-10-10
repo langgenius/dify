@@ -44,14 +44,14 @@ def cursor_after(*, last_id: str | None, has_more: bool) -> dict[str, Any] | Non
 
 def next_page_hint(
     *, op: str, path_args: Mapping[str, Any], query: BaseModel | None, page: Mapping[str, Any] | None
-) -> Hint | None:
-    """The call's own input with `page` (from `page_after` or `cursor_after`) on top."""
+) -> list[Hint]:
+    """The call's own input with `page` (from `page_after` or `cursor_after`) on top; none on the last page."""
     if page is None:
-        return None
+        return []
     params: dict[str, Any] = dict(path_args)
     if query is not None:
         params |= query.model_dump(exclude_none=True)
-    return Hint(summary="Next page", op=op, input=params | dict(page))
+    return [Hint(summary="Next page", op=op, input=params | dict(page))]
 
 
 def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:

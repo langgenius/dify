@@ -14,7 +14,7 @@ class _Query(PageQuery):
 
 
 def test_next_page_hint_copies_path_and_query_and_bumps_page() -> None:
-    hint = next_page_hint(
+    [hint] = next_page_hint(
         op="thing.list",
         path_args={"workspace_id": "ws-1"},
         query=_Query(page=2, name="x"),
@@ -24,7 +24,7 @@ def test_next_page_hint_copies_path_and_query_and_bumps_page() -> None:
         summary="Next page", op="thing.list", input={"workspace_id": "ws-1", "name": "x", "page": 3, "limit": 20}
     )
     last = page_after(page=5, limit=20, has_more=False)
-    assert next_page_hint(op="thing.list", path_args={}, query=None, page=last) is None
+    assert next_page_hint(op="thing.list", path_args={}, query=None, page=last) == []
 
 
 def _sse(event: Mapping[str, object]) -> str:

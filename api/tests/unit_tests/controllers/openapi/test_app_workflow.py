@@ -78,14 +78,13 @@ def test_env_variable_view_masks_only_secrets_that_have_a_value() -> None:
 
 
 def test_run_list_hints_the_next_cursor() -> None:
-    hint = next_page_hint(
+    [hint] = next_page_hint(
         op="get.run",
         path_args={"app_id": "app-1"},
         query=RunListQuery(limit=1),
         page=cursor_after(last_id="run-1", has_more=True),
     )
-    assert hint is not None
-    assert hint.input == {"app_id": "app-1", "limit": 1, "last_id": "run-1"}
+    assert hint.input == {"app_id": "app-1", "limit": 1, "triggered_from": "debugging", "last_id": "run-1"}
 
 
 def test_set_env_rejects_mask_for_unknown_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

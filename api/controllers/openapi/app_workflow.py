@@ -64,7 +64,7 @@ from fields.workflow_run_fields import (
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.helper import to_timestamp
-from models import AppMode, WorkflowRunTriggeredFrom
+from models import AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.workflow.dsl_import import stored_secret_ids
@@ -136,16 +136,15 @@ class AppRunListApi(Resource):
             ctx.request_context,
             app_id=ctx.app.id,
             args=args,
-            triggered_from=WorkflowRunTriggeredFrom(query.triggered_from or WorkflowRunTriggeredFrom.DEBUGGING),
+            triggered_from=query.triggered_from,
         )
         page = RunListResponse.model_validate(workflow_run_pagination_response_source(pagination, session=ctx.session))
-        hint = next_page_hint(
+        page.hints = next_page_hint(
             op=op_of(AppRunListApi.get),
             path_args={"app_id": ctx.app.id},
             query=query,
             page=cursor_after(last_id=page.data[-1].id if page.data else None, has_more=page.has_more),
         )
-        page.hints = [hint] if hint else []
         return page
 
 
@@ -250,13 +249,12 @@ class AppVersionListApi(Resource):
                 for workflow in workflows
             ],
         )
-        hint = next_page_hint(
+        page.hints = next_page_hint(
             op=op_of(AppVersionListApi.get),
             path_args={"app_id": ctx.app.id},
             query=query,
             page=page_after(page=query.page, limit=query.limit, has_more=has_more),
         )
-        page.hints = [hint] if hint else []
         return page
 
 

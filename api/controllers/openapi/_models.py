@@ -18,11 +18,12 @@ from core.plugin.entities.plugin import PluginCategory
 from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import
 from services.entities.dsl_entities import CheckDependenciesResult
@@ -734,9 +735,19 @@ class HumanInputFormDefinitionResponse(BaseModel):
 class RunListQuery(BaseModel):
     last_id: UUIDStr | None = Field(None, description="Cursor: id of the last run on the previous page")
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = None
-    triggered_from: Literal["debugging", "app-run"] | None = Field(
-        None, description="debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console"
+    status: (
+        Literal[
+            WorkflowExecutionStatus.RUNNING,
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.STOPPED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        ]
+        | None
+    ) = None
+    triggered_from: Literal[WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN] = Field(
+        WorkflowRunTriggeredFrom.DEBUGGING,
+        description="debugging: draft test runs, as in the console; app-run: real use",
     )
 
 
