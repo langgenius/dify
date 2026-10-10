@@ -129,7 +129,7 @@ def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
     from core.dify_builder.placeholder_agent import PlaceholderAgent
 
     a = PlaceholderAgent()
-    v1 = a.propose_plan_v1({"currency": "USD"})
+    v1 = a.propose_plan_v1({"currency": "USD"}, goal_text="Build a report")
     assert v1
     assert all(isinstance(x, str) for x in v1)
     v2 = a.bind_resources(v1, ["kb-company"])
@@ -140,7 +140,7 @@ def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
 def test_discover_resources_returns_one_ready_option():
     from core.dify_builder.placeholder_agent import PlaceholderAgent
 
-    opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"])
+    opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"], goal_text="Build a report", requirements={})
     assert len(opts) == 1
     assert opts[0].readiness == "ready"
     assert opts[0].kind == "knowledge"

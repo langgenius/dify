@@ -13,7 +13,8 @@ import threading
 import time
 from copy import deepcopy
 from itertools import permutations
-from typing import Any, cast, override
+from types import SimpleNamespace
+from typing import Any, ClassVar, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -461,10 +462,13 @@ class _ParallelBuilderModel:
         *,
         invalid_node_id: str | None = None,
         barrier_parties: int | None = None,
+        responses_by_node: dict[str, list[str]] | None = None,
     ) -> None:
         self._planner = planner
         self._configs = configs
         self._invalid_node_id = invalid_node_id
+        self._responses_by_node = responses_by_node or {}
+        self.messages_by_node: dict[str, list[list[Any]]] = {}
         self._barrier_parties = barrier_parties if barrier_parties is not None else (2 if len(configs) >= 2 else 0)
         self._barrier = threading.Barrier(self._barrier_parties) if self._barrier_parties >= 2 else None
         self._lock = threading.Lock()
@@ -496,6 +500,8 @@ class _ParallelBuilderModel:
             call_index = self._builder_calls
             self._builder_calls += 1
             self._calls_by_node[node_id] = self._calls_by_node.get(node_id, 0) + 1
+            node_call_index = self._calls_by_node[node_id] - 1
+            self.messages_by_node.setdefault(node_id, []).append(list(prompt_messages))
             self._active_builders += 1
             self.max_active_builders = max(self.max_active_builders, self._active_builders)
         try:
@@ -503,6 +509,9 @@ class _ParallelBuilderModel:
                 self._barrier.wait(timeout=2)
             if node_id == self._invalid_node_id:
                 return _llm_result("not a json object")
+            if node_id in self._responses_by_node:
+                responses = self._responses_by_node[node_id]
+                return _llm_result(responses[min(node_call_index, len(responses) - 1)])
             return _llm_result(json.dumps({"config": self._configs[node_id]}))
         finally:
             with self._lock:
@@ -664,8 +673,7 @@ class TestParallelNodeBuilder:
             ],
             "edges": [{"source": "node1", "target": "node2"}],
         }
-        # node2's response parses as JSON but carries no ``config`` object — a
-        # schema error, so no JSON-repair retry fires and the graph fails closed.
+        # A non-object config must exhaust one correction before failing closed.
         model = _ParallelBuilderModel(planner, {"node1": {"variables": []}, "node2": cast(Any, "not an object")})
 
         result = WorkflowGenerator.generate_workflow_graph(
@@ -678,12 +686,13 @@ class TestParallelNodeBuilder:
             instruction="x",
         )
 
-        assert "missing 'config' object" in result["error"]
+        assert "'config'" in result["error"]
         assert result["errors"][0]["code"] == "INVALID_SCHEMA"
         assert result["graph"]["nodes"] == []
-        assert model.calls_for("node2") == 1
+        assert model.calls_for("node2") == 2
 
-    def test_refine_reuses_keep_nodes_and_only_builds_updated_nodes(self):
+    @pytest.mark.parametrize("needs_correction", [False, True])
+    def test_refine_reuses_keep_nodes_and_only_builds_updated_nodes(self, needs_correction):
         planner = {
             "title": "Refined Summarizer",
             "description": "Use a shorter summary prompt.",
@@ -728,6 +737,11 @@ class TestParallelNodeBuilder:
                 }
             },
         )
+        if needs_correction:
+            model._responses_by_node["llm_existing"] = [
+                "{}",
+                json.dumps({"config": model._configs["llm_existing"]}),
+            ]
         current_graph = {
             "nodes": [
                 {
@@ -782,7 +796,8 @@ class TestParallelNodeBuilder:
         )
 
         assert result["error"] == ""
-        assert model.builder_calls == 1
+        assert model.builder_calls == (2 if needs_correction else 1)
+        assert model.calls_for("start_existing") == model.calls_for("end_existing") == 0
         start = next(node for node in result["graph"]["nodes"] if node["id"] == "start_existing")
         assert start["data"]["variables"][0]["variable"] == "topic"
         assert current_graph["nodes"][0]["position"] == {"x": 10, "y": 10}
@@ -921,6 +936,185 @@ class TestParallelNodeBuilder:
         assert planner_calls == 2
         retry_prompt = str(model.invoke_llm.call_args_list[1].kwargs["prompt_messages"][-1].content)
         assert "required topology schema" in retry_prompt
+
+
+class TestBoundedFragmentRecovery:
+    _PLAN: ClassVar[dict[str, Any]] = {
+        "title": "Recovery flow",
+        "description": "Return a summary.",
+        "nodes": [
+            {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Start."},
+            {"id": "node2", "label": "Summary", "node_type": "llm", "purpose": "Summarize."},
+            {"id": "node3", "label": "End", "node_type": "end", "purpose": "Return summary."},
+        ],
+        "edges": [{"source": "node1", "target": "node2"}, {"source": "node2", "target": "node3"}],
+    }
+    _CONFIGS: ClassVar[dict[str, dict[str, Any]]] = {
+        "node1": {"variables": []},
+        "node2": {
+            "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+            "prompt_template": [{"role": "user", "text": "Return a concise summary."}],
+            "context": {"enabled": False, "variable_selector": []},
+            "vision": {"enabled": False},
+        },
+        "node3": {"outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}]},
+    }
+
+    @staticmethod
+    def _generate(model, **kwargs):
+        return WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize text",
+            **kwargs,
+        )
+
+    @pytest.mark.parametrize("rejected", [{}, {"config": []}, {"config": "private-rejected-value"}, {"config": None}])
+    def test_invalid_config_corrects_only_the_rejected_node(self, rejected, caplog):
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        model = _ParallelBuilderModel(
+            self._PLAN,
+            self._CONFIGS,
+            barrier_parties=3,
+            responses_by_node={"node2": [json.dumps(rejected), json.dumps({"config": self._CONFIGS["node2"]})]},
+        )
+
+        result = self._generate(model)
+
+        assert result["errors"] == []
+        assert result["error"] == ""
+        assert [node["id"] for node in result["graph"]["nodes"]] == ["node1", "node2", "node3"]
+        assert len(result["graph"]["edges"]) == 2
+        assert model.calls_for("node2") == 2
+        assert model.calls_for("node1") == model.calls_for("node3") == 1
+        nodes = {node["id"]: node for node in result["graph"]["nodes"]}
+        assert nodes["node2"]["data"]["prompt_template"] == [{"role": "user", "text": "Return a concise summary."}]
+        assert nodes["node3"]["data"]["outputs"] == [{"variable": "summary", "value_selector": ["node2", "text"]}]
+        correction = str(model.messages_by_node["node2"][1][-1].content)
+        assert "private-rejected-value" not in correction + caplog.text
+
+    @pytest.mark.parametrize("rejected", [{}, {"config": []}, {"config": "private-rejected-value"}])
+    def test_invalid_config_exhaustion_returns_schema_error_and_empty_graph(self, rejected, caplog):
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        model = _ParallelBuilderModel(
+            self._PLAN,
+            self._CONFIGS,
+            barrier_parties=3,
+            responses_by_node={"node2": [json.dumps(rejected)]},
+        )
+
+        result = self._generate(model)
+
+        assert result["graph"]["nodes"] == result["graph"]["edges"] == []
+        assert [error["code"] for error in result["errors"]] == ["INVALID_SCHEMA"]
+        assert "Builder node2" in result["errors"][0]["detail"]
+        assert model.calls_for("node2") == 2
+        assert model.calls_for("node1") == model.calls_for("node3") == 1
+        assert "private-rejected-value" not in result["error"] + caplog.text
+
+    @pytest.mark.parametrize(
+        ("responses", "expected_code"),
+        [(["[]", "{}"], "INVALID_SCHEMA"), (["{}", "[]"], "INVALID_JSON"), (["[]", "[]"], "INVALID_JSON")],
+    )
+    def test_json_and_config_failures_share_two_attempts(self, responses, expected_code):
+        model = _ParallelBuilderModel(
+            self._PLAN, self._CONFIGS, barrier_parties=3, responses_by_node={"node2": responses}
+        )
+
+        result = self._generate(model)
+
+        assert result["graph"]["nodes"] == result["graph"]["edges"] == []
+        assert [error["code"] for error in result["errors"]] == [expected_code]
+        assert model.calls_for("node2") == 2
+        assert model.calls_for("node1") == model.calls_for("node3") == 1
+
+    @pytest.mark.parametrize(
+        ("stage", "rejected", "shape", "code"),
+        [
+            ("Planner", "[]", "list", "INVALID_JSON"),
+            ("Planner", '"private-rejected-value"', "str", "INVALID_JSON"),
+            ("Builder node2", "[]", "list", "INVALID_JSON"),
+            ("Builder node2", '"private-rejected-value"', "str", "INVALID_JSON"),
+            ("Builder node2", '{"config": []}', "list", "INVALID_SCHEMA"),
+            ("Builder node2", "{}", None, "INVALID_SCHEMA"),
+        ],
+    )
+    def test_rejection_feedback_enables_correction_at_the_model_boundary(self, rejected, shape, stage, code, caplog):
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        base = _ParallelBuilderModel(self._PLAN, self._CONFIGS, barrier_parties=0)
+        attempts = 0
+
+        class _FeedbackDrivenModel:
+            def invoke_llm(self, *, prompt_messages, model_parameters, stream):
+                nonlocal attempts
+                is_planner = "workflow planner" in str(prompt_messages[0].content).lower()
+                prompt = "\n".join(str(message.content) for message in prompt_messages)
+                is_target = is_planner if stage == "Planner" else not is_planner and "id=node2, type=" in prompt
+                if is_target:
+                    attempts += 1
+                    if attempts == 1:
+                        return _llm_result(rejected)
+                    try:
+                        feedback = json.loads(str(prompt_messages[-1].content))
+                    except ValueError:
+                        return _llm_result(rejected)
+                    # This model needs the rejected stage and shape to choose
+                    # its correction; a generic object instruction cannot do so.
+                    if feedback.get("stage") != stage or feedback.get("code") != code:
+                        return _llm_result(rejected)
+                    detail = feedback.get("detail", "")
+                    if shape is not None and not detail.endswith(shape):
+                        return _llm_result(rejected)
+                    if code == "INVALID_SCHEMA" and "config" not in detail:
+                        return _llm_result(rejected)
+                    assert "private-rejected-value" not in str(prompt_messages[-1].content)
+                return base.invoke_llm(
+                    prompt_messages=prompt_messages, model_parameters=model_parameters, stream=stream
+                )
+
+        result = self._generate(_FeedbackDrivenModel())
+
+        assert result["errors"] == []
+        assert len(result["graph"]["nodes"]) == 3
+        assert len(result["graph"]["edges"]) == 2
+        assert attempts == 2
+        assert base.calls_for("node1") == base.calls_for("node3") == 1
+        assert "private-rejected-value" not in caplog.text
+
+    @pytest.mark.parametrize("recover", [False, True])
+    def test_parser_exception_response_text_is_not_echoed_or_logged(self, recover, caplog):
+        from core.workflow.generator import runner
+
+        caplog.set_level("INFO", logger=runner.__name__)
+        responses = ["parser-rejection-trigger"]
+        if recover:
+            responses.append(json.dumps({"config": self._CONFIGS["node2"]}))
+        model = _ParallelBuilderModel(
+            self._PLAN, self._CONFIGS, barrier_parties=3, responses_by_node={"node2": responses}
+        )
+        original_loads = runner.json_repair.loads
+
+        def loads(text):
+            if text == "parser-rejection-trigger":
+                raise ValueError("private-parser-response-body")
+            return original_loads(text)
+
+        with patch.object(runner.json_repair, "loads", side_effect=loads):
+            result = self._generate(model)
+
+        if recover:
+            assert result["errors"] == []
+            assert len(result["graph"]["nodes"]) == 3
+        else:
+            assert [error["code"] for error in result["errors"]] == ["INVALID_JSON"]
+            assert result["graph"]["nodes"] == result["graph"]["edges"] == []
+        assert model.calls_for("node2") == 2
+        correction = str(model.messages_by_node["node2"][1][-1].content)
+        assert "private-parser-response-body" not in correction + result["error"] + caplog.text
 
 
 class TestPlanDeclaredNodeOutputs:
@@ -5204,6 +5398,218 @@ def test_tool_result_is_aliased_to_text():
     assert G._aliased_output(node, "result") == "text"
 
 
+class TestKnownCodeToolOutputContract:
+    """Printed JSON must not become invented named tool outputs (ENG-1117)."""
+
+    @staticmethod
+    def _producer(**overrides):
+        data = {
+            "type": "tool",
+            "title": "Code Interpreter",
+            "provider_type": "builtin",
+            "provider_id": "code",
+            "tool_name": "simple_code",
+            "output_schema": {},
+            "tool_parameters": {"code": {"type": "constant", "value": "private-code-value"}},
+        }
+        data.update(overrides)
+        return {"id": "node2", "data": data}
+
+    @staticmethod
+    def _graph(producer, variables=("valid", "items")):
+        return {
+            "nodes": [
+                {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+                producer,
+                {
+                    "id": "node3",
+                    "data": {
+                        "type": "if-else",
+                        "title": "Validate",
+                        "cases": [
+                            {
+                                "case_id": branch,
+                                "logical_operator": "and",
+                                "conditions": [
+                                    {
+                                        "variable_selector": ["node2", variables[0]],
+                                        "comparison_operator": "is",
+                                        "value": value,
+                                    }
+                                ],
+                            }
+                            for branch, value in (("valid", "true"), ("invalid", "false"))
+                        ],
+                    },
+                },
+                {
+                    "id": "node4",
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [
+                            {"variable": variable, "value_selector": ["node2", variable]} for variable in variables
+                        ],
+                    },
+                },
+            ],
+            "edges": [
+                {"source": "node1", "target": "node2"},
+                {"source": "node2", "target": "node3"},
+                {"source": "node3", "sourceHandle": "valid", "target": "node4"},
+                {"source": "node3", "sourceHandle": "invalid", "target": "node4"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+
+    @staticmethod
+    def _postprocess_and_validate(graph):
+        graph = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+        return graph, WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
+
+    @pytest.mark.parametrize(
+        "schema",
+        [None, {}, {"properties": {"valid": {"type": "boolean"}, "items": {"type": "array"}}}],
+    )
+    def test_named_json_fields_stay_unresolved_even_with_forged_node_schema(self, schema):
+        graph, errors = self._postprocess_and_validate(self._graph(self._producer(output_schema=schema)))
+
+        assert [(error["code"], error["node_id"]) for error in errors] == [
+            ("UNRESOLVED_REFERENCE", "node2"),
+            ("UNRESOLVED_REFERENCE", "node2"),
+        ]
+        for error, variable in zip(errors, ("items", "valid"), strict=True):
+            assert f"node2.{variable}" in error["detail"]
+            assert "builtin/code/simple_code" in error["detail"]
+            assert all(root in error["detail"] for root in ("text", "files", "json"))
+            assert "Code" in error["detail"]
+            assert "pars" in error["detail"].lower()
+            assert "private-code-value" not in error["detail"]
+        conditions = graph["nodes"][2]["data"]["cases"]
+        assert [case["conditions"][0]["variable_selector"] for case in conditions] == [
+            ["node2", "valid"],
+            ["node2", "valid"],
+        ]
+        assert [case["conditions"][0]["value"] for case in conditions] == ["true", "false"]
+        assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
+
+    def test_generation_returns_failure_for_the_known_impossible_reference(self):
+        graph = self._graph(self._producer())
+        planner = {
+            "title": "Validate JSON",
+            "description": "Validate input and process items",
+            "nodes": [
+                {"label": node["data"]["title"], "node_type": node["data"]["type"], "purpose": "Process input"}
+                for node in graph["nodes"]
+            ],
+        }
+        model = _GraphFixtureModel(json.dumps(planner), json.dumps(graph))
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Validate JSON and uppercase its items",
+        )
+
+        assert result["error"]
+        assert [error["code"] for error in result["errors"]] == ["UNRESOLVED_REFERENCE", "UNRESOLVED_REFERENCE"]
+        assert result["graph"]["nodes"][2]["data"]["cases"][0]["conditions"][0]["variable_selector"] == [
+            "node2",
+            "valid",
+        ]
+
+    def test_standard_envelope_roots_remain_accepted(self):
+        _, errors = self._postprocess_and_validate(self._graph(self._producer(), ("text", "files", "json")))
+
+        assert errors == []
+
+    def test_legacy_provider_name_identifies_the_known_producer(self):
+        producer = self._producer(provider_name="code")
+        producer["data"].pop("provider_id")
+        _, errors = self._postprocess_and_validate(self._graph(producer))
+
+        assert [error["code"] for error in errors] == ["UNRESOLVED_REFERENCE", "UNRESOLVED_REFERENCE"]
+
+    @pytest.mark.parametrize(
+        "identity",
+        [
+            {"provider_type": "api"},
+            {"provider_type": None},
+            {"provider_id": "other", "provider_name": "code"},
+            {"tool_name": "other"},
+        ],
+    )
+    def test_other_schema_less_tool_identities_keep_dynamic_output_compatibility(self, identity):
+        graph, errors = self._postprocess_and_validate(self._graph(self._producer(**identity)))
+
+        assert errors == []
+        assert graph["nodes"][3]["data"]["outputs"][0]["value_selector"] == ["node2", "valid"]
+
+    def test_other_tools_keep_declared_custom_outputs(self):
+        producer = self._producer(
+            provider_id="json_process",
+            output_schema={"properties": {"valid": {"type": "boolean"}, "items": {"type": "array"}}},
+        )
+        graph, errors = self._postprocess_and_validate(self._graph(producer))
+
+        assert errors == []
+        assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
+
+    @pytest.mark.parametrize("declared", [True, False])
+    def test_other_tool_result_declaration_and_unambiguous_alias_remain_compatible(self, declared):
+        producer = self._producer(
+            provider_id="other",
+            output_schema={"properties": {"result" if declared else "parsed": {"type": "string"}}},
+        )
+        graph, errors = self._postprocess_and_validate(self._graph(producer, ("result",)))
+
+        assert errors == []
+        assert graph["nodes"][3]["data"]["outputs"][0]["value_selector"] == [
+            "node2",
+            "result" if declared else "text",
+        ]
+
+    def test_native_code_declared_boolean_and_array_outputs_are_accepted(self):
+        producer = {
+            "id": "node2",
+            "data": {
+                "type": "code",
+                "title": "Typed validation",
+                "code_language": "python3",
+                "variables": [],
+                "code": "def main() -> dict:\n    return {'valid': False, 'items': []}",
+                "outputs": {"valid": {"type": "boolean"}, "items": {"type": "array[string]"}},
+            },
+        }
+        graph = self._graph(producer)
+        for case in graph["nodes"][2]["data"]["cases"]:
+            case["conditions"][0].update(varType="boolean", value=case["case_id"] == "valid")
+        graph, errors = self._postprocess_and_validate(graph)
+
+        assert errors == []
+        assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
+
+    def test_known_scalar_text_placeholder_cannot_expose_json_fields(self):
+        graph = self._graph(self._producer(), ("text",))
+        graph["nodes"][3]["data"]["description"] = "{{#node2.text.valid#}}"
+        _, errors = self._postprocess_and_validate(graph)
+
+        assert [error["code"] for error in errors] == ["UNRESOLVED_REFERENCE"]
+        assert "node2.text.valid" in errors[0]["detail"]
+
+    def test_arbitrary_three_string_data_remains_untouched(self):
+        graph = self._graph(self._producer(), ("text",))
+        graph["nodes"][3]["data"]["tags"] = ["node2", "text", "valid"]
+        graph, errors = self._postprocess_and_validate(graph)
+
+        assert errors == []
+        assert graph["nodes"][3]["data"]["tags"] == ["node2", "text", "valid"]
+
+
 _INVENTED_STRUCTURED_OUTPUT_NAMES = (
     "__structured_output__",
     "__structured_output",
@@ -6385,3 +6791,211 @@ class TestAJsonSchemaArrayIsNotAValueSelector:
 
         assert errors == []
         assert not any("bullet_content" in e["detail"] for e in errors)
+
+
+class TestContainerMarkerOwnership:
+    @pytest.mark.parametrize("marker_type", ["iteration-start", "loop-start"])
+    def test_planner_cannot_own_container_start_markers(self, marker_type):
+        from core.workflow.generator.runner import _StageSchemaError
+
+        parsed = {
+            "nodes": [
+                {"id": "container", "node_type": "loop"},
+                {"id": "entry", "node_type": marker_type, "config": {"secret": "private-marker-config"}},
+            ],
+            "edges": [{"source": "container", "target": "entry"}],
+        }
+        with pytest.raises(_StageSchemaError, match="container start markers") as error:
+            WorkflowGenerator._validate_planner_schema(parsed)
+        assert "private-marker-config" not in str(error.value)
+
+    @pytest.mark.parametrize(
+        ("marker_type", "expected_wrapper"),
+        [("iteration-start", "custom-iteration-start"), ("loop-start", "custom-loop-start")],
+    )
+    @pytest.mark.parametrize("wrapper", [None, "custom", "custom-iteration-start", "custom-loop-start"])
+    def test_marker_defaults_canonicalize_wrapper_without_changing_topology(
+        self, marker_type, expected_wrapper, wrapper
+    ):
+        node = {
+            "id": "containerstart",
+            "parentId": "container",
+            "data": {"type": marker_type, "title": "", "condition": {"enabled": True}, "loop_id": "container"},
+        }
+        if wrapper is not None:
+            node["type"] = wrapper
+        original = deepcopy(node)
+        WorkflowGenerator._fill_node_defaults(node)
+        assert node["type"] == expected_wrapper
+        assert node["id"] == original["id"]
+        assert node["parentId"] == original["parentId"]
+        assert node["data"] == {**original["data"], "desc": "", "selected": False}
+
+    def test_ordinary_node_defaults_preserve_caller_wrapper(self):
+        node = {"id": "child", "type": "caller-wrapper", "data": {"type": "llm"}}
+        WorkflowGenerator._fill_node_defaults(node)
+        assert node["type"] == "caller-wrapper"
+
+    @pytest.mark.parametrize(
+        ("container_type", "marker_type", "wrapper"),
+        [("iteration", "iteration-start", "custom-iteration-start"), ("loop", "loop-start", "custom-loop-start")],
+    )
+    @pytest.mark.parametrize("child_order", [("a", "b"), ("b", "a")])
+    def test_refine_entry_retains_one_canonical_marker_and_existing_child(
+        self, container_type, marker_type, wrapper, child_order
+    ):
+        existing = {
+            "container": {"id": "container", "data": {"type": container_type, "start_node_id": "containerstart"}},
+            "containerstart": {
+                "id": "containerstart",
+                "type": wrapper,
+                "parentId": "container",
+                "data": {"type": marker_type},
+            },
+            "a": {"id": "a", "parentId": "container", "data": {"type": "llm"}},
+            "b": {"id": "b", "parentId": "container", "data": {"type": "llm"}},
+        }
+        existing_edges = [{"source": "containerstart", "target": "a"}]
+        original = deepcopy((existing, existing_edges))
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=[
+                {"id": "container", "label": "Container", "node_type": container_type, "action": "keep"},
+                *[{"id": child, "node_type": "llm", "action": "keep"} for child in child_order],
+            ],
+            plan_edges=[{"source": "a", "target": "b"}],
+            configs_by_id={},
+            existing_by_id=existing,
+            existing_edges=existing_edges,
+        )
+        assert (existing, existing_edges) == original
+        container = next(node for node in graph["nodes"] if node["id"] == "container")
+        assert container["data"]["start_node_id"] == "containerstart"
+        markers = [node for node in graph["nodes"] if node["data"]["type"] == marker_type]
+        assert len(markers) == 1
+        assert markers[0]["id"] == "containerstart"
+        assert markers[0]["type"] == wrapper
+        assert markers[0]["parentId"] == "container"
+        entries = [edge for edge in graph["edges"] if edge["source"] == "containerstart"]
+        assert entries == [{"source": "containerstart", "target": "a"}]
+
+
+class TestResponseMetadata:
+    @staticmethod
+    def _invoke(responses, *, parameters, validate=None):
+        from graphon.model_runtime.entities.message_entities import UserPromptMessage
+
+        model = MagicMock()
+        model.invoke_llm.side_effect = responses
+        return WorkflowGenerator._invoke_and_parse_json(
+            model_instance=model,
+            messages=[UserPromptMessage(content="private-prompt-sentinel")],
+            model_parameters=parameters,
+            stage="Planner",
+            validate=validate,
+        )
+
+    @staticmethod
+    def _records(caplog):
+        return [record.getMessage() for record in caplog.records if "response metadata:" in record.getMessage()]
+
+    @pytest.mark.parametrize("rejected", ['["private-response-sentinel"]', '{"secret":"private-response-sentinel"}'])
+    def test_metadata_records_actual_usage_for_rejected_reply_and_successful_retry(self, rejected, caplog):
+        from core.workflow.generator.runner import _StageSchemaError
+        from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        def validate(parsed):
+            if "config" not in parsed:
+                raise _StageSchemaError("Planner", "missing config")
+
+        usage = LLMUsage.empty_usage().model_copy(
+            update={
+                "prompt_tokens": 10,
+                "completion_tokens": 20,
+                "total_tokens": 30,
+                "currency": "private-currency-sentinel",
+            }
+        )
+        texts = [rejected, '{"config": {}}']
+        responses = [
+            LLMResult(
+                model="private-model-sentinel",
+                message=AssistantPromptMessage(content=text),
+                usage=usage,
+                reasoning_content="private-reasoning-sentinel",
+                id="private-response-id-sentinel",
+            )
+            for text in texts
+        ]
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        assert self._invoke(
+            responses, parameters={"max_tokens": 4096, "secret": "private-parameter-sentinel"}, validate=validate
+        ) == {"config": {}}
+        records = self._records(caplog)
+        assert records == [
+            f"Workflow generator response metadata: stage=Planner attempt={attempt} "
+            f"response_characters={len(text)} requested_max_tokens=4096 effective_provider_limit=unavailable "
+            "prompt_tokens=10 completion_tokens=20 total_tokens=30 finish_reason=unavailable"
+            for attempt, text in enumerate(texts, 1)
+        ]
+        assert "private-" not in caplog.text
+
+    @pytest.mark.parametrize(
+        ("usage", "parameters", "expected"),
+        [
+            (
+                None,
+                {},
+                "requested_max_tokens=unavailable effective_provider_limit=unavailable "
+                "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
+            ),
+            (
+                SimpleNamespace(prompt_tokens=True, completion_tokens="7"),
+                {"max_tokens": True},
+                "requested_max_tokens=unavailable effective_provider_limit=unavailable "
+                "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
+            ),
+            (
+                MagicMock(),
+                {"max_tokens": MagicMock()},
+                "requested_max_tokens=unavailable effective_provider_limit=unavailable "
+                "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
+            ),
+            (
+                SimpleNamespace(prompt_tokens=0, completion_tokens=2.5, total_tokens=7),
+                {"max_tokens": "4096"},
+                "requested_max_tokens=unavailable effective_provider_limit=unavailable "
+                "prompt_tokens=0 completion_tokens=unavailable total_tokens=7",
+            ),
+        ],
+    )
+    def test_metadata_unavailable_counters_are_not_coerced(self, usage, parameters, expected, caplog):
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        response = SimpleNamespace(message=AssistantPromptMessage(content="{}"))
+        if usage is not None:
+            response.usage = usage
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        assert self._invoke([response], parameters=parameters) == {}
+        assert self._records(caplog) == [
+            "Workflow generator response metadata: stage=Planner attempt=1 response_characters=2 "
+            f"{expected} finish_reason=unavailable"
+        ]
+        assert "MagicMock" not in caplog.text
+
+    def test_metadata_is_recorded_before_parser_exception_and_preserves_two_attempt_limit(self, caplog):
+        from core.workflow.generator.runner import _StageJSONError
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        response = SimpleNamespace(message=AssistantPromptMessage(content="private-response-sentinel"))
+        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        with patch(
+            "core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("private-parser-sentinel")
+        ):
+            with pytest.raises(_StageJSONError):
+                self._invoke([response, response], parameters={})
+        records = self._records(caplog)
+        assert len(records) == 2
+        assert "attempt=1 response_characters=25" in records[0]
+        assert "attempt=2 response_characters=25" in records[1]
+        assert "private-" not in caplog.text

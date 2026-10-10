@@ -2,6 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import ErrorBoundary from '@/app/components/base/error-boundary'
 import { useStore } from '@/app/components/workflow/store'
 import { DifyBuilderConversation } from './conversation'
 import { DifyBuilderPanelBackground } from './panel/background'
@@ -120,23 +121,25 @@ const DifyBuilderPanel = () => {
                   </Button>
                 </div>
               )}
-              <DifyBuilderConversation
-                key={sessionId}
-                items={conversation}
-                localInteractionResponse={
-                  localInteractionResponse?.sessionId === sessionId
-                    ? localInteractionResponse
-                    : null
-                }
-                localUserMessage={
-                  localUserMessage?.sessionId === null || localUserMessage?.sessionId === sessionId
-                    ? localUserMessage
-                    : null
-                }
-                busy={interactionBusy || !canvasReady}
-                interrupted={interrupted}
-                onStreamingContentChange={scrollToBottomIfPinned}
-              />
+              <ErrorBoundary key={sessionId}>
+                <DifyBuilderConversation
+                  items={conversation}
+                  localInteractionResponse={
+                    localInteractionResponse?.sessionId === sessionId
+                      ? localInteractionResponse
+                      : null
+                  }
+                  localUserMessage={
+                    localUserMessage?.sessionId === null ||
+                    localUserMessage?.sessionId === sessionId
+                      ? localUserMessage
+                      : null
+                  }
+                  busy={interactionBusy || !canvasReady}
+                  interrupted={interrupted}
+                  onStreamingContentChange={scrollToBottomIfPinned}
+                />
+              </ErrorBoundary>
             </>
           ) : (
             <DifyBuilderPanelEmptyState />

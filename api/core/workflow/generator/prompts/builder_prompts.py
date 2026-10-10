@@ -101,7 +101,12 @@ _NODE_SNIPPETS: dict[str, str] = {
     {"code_language": "python3",
      "code": "def main(arg1: str) -> dict:\\n    return {'result': arg1}",
      "variables": [{"variable": "arg1", "value_selector": ["<src>", "<var>"]}],
-     "outputs": {"result": {"type": "string", "children": null}}}""",
+     "outputs": {"result": {"type": "string", "children": null}}}
+    Return named values from ``main`` and declare each key in ``outputs`` with
+    its actual type. For JSON validation/processing, declare boolean ``valid``
+    and array ``items`` outputs when needed; compare the boolean and pass the
+    array to iteration. A Code node can explicitly parse upstream JSON text
+    and return those typed fields.""",
     "template-transform": """\
 - template-transform:
     {"template": "Hello {{ name }}",
@@ -133,7 +138,13 @@ _NODE_SNIPPETS: dict[str, str] = {
     Parameter ``type`` is one of:
       "mixed"    — string template referencing variables ({{#...#}})
       "variable" — direct reference, value is ["<src>", "<var>"]
-      "constant" — literal value""",
+      "constant" — literal value
+    Outputs use the standard roots ``text``, ``files``, ``json`` plus actual
+    provider-declared fields. The builtin ``code/simple_code`` prints to scalar
+    ``text`` only: printed JSON does not create named ``valid`` / ``items``
+    outputs, and adding a node ``output_schema`` cannot create them. Use a
+    native Code node with declared typed outputs or explicitly parse the text
+    before consuming fields; do not substitute ``text`` for a boolean/array.""",
     "if-else": """\
 - if-else:
     {"_targetBranches": [{"id": "true", "name": "IF"},
@@ -214,6 +225,11 @@ _NODE_SNIPPETS: dict[str, str] = {
      "extract_by": {"enabled": false, "serial": "1"},
      "order_by": {"enabled": false, "key": "", "value": "asc"},
      "limit": {"enabled": false, "size": 10}}
+    ``limit.size`` is an integer CONSTANT, never a variable selector or a
+    ``{{#node.variable#}}`` template. Preserve a user-requested fixed maximum
+    as that integer. For a runtime-dependent limit, use a supported dynamic
+    implementation (for example, a Code node reading the array and numeric
+    limit); do not put a template in ``limit.size`` or guess a fixed value.
     Enable only the sub-features you need. Each ``filter_by`` condition has the
     fields key / comparison_operator / value, and comparison_operator MUST be
     exactly one of these 16 (verbatim strings — a filter takes FEWER operators
@@ -236,13 +252,16 @@ _NODE_SNIPPETS: dict[str, str] = {
     /= | remove-first | remove-last.""",
     "human-input": """\
 - human-input  (pause for a person; use webapp delivery by default):
-    {"delivery_methods": [{"id": "webapp", "type": "webapp", "enabled": true}],
+    {"delivery_methods": [{"type": "webapp", "enabled": true}],
      "form_content": "<short review / approval instructions>",
      "inputs": [{"type": "paragraph", "output_variable_name": "comment",
                  "default": {"type": "constant", "selector": [], "value": ""}}],
      "user_actions": [{"id": "approve", "title": "Approve",
                        "button_style": "primary"}],
      "timeout": 3, "timeout_unit": "day"}
+    Omit ``delivery_methods[].id`` to use the native UUID default. An explicit
+    delivery id must be a valid UUID; ``type`` names the channel. User-action
+    ids are separate identifiers and must keep their planned edge handles.
     Each ``inputs[].output_variable_name`` is an output variable. Outgoing
     edges use the matching user-action id as ``sourceHandle``.
     HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's

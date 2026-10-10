@@ -36,7 +36,9 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     EntryMode,
     NodeOutput,
+    OutputFinding,
     Run,
+    RunVerification,
     Snapshot,
     TestInput,
 )
@@ -306,6 +308,7 @@ class SqlDifyBuilderRepository:
                 dify_run_id=run.dify_run_id,
                 status=run.status,
                 per_node=[dataclasses.asdict(n) for n in run.per_node],
+                verification=dataclasses.asdict(run.verification) if run.verification is not None else None,
                 culprit_node_id=run.culprit_node_id,
                 error=run.error,
                 inputs_ref=run.inputs_ref,
@@ -511,7 +514,20 @@ class SqlDifyBuilderRepository:
 
     @staticmethod
     def _to_domain_run(row: DifyBuilderRun) -> Run:
+        evidence = row.verification
+        verification = None
+        if evidence is not None:
+            verification = RunVerification(
+                execution_revision=evidence["execution_revision"],
+                executed_graph_revision=evidence["executed_graph_revision"],
+                terminal_outputs=evidence["terminal_outputs"],
+                output_findings=[OutputFinding(**finding) for finding in evidence["output_findings"]],
+                executed_node_ids=evidence["executed_node_ids"],
+                no_output_dead_branch=evidence["no_output_dead_branch"],
+            )
         return Run(
+            session_id=row.session_id,
+            verification=verification,
             id=row.id,
             kind=row.kind,
             dify_run_id=row.dify_run_id or "",

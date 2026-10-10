@@ -13,12 +13,14 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
+import json_repair
+
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
 from graphon.enums import BUILT_IN_NODE_TYPES
-from services.dify_builder import graph_ops
+from services.dify_builder import preflight
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
@@ -349,10 +351,36 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
         "\n\n# Installed tools you may name (ready to use)\n"
         "When one of these covers a step, plan that step as a `tool` node and name the tool "
         "by its id -- write the id exactly as listed, as a separate word (with a space on "
-        "each side, even in Chinese or Japanese text). Plan an `http-request` step only for "
-        "an endpoint the user actually gave you -- never invent one.\n"
+        "each side, even in Chinese or Japanese text). An `http-request` endpoint must be "
+        "user-supplied or a required Start input supplied at runtime -- never invent one.\n"
         f"{listing}"
     )
+
+
+def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> str:
+    """Keep the full source in every source-dependent cognition payload."""
+    return f"ORIGINAL GOAL:\n{goal_text}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(
+        requirements if requirements is not None else {}, ensure_ascii=False
+    )
+
+
+def _plan_schema_error(data: Any) -> str:
+    """Describe shape errors without quoting source or model-generated content."""
+    if not isinstance(data, dict):
+        return f"The response must be an object, received {type(data).__name__}."
+    if "plan" not in data:
+        return "The required plan field is missing."
+    plan = data["plan"]
+    if not isinstance(plan, list):
+        return f"The plan field must be a nonempty list of strings, received {type(plan).__name__}."
+    if not plan:
+        return "The plan field must contain at least one nonblank string."
+    for index, item in enumerate(plan):
+        if not isinstance(item, str):
+            return f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}."
+        if not item.strip():
+            return f"The plan[{index}] field is blank; every item must be a nonblank string."
+    return ""
 
 
 def propose_plan_v1(
@@ -361,40 +389,58 @@ def propose_plan_v1(
     on_reasoning: Callable[[str], None] | None = None,
     *,
     tools: Sequence[ResourceRef] = (),
+    goal_text: str = "",
 ) -> list[str]:
+    """Return an intact plan or [], with at most one schema correction.
+
+    The service-only source default supports direct callers during sequential
+    adapter migration; runtime adapters must pass the original goal explicitly.
+    Structural validity alone does not prove the plan covers the source.
+    """
     if model is None:
-        return _degraded_plan()
+        return []
     system = (
-        "You are a Dify workflow planner. Given requirements, propose an ordered list of "
-        "concise build steps.\n\n"
+        "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
+        "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
+        "requirements may refine the goal, but do not silently resolve conflicting instructions.\n\n"
         "Every step MUST be implementable by exactly one of these Dify node types, and you "
         "may plan ONLY in these terms:\n\n"
         f"{_DIFY_NODE_VOCABULARY}\n\n"
         "Write each step as the work that node does, naming the node type. Good: "
         '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
         "-- that names a product, not a node.\n\n"
-        "Dify has no scheduler, database, email or messaging node. A step that needs one of "
-        "those is either a `tool` node (when an installed plugin provides it), an "
-        "`http-request` node for an endpoint the user supplied, or outside the workflow "
-        "entirely -- say so in the step rather than inventing a node or an endpoint."
+        "Dify has no scheduler, database, email or messaging node. An external action can use "
+        "a ready matching installed `tool` node, an `http-request` node with a user-supplied "
+        "endpoint, or an `http-request` node whose endpoint is a required Start input supplied "
+        "at runtime. A missing URL alone is not an unsupported capability: retain the requested "
+        "HTTP action and require the endpoint input rather than skipping it. Reserve work "
+        "outside the workflow for an actual unsupported capability. Do not replace a requested "
+        "real file with Markdown or JSON success because an endpoint is absent. Endpoint "
+        "deferral does not establish API availability, authentication, request schema or response "
+        "schema; do not invent any of them. Resource mentions, including optional or negative "
+        "mentions, do not alone require using a resource."
         f"{_planner_tool_section(tools)}\n\n"
         'Reply with ONLY JSON: {"plan": ["step", ...]}.'
     ) + llm.json_language_instruction("plan steps")
-    try:
-        data = llm.invoke_json(
-            model,
-            system=system,
-            user=f"REQUIREMENTS:\n{requirements}",
-            on_reasoning=on_reasoning,
-        )
-    except Exception:
-        return _degraded_plan()
-    plan = data.get("plan")
-    return [str(p) for p in plan] if isinstance(plan, list) and plan else _degraded_plan()
-
-
-def _degraded_plan() -> list[str]:
-    return ["Ingest the input", "Process with an LLM", "Emit the result"]
+    source = _cognition_source(goal_text, requirements)
+    user = source
+    for attempt in range(2):
+        try:
+            # invoke_json retries internally; use one provider call per attempt
+            # so parsing and schema correction share the same two-call budget.
+            text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except Exception:
+            return []
+        try:
+            data = json_repair.loads(text)
+        except Exception:
+            data = None
+        issue = _plan_schema_error(data)
+        if not issue:
+            return data["plan"]
+        if attempt == 0:
+            user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
+    return []
 
 
 def discover_resources(
@@ -402,6 +448,9 @@ def discover_resources(
     tenant_id: str,
     plan_items: list[str],
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
 ) -> list[ResourceOption]:
     inv = resources.list_tenant_resources(tenant_id)
     catalog = {r.id: ("knowledge", r) for r in inv.datasets}
@@ -411,13 +460,15 @@ def discover_resources(
         return []
     system = (
         "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
-        "ids relevant to the plan. Each is listed with its readiness: 'ready' or 'missing_config' "
+        "ids relevant to the original goal, confirmed requirements and plan. A mention alone "
+        "does not require a resource; respect optional and negative source instructions. "
+        "Each is listed with its readiness: 'ready' or 'missing_config' "
         "(installed but not authorized for this workspace, so it cannot actually be used) -- never "
         "recommend a missing_config resource. Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
     listing = "\n".join(f"- {rid} ({kind}, {ref.readiness}): {ref.label}" for rid, (kind, ref) in catalog.items())
-    user = f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
+    user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         chosen_ids = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
@@ -443,7 +494,11 @@ def discover_resources(
 
 
 _GAP_SYSTEM = (
-    "You check whether a workflow plan can be built from the resources listed. Each resource is "
+    "You check whether the original goal, confirmed requirements and workflow plan can be built "
+    "from the resources listed. Respect optional and negative resource instructions; a mention "
+    "alone is not a required invocation. A missing HTTP endpoint can be a required Start input "
+    "provided at runtime; do not treat a missing URL alone as an unsupported capability or "
+    "invent an API contract. Each resource is "
     "shown with its readiness: 'ready' or 'missing_config' -- installed but not authorized for "
     "this workspace, so it is not usable; treat a missing_config resource as unavailable, the "
     "same as if it were not listed at all. "
@@ -453,7 +508,14 @@ _GAP_SYSTEM = (
 )
 
 
-def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOption]) -> str:
+def assess_capability_gap(
+    model,
+    plan_items: list[str],
+    options: list[ResourceOption],
+    *,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> str:
     """One sentence naming what the workspace cannot do, or "".
 
     Grounded only in what is installed -- there is no marketplace lookup, so
@@ -466,12 +528,15 @@ def assess_capability_gap(model, plan_items: list[str], options: list[ResourceOp
     """
     if model is None or not plan_items:
         return ""
-    listing = "\n".join(f"- {o.label} ({o.kind}, {o.readiness})" for o in options) or "- (none)"
+    listing = "\n".join(f"- {o.id} ({o.kind}, {o.readiness}): {o.label}" for o in options) or "- (none)"
     try:
         data = llm.invoke_json(
             model,
             system=_GAP_SYSTEM + llm.json_language_instruction("the gap sentence"),
-            user=f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}",
+            user=(
+                f"{_cognition_source(goal_text, requirements)}\n\n"
+                f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
+            ),
         )
     except Exception:
         logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
@@ -797,6 +862,31 @@ def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str,
     )
 
 
+def _prepare_build_candidate(
+    graph: dict[str, Any],
+    grounding_mc: ModelConfig,
+    tenant_id: str,
+    plan_items: list[str],
+    trusted_text: str,
+) -> preflight.VettedIntents:
+    """Translate, ground, and vet the complete candidate as the write guard does.
+
+    Grounding precedes validation: the runtime model, selected resources, and
+    user-supplied endpoint/credential inputs are the configuration we will
+    actually persist. A refusal condemns the entire generated batch; the
+    caller must correct it rather than returning only the applicable subset.
+    """
+    intents = graph_translate.to_intents(graph)
+    _ground(intents, grounding_mc, tenant_id, plan_items)
+    for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
+        logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
+    for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
+        logger.info(
+            "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
+        )
+    return preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+
+
 def build_nodes(
     tenant_id: str,
     model_config: dict[str, Any],
@@ -805,9 +895,18 @@ def build_nodes(
     *,
     trusted_text: str = "",
 ) -> BuildNodesResult:
+    diagnostics: list[dict[str, Any]] = []
     try:
         mc = _generator_model_config(tenant_id, model_config)
-        base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\n" + "\n".join(plan_items)
+        base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        if trusted_text:
+            base_instruction += (
+                "\n\nORIGINAL USER REQUEST AND CONFIRMED REQUIREMENTS (authoritative):\n"
+                f"{trusted_text}\n\n"
+                "Preserve every explicit constraint in this original source, including fixed numeric limits. "
+                "If the plan omits or conflicts with a source constraint, follow the original source. "
+                "Do not replace a fixed maximum with an invented optional input."
+            )
 
         def _generate(instruction: str) -> dict[str, Any]:
             return WorkflowGeneratorService.generate_workflow_graph(
@@ -818,96 +917,43 @@ def build_nodes(
                 current_graph=None,
             )
 
-        diagnostics: list[dict[str, Any]] = []
-        result = _generate(base_instruction)
-        graph = result.get("graph") or {}
-        attempt = 1
-        # The generator's own retry only covers invalid-JSON / bad-schema, NOT a
-        # structurally-valid graph that fails topology/reference validation (e.g.
-        # no 'end' node, or an UNRESOLVED_REFERENCE from a node builder inventing
-        # an upstream output name -- see FINDINGS.md Blocker B). Retry with the
-        # specific errors fed back as a corrective nudge, up to
-        # _MAX_GENERATION_ATTEMPTS total, stopping at the first success.
-        while (result.get("error") or not graph.get("nodes")) and attempt < _MAX_GENERATION_ATTEMPTS:
-            diagnostics.append(_generation_diagnostic(result, attempt=attempt))
-            attempt += 1
-            result = _generate(_terminal_retry_instruction(base_instruction, result))
+        instruction = base_instruction
+        grounding_mc: ModelConfig | None = None
+        for attempt in range(1, _MAX_GENERATION_ATTEMPTS + 1):
+            result = _generate(instruction)
             graph = result.get("graph") or {}
-        if result.get("error") or not graph.get("nodes"):
-            diagnostics.append(_generation_diagnostic(result, attempt=attempt))
-            error = _generation_error_text(result)
-            logger.warning(
-                "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items) after "
-                "%d attempt(s): error=%s",
-                tenant_id,
-                len(plan_items),
-                attempt,
-                error,
-            )
-            return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
-        intents = graph_translate.to_intents(graph)
-        # Ground node model blocks to the user-SELECTED model (resource confirmation),
-        # falling back to the generation/session model when none was selected. The
-        # generator above still runs on ``mc`` (cognition); only the built workflow's
-        # runtime model follows the user's choice.
-        grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
-        _ground(intents, grounding_mc, tenant_id, plan_items)
-        for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
-            logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
-        for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
-            logger.info(
-                "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
-            )
-        # Structure only, deliberately: these intents BUILD the graph, so a node
-        # the preflight would refuse is the generator's own retry loop's business
-        # (``_terminal_retry_instruction`` above), not a reason to drop one intent
-        # out of a whole new workflow. ``apply_repair``'s preflight is still the
-        # backstop that stops a refused draft being written.
-        applicable, rejected, _dry_run_graph, _changed = graph_ops.filter_applicable(
-            {"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES
-        )
-        if not applicable:
-            reason = rejected[0][1] if rejected else "no applicable node intents"
-            error = f"the generated nodes were rejected by validation: {reason}"
-            logger.warning("Dify Builder: build_nodes rejected all intents for tenant %s: %s", tenant_id, error)
-            diagnostics.append(
-                _diagnostic(
-                    source="build_nodes",
-                    message=error,
-                    rejected=[{"reason": str(r), "intent": str(i.op)} for i, r in rejected],
-                )
-            )
-            return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
-        if rejected:
-            # A partial reject still builds what applies, but the dropped intents
-            # must not vanish: e.g. a connect on a branch handle the node does not
-            # declare (one postprocess could not re-home unambiguously) leaves that
-            # arm unwired on the canvas.
-            summary = [
-                {
-                    "intent": str(intent.op),
-                    # a create_node's config is the whole node body -- name the node, not its body
-                    "args": {key: value for key, value in intent.args.items() if key != "config"},
-                    "reason": str(reason),
+            source = "workflow-generator"
+            if not result.get("error") and graph.get("nodes"):
+                # Generation uses the cognition model; the complete runtime graph
+                # follows the user's selected model, or the session fallback.
+                if grounding_mc is None:
+                    grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
+                candidate = _prepare_build_candidate(graph, grounding_mc, tenant_id, plan_items, trusted_text)
+                if not candidate.rejections and candidate.applicable:
+                    return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
+                # vet_intents supplies credential-safe node/field refusals from
+                # the real engine. Never embed the raw candidate config here.
+                source = "build_nodes"
+                result = {
+                    "error": "the generated graph had no applicable node intents",
+                    "errors": [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in candidate.rejections],
                 }
-                for intent, reason in rejected
-            ]
-            logger.warning(
-                "Dify Builder: build_nodes dropped %d of %d intents for tenant %s: %s",
-                len(rejected),
-                len(intents),
-                tenant_id,
-                "; ".join(f"{item['intent']} {item['args']}: {item['reason']}" for item in summary),
-            )
-            diagnostics.append(
-                _diagnostic(
-                    source="build_nodes",
-                    message=f"{len(rejected)} generated intent(s) were rejected by validation and not applied",
-                    rejected=summary,
-                )
-            )
-        # Retries that eventually succeeded still leave their breadcrumbs behind.
-        return BuildNodesResult(intents=applicable, diagnostics=diagnostics)
+
+            diagnostic = _generation_diagnostic(result, attempt=attempt)
+            diagnostic["source"] = source
+            diagnostics.append(diagnostic)
+            if attempt < _MAX_GENERATION_ATTEMPTS:
+                instruction = _terminal_retry_instruction(base_instruction, result)
+
+        error = _generation_error_text(result)
+        logger.warning(
+            "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items) after %d attempt(s): error=%s",
+            tenant_id,
+            len(plan_items),
+            _MAX_GENERATION_ATTEMPTS,
+            error,
+        )
+        return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
     except Exception as exc:  # any generation/translation failure -> honest empty build
         logger.exception(
             "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
@@ -917,11 +963,8 @@ def build_nodes(
         # Surface the exception text (e.g. a provider error like credit_balance_exhausted)
         # so the user sees WHY, not a hardcoded 'couldn't build' message.
         message = str(exc).strip() or type(exc).__name__
-        return BuildNodesResult(
-            intents=[],
-            error=message,
-            diagnostics=[_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__)],
-        )
+        diagnostics.append(_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__))
+        return BuildNodesResult(intents=[], error=message, diagnostics=diagnostics)
 
 
 # Hosts / tokens an LLM writes when it does not know the real endpoint. A Dify

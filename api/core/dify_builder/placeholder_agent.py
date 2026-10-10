@@ -108,7 +108,7 @@ class PlaceholderAgent:
         # of the prompt. Returning "" leaves that derived name in place.
         return ""
 
-    def propose_plan_v1(self, requirements: dict[str, Any]) -> list[str]:
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]:
         return [
             "Ingest source documents",
             "Retrieve relevant knowledge",
@@ -116,7 +116,9 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
-    def discover_resources(self, plan_items: list[str]) -> list[ResourceOption]:
+    def discover_resources(
+        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
+    ) -> list[ResourceOption]:
         return [
             ResourceOption(
                 id="kb-company",
@@ -127,7 +129,9 @@ class PlaceholderAgent:
             )
         ]
 
-    def assess_capability_gap(self, plan_items: list[str], options: list[ResourceOption]) -> str:
+    def assess_capability_gap(
+        self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, Any]
+    ) -> str:
         # No model, so no gap it could name -- see build.assess_capability_gap.
         return ""
 

@@ -438,3 +438,30 @@ def test_save_run_persists_error_field(repo: SqlDifyBuilderRepository) -> None:
     loaded = repo.get_run(run.id)
 
     assert loaded.error == "query is required in input form"
+
+
+def test_verification_roundtrip_and_legacy(repo):
+    from core.dify_builder.models import OutputFinding, RunVerification
+
+    s = _make_domain_session()
+    repo.create_session(s, DifyBuilderContext(), [])
+    evidence = RunVerification(
+        execution_revision="rev",
+        executed_graph_revision="graph",
+        terminal_outputs={"null": None, "false": False, "zero": 0, "array": [], "object": {}},
+        output_findings=[
+            OutputFinding(
+                node_id="end", output_name="result", selector=["tool", "text"], state="present", reason="key_present"
+            )
+        ],
+        executed_node_ids=["end"],
+        no_output_dead_branch=False,
+    )
+    run = Run(kind="verify", status="succeeded", immutable=True, verification=evidence)
+    repo.save_run(s.id, run)
+    loaded = repo.get_run(run.id)
+    assert loaded.session_id == s.id
+    assert loaded.verification == evidence
+    legacy = Run(kind="verify", status="succeeded")
+    repo.save_run(s.id, legacy)
+    assert repo.get_run(legacy.id).verification is None

@@ -8,6 +8,7 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyBuilderPanel from '../panel'
 import {
   difyBuilderConversationAtom,
+  difyBuilderConversationHasMoreAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastErrorAtom,
@@ -80,6 +81,16 @@ const sessionConversation: ConversationItem[] = [
     },
   },
 ]
+
+// Legacy persisted content can violate the generated text contract at runtime.
+const malformedConversation = [
+  {
+    seq: 0,
+    at_version: 1,
+    kind: 'user',
+    payload: { text: { privateConfiguration: 'Do not expose this' }, turn_id: 'turn-user-1' },
+  },
+] as unknown as ConversationItem[]
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
@@ -161,6 +172,84 @@ describe('DifyBuilderPanel', () => {
       mode: 'chat',
       name: 'gpt-4o',
       provider: 'openai',
+    }
+  })
+
+  it('contains malformed conversation content while preserving controls and retries the same session', async () => {
+    const user = userEvent.setup()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { store } = renderPanel(
+        sessionView,
+        (store) => {
+          store.set(difyBuilderDraftAtom, 'Pending request')
+          store.set(difyBuilderConversationHasMoreAtom, true)
+        },
+        malformedConversation,
+      )
+
+      expect(screen.getByRole('button', { name: 'workflow.difyBuilder.reset' })).toBeEnabled()
+      expect(screen.getAllByRole('button', { name: 'common.operation.more' })).toHaveLength(2)
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).toHaveValue('Pending request')
+      expect(screen.queryByText(/Do not expose this/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      expect(mocks.closePanel).toHaveBeenCalledWith(false)
+      expect(store.get(difyBuilderSessionViewAtom)).toEqual(sessionView)
+      expect(store.get(difyBuilderConversationAtom)).toEqual(malformedConversation)
+
+      act(() => store.set(difyBuilderConversationAtom, sessionConversation))
+      await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+
+      expect(screen.getByText('Fix the workflow')).toBeInTheDocument()
+      expect(await screen.findByText('I found the failing configuration.')).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
+      ).toHaveValue('Pending request')
+      expect(store.get(difyBuilderSessionViewAtom)).toEqual(sessionView)
+      expect(store.get(difyBuilderConversationAtom)).toEqual(sessionConversation)
+      expect(mocks.reset).not.toHaveBeenCalled()
+      expect(mocks.sendMessage).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('keeps a failed conversation contained across stream updates and recovers for a new session', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { store } = renderPanel(sessionView, undefined, malformedConversation)
+      expect(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' })).toBeEnabled()
+
+      act(() => {
+        store.set(difyBuilderConversationAtom, sessionConversation)
+        store.set(difyBuilderSessionViewAtom, { ...sessionView, version: 2 })
+      })
+      expect(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' })).toBeEnabled()
+      expect(screen.queryByText('Fix the workflow')).not.toBeInTheDocument()
+
+      act(() => store.set(difyBuilderSessionViewAtom, { ...sessionView, session_id: 'session-2' }))
+      expect(screen.getByText('Fix the workflow')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+      ).not.toBeInTheDocument()
+      expect(mocks.reset).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('allows reset from the header after a conversation rendering failure', async () => {
+    const user = userEvent.setup()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      renderPanel(sessionView, undefined, malformedConversation)
+      await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.reset' }))
+      expect(mocks.reset).toHaveBeenCalledOnce()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
+    } finally {
+      consoleError.mockRestore()
     }
   })
 

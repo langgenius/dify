@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1277,6 +1278,26 @@ class TestNodeConfigErrorsNameTheNode:
 
         assert "body.data.0.type" in str(excinfo.value)
         assert "body.data.1.type" in str(excinfo.value)
+
+    def test_create_node_rejects_human_input_delivery_uuid_before_runtime_setup(self, factory):
+        # The factory has no callback/runtime/repository dependencies installed.
+        # Delivery refusal must happen in shared validation before any are used.
+        node_config = {
+            "id": "review",
+            "data": {
+                "type": "human-input",
+                "title": "Review",
+                "delivery_methods": [{"id": "webapp", "type": "webapp", "enabled": True}],
+                "user_actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
+            },
+        }
+
+        with pytest.raises(ValueError, match=r"^node 'review' \(human-input\): ") as excinfo:
+            factory.create_node(node_config)
+
+        assert isinstance(excinfo.value.__cause__, ValidationError)
+        assert excinfo.value.__cause__.errors()[0]["loc"] == (0, "webapp", "id")
+        assert excinfo.value.__cause__.errors()[0]["type"] == "uuid_parsing"
 
     def test_create_node_still_names_the_node_for_an_unknown_type(self, factory):
         with pytest.raises(

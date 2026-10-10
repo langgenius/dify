@@ -22,7 +22,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,
     resolve_llm_model_config,
@@ -754,7 +754,8 @@ def _validated_node_config(
     """Adapt-shaped node config in, fully validated node out -- the single
     sequence ``DifyNodeFactory.create_node`` and ``validate_node_config`` both
     run: shared-shape validation, node-class resolution, then re-validation
-    against the concrete NodeData model the resolved class declares.
+    against the concrete NodeData model the resolved class declares, then
+    Human Input delivery-method validation through the runtime's pure parser.
 
     ``validate_node_config``'s whole contract is "whatever raises here would
     raise at ``Graph.init``", which only holds while the two callers share this
@@ -779,6 +780,8 @@ def _validated_node_config(
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = validate_resolved_node_data(node_class, node_data)
+        if node_data.type == BuiltinNodeTypes.HUMAN_INPUT:
+            parse_human_input_delivery_methods(resolved_node_data)
     except ValueError as exc:
         # pydantic's ValidationError subclasses ValueError. Its message names
         # only the model class ("... for HttpRequestNodeData"), so a run that
@@ -792,8 +795,8 @@ def _validated_node_config(
 def validate_node_config(node_config: Mapping[str, Any] | NodeConfigDict) -> BaseNodeData:
     """Validate ONE raw node config exactly as ``DifyNodeFactory.create_node``
     does before constructing the node -- adapt, shared-shape validation,
-    node-class resolution, concrete NodeData re-validation -- with no factory
-    instance and no runtime state.
+    node-class resolution, concrete NodeData re-validation, Human Input delivery
+    parsing -- with no factory instance and no runtime state.
 
     This is the dry check a draft can be put through BEFORE it is run: whatever
     raises here would raise at ``Graph.init`` and kill the run before its first

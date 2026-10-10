@@ -26,6 +26,7 @@ from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
 from tasks.dify_builder_advance_task import advance_session
 
@@ -92,6 +93,12 @@ def _get_app_revision(app_id: str, actor: Actor) -> str:
     return revision
 
 
+def _get_verification_identity(app_id: str, actor: Actor) -> tuple[str, str]:
+    # read_graph returns both values from one authorized draft in a short session.
+    graph, revision = WorkflowServiceDifyPort().read_graph(app_id, actor)
+    return revision, executable_graph_revision(graph)
+
+
 def _get_app_name(app_id: str, actor: Actor) -> str:
     return app_naming.current_app_name(app_id=app_id, tenant_id=actor.tenant_id)
 
@@ -105,6 +112,7 @@ def build_service() -> DifyBuilderService:
         subscribe_fn=progress_bus.subscribe,
         authorize_app_fn=_authorize_app,
         get_app_revision_fn=_get_app_revision,
+        get_verification_identity_fn=_get_verification_identity,
         get_app_name_fn=_get_app_name,
     )
 

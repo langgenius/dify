@@ -24,6 +24,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
+    MutationIntent,
     Session,
 )
 from core.dify_builder.state import PcState
@@ -725,7 +726,7 @@ def _seed_free_session(repo: SqlDifyBuilderRepository) -> Session:
     return s
 
 
-def _seed_session_at(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
+def _seed_session_at(repo: SqlDifyBuilderRepository, state: PcState, *, verified: bool = False) -> Session:
     """Create a session directly via the repo (bypassing ``create_fix_session``)
     at an arbitrary ``PcState``, so ``get_session_view``'s actions-table lookup
     can be tested without driving the whole flow through it."""
@@ -736,8 +737,30 @@ def _seed_session_at(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
         entry_mode=EntryMode.FIX,
         current_state=state,
     )
-    repo.create_session(s, DifyBuilderContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    fc = DifyBuilderContext(failed_run_id="TR-1")
+    if verified:
+        from core.dify_builder.models import Run
+        from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, successful_verification
+
+        run = Run(
+            id="11111111-2222-3333-4444-555555555555",
+            kind="verify",
+            status="succeeded",
+            immutable=True,
+            verification=successful_verification(FakeBuildDifyPort()),
+        )
+        fc.verify_run_id = run.id
+    repo.create_session(s, fc, [ConversationItem(kind="run-context", seq=0)])
+    if verified:
+        repo.save_run(s.id, run)
     return s
+
+
+def _allow_seeded_verification(service):
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    service._get_verification_identity_fn = lambda *_: (dify.hash, dify.graph_revision(dify.graph))
 
 
 @pytest.mark.parametrize(
@@ -763,7 +786,12 @@ def test_action_authorization_uses_state_specific_permission_tier(
     kind: str,
     expected_access: AppAccess,
 ) -> None:
-    session = _seed_session_at(repo, state)
+    session = _seed_session_at(repo, state, verified=kind in {"publish", "publish_workflow"})
+    if kind == "approve_repair":
+        _, context = repo.get_session(session.id)
+        context.staged_repair = [MutationIntent(op="delete_node", args={"node_id": "n1"})]
+        repo.compare_and_advance(session.id, session.version, state, context, [])
+        session, _ = repo.get_session(session.id)
     accesses: list[AppAccess] = []
     svc = DifyBuilderService(
         repo,
@@ -772,12 +800,77 @@ def test_action_authorization_uses_state_specific_permission_tier(
         authorize_app_fn=lambda _actor, _app_id, access: accesses.append(access),
     )
 
-    _view, expect_advance, initial_items = svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=1))
+    _allow_seeded_verification(svc)
+
+    _view, expect_advance, initial_items = svc._prepare_action(
+        session.id, _actor(), Action(kind=kind, base_version=session.version)
+    )
 
     assert expect_advance is True
     assert initial_items == []
     assert accesses[0] == AppAccess.EDIT
     assert accesses[-1] == expected_access
+
+
+@pytest.mark.parametrize(
+    ("state", "entry_mode"),
+    [
+        (PcState.BUILD_AWAIT_REPAIR, EntryMode.BUILD),
+        (PcState.EDIT_AWAIT_REPAIR, EntryMode.EDIT),
+        (PcState.FIX_AWAIT_APPROVAL, EntryMode.FIX),
+    ],
+)
+@pytest.mark.parametrize("has_repair", [False, True], ids=["empty", "staged"])
+def test_submit_repair_approval_requires_a_persisted_repair(
+    repo: SqlDifyBuilderRepository, enqueued: list[tuple], state: PcState, entry_mode: EntryMode, has_repair: bool
+) -> None:
+    class RecordingSessionLock(FakeSessionLock):
+        def __init__(self) -> None:
+            super().__init__()
+            self.acquisitions: list[str] = []
+
+        def acquire(self, session_id: str) -> str | None:
+            self.acquisitions.append(session_id)
+            return super().acquire(session_id)
+
+    lock = RecordingSessionLock()
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=state,
+    )
+    context = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="delete_node", args={"node_id": "n1"})] if has_repair else [],
+        last_snapshot_hash="current",
+        last_command_id="previous-command",
+        next_seq=1,
+    )
+    repo.create_session(session, context, [ConversationItem(kind="run-context", seq=0)])
+    before_session, before_context = repo.get_session(session.id)
+    before_items = repo.list_conversation(session.id)
+    svc = DifyBuilderService(repo, lock, lambda *args: enqueued.append(args), get_app_revision_fn=lambda *_: "current")
+    action = Action(kind="approve_repair", base_version=session.version, base_app_revision="current")
+
+    if has_repair:
+        svc.submit_action(session.id, _actor(), action)
+        assert len(enqueued) == 1
+        sid, dispatched_action, actor, token = enqueued[0]
+        assert (sid, dispatched_action.kind, actor) == (session.id, "approve_repair", _actor())
+        assert lock.activate(sid, token)
+        assert lock.acquisitions == [session.id]
+    else:
+        with pytest.raises(BadRequestError, match="no repair is staged"):
+            svc.submit_action(session.id, _actor(), action)
+        assert enqueued == []
+        assert lock.acquisitions == []
+        assert not lock.exists(session.id)
+
+    after_session, after_context = repo.get_session(session.id)
+    assert after_session == before_session
+    assert after_context == before_context
+    assert repo.list_conversation(session.id) == before_items
 
 
 @pytest.mark.parametrize("kind", ["", "unknown"])
@@ -913,7 +1006,7 @@ def test_get_session_view_actions_for_fix_await_decision(
     view = service.get_session_view(s.id, actor)
 
     assert [(a.id, a.kind) for a in view.actions] == [
-        ("publish_fix", ActionKind.PRIMARY),
+        ("run_validation", ActionKind.PRIMARY),
         ("keep_draft", ActionKind.SECONDARY),
         ("continue_adjusting", ActionKind.SECONDARY),
         ("revert", ActionKind.DESTRUCTIVE),
@@ -930,7 +1023,7 @@ def test_session_view_carries_the_same_choice_as_options_and_as_actions(
     # The public decision and internal action authorization must never disagree
     # about what this gate is asking.
     assert [o.id for o in view.decision.options] == [a.id for a in view.actions]
-    assert view.decision.default_option_id == "publish_fix"
+    assert view.decision.default_option_id == "run_validation"
     assert view.decision.submit is not None
     assert (view.decision.submit.id, view.decision.submit.label) == ("confirm", "Submit")
 
@@ -938,7 +1031,8 @@ def test_session_view_carries_the_same_choice_as_options_and_as_actions(
 def test_prepare_choice_action_snapshots_the_submitted_option(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
-    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION, verified=True)
+    _allow_seeded_verification(service)
     action = Action(
         kind="publish",
         payload={"option_id": "publish_fix"},
@@ -959,7 +1053,8 @@ def test_prepare_choice_action_snapshots_the_submitted_option(
 def test_prepare_choice_action_ignores_free_text_for_an_option_without_input(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
-    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION, verified=True)
+    _allow_seeded_verification(service)
     action = Action(
         kind="publish",
         payload={"option_id": "publish_fix", "free_text": "not applicable"},
@@ -976,7 +1071,8 @@ def test_prepare_choice_action_ignores_free_text_for_an_option_without_input(
 def test_prepare_interrupted_action_snapshots_the_visible_recovery_choice(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
-    session = _seed_session_at(repo, PcState.BUILD_PUBLISH)
+    session = _seed_session_at(repo, PcState.BUILD_PUBLISH, verified=True)
+    _allow_seeded_verification(service)
     action = Action(
         kind="recovery_continue",
         payload={"option_id": "recovery_continue"},
@@ -1018,6 +1114,55 @@ def test_get_session_view_actions_for_fix_await_verify(
         ("run_validation", ActionKind.PRIMARY),
         ("revert", ActionKind.DESTRUCTIVE),
     ]
+
+
+@pytest.mark.parametrize(
+    ("state", "entry_mode", "remaining_actions"),
+    [
+        (PcState.BUILD_AWAIT_REPAIR, EntryMode.BUILD, ["keep_draft", "revert"]),
+        (PcState.EDIT_AWAIT_REPAIR, EntryMode.EDIT, ["keep_draft", "revert"]),
+        (PcState.FIX_AWAIT_APPROVAL, EntryMode.FIX, ["reject_repair"]),
+    ],
+)
+@pytest.mark.parametrize("staged", [False, True])
+def test_repair_view_only_offers_approval_for_a_staged_repair(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    state: PcState,
+    entry_mode: EntryMode,
+    remaining_actions: list[str],
+    staged: bool,
+) -> None:
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=state,
+    )
+    intent = MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})
+    repo.create_session(session, DifyBuilderContext(staged_repair=[intent] if staged else []), [])
+
+    view = service.get_session_view(session.id, _actor())
+
+    expected = ["approve_plan", *remaining_actions] if staged else remaining_actions
+    assert [action.id for action in view.actions] == expected
+    assert view.decision is not None
+    assert [option.id for option in view.decision.options] == expected
+    assert view.decision.default_option_id == ("approve_plan" if staged else "")
+
+
+@pytest.mark.parametrize("state", [PcState.BUILD_PLAN_APPROVAL, PcState.EDIT_PLAN_APPROVAL])
+def test_initial_plan_approval_does_not_require_a_staged_repair(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, state: PcState
+) -> None:
+    session = _seed_session_at(repo, state)
+
+    view = service.get_session_view(session.id, _actor())
+
+    assert "approve_plan" in [action.id for action in view.actions]
+    assert view.decision is not None
+    assert view.decision.default_option_id == "approve_plan"
 
 
 def test_get_session_view_offers_restart_for_interrupted_working_state(
@@ -1093,7 +1238,10 @@ def test_every_backend_waiting_action_has_a_ui_path() -> None:
     # state now (state.py), not a waiting one, so it has no entry in
     # _BACKEND_ACTIONS_FOR at all -- see test_initial_plan_state_offers_no_actions.
     for state, backend_kinds in service_module._BACKEND_ACTIONS_FOR.items():
-        surfaced_kinds = {resolve_action_kind(action.id) for action in service_module._ACTIONS_FOR.get(state, [])}
+        surfaced_kinds = {
+            resolve_action_kind(action.id)
+            for action in [*service_module._ACTIONS_FOR.get(state, []), *service_module._actions_for(state)]
+        }
         assert backend_kinds <= surfaced_kinds, f"{state}: hidden backend actions {backend_kinds - surfaced_kinds}"
 
 
@@ -1602,6 +1750,129 @@ def test_session_view_exposes_only_the_current_interactive_card(
     assert view.active_interaction.valid_at_version == view.version
 
 
+def test_failed_build_planning_reload_reoffers_confirmed_requirements_and_retry_preserves_them() -> None:
+    """A failed plan must not let reload/retry replace accepted EUR with old USD."""
+    import copy
+    from dataclasses import asdict
+    from datetime import datetime
+
+    from core.dify_builder.contract import FormCard, FormField
+    from core.dify_builder.handlers_build import build_registry
+    from core.dify_builder.models import Turn
+    from core.dify_builder.placeholder_agent import PlaceholderAgent
+    from core.dify_builder.runner import Env, Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+
+    class UnavailablePlanner(PlaceholderAgent):
+        def __init__(self):
+            self.sources = []
+
+        def propose_plan_v1(self, requirements, *, goal_text):
+            self.sources.append((goal_text, copy.deepcopy(requirements)))
+            return []
+
+        def discover_resources(self, *_args, **_kwargs):
+            raise AssertionError("failed planning must not discover resources")
+
+    class UntouchedDify(FakeDifyPort):
+        def read_graph(self, *_args, **_kwargs):
+            raise AssertionError("failed planning must not read or mutate the graph")
+
+        def apply_repair(self, *_args, **_kwargs):
+            raise AssertionError("failed planning must not mutate the graph")
+
+    field = FormField(
+        key="currency",
+        label="Billing currency",
+        type="select",
+        options=["USD", "EUR"],
+        required=True,
+        default="USD",
+        max_length=3,
+        allowed_file_types=["document"],
+        allowed_file_extensions=[".csv"],
+        allowed_file_upload_methods=["local_file"],
+        placeholder="Choose currency",
+        hint="Use the confirmed invoice currency",
+        unit="ISO 4217",
+        json_schema={"type": "string", "enum": ["USD", "EUR"]},
+        number_limits=1,
+    )
+    original = FormCard(
+        variant="build_requirements",
+        title="Review the requirements",
+        description="Adjust any values before Builder continues.",
+        fields=[field],
+        values={"currency": "USD", "endpoint": "https://example.test/upload"},
+    ).to_item(seq=0, at_version=1)
+    historical = copy.deepcopy(original)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+    )
+    context = DifyBuilderContext(
+        goal_text="Report in the confirmed currency and POST to the supplied endpoint.",
+        requirements=copy.deepcopy(original.payload["values"]),
+        form_fields=[asdict(field)],
+        plan_items=["Prior accepted plan"],
+        test_input_ref="prior-input",
+        next_seq=1,
+    )
+    repo = InMemoryRepository()
+    repo.create_session(session, context, [original])
+    agent = UnavailablePlanner()
+    canvas = []
+    runner = Runner(
+        Env(repo=repo, dify=UntouchedDify(), agent=agent, now=lambda: datetime.min, emit_canvas=canvas.append),
+        build_registry(),
+    )
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
+    action = Action(kind="submit_requirements", payload={"currency": "EUR"}, base_version=1)
+    service._prepare_action(session.id, _actor(), action)
+    runner.advance(session.id, Turn(actor=_actor(), action=action))
+
+    reloaded = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
+    view = reloaded.get_session_view(session.id, _actor())
+    _, stored = repo.get_session(session.id)
+    accepted = {"currency": "EUR", "endpoint": "https://example.test/upload"}
+    assert view.state == "build.goal_analysis"
+    assert view.run_status == "waiting_input"
+    assert stored.requirements == accepted
+    assert stored.goal_text == context.goal_text
+    assert stored.form_fields == [asdict(field)]
+    assert stored.plan_items == ["Prior accepted plan"]
+    assert stored.test_input_ref == "prior-input"
+    assert view.active_interaction is not None
+    assert view.active_interaction.action_id == "submit_requirements"
+    assert view.active_interaction.valid_at_version == view.version
+    card = view.active_interaction.card
+    assert card.payload["values"] == accepted
+    assert card.seq > historical.seq
+    assert card.at_version == view.version
+    assert card.payload == {**historical.payload, "values": accepted}
+    assert repo.list_conversation(session.id)[0] == historical
+
+    retry = Action(kind="submit_requirements", payload=copy.deepcopy(card.payload["values"]), base_version=view.version)
+    reloaded._prepare_action(session.id, _actor(), retry)
+    runner.advance(session.id, Turn(actor=_actor(), action=retry))
+    _, retried = repo.get_session(session.id)
+    assert retried.requirements == accepted
+    assert retried.plan_items == ["Prior accepted plan"]
+    assert retried.test_input_ref == "prior-input"
+    assert agent.sources == [(context.goal_text, accepted), (context.goal_text, accepted)]
+    assert canvas == []
+    assert repo._checkpoints == {}
+    items = repo.list_conversation(session.id)
+    assert not {"plan", "resource_select"} & {item.kind for item in items}
+    failures = [item for item in items if item.kind == "assistant_turn"]
+    assert len(failures) == 2
+    assert all(item.payload["execution"]["status"] == "error" for item in failures)
+    assert all(item.payload["cards"] == ["form"] for item in failures)
+
+
 def test_prepare_form_action_snapshots_submitted_field_values(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -1706,7 +1977,7 @@ def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderR
     s = _seed_build_at(repo, PcState.BUILD_REVIEW)
     view = service.get_session_view(s.id, _actor())
     assert [a.id for a in view.actions] == [
-        "publish_workflow",
+        "run_test",
         "keep_draft",
         "continue_adjusting",
         "revert",
@@ -1866,7 +2137,7 @@ def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRe
     s = _seed_edit_at(repo, PcState.EDIT_REVIEW)
     view = service.get_session_view(s.id, _actor())
     assert [a.id for a in view.actions] == [
-        "publish_workflow",
+        "run_affected_tests",
         "keep_draft",
         "continue_adjusting",
         "revert",
@@ -2045,7 +2316,7 @@ def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     class RaisingDify(FakeBuildDifyPort):
-        def publish(self, _app_id, _actor) -> None:
+        def publish(self, _app_id, _actor, **_kwargs) -> None:
             raise RuntimeError("boom: publish still broken")
 
     monkeypatch.setattr(advance_mod, "_build_repo", lambda: repo)
@@ -2054,7 +2325,7 @@ def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(advance_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
 
-    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # already interrupted: working, lock unheld
+    s = _seed_session_at(repo, PcState.BUILD_PUBLISH, verified=True)  # already interrupted: working, lock unheld
     actor = _actor()
     token = lock.acquire(s.id)
     assert token is not None
@@ -2090,3 +2361,48 @@ def test_recovery_continue_retry_carries_the_working_states_access_tier() -> Non
     # a non-privileged working step (diagnose) and recovery_restart stay EDIT
     assert _app_access_for_action(PcState.FIX_DIAGNOSE, "recovery_continue") == AppAccess.EDIT
     assert _app_access_for_action(PcState.BUILD_PUBLISH, "recovery_restart") == AppAccess.EDIT
+
+
+@pytest.mark.parametrize(
+    ("state", "mode", "action", "retest"),
+    [
+        (PcState.BUILD_REVIEW, EntryMode.BUILD, "publish_workflow", "run_test"),
+        (PcState.EDIT_REVIEW, EntryMode.EDIT, "publish_workflow", "run_affected_tests"),
+        (PcState.FIX_AWAIT_DECISION, EntryMode.FIX, "publish", "run_validation"),
+    ],
+)
+@pytest.mark.parametrize("status", ["failed", "running", "legacy", "missing", "foreign", "stale", "succeeded"])
+def test_publish_verification_projection_and_submit(repo, lock, enqueued, state, mode, action, retest, status):
+    from core.dify_builder.models import Run, RunVerification
+
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID, entry_mode=mode, current_state=state)
+    fc = DifyBuilderContext(verify_run_id="11111111-2222-3333-4444-555555555555")
+    repo.create_session(s, fc, [])
+    run = Run(
+        id=fc.verify_run_id,
+        kind="verify",
+        immutable=True,
+        status=status if status in {"failed", "running"} else "succeeded",
+    )
+    if status not in {"legacy", "missing"}:
+        run.verification = RunVerification(
+            execution_revision="old" if status == "stale" else "rev",
+            executed_graph_revision="graph",
+            terminal_outputs={"result": None},
+            output_findings=[],
+            executed_node_ids=["end"],
+            no_output_dead_branch=False,
+        )
+    if status != "missing":
+        repo.save_run("66666666-6666-6666-6666-666666666666" if status == "foreign" else s.id, run)
+    svc = DifyBuilderService(
+        repo, lock, lambda *args: enqueued.append(args), get_verification_identity_fn=lambda *_: ("rev", "graph")
+    )
+    view = svc.get_session_view(s.id, _actor())
+    publish_id = "publish_fix" if action == "publish" else action
+    assert (publish_id in [a.id for a in view.actions]) is (status == "succeeded")
+    if status != "succeeded":
+        assert retest in [a.id for a in view.actions]
+        with pytest.raises(BadRequestError, match="verification"):
+            svc.submit_action(s.id, _actor(), Action(kind=action, base_version=s.version))
+        assert not enqueued

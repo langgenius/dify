@@ -74,12 +74,45 @@ class Localizer:
         # 1) collect the source strings that need translation across all items
         needed: set[str] = set()
         for item in items:
-            self._collect(item.payload, language, needed)
+            if item.kind == "test_result":
+                # Evidence and protocol IDs are facts, even when a value matches
+                # catalog prose. Only presentation fields may be translated.
+                for key in ("failure_reason", "review_note"):
+                    self._collect(item.payload.get(key), language, needed)
+            elif item.kind == "form":
+                # Form inputs and constraints are facts in every variant. Only
+                # shared FormCard/FormField presentation belongs to the catalog.
+                for key in ("title", "description"):
+                    self._collect(item.payload.get(key), language, needed)
+                for field in item.payload.get("fields", []):
+                    for key in ("label", "placeholder", "hint"):
+                        self._collect(field.get(key), language, needed)
+            else:
+                self._collect(item.payload, language, needed)
         # 2) batch-translate the cache misses in one call, populate the cache
         self._fill_cache(sorted(needed), language)
         # 3) apply
         for item in items:
-            item.payload = self._apply(item.payload, language)
+            if item.kind == "test_result":
+                item.payload = {
+                    key: self._apply(value, language) if key in ("failure_reason", "review_note") else value
+                    for key, value in item.payload.items()
+                }
+            elif item.kind == "form":
+                item.payload = {
+                    key: self._apply(value, language) if key in ("title", "description") else value
+                    for key, value in item.payload.items()
+                }
+                if "fields" in item.payload:
+                    item.payload["fields"] = [
+                        {
+                            key: self._apply(value, language) if key in ("label", "placeholder", "hint") else value
+                            for key, value in field.items()
+                        }
+                        for field in item.payload["fields"]
+                    ]
+            else:
+                item.payload = self._apply(item.payload, language)
         return items
 
     def _collect(self, value, language: str, needed: set[str]) -> None:
@@ -145,7 +178,7 @@ class Localizer:
             f"You are a translation engine. Translate each numbered string into the language "
             f"with BCP-47 code {language}. Preserve any {{placeholder}} tokens EXACTLY. Do not "
             "translate proper nouns or code. Reply with ONLY a JSON object whose keys are the "
-            'SAME index numbers (as strings) and whose values are the translations, e.g. '
+            "SAME index numbers (as strings) and whose values are the translations, e.g. "
             '{"0": "<translation of item 0>", "1": "<translation of item 1>"}.'
         )
         user = json.dumps({str(i): s for i, s in enumerate(misses)}, ensure_ascii=False)

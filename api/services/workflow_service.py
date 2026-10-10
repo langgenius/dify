@@ -685,12 +685,19 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        expected_draft_id: str | None = None,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
             Workflow.version == Workflow.VERSION_DRAFT,
         )
+        if expected_draft_id is not None:
+            # Builder holds this exact draft's row lock after checking its run
+            # evidence. Never substitute another draft candidate during publish.
+            draft_workflow_stmt = draft_workflow_stmt.where(Workflow.id == expected_draft_id).execution_options(
+                populate_existing=True
+            )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")

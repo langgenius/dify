@@ -47,17 +47,33 @@ def test_recovery_class_members():
 
 
 @pytest.mark.parametrize(
-    ("state", "action_kind", "expected"),
+    ("state", "action_kind", "completed_state", "available_action_ids", "expected"),
     [
-        ("build.await_repair", "approve_plan", "run_test"),
-        ("edit.await_repair", "approve_plan", "run_affected_tests"),
-        ("build.await_repair", "approve_repair", "run_test"),
-        ("fix.await_approval", "approve_repair", None),
-        ("build.await_repair", "cancel", None),
+        ("build.await_repair", "approve_plan", "build.execution", ["run_test", "revert"], "run_test"),
+        ("edit.await_repair", "approve_plan", "edit.apply_changes", ["run_affected_tests"], "run_affected_tests"),
+        ("build.await_repair", "approve_repair", "build.execution", ["run_test"], "run_test"),
+        ("edit.await_repair", "approve_repair", "edit.apply_changes", ["run_affected_tests"], "run_affected_tests"),
+        ("fix.await_approval", "approve_repair", "fix.await_verify", ["run_validation"], None),
+        ("build.await_repair", "cancel", "build.execution", ["run_test"], None),
+        ("build.await_repair", "approve_repair", "build.await_repair", ["keep_draft", "revert"], None),
+        ("edit.await_repair", "approve_repair", "edit.await_repair", ["keep_draft", "revert"], None),
+        ("build.await_repair", "approve_repair", "build.await_repair", ["run_test"], None),
+        ("edit.await_repair", "approve_repair", "edit.await_repair", ["run_affected_tests"], None),
+        ("build.await_repair", "approve_repair", "build.execution", [], None),
+        ("edit.await_repair", "approve_repair", "edit.apply_changes", ["recovery_continue", "restart"], None),
+        ("build.await_repair", "approve_repair", "build.execution", ["check_recovery"], None),
+        ("build.plan_approval", "approve_repair", "build.execution", ["run_test"], None),
     ],
 )
-def test_post_canvas_action_is_an_explicit_public_follow_up(state, action_kind, expected):
-    assert post_canvas_action_id(state, action_kind) == expected
+def test_post_canvas_action_requires_an_applied_transition_and_available_follow_up(
+    state, action_kind, completed_state, available_action_ids, expected
+):
+    assert (
+        post_canvas_action_id(
+            state, action_kind, completed_state=completed_state, available_action_ids=available_action_ids
+        )
+        == expected
+    )
 
 
 def test_recovery_ref_fields():
@@ -200,6 +216,10 @@ def test_card_shapes_round_trip():
     assert tr_item.payload == {
         "status": "failed",
         "failure_reason": "One node failed",
+        "outcome": None,
+        "terminal_outputs": None,
+        "executed_node_ids": [],
+        "review_note": None,
         "dify_run_id": "run-1",
     }
 
@@ -544,3 +564,28 @@ def test_sample_session_view_validates():
     dumped = view.model_dump(exclude_none=True)
     assert "conversation" not in dumped
     assert {"app_id", "state", "entry_mode", "checkpoint"}.isdisjoint(dumped)
+
+
+def test_verification_card_schema_preserves_terminal_null_and_absence():
+    from pydantic import TypeAdapter
+
+    adapter = TypeAdapter(TestResultCard)
+    absent = adapter.validate_python({"status": "succeeded"})
+    present = adapter.validate_python(
+        {
+            "status": "succeeded",
+            "outcome": "execution_succeeded_needs_review",
+            "terminal_outputs": {"result": None, "zero": 0, "false": False, "array": [], "object": {}},
+            "executed_node_ids": ["end"],
+            "review_note": "Other paths and goal acceptance were not verified.",
+        }
+    )
+    assert adapter.dump_python(absent)["terminal_outputs"] is None
+    assert adapter.dump_python(present)["terminal_outputs"] == {
+        "result": None,
+        "zero": 0,
+        "false": False,
+        "array": [],
+        "object": {},
+    }
+    assert "outcome" in adapter.json_schema()["properties"]

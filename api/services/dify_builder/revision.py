@@ -140,7 +140,18 @@ def execution_revision(workflow: "Workflow") -> str:
     Key-provider access is required there to compare the same configuration
     that will be mutated, including any concurrent secret changes.
     """
-    graph = dict(workflow.graph_dict)
+    graph = _normalized_graph(dict(workflow.graph_dict))
+    content = {
+        "graph": graph,
+        "features": workflow.features_dict,
+        "environment_variables": [variable.model_dump(mode="json") for variable in workflow.environment_variables],
+        "conversation_variables": [variable.model_dump(mode="json") for variable in workflow.conversation_variables],
+    }
+    return hashlib.sha256(json.dumps(content, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _normalized_graph(graph: Graph) -> Graph:
+    graph = dict(graph)
     graph.pop("viewport", None)
     graph["nodes"] = [
         {
@@ -174,10 +185,11 @@ def execution_revision(workflow: "Workflow") -> str:
         }
         for edge in graph.get("edges", [])
     ]
-    content = {
-        "graph": graph,
-        "features": workflow.features_dict,
-        "environment_variables": [variable.model_dump(mode="json") for variable in workflow.environment_variables],
-        "conversation_variables": [variable.model_dump(mode="json") for variable in workflow.conversation_variables],
-    }
-    return hashlib.sha256(json.dumps(content, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return graph
+
+
+def executable_graph_revision(graph: Graph) -> str:
+    """Opaque digest of executable graph configuration; preserves array order."""
+    return hashlib.sha256(
+        json.dumps(_normalized_graph(graph), sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()

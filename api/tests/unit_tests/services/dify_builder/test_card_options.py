@@ -7,24 +7,43 @@ plan approval. These project the same choice into the fixed interaction dock.
 import pytest
 
 from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind
+from core.dify_builder.models import DifyBuilderContext, MutationIntent, Run
 from core.dify_builder.state import PcState
+from core.dify_builder.verification import publication_decision
 from services.dify_builder.service import (
     _actions_for,
     _decision_for,
     resolve_action_kind,
     resolve_submitted_action,
 )
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, successful_verification
 
 
-def _decision(state: PcState):
-    return _decision_for(state, _actions_for(state))
+def _decision(state: PcState, *, verified: bool = False):
+    port = FakeDifyPort()
+    run = (
+        Run(
+            session_id="session",
+            kind="verify",
+            status="succeeded",
+            immutable=True,
+            verification=successful_verification(port),
+        )
+        if verified
+        else None
+    )
+    publication = publication_decision(
+        run, session_id="session", current_revision="h0", current_graph_revision=port.graph_revision(port.graph)
+    )
+    return _decision_for(state, _actions_for(state, publication=publication))
 
 
-def test_a_gate_offers_its_actions_as_options_not_buttons():
-    decision = _decision(PcState.BUILD_REVIEW)
+@pytest.mark.parametrize("verified", [True, False])
+def test_a_gate_offers_its_actions_as_options_not_buttons(verified: bool):
+    decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
     assert [o.id for o in decision.options] == [
-        "publish_workflow",
+        "publish_workflow" if verified else "run_test",
         "keep_draft",
         "continue_adjusting",
         "revert",
@@ -34,12 +53,14 @@ def test_a_gate_offers_its_actions_as_options_not_buttons():
     assert decision.submit.label == "Submit"
 
 
-def test_exactly_one_option_carries_the_default_badge():
-    decision = _decision(PcState.BUILD_REVIEW)
+@pytest.mark.parametrize("verified", [True, False])
+def test_exactly_one_option_carries_the_default_badge(verified: bool):
+    decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
     defaults = [o.id for o in decision.options if o.is_default]
-    assert defaults == ["publish_workflow"]
-    assert decision.default_option_id == "publish_workflow"
+    expected_default = "publish_workflow" if verified else "run_test"
+    assert defaults == [expected_default]
+    assert decision.default_option_id == expected_default
 
 
 def test_a_destructive_action_keeps_its_tone_as_an_option():
@@ -50,12 +71,14 @@ def test_a_destructive_action_keeps_its_tone_as_an_option():
     assert tones["keep_draft"] == "neutral"
 
 
-def test_an_option_carries_the_state_map_hints_its_action_had():
-    decision = _decision(PcState.BUILD_REVIEW)
+@pytest.mark.parametrize("verified", [True, False])
+def test_an_option_carries_the_state_map_hints_its_action_had(verified: bool):
+    decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
-    publish = next(o for o in decision.options if o.id == "publish_workflow")
-    assert publish.next_state == "build.publish"
-    assert publish.canvas_event == "publish_workflow"
+    option_id = "publish_workflow" if verified else "run_test"
+    option = next(o for o in decision.options if o.id == option_id)
+    assert option.next_state == ("build.publish" if verified else None)
+    assert option.canvas_event == ("publish_workflow" if verified else None)
 
 
 def test_a_single_action_gate_still_becomes_an_option():
@@ -95,7 +118,11 @@ def test_rejecting_a_repair_asks_for_a_reason():
 
 
 def test_options_without_free_text_declare_none():
-    decision = _decision(PcState.FIX_AWAIT_APPROVAL)
+    state = PcState.FIX_AWAIT_APPROVAL
+    context = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})]
+    )
+    decision = _decision_for(state, _actions_for(state, context))
 
     approve = next(o for o in decision.options if o.id == "approve_plan")
     assert approve.input is None

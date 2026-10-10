@@ -21,6 +21,7 @@ def _clear_translation_cache():
 
 class _FakeModel:
     """Records calls; returns canned detection / translation payloads."""
+
     def __init__(self):
         self.translate_calls = 0
 
@@ -39,6 +40,7 @@ def _localizer(monkeypatch, *, detect="zh-Hans", table=None):
         # The request is an index->string object ({"0": src0, ...}); reply with an
         # index-keyed object of translations, matching the hardened protocol.
         import json
+
         req = json.loads(user)
         return {idx: table.get(src, f"<{src}>") for idx, src in req.items()}
 
@@ -70,9 +72,9 @@ def test_detect_language_rejects_non_code_reply(monkeypatch):
 
 def test_localize_translates_catalog_string(monkeypatch):
     loc, _ = _localizer(monkeypatch, table={"Test run": "测试运行"})
-    items = [ConversationItem(kind="test_result", payload={"title": "Test run", "tone": "success"})]
+    items = [ConversationItem(kind="test_result", payload={"failure_reason": "Test run", "tone": "success"})]
     out = loc.localize_items(items, "zh-Hans")
-    assert out[0].payload["title"] == "测试运行"
+    assert out[0].payload["failure_reason"] == "测试运行"
     assert out[0].payload["tone"] == "success"  # enum untouched
 
 
@@ -169,6 +171,7 @@ def test_localize_translates_when_model_wraps_index_object(monkeypatch):
 
     def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
         import json
+
         req = json.loads(user)
         return {"strings": {idx: ("评审" if src == "Review" else "<" + src + ">") for idx, src in req.items()}}
 
@@ -204,3 +207,171 @@ def test_localize_does_not_cache_failures_and_retries(monkeypatch):
 
     loc.localize_items([ConversationItem(kind="summary", payload={"title": "Review"})], "zh-Hans")
     assert calls["n"] == 2  # re-invoked on the next turn (self-heal), not stuck on cached English
+
+
+def test_localize_test_result_translates_only_review_prose_preserving_output_facts(monkeypatch):
+    loc, _ = _localizer(
+        monkeypatch,
+        table={"Review": "评审", "Test run": "测试运行", "Workflow built ({count} nodes)": "已构建（{count} 个节点）"},
+    )
+    items = [
+        ConversationItem(
+            kind="test_result",
+            payload={
+                "status": "succeeded",
+                "outcome": "execution_succeeded_needs_review",
+                "dify_run_id": "Test run",
+                "failure_reason": "Test run",
+                "review_note": "Review",
+                "executed_node_ids": ["Review", "Test run"],
+                "terminal_outputs": {
+                    "text": "Review",
+                    "nested": ["Test run", "Workflow built (3 nodes)", None, False, 0, "", [], {}],
+                },
+            },
+        )
+    ]
+    out = loc.localize_items(items, "zh-Hans")
+    assert out[0].payload == {
+        "status": "succeeded",
+        "outcome": "execution_succeeded_needs_review",
+        "dify_run_id": "Test run",
+        "failure_reason": "测试运行",
+        "review_note": "评审",
+        "executed_node_ids": ["Review", "Test run"],
+        "terminal_outputs": {
+            "text": "Review",
+            "nested": ["Test run", "Workflow built (3 nodes)", None, False, 0, "", [], {}],
+        },
+    }
+
+    nested = out[0].payload["terminal_outputs"]["nested"]
+    assert nested[3] is False
+    assert type(nested[4]) is int
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Other paths and goal acceptance were not verified.",
+        "Other paths and goal acceptance were not verified. "
+        "Draft verification is stale or unavailable; run again before publishing.",
+        "Execution succeeded; output needs review. Other paths and goal acceptance were not verified.",
+        "Execution succeeded; output needs review. Other paths and goal acceptance were not verified. "
+        "Draft verification is stale or unavailable; run again before publishing.",
+        "A required output reference was unresolved or the executed branch produced no terminal output.",
+        "Execution failed.",
+        "Execution outcome is unknown; run again before publishing.",
+    ],
+)
+def test_localize_fixed_verification_prose(monkeypatch, source):
+    loc, _ = _localizer(monkeypatch, table={source: "请检查执行结果"})
+    items = [ConversationItem(kind="test_result", payload={"review_note": source})]
+    assert loc.localize_items(items, "zh-Hans")[0].payload["review_note"] == "请检查执行结果"
+
+
+@pytest.mark.parametrize("variant", ["testdata", "build_requirements", "edit_rules"])
+def test_localize_form_translates_presentation_and_preserves_input_facts(monkeypatch, variant):
+    loc, _ = _localizer(
+        monkeypatch,
+        table={
+            "User message": "用户消息",
+            "Review": "评审",
+            "Adjust any values before Builder continues.": "继续前调整值。",
+        },
+    )
+    payload = {
+        "variant": variant,
+        "title": "Review",
+        "description": "Adjust any values before Builder continues.",
+        "fields": [
+            {
+                "key": "sys.query",
+                "type": "paragraph",
+                "label": "User message",
+                "placeholder": "User message",
+                "hint": "Review",
+                "options": ["User message", "Review"],
+                "default": "User message",
+                "required": True,
+                "max_length": 1024,
+                "allowed_file_types": ["Review"],
+                "allowed_file_extensions": [".txt"],
+                "allowed_file_upload_methods": ["local_file"],
+                "unit": "Review",
+                "number_limits": 2,
+                "json_schema": {
+                    "title": "User message",
+                    "description": "Review",
+                    "properties": {"sys.query": {"const": "User message", "default": "Review"}},
+                },
+            },
+            {"key": "Review", "type": "Review", "label": "Review", "json_schema": "User message"},
+        ],
+        "values": {"sys.query": "User message", "query": "Review", "nested": [None, False, 0, "Review"]},
+        "frozen": False,
+        "interaction_id": "User message",
+        "protocol_extension": {"title": "Review", "value": "User message"},
+    }
+    items = [ConversationItem(kind="form", payload=payload)]
+    out = loc.localize_items(items, "zh-Hans")[0].payload
+
+    assert out["title"] == "评审"
+    assert out["description"] == "继续前调整值。"
+    assert {key: value for key, value in out.items() if key not in {"title", "description", "fields"}} == {
+        "variant": variant,
+        "values": {"sys.query": "User message", "query": "Review", "nested": [None, False, 0, "Review"]},
+        "frozen": False,
+        "interaction_id": "User message",
+        "protocol_extension": {"title": "Review", "value": "User message"},
+    }
+    assert {key: value for key, value in out["fields"][0].items() if key not in {"label", "placeholder", "hint"}} == {
+        "key": "sys.query",
+        "type": "paragraph",
+        "options": ["User message", "Review"],
+        "default": "User message",
+        "required": True,
+        "max_length": 1024,
+        "allowed_file_types": ["Review"],
+        "allowed_file_extensions": [".txt"],
+        "allowed_file_upload_methods": ["local_file"],
+        "unit": "Review",
+        "number_limits": 2,
+        "json_schema": {
+            "title": "User message",
+            "description": "Review",
+            "properties": {"sys.query": {"const": "User message", "default": "Review"}},
+        },
+    }
+    assert out["fields"][0]["label"] == "用户消息"
+    assert out["fields"][0]["placeholder"] == "用户消息"
+    assert out["fields"][0]["hint"] == "评审"
+    assert out["fields"][1]["label"] == "评审"
+    assert out["fields"][1] == {"key": "Review", "type": "Review", "label": "评审", "json_schema": "User message"}
+
+
+@pytest.mark.parametrize(
+    ("source", "translation", "expected"),
+    [
+        (
+            "Provide test inputs and retry: missing sys.query\nUser message {raw} (节点)",
+            "请提供测试输入并重试：{reason}",
+            "请提供测试输入并重试：missing sys.query\nUser message {raw} (节点)",
+        ),
+        (
+            "Publication requires a successful run of the current draft (graph changed (rev-2)\n{raw}). "
+            "Run validation again, then review its outputs.",
+            "发布需要当前草稿成功运行（{reason}）。请重新验证并检查输出。",
+            "发布需要当前草稿成功运行（graph changed (rev-2)\n{raw}）。请重新验证并检查输出。",
+        ),
+    ],
+)
+def test_localize_recovery_reply_preserves_dynamic_reason(monkeypatch, source, translation, expected):
+    templates = {
+        "Provide test inputs and retry: {reason}": translation,
+        "Publication requires a successful run of the current draft ({reason}). "
+        "Run validation again, then review its outputs.": translation,
+    }
+    loc, _ = _localizer(monkeypatch, table=templates)
+    items = [ConversationItem(kind="assistant_turn", payload={"reply_text": source})]
+    assert loc.localize_items(items, "zh-Hans")[0].payload["reply_text"] == expected

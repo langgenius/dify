@@ -577,6 +577,78 @@ class TestDeriveIfElseVarTypes:
         assert "varType" not in conds["c"]
         assert "varType" not in conds["d"]
 
+    def test_derives_declared_direct_http_request_output_types(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        roots = {
+            "status_code": "number",
+            "body": "string",
+            "headers": "object",
+            "files": "array[file]",
+        }
+        nodes = [
+            {"id": "request", "data": {"type": "http-request"}},
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {"id": root, "variable_selector": ["request", root], "value": ""} for root in roots
+                            ],
+                        }
+                    ],
+                },
+            },
+        ]
+
+        assert derive_if_else_var_types(nodes) == ["branch"]
+        conditions = nodes[1]["data"]["cases"][0]["conditions"]
+        assert {condition["id"]: condition["varType"] for condition in conditions} == roots
+
+    def test_preserves_authored_types_and_leaves_unknown_or_nested_outputs_unknown(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        conditions = [
+            {"id": "authored", "variable_selector": ["request", "status_code"], "varType": "string"},
+            {"id": "same-name", "variable_selector": ["other-tool", "status_code"]},
+            {"id": "missing", "variable_selector": ["missing-request", "status_code"]},
+            {"id": "undeclared", "variable_selector": ["request", "response"]},
+            {"id": "nested-header", "variable_selector": ["request", "headers", "content-type"]},
+            {"id": "nested-json", "variable_selector": ["request", "body", "result"]},
+        ]
+        nodes = [
+            {"id": "request", "data": {"type": "http-request"}},
+            {"id": "other-tool", "data": {"type": "tool", "outputs": ["status_code"]}},
+            {
+                "id": "branch",
+                "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": conditions}]},
+            },
+        ]
+
+        assert derive_if_else_var_types(nodes) == []
+        assert conditions[0]["varType"] == "string"
+        assert all("varType" not in condition for condition in conditions[1:])
+
+    def test_http_output_hints_require_exact_http_request_node_type(self):
+        from core.workflow.graph_normalizers import derive_if_else_var_types
+
+        nodes = [
+            {"id": "tool", "data": {"type": "tool", "outputs": ["status_code"]}},
+            {
+                "id": "branch",
+                "data": {
+                    "type": "if-else",
+                    "cases": [{"case_id": "true", "conditions": [{"variable_selector": ["tool", "status_code"]}]}],
+                },
+            },
+        ]
+
+        assert derive_if_else_var_types(nodes) == []
+        assert "varType" not in nodes[1]["data"]["cases"][0]["conditions"][0]
+
 
 # The http-request node exactly as the ESQ1-302 draft stored it (dev app
 # a26c8d2b, node4): a json body whose two items lack ``type``. graphon's

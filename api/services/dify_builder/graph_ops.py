@@ -317,7 +317,12 @@ def _build_node(
 
     node: dict[str, Any] = {
         "id": new_id,
-        "type": flow_type or "custom",
+        "type": {
+            "iteration-start": "custom-iteration-start",
+            "loop-start": "custom-loop-start",
+        }.get(node_type)
+        or flow_type
+        or "custom",
         "position": position if position is not None else _default_position(graph),
         "data": data,
     }

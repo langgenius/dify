@@ -223,31 +223,46 @@ _START_TYPE_TO_VAR_TYPE: Mapping[str, str] = {
 }
 
 
-def _start_variable_types(nodes: list[Any]) -> dict[tuple[str, str], str]:
-    """``(start_node_id, variable_name) -> VarType`` for every certain start variable."""
+_HTTP_REQUEST_OUTPUT_TYPES: Mapping[str, str] = {
+    "status_code": "number",
+    "body": "string",
+    "headers": "object",
+    "files": "array[file]",
+}
+
+
+def _known_variable_types(nodes: list[Any]) -> dict[tuple[str, str], str]:
+    """``(producer_node_id, variable_name) -> VarType`` for declared outputs."""
     out: dict[tuple[str, str], str] = {}
     for node in nodes:
         if not isinstance(node, Mapping):
             continue
         data = node.get("data")
-        if not isinstance(data, Mapping) or data.get("type") != "start":
+        if not isinstance(data, Mapping):
             continue
-        for variable in data.get("variables") or []:
-            if not isinstance(variable, Mapping):
-                continue
-            var_type = _START_TYPE_TO_VAR_TYPE.get(str(variable.get("type") or ""))
-            name = str(variable.get("variable") or "")
-            if var_type and name:
-                out[(str(node.get("id") or ""), name)] = var_type
+        node_type = data.get("type")
+        node_id = str(node.get("id") or "")
+        if node_type == "start":
+            for variable in data.get("variables") or []:
+                if not isinstance(variable, Mapping):
+                    continue
+                var_type = _START_TYPE_TO_VAR_TYPE.get(str(variable.get("type") or ""))
+                name = str(variable.get("variable") or "")
+                if var_type and name:
+                    out[(node_id, name)] = var_type
+        elif node_type == "http-request":
+            out.update({(node_id, name): var_type for name, var_type in _HTTP_REQUEST_OUTPUT_TYPES.items()})
     return out
 
 
 def derive_if_else_var_types(nodes: list[Any]) -> list[str]:
-    """Fill ``varType`` on if-else conditions that lack it, ONLY when the
-    condition reads a start variable whose declared type maps to a certain
-    ``VarType``. Existing values are never overwritten. Returns the ids of the
-    nodes that changed."""
-    known = _start_variable_types(nodes)
+    """Fill missing ``varType`` only for certain declared Start and HTTP outputs.
+
+    HTTP hints apply to direct output roots only (two-part selectors); nested
+    JSON and other producer outputs remain unknown. Existing authored values
+    are never overwritten. Returns the ids of the nodes that changed.
+    """
+    known = _known_variable_types(nodes)
     changed: list[str] = []
     for node in nodes:
         if not isinstance(node, Mapping):

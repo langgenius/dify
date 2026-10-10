@@ -29,7 +29,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from typing import Any, ClassVar, cast
@@ -198,12 +198,13 @@ _DECLARABLE_OUTPUT_NODE_TYPES = frozenset(
 _DECLARED_OUTPUT_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]{0,29}")
 
 
-# Appended as a trailing user message on the SECOND (and only) attempt when
-# the first response wasn't parseable as JSON. Keep this terse — the model
-# already has its full instructions in the original system message; this is
-# a corrective nudge, not a re-statement of the spec.
+# Included in a trailing user message on the SECOND (and only) attempt when
+# the first response failed JSON or config-envelope validation. Keep this
+# terse — the model already has its full instructions in the original system
+# message; this is a corrective nudge, not a re-statement of the spec.
 _JSON_RETRY_HINT = (
-    "Your previous response was not valid JSON. Return ONLY a single JSON object. "
+    "Correct the rejected response using the stage and detail below. Return ONLY a single JSON object "
+    "matching the required stage schema. "
     "Do not include any prose, markdown code fences, comments, or trailing commas."
 )
 
@@ -1039,9 +1040,10 @@ class WorkflowGenerator:
         messages,
         model_parameters: dict[str, Any],
         stage: str,
+        validate: Callable[[dict[str, Any]], None] | None = None,
     ) -> dict[str, Any]:
         """
-        Call the LLM and parse the response as JSON, retrying ONCE on parse failure.
+        Parse an object and optionally validate it within one correction budget.
 
         Why one retry only: each LLM call is expensive (full system+user
         prompt), so an open retry loop would burn quota for a model that's
@@ -1050,17 +1052,29 @@ class WorkflowGenerator:
         markdown fence or trailing prose — without masking a model that
         simply can't follow the spec.
 
-        On the second failure ``_StageJSONError`` bubbles up so the outer
-        runner can tag it ``INVALID_JSON`` in the result envelope.
+        JSON and schema rejections share two attempts. ``validate`` must raise
+        ``_StageSchemaError`` with a safe detail containing no response values.
+        The last rejection determines ``INVALID_JSON`` or ``INVALID_SCHEMA``.
+        Provider errors propagate through the existing invoke retry boundary.
         """
-        last_detail = ""
+        last_error: _StageJSONError | _StageSchemaError | None = None
         for attempt in range(2):
             # The corrective nudge goes in as a trailing USER message, not a
             # system one: a system message appended after the user turn is
             # silently dropped or reordered by several providers (Anthropic,
             # Gemini), so the retry hint would never reach the model. A user
             # turn is always the latest instruction the model answers.
-            attempt_messages = messages if attempt == 0 else [*messages, UserPromptMessage(content=_JSON_RETRY_HINT)]
+            attempt_messages = messages
+            if last_error is not None:
+                correction = json.dumps(
+                    {
+                        "instruction": _JSON_RETRY_HINT,
+                        "stage": stage,
+                        "code": _stage_error_to_envelope_code(last_error),
+                        "detail": str(last_error),
+                    }
+                )
+                attempt_messages = [*messages, UserPromptMessage(content=correction)]
             response = cls._invoke_with_retry(
                 model_instance=model_instance,
                 prompt_messages=attempt_messages,
@@ -1068,19 +1082,43 @@ class WorkflowGenerator:
                 stage=stage,
             )
             text = response.message.get_text_content() or ""
+            requested_max_tokens = model_parameters.get("max_tokens")
+            usage = getattr(response, "usage", None)
+            token_counts = [
+                getattr(usage, field, None) for field in ("prompt_tokens", "completion_tokens", "total_tokens")
+            ]
+            logger.info(
+                "Workflow generator response metadata: stage=%s attempt=%s response_characters=%s "
+                "requested_max_tokens=%s effective_provider_limit=unavailable prompt_tokens=%s "
+                "completion_tokens=%s total_tokens=%s finish_reason=unavailable",
+                stage,
+                attempt + 1,
+                len(text),
+                requested_max_tokens if type(requested_max_tokens) is int else "unavailable",
+                *(value if type(value) is int else "unavailable" for value in token_counts),
+            )
             try:
                 parsed = json_repair.loads(text)
             except Exception as e:
-                last_detail = str(e)
-                logger.info("Workflow generator: %s JSON parse failed on attempt %s: %s", stage, attempt + 1, e)
+                # Parser exception messages can embed rejected response text.
+                last_error = _StageJSONError(stage, f"JSON parse failed: {type(e).__name__}")
+                logger.info("Workflow generator: %s JSON parse failed on attempt %s", stage, attempt + 1)
                 continue
             if isinstance(parsed, dict):
+                if validate is not None:
+                    try:
+                        validate(parsed)
+                    except _StageSchemaError as e:
+                        last_error = e
+                        logger.info("Workflow generator: %s schema rejected on attempt %s", stage, attempt + 1)
+                        continue
                 if attempt > 0:
-                    logger.info("Workflow generator: %s JSON parse recovered on retry", stage)
+                    logger.info("Workflow generator: %s response recovered on retry", stage)
                 return parsed
-            last_detail = f"Non-object JSON: {type(parsed).__name__}"
+            last_error = _StageJSONError(stage, f"Non-object JSON: {type(parsed).__name__}")
             logger.info("Workflow generator: %s non-object JSON on attempt %s", stage, attempt + 1)
-        raise _StageJSONError(stage, last_detail or "JSON parse failed")
+        assert last_error is not None
+        raise last_error
 
     # ------------------------------------------------------------------
     # Planner
@@ -1140,6 +1178,8 @@ class WorkflowGenerator:
         for node in nodes:
             if not isinstance(node, dict) or not node.get("node_type"):
                 raise _StageSchemaError("Planner", f"malformed node entry: {node!r}")
+            if node.get("node_type") in ("iteration-start", "loop-start"):
+                raise _StageSchemaError("Planner", "container start markers are owned by the generator")
             node_id = node.get("id")
             if not isinstance(node_id, str) or not node_id.strip():
                 raise _StageSchemaError("Planner", f"node missing non-empty id: {node!r}")
@@ -1189,8 +1229,9 @@ class WorkflowGenerator:
 
         Refine plans can mark existing nodes as ``keep``; those nodes bypass
         the model entirely and retain their full data config. Every other node
-        gets one compact call, with at most ``_node_builder_max_workers()``
-        calls in flight. Any fragment failure aborts the graph, preserving the
+        gets one compact call and at most one JSON/config-envelope correction,
+        with at most ``_node_builder_max_workers()`` calls in flight. Exhausted
+        or permanent fragment failures abort the graph, preserving the
         generator's existing fail-closed contract.
         """
         existing_by_id = {
@@ -1326,6 +1367,14 @@ class WorkflowGenerator:
             node_outputs_section=format_node_outputs_section(node_outputs, node_id.strip(), node_types),
             plan_json=plan_json,
         )
+        stage = f"Builder {node_id}"
+
+        def validate_config(parsed: dict[str, Any]) -> None:
+            if "config" not in parsed:
+                raise _StageSchemaError(stage, "missing 'config' object")
+            if not isinstance(parsed["config"], dict):
+                raise _StageSchemaError(stage, f"'config' must be an object, got {type(parsed['config']).__name__}")
+
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
             messages=[
@@ -1333,12 +1382,10 @@ class WorkflowGenerator:
                 UserPromptMessage(content=user_prompt),
             ],
             model_parameters=model_parameters,
-            stage=f"Builder {node_id}",
+            stage=stage,
+            validate=validate_config,
         )
-        config = parsed.get("config")
-        if not isinstance(config, dict):
-            raise _StageSchemaError(f"Builder {node_id}", "missing 'config' object")
-        return cast(dict[str, Any], config)
+        return cast(dict[str, Any], parsed["config"])
 
     @staticmethod
     def _hydrate_tool_nodes(
@@ -2187,6 +2234,21 @@ class WorkflowGenerator:
         """
         return ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
 
+    @staticmethod
+    def _is_builtin_simple_code(data: dict[str, Any]) -> bool:
+        """The audited code/simple_code builtin emits TEXT messages only.
+
+        Node output_schema is model-controlled in the shared cmd+K path; it
+        cannot expand this producer's known contract. Unknown tool identities
+        still need the generic dynamic-output compatibility below.
+        """
+        return (
+            data.get("type") == BuiltinNodeTypes.TOOL
+            and data.get("provider_type") == "builtin"
+            and (data.get("provider_id") or data.get("provider_name")) == "code"
+            and data.get("tool_name") == "simple_code"
+        )
+
     @classmethod
     def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:
         """
@@ -2201,8 +2263,8 @@ class WorkflowGenerator:
         ``["node2", "structured_output", "title"]``). The engine resolves such
         a reference against the segment the first two elements name
         (``VariablePool.get``), so we validate the ROOT and leave the depth to
-        the run time. Start and llm are stricter: they know which of their
-        outputs are objects at all.
+        the run time. Start and llm are stricter about object outputs, and the
+        audited code/simple_code tool rejects traversal through scalar text.
         """
         data = node.get("data") or {}
         node_type = data.get("type")
@@ -2245,16 +2307,14 @@ class WorkflowGenerator:
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
             return root == "output"
         if node_type == BuiltinNodeTypes.TOOL:
-            # A tool's outputs are NOT opaque: tool_node.py fixes the envelope
-            # to text/files/json plus the provider's declared variables, and
-            # the generator copies the provider's output_schema onto the node
-            # when it builds it. Validate against both.
-            #
-            # Fails OPEN when no schema is present: this file is shared with
-            # cmd+K, and a tool we cannot describe must keep behaving exactly
-            # as it did before. We reject only references we can prove wrong.
-            # An unreadable schema shape (not a dict, or a `properties` that
-            # isn't a dict) also fails open rather than raising.
+            if cls._is_builtin_simple_code(data):
+                # simple_code.py yields create_text_message(result), never
+                # named VARIABLE messages. Printed JSON is still scalar text;
+                # even invented node schema properties cannot declare fields.
+                return root in {"text", "files", "json"} and not (root == "text" and tail)
+            # Other providers may emit declared or dynamic VARIABLE outputs.
+            # Preserve the standard envelope and schema-less compatibility:
+            # absent/unreadable properties do not prove a custom root invalid.
             if root in {"text", "files", "json"}:
                 return True
             output_schema = data.get("output_schema")
@@ -2919,8 +2979,15 @@ class WorkflowGenerator:
     @classmethod
     def _fill_node_defaults(cls, node: dict[str, Any]) -> None:
         """Ensure every node has the wrapper-level fields the Studio canvas needs."""
-        node.setdefault("type", "custom")
         data = node.setdefault("data", {})
+        marker_flow_type = {
+            "iteration-start": "custom-iteration-start",
+            "loop-start": "custom-loop-start",
+        }.get(data.get("type"))
+        if marker_flow_type:
+            node["type"] = marker_flow_type
+        else:
+            node.setdefault("type", "custom")
         data.setdefault("title", node.get("id", "Node"))
         data.setdefault("desc", "")
         data.setdefault("selected", False)
@@ -3299,13 +3366,15 @@ class WorkflowGenerator:
                 continue
             if cls._declares_variable(target, var):
                 continue
-            out.append(
-                _err(
-                    WorkflowGenerateErrorCode.UNRESOLVED_REFERENCE,
-                    f"Reference {{#{node_id}.{var}#}} not declared on node {node_id!r}",
-                    node_id=node_id,
+            detail = f"Reference {{#{node_id}.{var}#}} not declared on node {node_id!r}"
+            if cls._is_builtin_simple_code(target.get("data") or {}):
+                detail += (
+                    "; builtin/code/simple_code exposes only the standard roots text, files, json. "
+                    "Printed JSON remains scalar text and does not declare named fields. "
+                    "Use a native Code node with declared typed outputs (for example boolean valid and array items), "
+                    "or explicitly parse the text into declared typed outputs before consuming those fields."
                 )
-            )
+            out.append(_err(WorkflowGenerateErrorCode.UNRESOLVED_REFERENCE, detail, node_id=node_id))
         return out
 
 
