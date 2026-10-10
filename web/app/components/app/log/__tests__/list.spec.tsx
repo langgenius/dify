@@ -1,9 +1,8 @@
-import type { ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -35,7 +34,8 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-log', () => ({
+vi.mock('@/service/use-log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-log')>()),
   useChatConversationDetail: () => ({
     data: mockChatConversationDetail,
   }),
@@ -49,6 +49,20 @@ vi.mock('@/service/log', () => ({
   fetchChatMessages: (...args: unknown[]) => mockFetchChatMessages(...args),
   updateLogMessageFeedbacks: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args),
   updateLogMessageAnnotations: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
+  fetchRunDetail: vi.fn().mockResolvedValue({
+    id: 'run-1',
+    status: 'succeeded',
+    inputs: {},
+    outputs: {},
+    total_tokens: 1,
+    total_steps: 1,
+    elapsed_time: 0,
+    created_at: 1710000000,
+  }),
+  fetchTracingList: vi.fn().mockResolvedValue({ data: [] }),
+  fetchAgentLogDetail: vi
+    .fn()
+    .mockResolvedValue({ meta: { status: 'succeeded' }, iterations: [], files: [] }),
 }))
 
 vi.mock('@/service/annotation', () => ({
@@ -151,6 +165,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
             onClick={() =>
               onOpenLog({
                 id: 'log-2',
+                conversationId: 'conversation-1',
                 content: 'answer',
                 isAnswer: true,
                 agent_thoughts: [
@@ -214,32 +229,12 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ floating, onCancel }: { floating?: boolean; onCancel: () => void }) => (
-    <div data-testid="agent-log-modal" data-floating={String(floating)}>
-      <button onClick={onCancel}>close-agent-log-modal</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/message-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="message-log-modal">
-      <button onClick={onCancel}>close-message-log-modal</button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/base/prompt-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="prompt-log-modal">
       <button onClick={onCancel}>close-prompt-log-modal</button>
     </div>
   ),
-}))
-
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 const createLogs = () => ({
@@ -312,7 +307,9 @@ const renderConversationList = ({
   logs?: any
   searchParams?: string
 } = {}) => {
-  const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { timezone: 'Asia/Shanghai' },
+  })
   return renderWithNuqs(
     <QueryClientTestProvider queryClient={queryClient}>
       <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
@@ -758,12 +755,26 @@ describe('ConversationList', () => {
       })
       const user = userEvent.setup()
       await user.click(await screen.findByRole('button', { name: `open-${kind}-log` }))
-      const modalKind = kind === 'workflow' ? 'message' : kind
-      expect(screen.getByTestId(`${modalKind}-log-modal`)).toBeInTheDocument()
-      for (const other of ['message', 'agent', 'prompt'].filter((value) => value !== modalKind))
-        expect(screen.queryByTestId(`${other}-log-modal`)).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: `close-${modalKind}-log-modal` }))
-      expect(screen.queryByTestId(`${modalKind}-log-modal`)).not.toBeInTheDocument()
+      if (kind === 'prompt') {
+        expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'close-prompt-log-modal' }))
+        expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
+      } else {
+        await waitFor(() => expect(screen.getByText('runLog.detail')).toBeInTheDocument())
+        const dialog = screen.getAllByRole('dialog').at(-1)!
+        expect(dialog).toHaveAccessibleName(
+          kind === 'workflow' ? 'appLog.runDetail.title' : 'appLog.runDetail.workflowTitle',
+        )
+        await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+        await waitFor(() => expect(screen.queryByText('runLog.detail')).not.toBeInTheDocument())
+        await user.click(screen.getByRole('button', { name: `open-${kind}-log` }))
+        await waitFor(() => expect(screen.getByText('runLog.detail')).toBeInTheDocument())
+        await user.click(
+          within(screen.getAllByRole('dialog').at(-1)!).getByRole('button', {
+            name: 'common.operation.close',
+          }),
+        )
+      }
       await user.click(screen.getByRole('button', { name: 'open-no-log' }))
       expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
     },
@@ -781,16 +792,24 @@ describe('ConversationList', () => {
     })
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
-    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
-    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('runLog.detail')).toBeInTheDocument())
+    await user.click(
+      within(screen.getAllByRole('dialog').at(-1)!).getByRole('button', {
+        name: 'common.operation.close',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByText('runLog.detail')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByText('hello world'))
     await screen.findByTestId('chat-panel')
-    expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('runLog.detail')).not.toBeInTheDocument()
   })
   it('should clear a selected log when URL navigation changes or closes the conversation', async () => {
     const user = userEvent.setup()
-    const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
+    const { queryClient } = createConsoleQueryWrapper({
+      accountProfile: { timezone: 'Asia/Shanghai' },
+    })
     const appDetail = createAppDetailFixture({ mode: AppModeEnum.ADVANCED_CHAT })
     const view = (searchParams: string) => (
       <NuqsTestingAdapter searchParams={searchParams} hasMemory>
@@ -810,16 +829,16 @@ describe('ConversationList', () => {
     }
     const { rerender } = render(view('?conversation_id=conversation-1'))
     await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
-    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('runLog.detail')).toBeInTheDocument())
     mockChatConversationDetail = { ...mockChatConversationDetail, id: 'conversation-2' }
     rerender(view('?conversation_id=conversation-2'))
-    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('runLog.detail')).not.toBeInTheDocument())
     await user.click(await screen.findByRole('button', { name: 'open-agent-log' }))
-    expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('runLog.detail')).toBeInTheDocument())
     rerender(view(''))
-    await waitFor(() => expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     rerender(view('?conversation_id=conversation-2'))
     await screen.findByTestId('chat-panel')
-    expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('runLog.detail')).not.toBeInTheDocument()
   })
 })

@@ -44,7 +44,6 @@ type FeedbackTooltipProps = {
 
 const feedbackTooltipClassName = 'max-w-[260px]'
 const answerActiveFlexClassName = 'group-hover:flex group-has-[[data-popup-open]]:flex'
-const answerActiveBlockClassName = 'group-hover:block group-has-[[data-popup-open]]:block'
 const feedbackActionsClassName =
   'flex pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100'
 const accentPressedClassName =
@@ -475,7 +474,7 @@ function Operation({
           </DialogContent>
         </Dialog>
         {availableLogAction && !isOpeningStatement && (
-          <div className={cn('hidden', answerActiveBlockClassName)}>
+          <div className="pointer-events-none absolute opacity-0 group-hover:pointer-events-auto group-hover:static group-hover:opacity-100 group-has-[[data-popup-open]]:pointer-events-auto group-has-[[data-popup-open]]:static group-has-[[data-popup-open]]:opacity-100 focus-within:pointer-events-auto focus-within:static focus-within:opacity-100">
             <Log logItem={item} onOpenLog={availableLogAction} />
           </div>
         )}

@@ -30,7 +30,7 @@ import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-in
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import { toast } from '@/app/components/app/configuration/toast'
 import TextGeneration from '@/app/components/app/text-generate/item'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
+import { AgentLogModal } from '@/app/components/base/agent-log-modal'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import {

@@ -1,7 +1,6 @@
-import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useClickAway } from 'ahooks'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,22 +16,18 @@ type MessageLogModalProps = {
   currentLogItem?: IChatItem
   defaultTab?: string
   width: number
-  fixedWidth?: boolean
-  onCancel: () => void
-}
-const MessageLogModal: FC<MessageLogModalProps> = ({
-  appId,
-  currentLogItem,
-  defaultTab = 'DETAIL',
-  width,
-  fixedWidth,
-  onCancel,
-}) => {
+} & (
+  | { fixedWidth?: false; open: boolean; onOpenChange: (open: boolean) => void }
+  | { fixedWidth: true; onCancel: () => void }
+)
+
+export function MessageLogModal(props: MessageLogModalProps) {
+  const { appId, currentLogItem, defaultTab = 'DETAIL', width } = props
   const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
 
   useClickAway(() => {
-    if (fixedWidth) onCancel()
+    if (props.fixedWidth) props.onCancel()
   }, ref)
 
   if (!currentLogItem || !currentLogItem.workflow_run_id) return null
@@ -43,14 +38,12 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <DialogTitle className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">
         {t(($) => $['runDetail.title'], { ns: 'appLog' })}
       </DialogTitle>
-      <button
-        type="button"
+      <DialogClose
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onCancel}
       >
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-      </button>
+      </DialogClose>
       <Run
         hideResult
         activeTab={activeTab}
@@ -60,14 +53,9 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
     </>
   )
 
-  if (!fixedWidth) {
+  if (!props.fixedWidth) {
     return (
-      <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) onCancel()
-        }}
-      >
+      <Dialog open={props.open} onOpenChange={props.onOpenChange}>
         <DialogContent
           backdropProps={{ className: 'bg-transparent!' }}
           className="top-16! bottom-4! left-[max(8px,calc(100vw-1136px))]! flex max-h-none! w-120! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! flex-col overflow-hidden! rounded-xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! pt-3! shadow-xl!"
@@ -97,7 +85,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onCancel}
+        onClick={props.onCancel}
       >
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
       </button>
@@ -110,5 +98,3 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
     </div>
   )
 }
-
-export default MessageLogModal

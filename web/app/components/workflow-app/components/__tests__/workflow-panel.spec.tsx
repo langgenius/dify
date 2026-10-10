@@ -62,8 +62,16 @@ vi.mock('@/app/components/workflow/panel', () => ({
 }))
 
 vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
-    const LazyComp = React.lazy(loader)
+  default: (
+    loader: () => Promise<
+      | React.ComponentType<Record<string, unknown>>
+      | { default: React.ComponentType<Record<string, unknown>> }
+    >,
+  ) => {
+    const LazyComp = React.lazy(async () => {
+      const loaded = await loader()
+      return typeof loaded === 'function' ? { default: loaded } : loaded
+    })
     return function DynamicWrapper(props: Record<string, unknown>) {
       return React.createElement(
         React.Suspense,

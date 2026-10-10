@@ -420,9 +420,6 @@ describe('Operation', () => {
       expect(screen.getByTestId('operation-actions')).toHaveClass(
         'group-has-[[data-popup-open]]:flex',
       )
-      expect(
-        screen.getByRole('button', { name: 'operation.log' }).parentElement?.parentElement,
-      ).toHaveClass('group-has-[[data-popup-open]]:block')
     })
 
     it('should not show prompt log for opening statements', () => {

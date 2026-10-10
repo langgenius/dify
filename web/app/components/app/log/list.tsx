@@ -44,11 +44,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelInfo from '@/app/components/app/log/model-info'
 import TextGeneration from '@/app/components/app/text-generate/item'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
+import { AgentLogModal } from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import MessageLogModal from '@/app/components/base/message-log-modal'
+import { MessageLogModal } from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -172,6 +172,12 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
   })
   const { formatTime } = useTimestamp()
   const [selectedLogItem, setSelectedLogItem] = useState<IChatItem>()
+  const [logOpen, setLogOpen] = useState(false)
+
+  const handleOpenLog = (item: IChatItem) => {
+    setSelectedLogItem(item)
+    setLogOpen(true)
+  }
   const { t } = useTranslation(['appLog', 'common'])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
@@ -529,7 +535,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
               noChatInput
-              onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
+              onOpenLog={isAdvanced ? handleOpenLog : undefined}
               hideProcessDetail
               chatContainerInnerClassName="px-3"
               switchSibling={switchSibling}
@@ -570,7 +576,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
                 onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
                 noChatInput
-                onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
+                onOpenLog={isAdvanced ? handleOpenLog : undefined}
                 hideProcessDetail
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
@@ -593,7 +599,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
             appId={appDetail.id}
             width={width}
             currentLogItem={selectedLogItem}
-            onCancel={() => setSelectedLogItem(undefined)}
+            open={logOpen}
+            onOpenChange={setLogOpen}
           />
         </WorkflowContextProvider>
       )}
@@ -603,14 +610,15 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           floating
           width={width}
           currentLogItem={selectedLogItem}
-          onCancel={() => setSelectedLogItem(undefined)}
+          open={logOpen}
+          onOpenChange={setLogOpen}
         />
       )}
-      {logKind === 'prompt' && (
+      {logOpen && logKind === 'prompt' && (
         <PromptLogModal
           width={width}
           currentLogItem={selectedLogItem}
-          onCancel={() => setSelectedLogItem(undefined)}
+          onCancel={() => setLogOpen(false)}
         />
       )}
     </div>

@@ -2,10 +2,11 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
-import { useEffect } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { useEffect, useState } from 'react'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
-import MessageLogModal from '.'
+import { MessageLogModal } from '.'
 
 const mockRunDetail: WorkflowRunDetailResponse = {
   id: 'run-demo-1',
@@ -122,15 +123,39 @@ const useMessageLogMocks = () => {
   }, [])
 }
 
-type MessageLogModalProps = React.ComponentProps<typeof MessageLogModal>
+type MessageLogPreviewProps = {
+  appId: string
+  defaultTab?: string
+  width: number
+  fixedWidth: boolean
+}
 
-const MessageLogPreview = (props: MessageLogModalProps) => {
+const MessageLogPreview = (props: MessageLogPreviewProps) => {
   useMessageLogMocks()
+  const [open, setOpen] = useState(true)
 
   return (
     <div className="relative min-h-160 w-full bg-background-default-subtle p-6">
       <WorkflowContextProvider>
-        <MessageLogModal {...props} currentLogItem={mockCurrentLogItem} />
+        <Button onClick={() => setOpen(true)}>Open log</Button>
+        {props.fixedWidth ? (
+          open && (
+            <MessageLogModal
+              {...props}
+              fixedWidth
+              currentLogItem={mockCurrentLogItem}
+              onCancel={() => setOpen(false)}
+            />
+          )
+        ) : (
+          <MessageLogModal
+            {...props}
+            fixedWidth={false}
+            currentLogItem={mockCurrentLogItem}
+            open={open}
+            onOpenChange={setOpen}
+          />
+        )}
       </WorkflowContextProvider>
     </div>
   )
@@ -153,9 +178,6 @@ const meta = {
     defaultTab: 'DETAIL',
     width: 960,
     fixedWidth: true,
-    onCancel: () => {
-      console.log('Modal closed')
-    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof MessageLogPreview>

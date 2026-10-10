@@ -20,7 +20,7 @@ vi.mock('@/context/event-emitter', () => ({
 vi.mock('@/app/components/app/configuration/debug/chat-user-input', () => ({ default: () => null }))
 vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({ default: () => null }))
 vi.mock('../debug-with-multiple-model', () => ({ default: () => null }))
-vi.mock('@/app/components/base/agent-log-modal', () => ({ default: () => null }))
+vi.mock('@/app/components/base/agent-log-modal', () => ({ AgentLogModal: () => null }))
 vi.mock('@/app/components/app/text-generate/item', () => ({ default: () => null }))
 vi.mock('@/service/debug', () => ({ sendCompletionMessage: vi.fn() }))
 vi.mock('@/app/components/app/configuration/toast', () => ({ toast: { error: vi.fn() } }))
