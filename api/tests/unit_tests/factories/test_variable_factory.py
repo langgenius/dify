@@ -1,4 +1,5 @@
 import math
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
@@ -39,31 +40,31 @@ from graphon.variables.segments import (
 from graphon.variables.types import SegmentType
 
 
-def test_string_variable():
+def test_string_variable() -> None:
     test_data = {"value_type": "string", "name": "test_text", "value": "Hello, World!"}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, StringVariable)
 
 
-def test_integer_variable():
+def test_integer_variable() -> None:
     test_data = {"value_type": "number", "name": "test_int", "value": 42}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, IntegerVariable)
 
 
-def test_float_variable():
+def test_float_variable() -> None:
     test_data = {"value_type": "number", "name": "test_float", "value": 3.14}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
 
 
-def test_secret_variable():
+def test_secret_variable() -> None:
     test_data = {"value_type": "secret", "name": "test_secret", "value": "secret_value"}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, SecretVariable)
 
 
-def test_llm_environment_variable():
+def test_llm_environment_variable() -> None:
     result = variable_factory.build_environment_variable_from_mapping(
         {
             "value_type": "llm",
@@ -85,7 +86,7 @@ def test_llm_environment_variable():
     assert dumped["value"]["completion_params"] == {"temperature": 0.8}
 
 
-def test_llm_environment_variable_normalizes_selector_to_name():
+def test_llm_environment_variable_normalizes_selector_to_name() -> None:
     result = variable_factory.build_environment_variable_from_mapping(
         {
             "value_type": "llm",
@@ -107,20 +108,20 @@ def test_llm_environment_variable_normalizes_selector_to_name():
         {"provider": "provider", "name": "model", "mode": "chat", "completion_params": []},
     ],
 )
-def test_llm_environment_variable_rejects_invalid_model_selection(value):
+def test_llm_environment_variable_rejects_invalid_model_selection(value: dict[str, object]) -> None:
     with pytest.raises(VariableError, match="invalid LLM environment variable"):
         variable_factory.build_environment_variable_from_mapping(
             {"value_type": "llm", "name": "shared_model", "value": value}
         )
 
 
-def test_invalid_value_type():
+def test_invalid_value_type() -> None:
     test_data = {"value_type": "unknown", "name": "test_invalid", "value": "value"}
     with pytest.raises(VariableError):
         variable_factory.build_conversation_variable_from_mapping(test_data)
 
 
-def test_build_a_blank_string():
+def test_build_a_blank_string() -> None:
     result = variable_factory.build_conversation_variable_from_mapping(
         {
             "value_type": "string",
@@ -132,7 +133,7 @@ def test_build_a_blank_string():
     assert result.value == ""
 
 
-def test_build_a_object_variable_with_none_value():
+def test_build_a_object_variable_with_none_value() -> None:
     var = variable_factory.build_segment(
         {
             "key1": None,
@@ -142,7 +143,7 @@ def test_build_a_object_variable_with_none_value():
     assert var.value["key1"] is None
 
 
-def test_object_variable():
+def test_object_variable() -> None:
     mapping = {
         "id": str(uuid4()),
         "value_type": "object",
@@ -159,7 +160,7 @@ def test_object_variable():
     assert isinstance(variable.value["key2"], int)
 
 
-def test_array_string_variable():
+def test_array_string_variable() -> None:
     mapping = {
         "id": str(uuid4()),
         "value_type": "array[string]",
@@ -176,7 +177,7 @@ def test_array_string_variable():
     assert isinstance(variable.value[1], str)
 
 
-def test_array_number_variable():
+def test_array_number_variable() -> None:
     mapping = {
         "id": str(uuid4()),
         "value_type": "array[number]",
@@ -193,7 +194,7 @@ def test_array_number_variable():
     assert isinstance(variable.value[1], float)
 
 
-def test_build_segment_scalar_values():
+def test_build_segment_scalar_values() -> None:
     @dataclass
     class TestCase:
         value: Any
@@ -213,7 +214,7 @@ def test_build_segment_scalar_values():
         assert seg == c.expected, f"Test case {idx} failed: {c.description}"
 
 
-def test_array_object_variable():
+def test_array_object_variable() -> None:
     mapping = {
         "id": str(uuid4()),
         "value_type": "array[object]",
@@ -240,7 +241,7 @@ def test_array_object_variable():
     assert isinstance(variable.value[1]["key2"], int)
 
 
-def test_variable_cannot_large_than_200_kb():
+def test_variable_cannot_large_than_200_kb() -> None:
     with pytest.raises(VariableError):
         variable_factory.build_conversation_variable_from_mapping(
             {
@@ -252,7 +253,7 @@ def test_variable_cannot_large_than_200_kb():
         )
 
 
-def test_conversation_variable_description_cannot_exceed_255_chars():
+def test_conversation_variable_description_cannot_exceed_255_chars() -> None:
     with pytest.raises(VariableError, match="description of variable 'test_text' is too long"):
         variable_factory.build_conversation_variable_from_mapping(
             {
@@ -265,13 +266,13 @@ def test_conversation_variable_description_cannot_exceed_255_chars():
         )
 
 
-def test_array_none_variable():
+def test_array_none_variable() -> None:
     var = variable_factory.build_segment([None, None, None, None])
     assert isinstance(var, ArrayAnySegment)
     assert var.value == [None, None, None, None]
 
 
-def test_build_segment_none_type():
+def test_build_segment_none_type() -> None:
     """Test building NoneSegment from None value."""
     segment = variable_factory.build_segment(None)
     assert isinstance(segment, NoneSegment)
@@ -279,7 +280,7 @@ def test_build_segment_none_type():
     assert segment.value_type == SegmentType.NONE
 
 
-def test_build_segment_none_type_properties():
+def test_build_segment_none_type_properties() -> None:
     """Test NoneSegment properties and methods."""
     segment = variable_factory.build_segment(None)
     assert segment.text == ""
@@ -288,7 +289,7 @@ def test_build_segment_none_type_properties():
     assert segment.to_object() is None
 
 
-def test_build_segment_array_file_single_file():
+def test_build_segment_array_file_single_file() -> None:
     """Test building ArrayFileSegment from list with single file."""
     file = File(
         file_id="test_file_id",
@@ -308,7 +309,7 @@ def test_build_segment_array_file_single_file():
     assert segment.value_type == SegmentType.ARRAY_FILE
 
 
-def test_build_segment_array_file_multiple_files():
+def test_build_segment_array_file_multiple_files() -> None:
     """Test building ArrayFileSegment from list with multiple files."""
     file1 = File(
         file_id="test_file_id_1",
@@ -340,7 +341,7 @@ def test_build_segment_array_file_multiple_files():
     assert segment.value_type == SegmentType.ARRAY_FILE
 
 
-def test_build_segment_array_file_empty_list():
+def test_build_segment_array_file_empty_list() -> None:
     """Test building ArrayFileSegment from empty list should create ArrayAnySegment."""
     segment = variable_factory.build_segment([])
     assert isinstance(segment, ArrayAnySegment)
@@ -348,7 +349,7 @@ def test_build_segment_array_file_empty_list():
     assert segment.value_type == SegmentType.ARRAY_ANY
 
 
-def test_build_segment_array_any_mixed_types():
+def test_build_segment_array_any_mixed_types() -> None:
     """Test building ArrayAnySegment from list with mixed types."""
     mixed_values = ["string", 42, 3.14, {"key": "value"}, None]
     segment = variable_factory.build_segment(mixed_values)
@@ -357,7 +358,7 @@ def test_build_segment_array_any_mixed_types():
     assert segment.value_type == SegmentType.ARRAY_ANY
 
 
-def test_build_segment_array_any_with_nested_arrays():
+def test_build_segment_array_any_with_nested_arrays() -> None:
     """Test building ArrayAnySegment from list containing arrays."""
     nested_values = [["nested", "array"], [1, 2, 3], "string"]
     segment = variable_factory.build_segment(nested_values)
@@ -366,7 +367,7 @@ def test_build_segment_array_any_with_nested_arrays():
     assert segment.value_type == SegmentType.ARRAY_ANY
 
 
-def test_build_segment_array_any_mixed_with_files():
+def test_build_segment_array_any_mixed_with_files() -> None:
     """Test building ArrayAnySegment from list with files and other types."""
     file = File(
         file_id="test_file_id",
@@ -386,7 +387,7 @@ def test_build_segment_array_any_mixed_with_files():
     assert segment.value_type == SegmentType.ARRAY_ANY
 
 
-def test_build_segment_array_any_all_none_values():
+def test_build_segment_array_any_all_none_values() -> None:
     """Test building ArrayAnySegment from list with all None values."""
     none_values = [None, None, None]
     segment = variable_factory.build_segment(none_values)
@@ -395,7 +396,7 @@ def test_build_segment_array_any_all_none_values():
     assert segment.value_type == SegmentType.ARRAY_ANY
 
 
-def test_build_segment_array_file_properties():
+def test_build_segment_array_file_properties() -> None:
     """Test ArrayFileSegment properties and methods."""
     file1 = File(
         file_id="test_file_id_1",
@@ -428,7 +429,7 @@ def test_build_segment_array_file_properties():
     assert segment.to_object() == [file1, file2]
 
 
-def test_build_segment_array_any_properties():
+def test_build_segment_array_any_properties() -> None:
     """Test ArrayAnySegment properties and methods."""
     mixed_values = ["string", 42, None]
     segment = variable_factory.build_segment(mixed_values)
@@ -440,7 +441,7 @@ def test_build_segment_array_any_properties():
     assert segment.to_object() == mixed_values
 
 
-def test_build_segment_edge_cases():
+def test_build_segment_edge_cases() -> None:
     """Test edge cases for build_segment function."""
     # Test with complex nested structures
     complex_structure = [{"nested": {"deep": [1, 2, 3]}}, [{"inner": "value"}], "mixed"]
@@ -455,7 +456,7 @@ def test_build_segment_edge_cases():
     assert segment.value == single_none
 
 
-def test_build_segment_file_array_with_different_file_types():
+def test_build_segment_file_array_with_different_file_types() -> None:
     """Test ArrayFileSegment with different file types."""
     image_file = File(
         file_id="image_id",
@@ -502,7 +503,7 @@ def test_build_segment_file_array_with_different_file_types():
 
 
 @st.composite
-def _generate_file(draw) -> File:
+def _generate_file(draw: st.DrawFn) -> File:
     file_type, mime_type, extension = draw(
         st.sampled_from(
             [
@@ -560,7 +561,7 @@ def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
 
 @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.filter_too_much], deadline=None)
 @given(_scalar_value())
-def test_build_segment_and_extract_values_for_scalar_types(value):
+def test_build_segment_and_extract_values_for_scalar_types(value: int | float | str | File | None) -> None:
     seg = variable_factory.build_segment(value)
     # nan == nan yields false, so we need to use `math.isnan` to check `seg.value` here.
     if isinstance(value, float) and math.isnan(value):
@@ -571,12 +572,12 @@ def test_build_segment_and_extract_values_for_scalar_types(value):
 
 @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.filter_too_much], deadline=None)
 @given(values=st.lists(_scalar_value(), max_size=20))
-def test_build_segment_and_extract_values_for_array_types(values):
+def test_build_segment_and_extract_values_for_array_types(values: list[int | float | str | File | None]) -> None:
     seg = variable_factory.build_segment(values)
     assert seg.value == values
 
 
-def test_build_segment_type_for_scalar():
+def test_build_segment_type_for_scalar() -> None:
     @dataclass(frozen=True)
     class TestCase:
         value: int | float | str | File
@@ -608,28 +609,28 @@ def test_build_segment_type_for_scalar():
 class TestBuildSegmentWithType:
     """Test cases for build_segment_with_type function."""
 
-    def test_string_type(self):
+    def test_string_type(self) -> None:
         """Test building a string segment with correct type."""
         result = build_segment_with_type(SegmentType.STRING, "hello")
         assert isinstance(result, StringSegment)
         assert result.value == "hello"
         assert result.value_type == SegmentType.STRING
 
-    def test_number_type_integer(self):
+    def test_number_type_integer(self) -> None:
         """Test building a number segment with integer value."""
         result = build_segment_with_type(SegmentType.NUMBER, 42)
         assert isinstance(result, IntegerSegment)
         assert result.value == 42
         assert result.value_type == SegmentType.INTEGER
 
-    def test_number_type_float(self):
+    def test_number_type_float(self) -> None:
         """Test building a number segment with float value."""
         result = build_segment_with_type(SegmentType.NUMBER, 3.14)
         assert isinstance(result, FloatSegment)
         assert result.value == 3.14
         assert result.value_type == SegmentType.FLOAT
 
-    def test_object_type(self):
+    def test_object_type(self) -> None:
         """Test building an object segment with correct type."""
         test_obj = {"key": "value", "nested": {"inner": 123}}
         result = build_segment_with_type(SegmentType.OBJECT, test_obj)
@@ -637,7 +638,7 @@ class TestBuildSegmentWithType:
         assert result.value == test_obj
         assert result.value_type == SegmentType.OBJECT
 
-    def test_file_type(self):
+    def test_file_type(self) -> None:
         """Test building a file segment with correct type."""
         test_file = File(
             file_id="test_file_id",
@@ -656,49 +657,49 @@ class TestBuildSegmentWithType:
         assert result.value == test_file
         assert result.value_type == SegmentType.FILE
 
-    def test_none_type(self):
+    def test_none_type(self) -> None:
         """Test building a none segment with None value."""
         result = build_segment_with_type(SegmentType.NONE, None)
         assert isinstance(result, NoneSegment)
         assert result.value is None
         assert result.value_type == SegmentType.NONE
 
-    def test_empty_array_string(self):
+    def test_empty_array_string(self) -> None:
         """Test building an empty array[string] segment."""
         result = build_segment_with_type(SegmentType.ARRAY_STRING, [])
         assert isinstance(result, ArrayStringSegment)
         assert result.value == []
         assert result.value_type == SegmentType.ARRAY_STRING
 
-    def test_empty_array_number(self):
+    def test_empty_array_number(self) -> None:
         """Test building an empty array[number] segment."""
         result = build_segment_with_type(SegmentType.ARRAY_NUMBER, [])
         assert isinstance(result, ArrayNumberSegment)
         assert result.value == []
         assert result.value_type == SegmentType.ARRAY_NUMBER
 
-    def test_empty_array_object(self):
+    def test_empty_array_object(self) -> None:
         """Test building an empty array[object] segment."""
         result = build_segment_with_type(SegmentType.ARRAY_OBJECT, [])
         assert isinstance(result, ArrayObjectSegment)
         assert result.value == []
         assert result.value_type == SegmentType.ARRAY_OBJECT
 
-    def test_empty_array_file(self):
+    def test_empty_array_file(self) -> None:
         """Test building an empty array[file] segment."""
         result = build_segment_with_type(SegmentType.ARRAY_FILE, [])
         assert isinstance(result, ArrayFileSegment)
         assert result.value == []
         assert result.value_type == SegmentType.ARRAY_FILE
 
-    def test_empty_array_any(self):
+    def test_empty_array_any(self) -> None:
         """Test building an empty array[any] segment."""
         result = build_segment_with_type(SegmentType.ARRAY_ANY, [])
         assert isinstance(result, ArrayAnySegment)
         assert result.value == []
         assert result.value_type == SegmentType.ARRAY_ANY
 
-    def test_array_with_values(self):
+    def test_array_with_values(self) -> None:
         """Test building array segments with actual values."""
         # Array of strings
         result = build_segment_with_type(SegmentType.ARRAY_STRING, ["hello", "world"])
@@ -718,7 +719,7 @@ class TestBuildSegmentWithType:
         assert result.value == [{"a": 1}, {"b": 2}]
         assert result.value_type == SegmentType.ARRAY_OBJECT
 
-    def test_type_mismatch_string_to_number(self):
+    def test_type_mismatch_string_to_number(self) -> None:
         """Test type mismatch when expecting number but getting string."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.NUMBER, "not_a_number")
@@ -727,7 +728,7 @@ class TestBuildSegmentWithType:
         assert "expected number" in str(exc_info.value)
         assert "str" in str(exc_info.value)
 
-    def test_type_mismatch_number_to_string(self):
+    def test_type_mismatch_number_to_string(self) -> None:
         """Test type mismatch when expecting string but getting number."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.STRING, 123)
@@ -736,21 +737,21 @@ class TestBuildSegmentWithType:
         assert "expected string" in str(exc_info.value)
         assert "int" in str(exc_info.value)
 
-    def test_type_mismatch_none_to_string(self):
+    def test_type_mismatch_none_to_string(self) -> None:
         """Test type mismatch when expecting string but getting None."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.STRING, None)
 
         assert "expected string, but got None" in str(exc_info.value)
 
-    def test_type_mismatch_empty_list_to_non_array(self):
+    def test_type_mismatch_empty_list_to_non_array(self) -> None:
         """Test type mismatch when expecting non-array type but getting empty list."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.STRING, [])
 
         assert "expected string, but got empty list" in str(exc_info.value)
 
-    def test_type_mismatch_object_to_array(self):
+    def test_type_mismatch_object_to_array(self) -> None:
         """Test type mismatch when expecting array but getting object."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.ARRAY_STRING, {"key": "value"})
@@ -758,7 +759,7 @@ class TestBuildSegmentWithType:
         assert "Type mismatch" in str(exc_info.value)
         assert "expected array[string]" in str(exc_info.value)
 
-    def test_compatible_number_types(self):
+    def test_compatible_number_types(self) -> None:
         """Test that int and float are both compatible with NUMBER type."""
         # Integer should work
         result_int = build_segment_with_type(SegmentType.NUMBER, 42)
@@ -784,7 +785,9 @@ class TestBuildSegmentWithType:
             (SegmentType.ARRAY_ANY, [], ArrayAnySegment),
         ],
     )
-    def test_parametrized_valid_types(self, segment_type, value, expected_class):
+    def test_parametrized_valid_types(
+        self, segment_type: SegmentType, value: object, expected_class: type[Segment]
+    ) -> None:
         """Parametrized test for valid type combinations."""
         result = build_segment_with_type(segment_type, value)
         assert isinstance(result, expected_class)
@@ -802,7 +805,7 @@ class TestBuildSegmentWithType:
             (SegmentType.NUMBER, None),
         ],
     )
-    def test_parametrized_type_mismatches(self, segment_type, value):
+    def test_parametrized_type_mismatches(self, segment_type: SegmentType, value: object) -> None:
         """Parametrized test for type mismatches that should raise TypeMismatchError."""
         with pytest.raises(TypeMismatchError):
             build_segment_with_type(segment_type, value)
@@ -820,17 +823,17 @@ class TestBuildSegmentValueErrors:
         description: str
         test_value: Any
 
-    def _get_test_cases(self):
+    def _get_test_cases(self) -> list[ValueErrorTestCase]:
         """Get all test cases for ValueError scenarios."""
 
         # Define inline classes for complex test cases
         class CustomType:
             pass
 
-        def unsupported_function():
+        def unsupported_function() -> str:
             return "test"
 
-        def gen():
+        def gen() -> Iterator[int]:
             yield 1
             yield 2
 
@@ -918,7 +921,7 @@ class TestBuildSegmentValueErrors:
             ),
         ]
 
-    def test_build_segment_unsupported_types(self):
+    def test_build_segment_unsupported_types(self) -> None:
         """Table-driven test for all ValueError scenarios in build_segment function."""
         test_cases = self._get_test_cases()
 
@@ -936,7 +939,7 @@ class TestBuildSegmentValueErrors:
                 f"but got: {error_message}"
             )
 
-    def test_build_segment_boolean_type(self):
+    def test_build_segment_boolean_type(self) -> None:
         """Test that Boolean values are correctly handled as boolean type, not integers."""
         # Boolean values should now be processed as BooleanSegment, not IntegerSegment
         # This is because the bool check now comes before the int check in build_segment
