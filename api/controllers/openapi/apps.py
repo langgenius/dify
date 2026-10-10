@@ -53,6 +53,7 @@ from controllers.openapi.auth.requirements import (
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWebAppAuthEnterprise,
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject
@@ -87,7 +88,7 @@ def parameters_payload(app: App, *, session: Session) -> dict:
     return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
-_SETTINGS_VIEWS: Final[dict[str, tuple[Callable[..., object], ...]]] = {
+_SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
     AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
     AppMode.ADVANCED_CHAT: (
         AdvancedChatAppInfoApi.get,
@@ -102,11 +103,21 @@ _SETTINGS_VIEWS: Final[dict[str, tuple[Callable[..., object], ...]]] = {
 }
 
 
+def _webapp_auth_gated(view: Any) -> bool:
+    return any(isinstance(r, CheckWebAppAuthEnterprise) for r in view.__spec__.requirements)
+
+
 def settings_hints(app_id: str, mode: str) -> list[Hint]:
-    """A stored mode this build doesn't know gets no hints."""
+    """A stored mode this build doesn't know gets no hints, and the web-app access setting only where it exists."""
+    try:
+        app_mode = AppMode(mode)
+    except ValueError:
+        return []
+    webapp_auth = CheckWebAppAuthEnterprise.available()
     return [
         Hint(summary="Read this setting", op=op_of(view), input={"app_id": app_id})
-        for view in _SETTINGS_VIEWS.get(mode, ())
+        for view in _SETTINGS_VIEWS.get(app_mode, ())
+        if webapp_auth or not _webapp_auth_gated(view)
     ]
 
 

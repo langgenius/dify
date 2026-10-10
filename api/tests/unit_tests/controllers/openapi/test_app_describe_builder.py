@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA
 from controllers.openapi._models import AppDescribeResponse
 from controllers.openapi.apps import _EMPTY_PARAMETERS, AppDescribeApi, build_app_describe_response, settings_hints
+from controllers.openapi.auth.requirements import CheckWebAppAuthEnterprise
 from controllers.service_api.app.error import AppUnavailableError
 from models.model import App, AppMode
 
@@ -91,7 +92,8 @@ def test_input_schema_fallback_on_app_unavailable(monkeypatch, unbound_session: 
     assert resp.input_schema == dict(EMPTY_INPUT_SCHEMA)
 
 
-def test_settings_hints_name_the_mode_ops() -> None:
+def test_settings_hints_name_the_mode_ops(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(CheckWebAppAuthEnterprise, "available", staticmethod(lambda: True))
     ops = [hint.op for hint in settings_hints("app-1", AppMode.WORKFLOW)]
     assert ops == [
         "describe.app_info.workflow",
@@ -107,6 +109,13 @@ def test_settings_hints_name_the_mode_ops() -> None:
         "describe.webapp_access.agent",
     ]
     assert all(hint.input == {"app_id": "app-1"} for hint in settings_hints("app-1", AppMode.CHAT))
+
+
+def test_settings_hints_skip_web_app_access_without_web_app_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(CheckWebAppAuthEnterprise, "available", staticmethod(lambda: False))
+    ops = [hint.op for hint in settings_hints("app-1", AppMode.WORKFLOW)]
+    assert "describe.webapp_access" not in ops
+    assert ops
 
 
 def _stub_payloads(monkeypatch: pytest.MonkeyPatch) -> None:

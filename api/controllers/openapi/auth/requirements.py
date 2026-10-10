@@ -185,11 +185,16 @@ class CheckAppMode(Requirement):
 
 
 class CheckWebAppAuthEnterprise(Requirement):
+    @staticmethod
+    def available() -> bool:
+        return (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+            and SystemFeatureService.get_public_system_features().webapp_auth.enabled
+        )
+
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
-            raise WebAppAccessRequiresEE()
-        if not SystemFeatureService.get_public_system_features().webapp_auth.enabled:
+        if not self.available():
             raise WebAppAccessRequiresEE()
 
 
@@ -245,8 +250,10 @@ class CheckPluginInstallSetting(Requirement):
                 if load_workspace_role(ctx) in ADMIN_ROLES:
                     return
                 raise PluginInstallForbidden("Plugin install is limited to admins in this workspace.")
-            case _:
+            case TenantPluginInstallPermission.NOBODY:
                 raise PluginInstallForbidden("Plugin install is turned off in this workspace.")
+            case unknown:
+                raise PluginInstallForbidden(f"Plugin install setting {unknown!r} is not known to this server.")
 
 
 class CheckAppAccess(Requirement):
