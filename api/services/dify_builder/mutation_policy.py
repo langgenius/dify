@@ -56,6 +56,9 @@ _NODE_FIELDS: dict[str, dict[str, tuple[str, ...]]] = {
         "HTTP target or authentication": ("url", "method", "authorization", "headers", "params", "ssl_verify"),
     },
     BuiltinNodeTypes.LLM: {"data access": ("context", "memory", "vision")},
+    # Native aggregator selectors are list[list[str]], rooted at arbitrary
+    # upstream node IDs. Group settings choose which selector lists are read.
+    BuiltinNodeTypes.VARIABLE_AGGREGATOR: {"data access": ("variables", "advanced_settings")},
     BuiltinNodeTypes.VARIABLE_ASSIGNER: {
         "conversation-variable write": ("items", "assigned_variable_selector", "input_variable_selector", "write_mode"),
     },
