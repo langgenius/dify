@@ -42,6 +42,7 @@ from services.dify_builder import credentials, graph_ops
 # this module is (it reaches no further than ``credentials`` and
 # ``graph_normalizers``).
 from services.dify_builder.agent import graph_prompt
+from services.dify_builder.node_policy import proposal_policy_rejections
 
 # graphon's ``Graph._filter_canvas_only_nodes`` drops persisted note widgets
 # (top-level ``type == "custom-note"``, empty ``data.type``) before validating
@@ -755,22 +756,21 @@ class VettedIntents(NamedTuple):
 
     ``rejections`` is the corrective-re-prompt text, one ``- ...`` line per
     refusal, EMPTY when the batch would apply and the draft would still start.
-    Every line quotes the engine -- an ``apply_*``/``validate_intent_args``
-    ``ValueError`` or a ``validate_node_config`` message -- never anything the
-    model said about its own proposal.
+    Lines quote native structural/node-data errors or deterministic Builder
+    policy reasons, never the model's verdict about its own proposal.
 
     ``would_run_wrong`` is the subset of those refusals that the engine does NOT
-    make: the two semantic guards. It is carried separately because the two
-    kinds fail differently and a caller has to be able to tell them apart
+    make: semantic guards and the first-phase node policy. It is carried
+    separately because the two kinds fail differently and a caller has to be able to tell them apart
     WITHOUT reading the text:
 
     * a structural refusal DROPPED its intent, so what is left in ``applicable``
       is a batch nobody has judged wrong. Keeping it -- rather than losing the
       user's whole change -- is a deliberate choice;
     * a semantic verdict drops nothing. It condemns the batch that is still
-      sitting in ``applicable``, and there is no engine refusal behind it for
-      ``apply_repair`` to raise, so a caller that wrote it anyway would write
-      the exact draft the guard was built to stop.
+      sitting in ``applicable``. Callers must refuse it even when native
+      validation accepts it. The node policy is also enforced at the write
+      boundary; the other semantic guards protect model candidate selection.
 
     Reading which is which off the rejection PROSE would be the same mistake as
     keying control flow on the model's prose: the text is for a human and a
@@ -790,7 +790,7 @@ def vet_intents(
     """Put a proposed batch through the whole engine check, structure AND node
     data, before it can reach a human approval gate.
 
-    Two layers, because they fail differently:
+    Native layers plus Builder policy, because they fail differently:
 
     * ``graph_ops.filter_applicable`` refuses ONE intent at a time -- an unknown
       op, a dangling id, a path that does not resolve. Those intents are dropped
@@ -817,12 +817,14 @@ def vet_intents(
         # worse than it was.
         for problem in new_preflight_problems(graph, dry_run.graph, dry_run.changed_nodes)
     ]
-    # The third layer: two defects the engine accepts and then runs to nothing.
-    # ``Graph.init`` is happy with both, so neither can be quoted from it --
-    # they are keyed on the batch's own effect on the graph instead, never on
-    # anything the model said.
-    would_run_wrong = _unfed_aggregator_reasons(graph, dry_run.graph) + _dropped_identity_reasons(
-        graph, dry_run.graph, dry_run.applicable
+    # The third layer: Builder policy and defects native validation accepts.
+    # They are keyed on proposed native effects, never the model's verdict.
+    # Keep policy refusals as whole-batch verdicts: Edit/Fix/Build must explain
+    # them through their corrective path, never apply a silently filtered subset.
+    would_run_wrong = (
+        proposal_policy_rejections(graph, dry_run.applicable)
+        + _unfed_aggregator_reasons(graph, dry_run.graph)
+        + _dropped_identity_reasons(graph, dry_run.graph, dry_run.applicable)
     )
     rejections += [f"- {reason}" for reason in would_run_wrong]
     return VettedIntents(dry_run.applicable, rejections, would_run_wrong)
