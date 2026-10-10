@@ -148,7 +148,7 @@ class TestDatasetServiceDeleteDataset:
         )
 
     def test_delete_empty_dataset_success(self, db_session_with_containers: Session):
-        """Delete an empty dataset without scheduling cleanup when both gating fields are absent."""
+        """Schedule cleanup for an empty dataset even when indexing technique and doc_form are absent."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -173,10 +173,10 @@ class TestDatasetServiceDeleteDataset:
         db_session_with_containers.expire_all()
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        clean_dataset_delay.assert_not_called()
+        clean_dataset_delay.assert_called_once_with(dataset.id, dataset.tenant_id, None, None, None, None, None)
 
     def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session):
-        """Delete a dataset without cleanup when indexing_technique is missing but doc_form resolves."""
+        """Schedule cleanup when indexing_technique is missing but doc_form resolves."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -201,10 +201,18 @@ class TestDatasetServiceDeleteDataset:
         db_session_with_containers.expire_all()
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        clean_dataset_delay.assert_not_called()
+        clean_dataset_delay.assert_called_once_with(
+            dataset.id,
+            dataset.tenant_id,
+            None,
+            dataset.index_struct,
+            dataset.collection_binding_id,
+            "text_model",
+            dataset.pipeline_id,
+        )
 
     def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, db_session_with_containers: Session):
-        """Delete a dataset without cleanup when indexing exists but doc_form resolves to None."""
+        """Schedule cleanup when indexing exists but doc_form resolves to None."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -229,7 +237,15 @@ class TestDatasetServiceDeleteDataset:
         db_session_with_containers.expire_all()
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        clean_dataset_delay.assert_not_called()
+        clean_dataset_delay.assert_called_once_with(
+            dataset.id,
+            dataset.tenant_id,
+            dataset.indexing_technique,
+            dataset.index_struct,
+            dataset.collection_binding_id,
+            None,
+            dataset.pipeline_id,
+        )
 
     def test_delete_dataset_not_found(self, db_session_with_containers: Session):
         """Return False without scheduling cleanup when the target dataset does not exist."""

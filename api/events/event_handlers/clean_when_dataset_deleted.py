@@ -8,9 +8,11 @@ from tasks.clean_dataset_task import clean_dataset_task
 @dataset_was_deleted.connect
 def handle(sender: Dataset, **kwargs):
     dataset = sender
+    # Always schedule cleanup: empty datasets (no chunk structure, no documents) and
+    # datasets without an indexing technique still own rows such as process rules,
+    # queries, metadata and the knowledge pipeline. clean_dataset_task falls back to
+    # the paragraph index when doc_form is missing.
     doc_form = get_dataset_doc_form(dataset, session=db.session())
-    if not doc_form or not dataset.indexing_technique:
-        return
     clean_dataset_task.delay(
         dataset.id,
         dataset.tenant_id,
