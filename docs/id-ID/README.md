@@ -164,13 +164,7 @@ Pilih saluran komunikasi resmi yang paling relevan:
 
 ## Riwayat Bintang (Star History)
 
-<a href="https://star-history.dera.page/#langgenius/dify&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
-   <img alt="Grafik Riwayat Bintang" src="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
- </picture>
-</a>
+[![Grafik Riwayat Bintang](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Grafik Riwayat Bintang](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Kebijakan Pelaporan Kerentanan Keamanan
 
