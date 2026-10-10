@@ -1,73 +1,44 @@
-"""Runtime execution for one scheduled Dify Agent run.
+"""Storage-agnostic execution of native Pydantic AI module runs.
 
-The runner is storage-agnostic: it normalizes the public Dify composition into
-Agenton's graph/config split and executes one model run after the ``on_exit``
-policy is validated:
-
-- model runs: enter a fresh ``CompositorRun`` (or resume one from a snapshot),
-  pass the current Dify system prompts as run-level instructions, run
-  pydantic-ai with either the current ``run.user_prompts`` or deferred external
-  tool results, emit stream events with bounded text-delta coalescing and
-  agent-message annotations, apply request-level ``on_exit`` signals, and publish
-  a terminal success or failure event;
-The Pydantic AI model is resolved from the active Agenton layer named by
-``DIFY_AGENT_MODEL_LAYER_ID``. An optional history layer contributes stored
-message history only through session state. Once pydantic-ai binds and builds
-messages in the run capture, every terminal outcome replaces that state with the
-captured messages after transient instructions are cleared; a failure or
-cancellation before the capture contains messages preserves the restored state.
-An interrupted run also records that its trailing response was cut short, so tool
-calls it never executed do not block the next user prompt.
-This preserves compaction rewrites and interrupted partial messages without
-saving current system prompts. An optional structured output layer named by
-``DIFY_AGENT_OUTPUT_LAYER_ID`` is read after entry and resolved into an output
-contract whose type both exposes the output schema to the model and performs
-runtime JSON Schema validation through custom Pydantic hooks. When the ask-human
-layer is active, the runtime also allows ``DeferredToolRequests`` output and
-publishes that deferred request through the normal ``run_succeeded`` event as
-``deferred_tool_call`` instead of a final ``output``. Invalid structured outputs
-or invalid deferred-tool behavior still trigger normal retries/failures before
-Dify Agent emits success. Layers still never own the FastAPI lifespan-owned
-plugin daemon or Dify API inner HTTP clients. Successful terminal events contain
-both the JSON-safe final output or deferred tool call and the session snapshot;
-there are no separate output or snapshot events to correlate.
+Validate all JSON data and references before I/O, create fresh native components,
+and persist only State after capability cleanup. Captured history is saved in
+finally, including interrupted tool responses; current instructions are never
+stored. Live clients belong to the server lifespan and leases to native wrap_run
+scopes. Workspace and Binding retirement remain API-owned.
 """
 
 import asyncio
 from collections.abc import AsyncIterable, Callable, Mapping
-from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
+from types import ModuleType
 
-import httpx
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai import capture_run_messages
 from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
-from pydantic_ai.output import OutputSpec
-from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
-from pydantic_ai.usage import UsageLimits
+from pydantic_ai.usage import RunUsage, UsageLimits
 
-from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
-from agenton.layers.types import PydanticAITool
-from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
-from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
-from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.modules import REGISTRY, load_modules, create_modules, snapshot_modules
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.toolsets import AbstractToolset
+from dify_agent.layers import history as history_module
+from dify_agent.layers.prompt import layer as prompt_module
+from dify_agent.layers.dify_plugin import llm_layer as llm_module
+from dify_agent.layers.output import output_layer as output_module
+from dify_agent.layers.user_prompt import layer as user_prompt_module
+from dify_agent.layers.knowledge import layer as knowledge_module
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
-from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     CreateRunRequest,
     DIFY_AGENT_MODEL_LAYER_ID,
-    DeferredToolCallPayload,
     RunFailureType,
-    normalize_composition,
 )
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
-from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
-from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.compaction import build_compaction_capability
 from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_coalescer import (
@@ -83,39 +54,12 @@ from dify_agent.runtime.event_sink import (
     emit_run_succeeded,
 )
 from dify_agent.runtime.observability import AgentObservability
-from dify_agent.runtime.history import (
-    get_history_layer,
-    replace_run_history,
-    validate_history_layer_composition,
-)
-from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
-from dify_agent.runtime.output_type import resolve_run_output_contract, validate_output_layer_composition
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 _MAX_AGENT_STEPS_PER_RUN = 500
 DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
-
-
-@runtime_checkable
-class _HasUsage(Protocol):
-    usage: object
-
-
-@runtime_checkable
-class _HasInputTokens(Protocol):
-    input_tokens: int | None
-
-
-@runtime_checkable
-class _HasOutputTokens(Protocol):
-    output_tokens: int | None
-
-
-@runtime_checkable
-class _HasTotalTokens(Protocol):
-    total_tokens: int | None
 
 
 @runtime_checkable
@@ -159,11 +103,6 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
     return message, None, reason
 
 
-def _has_model_layer(request: CreateRunRequest) -> bool:
-    """Return whether the public composition includes the reserved model layer."""
-    return any(layer.name == DIFY_AGENT_MODEL_LAYER_ID for layer in request.composition.layers)
-
-
 def _extract_agent_message_delta(event: AgentStreamEvent) -> str | None:
     """Return agent-message text content from Pydantic AI stream events."""
     if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
@@ -177,10 +116,8 @@ def _extract_agent_message_delta(event: AgentStreamEvent) -> str | None:
 class RunSuccessOutcome:
     """Normalized successful runner output before event emission."""
 
-    result_kind: Literal["output", "deferred_tool_call"]
     output: JsonValue | None
-    deferred_tool_call: DeferredToolCallPayload | None
-    session_snapshot: CompositorSessionSnapshot
+    session_snapshot: SessionSnapshot
     usage: AgentRunUsage | None
 
 
@@ -191,16 +128,15 @@ class AgentRunRunner:
 
     request: CreateRunRequest
     run_id: str
-    layer_providers: tuple[LayerProviderInput, ...]
-    plugin_daemon_http_client: httpx.AsyncClient
-    dify_api_http_client: httpx.AsyncClient
+    services: Services
+    registry: Mapping[str, ModuleType]
     is_cancelled: Callable[[], bool]
     run_timeout_seconds: float
     stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
     stream_text_delta_max_chars: int
     agent_observability: AgentObservability | None
-    _terminal_session_snapshot: CompositorSessionSnapshot | None
+    _terminal_session_snapshot: SessionSnapshot | None
     _terminal_usage: AgentRunUsage | None
 
     def __init__(
@@ -209,9 +145,8 @@ class AgentRunRunner:
         sink: RunEventSink,
         request: CreateRunRequest,
         run_id: str,
-        plugin_daemon_http_client: httpx.AsyncClient,
-        dify_api_http_client: httpx.AsyncClient,
-        layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        services: Services,
+        registry: Mapping[str, ModuleType] = REGISTRY,
         is_cancelled: Callable[[], bool] | None = None,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
         stream_text_delta_coalescing_enabled: bool = True,
@@ -226,9 +161,8 @@ class AgentRunRunner:
         self.sink = sink
         self.request = request
         self.run_id = run_id
-        self.plugin_daemon_http_client = plugin_daemon_http_client
-        self.dify_api_http_client = dify_api_http_client
-        self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.services = services
+        self.registry = registry
         self.is_cancelled = is_cancelled or (lambda: False)
         self.run_timeout_seconds = run_timeout_seconds
         self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
@@ -239,8 +173,8 @@ class AgentRunRunner:
         self._terminal_usage = None
 
     @property
-    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
-        """Return the snapshot captured after the current compositor context exited."""
+    def terminal_session_snapshot(self) -> SessionSnapshot | None:
+        """Return the snapshot captured after native capability cleanup."""
         return self._terminal_session_snapshot
 
     @property
@@ -280,199 +214,115 @@ class AgentRunRunner:
         _ = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
-            **(
-                {"output": outcome.output}
-                if outcome.result_kind == "output"
-                else {"deferred_tool_call": outcome.deferred_tool_call}
-            ),
+            output=outcome.output,
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
 
     async def _run_agent(self) -> RunSuccessOutcome:
-        """Run the normalized request through the model path.
-
-        Known request-shaped Agenton enter-time failures are normalized to
-        ``AgentRunValidationError``. That includes the existing small class of
-        enter-time ``RuntimeError`` values reported by Agenton plus
-        layer-construction or snapshot-hydration ``ValueError`` failures that
-        arise before the run becomes active, such as missing shell settings for a
-        requested ``dify.shell`` layer or malformed serialized shell offsets.
-        Output/history-layer graph invariants are validated from the public
-        composition before entering Agenton so misnamed or extra reserved layers
-        never silently degrade. Later runtime failures still propagate as
-        execution errors so they become terminal failed runs rather than client
-        validation responses. Structured output uses a resolved contract whose
-        type itself encodes both the model-facing schema and the runtime
-        validation hooks, so invalid model outputs can be corrected before Dify
-        Agent emits success.
-        """
         try:
-            validate_output_layer_composition(self.request.composition)
-            validate_history_layer_composition(self.request.composition)
-            validate_ask_human_layer_composition(self.request.composition)
-            graph_config, layer_configs = normalize_composition(self.request.composition)
-            compositor = build_pydantic_ai_compositor(graph_config, providers=self.layer_providers)
-            validate_layer_exit_signals(compositor, self.request.on_exit)
+            deps = load_modules(self.request, self.services, self.run_id, registry=self.registry)
+            modules = create_modules(deps, registry=self.registry)
+            model_module = modules[DIFY_AGENT_MODEL_LAYER_ID]
+            if not isinstance(model_module, llm_module.Capability):
+                raise ValueError("The llm module must provide native model assembly")
+            model = model_module.build_model(deps)
+            llm_config = llm_module.Config.model_validate(deps.layers[DIFY_AGENT_MODEL_LAYER_ID]["config"])
+            history = modules.get("history")
+            if history is not None and not isinstance(history, history_module.Capability):
+                raise ValueError("The history slot must provide the history module")
+            message_history = history.load_messages(deps) if isinstance(history, history_module.Capability) else None
+            output = modules.get("output")
+            if output is not None and not isinstance(output, output_module.Capability):
+                raise ValueError("The output slot must provide the output module")
+            output_type = (
+                output.build_output_contract(deps).output_type if isinstance(output, output_module.Capability) else str
+            )
+            user_content = []
+            for module in modules.values():
+                if isinstance(module, (prompt_module.Toolset, user_prompt_module.Capability)):
+                    user_content.extend(module.build_user_content(deps))
+            eager_user_content = any(
+                isinstance(module, knowledge_module.Capability) and module.provides_user_content(deps)
+                for module in modules.values()
+            )
+            if not has_non_blank_user_prompt(user_content) and not eager_user_content:
+                raise ValueError(EMPTY_USER_PROMPTS_ERROR)
+            capabilities = [module for module in modules.values() if isinstance(module, AbstractCapability)]
+            compaction = build_compaction_capability(
+                context_window_tokens=llm_config.context_window_tokens, model_settings=llm_config.model_settings
+            )
+            if compaction is not None:
+                capabilities.append(compaction)
+            agent = create_agent(
+                model,
+                toolsets=[module for module in modules.values() if isinstance(module, AbstractToolset)],
+                capabilities=capabilities,
+                output_type=output_type,
+            )
+            if self.agent_observability is not None:
+                from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+
+                self.agent_observability.instrument(
+                    agent,
+                    execution_context=DifyExecutionContextLayerConfig.model_validate(
+                        deps.layers[llm_config.execution_context]["config"]
+                    ),
+                )
         except (KeyError, TypeError, ValueError) as exc:
             raise AgentRunValidationError(str(exc)) from exc
 
-        if not _has_model_layer(self.request):
-            raise AgentRunValidationError(f"Missing required '{DIFY_AGENT_MODEL_LAYER_ID}' layer.")
-        return await self._run_model(compositor=compositor, layer_configs=layer_configs)
-
-    async def _run_model(
-        self,
-        *,
-        compositor: Any,
-        layer_configs: dict[str, LayerConfigInput],
-    ) -> RunSuccessOutcome:
-        """Run the normal model/deferred-tool path inside an entered Agenton run."""
-        entered_run = False
-        output: JsonValue | None = None
-        deferred_tool_call: DeferredToolCallPayload | None = None
-        result_kind: Literal["output", "deferred_tool_call"] | None = None
-        usage: AgentRunUsage | None = None
-        model: Any = None
-        run = None
-        try:
-            async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
-                entered_run = True
-                apply_layer_exit_signals(run, self.request.on_exit)
-                user_prompts = run.user_prompts
-                deferred_tool_results = _resolve_deferred_tool_results(self.request)
-                if deferred_tool_results is None and not has_non_blank_user_prompt(user_prompts):
-                    raise AgentRunValidationError(EMPTY_USER_PROMPTS_ERROR)
-
-                async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
-                    published_events = coalesce_agent_stream_events(
-                        events,
-                        enabled=self.stream_text_delta_coalescing_enabled,
-                        flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
-                        max_chars=self.stream_text_delta_max_chars,
-                    )
-                    async for event in published_events:
-                        if self.is_cancelled():
-                            raise asyncio.CancelledError
-                        text_delta = _extract_agent_message_delta(event)
-                        _ = await emit_pydantic_ai_event(
-                            self.sink,
-                            run_id=self.run_id,
-                            data=event,
-                            agent_message_delta=text_delta,
-                        )
-
-                try:
-                    output_contract = resolve_run_output_contract(run)
-                    history_layer = get_history_layer(run)
-                    message_history = history_layer.message_history if history_layer is not None else None
-                    ask_human_layer = get_ask_human_layer(run)
-                    llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
-                    compaction = build_compaction_capability(
-                        context_window_tokens=llm_layer.config.context_window_tokens,
-                        model_settings=llm_layer.config.model_settings,
-                    )
-                    model = llm_layer.get_model(
-                        http_client=self.dify_api_http_client,
-                        agent_run_id=self.run_id,
-                    )
-                    tools = await _resolve_run_tools(
-                        run,
-                        plugin_daemon_http_client=self.plugin_daemon_http_client,
-                        dify_api_http_client=self.dify_api_http_client,
-                    )
-                except (KeyError, TypeError, RuntimeError, ValueError) as exc:
-                    raise AgentRunValidationError(str(exc)) from exc
-
-                if deferred_tool_results is not None and history_layer is None:
-                    raise AgentRunValidationError(
-                        "Deferred tool results require a 'history' layer with prior message history."
-                    )
-
-                agent = create_agent(
-                    model,
-                    tools=tools,
-                    output_type=_resolve_agent_output_type(output_contract.output_type, ask_human_layer is not None),
+        async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
+            published_events = coalesce_agent_stream_events(
+                events,
+                enabled=self.stream_text_delta_coalescing_enabled,
+                flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
+                max_chars=self.stream_text_delta_max_chars,
+            )
+            async for event in published_events:
+                if self.is_cancelled():
+                    raise asyncio.CancelledError
+                await emit_pydantic_ai_event(
+                    self.sink, run_id=self.run_id, data=event, agent_message_delta=_extract_agent_message_delta(event)
                 )
-                if self.agent_observability is not None:
-                    # The model layer's required execution-context dependency is the
-                    # run's only carrier of Dify identity, and its node name is
-                    # caller-chosen, so read it through the typed dependency.
-                    self.agent_observability.instrument(
-                        agent,
-                        execution_context=llm_layer.deps.execution_context.config,
-                    )
-                run_timeout = asyncio.timeout(self.run_timeout_seconds)
+
+        timeout = asyncio.timeout(self.run_timeout_seconds)
+        try:
+            with capture_run_messages() as messages:
+                finished = False
                 try:
-                    with capture_run_messages() as captured_messages:
-                        agent_run_finished = False
-                        try:
-                            async with run_timeout:
-                                result = await agent.run(
-                                    None if deferred_tool_results is not None else normalize_user_input(user_prompts),
-                                    message_history=message_history,
-                                    deferred_tool_results=deferred_tool_results,
-                                    event_stream_handler=handle_events,
-                                    instructions=run.prompts or None,
-                                    capabilities=[compaction] if compaction is not None else None,
-                                    usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
-                                )
-                            agent_run_finished = True
-                        finally:
-                            if captured_messages:
-                                replace_run_history(
-                                    history_layer, captured_messages, interrupted=not agent_run_finished
-                                )
-                except TimeoutError as exc:
-                    if not run_timeout.expired():
-                        raise
-                    raise UsageLimitExceeded(
-                        f"Agent run exceeded the configured limit of {self.run_timeout_seconds:g} seconds"
-                    ) from exc
-                complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
-                usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
-                self._terminal_usage = usage
-                if isinstance(result.output, DeferredToolRequests):
-                    if ask_human_layer is None:
-                        raise AgentRunValidationError(
-                            "Deferred tool requests were returned, but no active ask_human layer is available for validation."
+                    async with timeout:
+                        result = await agent.run(
+                            normalize_user_input(user_content),
+                            deps=deps,
+                            message_history=message_history,
+                            event_stream_handler=handle_events,
+                            usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                         )
-                    if history_layer is None:
-                        raise AgentRunValidationError(
-                            "ask_human deferred tool requests require a 'history' layer so the pending tool call can be resumed."
-                        )
-                    deferred_tool_call = ask_human_layer.build_deferred_tool_call_payload(result.output)
-                    result_kind = "deferred_tool_call"
-                else:
-                    output = _serialize_agent_output(result.output)
-                    result_kind = "output"
-        except RuntimeError as exc:
-            if not entered_run and is_agenton_enter_validation_runtime_error(exc):
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-        except ValueError as exc:
-            if not entered_run:
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
+                    finished = True
+                finally:
+                    if messages and isinstance(history, history_module.Capability):
+                        history.save_messages(deps, messages, interrupted=not finished)
+            complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
+            self._terminal_usage = _serialize_agent_usage(
+                complete_usage if complete_usage is not None else result.usage
+            )
+            final_output = _serialize_agent_output(result.output)
+        except TimeoutError as exc:
+            if not timeout.expired():
+                raise
+            raise UsageLimitExceeded(
+                f"Agent run exceeded the configured limit of {self.run_timeout_seconds:g} seconds"
+            ) from exc
         finally:
-            if entered_run and run is not None:
-                self._terminal_session_snapshot = run.session_snapshot
+            # Native wrap_run scopes have exited, including cancellation cleanup.
+            self._terminal_session_snapshot = snapshot_modules(deps, registry=self.registry)
             if isinstance(model, _HasAccumulatedUsage):
-                accumulated_usage = _serialize_agent_usage(model.accumulated_usage)
-                if accumulated_usage is not None:
-                    self._terminal_usage = accumulated_usage
-
-        if run is None or run.session_snapshot is None:
-            raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
-        if result_kind is None:
-            raise RuntimeError("Agent run did not resolve either a final output or a deferred tool call.")
-
+                usage = _serialize_agent_usage(model.accumulated_usage)
+                if usage is not None:
+                    self._terminal_usage = usage
         return RunSuccessOutcome(
-            result_kind=result_kind,
-            output=output,
-            deferred_tool_call=deferred_tool_call,
-            session_snapshot=run.session_snapshot,
-            usage=usage,
+            output=final_output, session_snapshot=self._terminal_session_snapshot, usage=self._terminal_usage
         )
 
 
@@ -481,81 +331,17 @@ def _serialize_agent_output(output: object) -> JsonValue:
     return cast(JsonValue, _AGENT_OUTPUT_ADAPTER.dump_python(output, mode="json"))
 
 
-def _result_usage(result: object) -> object | None:
-    """Return pydantic-ai result usage across method/property API variants."""
-    if not isinstance(result, _HasUsage):
-        return None
-
-    usage = result.usage
-    if isinstance(usage, _HasInputTokens) or isinstance(usage, _HasOutputTokens):
-        return usage
-    if callable(usage):
-        usage_getter = cast(Callable[[], object], usage)
-        return usage_getter()
-    return usage
-
-
-def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
+def _serialize_agent_usage(usage: LLMUsage | RunUsage | None) -> AgentRunUsage | None:
     """Convert complete daemon or fallback pydantic-ai usage into the public shape."""
     if usage is None:
         return None
     if isinstance(usage, LLMUsage):
         return AgentRunUsage.model_validate(usage.model_dump(mode="python"))
-    input_tokens = int(usage.input_tokens or 0) if isinstance(usage, _HasInputTokens) else 0
-    output_tokens = int(usage.output_tokens or 0) if isinstance(usage, _HasOutputTokens) else 0
-    total_tokens = int(usage.total_tokens or 0) if isinstance(usage, _HasTotalTokens) else 0
     return AgentRunUsage(
-        prompt_tokens=input_tokens,
-        completion_tokens=output_tokens,
-        total_tokens=total_tokens,
+        prompt_tokens=usage.input_tokens,
+        completion_tokens=usage.output_tokens,
+        total_tokens=usage.total_tokens,
     )
-
-
-def _resolve_agent_output_type(output_type: OutputSpec[object], allow_deferred_tools: bool) -> OutputSpec[object]:
-    """Return the run output type, optionally augmented with deferred-tool support."""
-    if not allow_deferred_tools:
-        return output_type
-    return cast(OutputSpec[object], [output_type, DeferredToolRequests])
-
-
-def _resolve_deferred_tool_results(request: CreateRunRequest) -> DeferredToolResults | None:
-    """Convert public deferred tool results into the pydantic-ai resume input."""
-    if request.deferred_tool_results is None:
-        return None
-    return request.deferred_tool_results.to_pydantic_ai()
-
-
-async def _resolve_run_tools(
-    run: Any,
-    *,
-    plugin_daemon_http_client: httpx.AsyncClient,
-    dify_api_http_client: httpx.AsyncClient,
-) -> list[PydanticAITool[object]]:
-    """Return the static compositor tools plus any Dify runtime tools."""
-    resolved_tools = list(cast(list[PydanticAITool[object]], run.tools))
-    for slot in run.slots.values():
-        layer = slot.layer
-        if isinstance(layer, DifyPluginToolsLayer):
-            resolved_tools.extend(
-                await layer.get_tools(
-                    http_client=plugin_daemon_http_client,
-                    dify_api_http_client=dify_api_http_client,
-                )
-            )
-        if isinstance(layer, DifyCoreToolsLayer):
-            resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
-        if isinstance(layer, DifyKnowledgeBaseLayer):
-            resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
-    _validate_unique_tool_names(resolved_tools)
-    return resolved_tools
-
-
-def _validate_unique_tool_names(tools: list[PydanticAITool[object]]) -> None:
-    """Reject duplicate tool names across static and dynamic tool sources."""
-    duplicate_names = sorted(name for name, count in Counter(tool.name for tool in tools).items() if count > 1)
-    if duplicate_names:
-        names = ", ".join(duplicate_names)
-        raise ValueError(f"Agent run requires unique tool names across all layers, got duplicates: {names}.")
 
 
 __all__ = ["AgentRunRunner", "AgentRunValidationError"]

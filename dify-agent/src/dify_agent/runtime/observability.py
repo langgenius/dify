@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal, override
 
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace import ReadableSpan
@@ -63,6 +63,7 @@ class IsolatedTracerProvider(TracerProvider):
     client: Logfire
     preserve_external_parent: bool = False
 
+    @override
     def get_tracer(
         self,
         instrumenting_module_name: str,
@@ -97,6 +98,7 @@ class _IsolatedTracer(Tracer):
             return context
         return set_span_in_context(INVALID_SPAN, context)
 
+    @override
     def start_span(
         self,
         name: str,
@@ -119,6 +121,7 @@ class _IsolatedTracer(Tracer):
             set_status_on_exception=set_status_on_exception,
         )
 
+    @override
     def start_as_current_span(
         self,
         name: str,
@@ -151,6 +154,7 @@ class RunScopedTracerProvider(TracerProvider):
     delegate: TracerProvider
     attributes: tuple[tuple[str, str], ...]
 
+    @override
     def get_tracer(
         self,
         instrumenting_module_name: str,
@@ -175,6 +179,7 @@ class _RunScopedTracer(Tracer):
     def _run_attributes(self, attributes: Attributes) -> Attributes:
         return {**(attributes or {}), **dict(self.attributes)}
 
+    @override
     def start_span(
         self,
         name: str,
@@ -197,6 +202,7 @@ class _RunScopedTracer(Tracer):
             set_status_on_exception=set_status_on_exception,
         )
 
+    @override
     def start_as_current_span(
         self,
         name: str,

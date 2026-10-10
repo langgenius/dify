@@ -1,152 +1,120 @@
 import type { HitTesting } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import ResultItem from '../result-item'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it } from 'vite-plus/test'
+import { ResultItem } from '../result-item'
 
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
-}))
-
-vi.mock('../../../common/image-list', () => ({
-  default: () => <div data-testid="image-list" />,
-}))
-
-vi.mock('../child-chunks-item', () => ({
-  default: ({ payload }: { payload: { id: string } }) => (
-    <div data-testid="child-chunk">{payload.id}</div>
-  ),
-}))
-
-vi.mock('../chunk-detail-modal', () => ({
-  default: () => <div data-testid="chunk-detail-modal" />,
-}))
-
-vi.mock('../result-item-footer', () => ({
-  default: ({ docTitle }: { docTitle: string }) => (
-    <div data-testid="result-item-footer">{docTitle}</div>
-  ),
-}))
-
-vi.mock('../result-item-meta', () => ({
-  default: ({ positionId }: { positionId: number }) => (
-    <div data-testid="result-item-meta">{positionId}</div>
-  ),
-}))
-
-vi.mock('@/app/components/datasets/documents/detail/completed/common/summary-label', () => ({
-  default: ({ summary }: { summary: string }) => <div data-testid="summary-label">{summary}</div>,
-}))
-
-vi.mock('@/app/components/datasets/documents/detail/completed/common/tag', () => ({
-  default: ({ text }: { text: string }) => <span data-testid="tag">{text}</span>,
-}))
-
-vi.mock('@/app/components/datasets/hit-testing/utils/extension-to-file-type', () => ({
-  extensionToFileType: () => 'pdf',
-}))
-
-const makePayload = (overrides: Record<string, unknown> = {}): HitTesting => {
-  const segmentOverrides = (overrides.segment ?? {}) as Record<string, unknown>
-  const segment = {
+function makePayload(
+  overrides: Partial<Omit<HitTesting, 'segment' | 'content'>> & {
+    segment?: Partial<HitTesting['segment']>
+  } = {},
+): HitTesting {
+  const segment: HitTesting['segment'] = {
+    id: 'segment-1',
     position: 1,
     word_count: 100,
-    content: 'test content',
+    content: 'Preview content',
     sign_content: '',
     keywords: [],
-    document: { name: 'file.pdf' },
+    document: {
+      id: 'document-1',
+      name: 'file.pdf',
+      data_source_type: 'upload_file',
+      doc_type: 'book',
+    },
     answer: '',
-    ...segmentOverrides,
+    tokens: 20,
+    hit_count: 1,
+    index_node_hash: 'hash-1',
+    ...overrides.segment,
   }
   return {
-    segment,
-    content: segment,
     score: 0.95,
     tsne_position: { x: 0, y: 0 },
-    child_chunks: (overrides.child_chunks ?? []) as HitTesting['child_chunks'],
-    files: (overrides.files ?? []) as HitTesting['files'],
-    summary: (overrides.summary ?? '') as string,
-  } as unknown as HitTesting
+    child_chunks: [],
+    files: [],
+    ...overrides,
+    segment,
+    content: segment,
+  }
 }
 
-describe('ResultItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+const dialogName = 'datasetHitTesting.chunkDetail'
+const triggerName = 'datasetHitTesting.open file.pdf'
+const closeName = 'common.operation.close'
 
-  it('should render meta, content, and footer', () => {
+describe('ResultItem detail entries', () => {
+  it('opens from metadata and closes without a portalled click reopening the card', async () => {
+    const user = userEvent.setup()
     render(<ResultItem payload={makePayload()} />)
-    expect(screen.getByTestId('result-item-meta')).toHaveTextContent('1')
-    expect(screen.getByTestId('markdown')).toHaveTextContent('test content')
-    expect(screen.getByTestId('result-item-footer')).toHaveTextContent('file.pdf')
+    await user.click(screen.getByText('Chunk-01'))
+    const dialog = screen.getByRole('dialog', { name: dialogName })
+    await user.click(await within(dialog).findByText('Preview content'))
+    await user.click(within(dialog).getByRole('button', { name: closeName }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: triggerName })).toHaveFocus()
   })
 
-  it('should render keywords when no child_chunks', () => {
-    const payload = makePayload({
-      segment: { keywords: ['key1', 'key2'] },
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.getAllByTestId('tag')).toHaveLength(2)
-  })
-
-  it('should render child chunks when present', () => {
-    const payload = makePayload({
-      child_chunks: [{ id: 'c1' }, { id: 'c2' }],
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.getAllByTestId('child-chunk')).toHaveLength(2)
-  })
-
-  it('should render summary label when summary exists', () => {
-    const payload = makePayload({ summary: 'test summary' })
-    render(<ResultItem payload={payload} />)
-    expect(screen.getByTestId('summary-label')).toHaveTextContent('test summary')
-  })
-
-  it('should show chunk detail modal on click', () => {
+  it('opens from the fixed footer by keyboard and can reopen after Escape', async () => {
+    const user = userEvent.setup()
     render(<ResultItem payload={makePayload()} />)
-    fireEvent.click(screen.getByTestId('markdown'))
-    expect(screen.getByTestId('chunk-detail-modal')).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: triggerName })
+    trigger.focus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
+    await user.keyboard(' ')
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
   })
 
-  it('should render images when files exist', () => {
-    const payload = makePayload({
-      files: [
-        { name: 'img.png', mime_type: 'image/png', source_url: 'url', size: 100, extension: 'png' },
-      ],
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.getByTestId('image-list')).toBeInTheDocument()
+  it('opens from Markdown text and leaves a Markdown link to its own action', async () => {
+    const user = userEvent.setup()
+    render(
+      <ResultItem
+        payload={makePayload({
+          segment: { content: 'Preview text\n\n[Reference](https://example.com)' },
+        })}
+      />,
+    )
+    const link = await screen.findByRole('link', { name: 'Reference' })
+    expect(link).toHaveAttribute('href', 'https://example.com/')
+    await user.click(link)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByText('Preview text'))
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
   })
 
-  it('should not render keywords when child_chunks are present', () => {
-    const payload = makePayload({
-      segment: { keywords: ['k1'] },
-      child_chunks: [{ id: 'c1' }],
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.queryByTestId('tag')).not.toBeInTheDocument()
-  })
-
-  it('should not render keywords section when keywords array is empty', () => {
-    const payload = makePayload({
-      segment: { keywords: [] },
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.queryByTestId('tag')).not.toBeInTheDocument()
-  })
-
-  it('should toggle child chunks fold state', async () => {
-    const payload = makePayload({
-      child_chunks: [{ id: 'c1' }],
-    })
-    render(<ResultItem payload={payload} />)
-    expect(screen.getByTestId('child-chunk')).toBeInTheDocument()
-
-    const header = screen.getByText(/hitChunks/i)
-    fireEvent.click(header.closest('div')!)
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('child-chunk')).not.toBeInTheDocument()
-    })
+  it('folds child chunks by keyboard without opening details and retains the fold across sessions', async () => {
+    const user = userEvent.setup()
+    render(
+      <ResultItem
+        payload={makePayload({
+          segment: { keywords: ['Hidden parent keyword'] },
+          child_chunks: [{ id: 'child-1', content: 'Child preview', position: 1, score: 0.8 }],
+        })}
+      />,
+    )
+    const fold = screen.getByRole('button', { name: /datasetHitTesting.hitChunks/ })
+    expect(fold).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Child preview')).toBeInTheDocument()
+    expect(screen.queryByText('Hidden parent keyword')).not.toBeInTheDocument()
+    fold.focus()
+    await user.keyboard('{Enter}')
+    expect(fold).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Child preview')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: triggerName }))
+    expect(within(screen.getByRole('dialog')).getByText('Child preview')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: closeName }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(fold).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Child preview')).not.toBeInTheDocument()
+    fold.focus()
+    await user.keyboard(' ')
+    expect(fold).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Child preview')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

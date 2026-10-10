@@ -63,6 +63,7 @@ from services.entities.app_entities import (
     CreateAppParams,
 )
 from services.model_provider.service import ModelProviderService
+from services.rbac import contracts as rbac_contracts
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
@@ -84,7 +85,7 @@ def _initialize_created_app_access(created: _CreatedApp) -> None:
     enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
         created.tenant_id,
         created.creator_account_id,
-        enterprise_rbac_service.RBACResourceType.APP,
+        rbac_contracts.RBACResourceType.APP,
         created.app_id,
     )
 

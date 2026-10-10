@@ -9,7 +9,7 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
-import SearchBoxWrapper from '../search-box/search-box-wrapper'
+import { MarketplaceSearchInput } from '../search-input'
 
 type DescriptionProps = {
   isMarketplacePlatform?: boolean
@@ -238,15 +238,7 @@ const Description = ({
             </span>
           </div>
         </div>
-        <SearchBoxWrapper
-          wrapperClassName="z-11 w-64 shrink-0"
-          inputClassName="h-9 w-full rounded-[10px]"
-          inputElementClassName="text-[14px] leading-5 font-normal"
-          searchIconClassName="size-4"
-          placeholder={tCommon(($) => $['placeholder.search'])}
-          showTags={false}
-          usedInMarketplace={false}
-        />
+        <MarketplaceSearchInput className="w-64 shrink-0" />
         <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
           <Separator decorative orientation="vertical" className="mx-0 h-4" />
           <SubmitRequestDropdown dividerAfterFirst />

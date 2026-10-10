@@ -44,7 +44,7 @@ it('reveals next-step actions to keyboard users and keeps restored focus visible
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ opacityProperty: true })).toBe(true)
   await userEvent.keyboard('{Enter}')
-  await expect.element(page.getByRole('menuitem', { name: 'workflow.panel.change' })).toHaveFocus()
+  await expect.element(page.getByRole('menu')).toBeVisible()
   await userEvent.keyboard('{Escape}')
 
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()

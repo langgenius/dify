@@ -327,10 +327,6 @@ describe('useChildSegmentData', () => {
       })
 
       expect(mockUpdateChildSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       expect(onCloseChildSegmentDetail).toHaveBeenCalled()
       expect(updateSegmentInCache).toHaveBeenCalled()
       expect(refreshChunkListDataWithDetailChanged).toHaveBeenCalled()

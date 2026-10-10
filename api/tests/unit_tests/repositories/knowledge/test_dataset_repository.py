@@ -26,6 +26,15 @@ def _dataset(
     )
 
 
+def test_rbac_maintainer_lookup_requires_owning_workspace(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset", "workspace"))
+    repository = SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory)
+    assert repository.get_maintainer_id("workspace", "dataset") == "account-1"
+    assert repository.get_maintainer_id("other-workspace", "dataset") is None
+    assert repository.get_maintainer_id("workspace", "missing") is None
+
+
 def test_estimate_record_and_access_snapshot_are_separate_and_tenant_scoped(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

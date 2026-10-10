@@ -68,12 +68,11 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       { params: { policy_id: rule.id } },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['accessRule.deleted'], { ns: 'permission' }))
           setShowDeleteConfirm(false)
         },
       },
     )
-  }, [deleteAccessRule, rule.id, t])
+  }, [deleteAccessRule, rule.id])
 
   const isBuiltIn = rule.is_builtin
 

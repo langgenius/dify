@@ -35,6 +35,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workspace import (
@@ -51,6 +52,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -242,6 +244,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -409,6 +412,10 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    workspace_members, workspace_provisioning = build_workspace_membership_services(
+        workspaces=workspace_repository,
+        accounts=accounts,
+    )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
         trial_apps=trial_apps,
@@ -431,10 +438,19 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    console_apps = ConsoleAppRepository(session_factory=database_client)
+    rbac = build_rbac_services(
+        workspaces=workspace_repository,
+        workspace_members=workspace_members,
+        apps=console_apps,
+        datasets=dataset_dependencies.datasets,
+    )
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
         recommended_packages=recommended_app_packages,
+        repository=console_apps,
+        rbac_members=rbac.members,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     knowledge = build_knowledge_services(
@@ -447,6 +463,7 @@ def build_application_services(
         providers=datasource_credentials.providers,
         redis=redis,
         tags=tags,
+        rbac_members=rbac.members,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
@@ -466,11 +483,6 @@ def build_application_services(
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
-    )
-    workspace_members, workspace_provisioning = build_workspace_membership_services(
-        database_client=database_client,
-        workspaces=workspace_repository,
-        accounts=accounts,
     )
     account_services = build_account_services(
         database_client=database_client,
@@ -495,6 +507,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     return ApplicationServices(
+        rbac=rbac,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),

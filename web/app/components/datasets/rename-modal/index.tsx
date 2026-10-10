@@ -75,7 +75,6 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       if (onSuccess) onSuccess()
       onClose()
     } catch {

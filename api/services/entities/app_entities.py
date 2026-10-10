@@ -206,6 +206,15 @@ class AppExportOptions:
     include_secret: bool = False
     workflow_id: str | None = None
     version_id: UUID | None = None
+    preserve_agent_bindings: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class AppAgentBinding:
+    """Authorization binding materialized before the repository closes its Session."""
+
+    id: str
+    workflow_only: bool
 
 
 @dataclass(frozen=True, slots=True)

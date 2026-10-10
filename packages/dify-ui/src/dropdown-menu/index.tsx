@@ -1,10 +1,13 @@
 'use client'
 
 import type * as React from 'react'
+import type { InputGroupProps } from '../input-group'
 import type { MenuItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
+import { textControlGroupInputClassName } from '../form-control-shared'
+import { InputGroup } from '../input-group'
 import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
@@ -24,6 +27,11 @@ const DropdownMenuPortal = Menu.Portal
 const DropdownMenuSub = Menu.SubmenuRoot
 const DropdownMenuGroup = Menu.Group
 const createDropdownMenuHandle = Menu.createHandle
+
+// A filterable menu hosts its input in `DropdownMenuInputGroup` and its items in `DropdownMenuList`,
+// so the list owns the `menu` role and the scrolling while the popup keeps its padding.
+const DropdownMenuFilterProvider = Menu.FilterProvider
+const useDropdownMenuFilter = Menu.useFilter
 
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
@@ -46,6 +54,97 @@ function DropdownMenuTrigger<Payload = unknown>({
 type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
 type DropdownMenuGroupProps = Menu.Group.Props
+type DropdownMenuFilterProviderProps = Menu.FilterProvider.Props
+
+type DropdownMenuInputGroupProps = InputGroupProps
+
+// A dify-ui composition over `InputGroup` with the menu's input and clear parts; it carries no Base
+// UI state attributes. Laid out like the Combobox popup search, with a minimum width because the
+// input has no intrinsic width and a menu popup is sized by its items. `InputGroup` owns the focus
+// ring; this group withholds it while the focused input lacks Base UI's `data-highlighted`, so the
+// ring shows while the input holds the keyboard highlight and gives way to the item highlight once
+// the arrow keys move into the list.
+function DropdownMenuInputGroup({ className, ...props }: DropdownMenuInputGroupProps) {
+  return (
+    <InputGroup
+      className={cn(
+        'mx-1 mb-1 w-auto min-w-48 gap-0.5 px-2 has-[>input:focus:not([data-highlighted])]:ring-0',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuInputProps = Menu.Input.Props
+
+// The group's padding and icon surround the input, so it keeps only a narrow inset.
+function DropdownMenuInput({ className, ...props }: DropdownMenuInputProps) {
+  return (
+    <Menu.Input
+      className={(state) =>
+        cn(textControlGroupInputClassName, 'px-1', resolveClassName(className, state))
+      }
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuClearProps = Menu.Clear.Props
+
+// Base UI shows it only while the input has a value and keeps it out of the accessibility tree and
+// the tab order. Same look as `ComboboxClear`; change both together.
+function DropdownMenuClear({ className, children, ...props }: DropdownMenuClearProps) {
+  return (
+    <Menu.Clear
+      className={(state) =>
+        cn(
+          'flex size-5 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    >
+      {children ?? <span className="i-ri-close-line size-4" aria-hidden="true" />}
+    </Menu.Clear>
+  )
+}
+
+type DropdownMenuEmptyProps = Menu.Empty.Props
+
+// Same look as `ComboboxEmpty`; change both together.
+function DropdownMenuEmpty({ className, ...props }: DropdownMenuEmptyProps) {
+  return (
+    <Menu.Empty
+      className={(state) =>
+        cn('px-3 py-2 system-sm-regular text-text-tertiary', resolveClassName(className, state))
+      }
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuListProps = Menu.List.Props
+
+// The popup keeps its vertical padding and the items keep their inset, so the list adds none.
+// Filtering hides a group whose items all match out, so a separator between groups goes at the
+// start of the later group and shows only while a visible group precedes it. Every separator
+// directly inside a group follows that rule, so separate items with groups, not with a separator
+// among them. A separator placed directly in the list is not managed.
+function DropdownMenuList({ className, ...props }: DropdownMenuListProps) {
+  return (
+    <Menu.List
+      className={(state) =>
+        cn(
+          'max-h-80 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden',
+          '[&>:not([hidden])~[role=group]:not([hidden])>[role=separator]]:block [&>[role=group]>[role=separator]]:hidden',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
 type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
   Menu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
@@ -133,12 +232,12 @@ function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelP
 }
 
 type DropdownMenuPositionerProps = Omit<Menu.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
+  placement: Placement
 }
 
 function DropdownMenuPositioner({
   className,
-  placement = 'bottom-end',
+  placement,
   sideOffset = 4,
   alignOffset = 0,
   ...props
@@ -159,12 +258,15 @@ function DropdownMenuPositioner({
 
 type DropdownMenuPopupProps = Menu.Popup.Props
 
+// When a `DropdownMenuList` is rendered, Base UI hands the `menu` role to it and the popup becomes a
+// column that never scrolls itself, so the list scrolls and anything else in the popup stays put.
 function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
   return (
     <Menu.Popup
       className={(state) =>
         cn(
           menuPopupBaseClassName,
+          'not-[[role=menu]]:flex not-[[role=menu]]:flex-col not-[[role=menu]]:overflow-hidden',
           floatingPopupAnimationClassName,
           resolveClassName(className, state),
         )
@@ -175,8 +277,9 @@ function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
 }
 
 type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children'> &
-  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'sideOffset'> & {
     children: React.ReactNode
+    placement?: Placement
   }
 
 function DropdownMenuContent({
@@ -226,7 +329,7 @@ function DropdownMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </Menu.SubmenuTrigger>
   )
@@ -234,9 +337,10 @@ function DropdownMenuSubTrigger({
 
 type DropdownMenuSubContentProps = DropdownMenuContentProps
 
+// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function DropdownMenuSubContent({
   children,
-  placement = 'left-start',
+  placement = 'inline-end-start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -314,11 +418,17 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
+  DropdownMenuInput,
+  DropdownMenuInputGroup,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuPopup,
   DropdownMenuPortal,
   DropdownMenuPositioner,
@@ -330,18 +440,25 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  useDropdownMenuFilter,
 }
 
 export type {
   DropdownMenuActions,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
+  DropdownMenuClearProps,
   DropdownMenuContentProps,
+  DropdownMenuEmptyProps,
+  DropdownMenuFilterProviderProps,
   DropdownMenuGroupLabelProps,
   DropdownMenuGroupProps,
   DropdownMenuHandle,
+  DropdownMenuInputGroupProps,
+  DropdownMenuInputProps,
   DropdownMenuItemProps,
   DropdownMenuLinkItemProps,
+  DropdownMenuListProps,
   DropdownMenuPopupProps,
   DropdownMenuPortalProps,
   DropdownMenuPositionerProps,

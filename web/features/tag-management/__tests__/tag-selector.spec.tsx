@@ -188,6 +188,9 @@ describe('TagSelector', () => {
 
       await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
       await user.click(await screen.findByRole('option', { name: 'Knowledge' }))
+      await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewTag')
+      await user.click(await screen.findByRole('option', { name: /NewTag/ }))
+      await user.click(screen.getByRole('button', { name: i18n.manageTags }))
 
       expect(onOuterClick).not.toHaveBeenCalled()
     } finally {

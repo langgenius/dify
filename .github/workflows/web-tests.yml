@@ -33,20 +33,23 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: vp test run --project unit --reporter=blob --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
-      - name: Upload blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      # Codecov combines the shard uploads under the same commit and web flag.
+      - name: Report coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          name: blob-report-${{ matrix.shardIndex }}
-          path: web/.vitest/blob/*
-          include-hidden-files: true
-          retention-days: 1
+          files: web/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
+          flags: web
+          name: web-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   browser-test:
     name: Web Browser Tests
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
     defaults:
       run:
@@ -79,51 +82,10 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  merge-reports:
-    name: Merge Test Reports
-    if: ${{ !cancelled() }}
-    needs: [test]
-    runs-on: depot-ubuntu-24.04-4
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./web
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup web environment
-        uses: ./.github/actions/setup-web
-
-      - name: Download blob reports
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          path: web/.vitest/blob
-          pattern: blob-report-*
-          merge-multiple: true
-
-      - name: Merge reports
-        run: vp test --merge-reports --coverage --silent=passed-only
-
-      - name: Report coverage
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          directory: web/coverage
-          flags: web
-        env:
-          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
-
   dify-ui-test:
     name: dify-ui Tests
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -160,14 +122,17 @@ jobs:
       - name: Report coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          directory: packages/dify-ui/coverage
+          files: packages/dify-ui/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
           flags: dify-ui
+          name: dify-ui
         env:
-          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   dify-ui-storybook-test:
     name: dify-ui Storybook Tests
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
     defaults:
       run:

@@ -105,7 +105,9 @@ describe('useAccessPointActions', () => {
   it('reports a failed save without invalidating app details', async () => {
     mocks.updateAppSiteConfig.mockRejectedValueOnce(new Error('request failed'))
     const { result } = renderActions()
-    await act(async () => result.current.saveSiteConfig(siteConfig))
+    await act(async () => {
+      expect(await result.current.saveSiteConfig(siteConfig)).toBe(false)
+    })
     expect(mocks.fetchAppDetail).not.toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully', {
       type: 'error',
@@ -117,7 +119,7 @@ describe('useAccessPointActions', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     await act(async () => {
-      await result.current.saveSiteConfig(siteConfig)
+      expect(await result.current.saveSiteConfig(siteConfig)).toBe(true)
     })
 
     expect(mocks.updateAppSiteConfig).toHaveBeenCalledWith({
@@ -141,11 +143,25 @@ describe('useAccessPointActions', () => {
     )
   })
 
+  it('reports a successful save when the background detail refresh fails', async () => {
+    mocks.fetchAppDetail.mockRejectedValueOnce(new Error('Refresh failed'))
+    const { result } = renderActions()
+
+    await act(async () => {
+      expect(await result.current.saveSiteConfig(siteConfig)).toBe(true)
+    })
+
+    await waitFor(() => expect(mocks.fetchAppDetail).toHaveBeenCalledOnce())
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith('common.actionMsg.modifiedSuccessfully', {
+      type: 'success',
+    })
+  })
+
   it('keeps site configuration behind Access Point management permission', async () => {
     const { result } = renderActions('app-1', false)
 
     await act(async () => {
-      await result.current.saveSiteConfig(siteConfig)
+      expect(await result.current.saveSiteConfig(siteConfig)).toBe(false)
     })
 
     expect(mocks.updateAppSiteConfig).not.toHaveBeenCalled()

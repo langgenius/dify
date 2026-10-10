@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.orm import Session
 
 from services.app.access import (
     APP_LIST_PERMISSION_KEYS,
@@ -12,14 +11,14 @@ from services.app.access import (
     has_app_list_permission,
     resolve_app_access_filter,
 )
-from services.enterprise.rbac_service import (
+from services.entities.app_entities import AppListParams
+from services.rbac.contracts import (
     MyPermissionsResponse,
     ResourcePermissionKeys,
     ResourcePermissionSnapshot,
     ResourceWhitelistResources,
     WorkspacePermissionSnapshot,
 )
-from services.entities.app_entities import AppListParams
 
 _RBAC_MODULE = "services.app.access.enterprise_rbac_service"
 
@@ -149,13 +148,12 @@ class TestResolveAppAccessFilter:
 
         assert flt.accessible_app_ids == {"app-5"}
 
-    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
-        session = unbound_session
         captured: dict[str, object] = {}
 
-        def get_permissions(tenant_id: str, account_id: str, *, session: object):
-            captured.update(tenant_id=tenant_id, account_id=account_id, session=session)
+        def get_permissions(tenant_id: str, account_id: str):
+            captured.update(tenant_id=tenant_id, account_id=account_id)
             return _permissions(workspace_keys=["app.create_and_management"])
 
         monkeypatch.setattr(
@@ -163,8 +161,11 @@ class TestResolveAppAccessFilter:
             get_permissions,
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=session)
+        flt = resolve_app_access_filter(
+            "tenant-1",
+            "acc-1",
+        )
 
         assert flt.accessible_app_ids == set()
         assert flt.can_manage_own_apps is False
-        assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1", "session": session}
+        assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1"}

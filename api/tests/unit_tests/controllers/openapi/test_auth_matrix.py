@@ -95,7 +95,7 @@ from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
-from extensions.application_services.app import AppServices
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
@@ -103,7 +103,6 @@ from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
-from services.rbac_resource_service import RBACResourceService
 from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -853,17 +852,13 @@ def _matrix_app() -> Flask:
     return app
 
 
-@dataclass(frozen=True)
-class MatrixServices:
-    apps: AppServices
-
-
 @pytest.fixture
-def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch, app_services: AppServices) -> Iterator[Flask]:
+def matrix_app(
+    _matrix_app: Flask, monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> Iterator[Flask]:
     """Keep rate-limit overrides and the admission probe scoped to each case."""
 
-    monkeypatch.setitem(_matrix_app.extensions, "application_services", MatrixServices(app_services))
-
+    monkeypatch.setitem(_matrix_app.extensions, "application_services", account_application_services)
     monkeypatch.setattr(
         rate_limit_module,
         "LIMIT_BEARER_PER_TOKEN",
@@ -1126,8 +1121,6 @@ def _run_case(
                 side_effect=_end_user,
             )
         )
-        stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
-        stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
         stack.enter_context(
             patch(
                 "services.enterprise.rbac_service.RBACService.CheckAccess.check",

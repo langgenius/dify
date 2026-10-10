@@ -16,7 +16,7 @@ class EnterpriseAppDiscoveryAccess(AppDiscoveryAccess):
     def visibility(self, context: RequestContext) -> AppAccessFilter:
         if not dify_config.RBAC_ENABLED:
             return AppAccessFilter.unrestricted()
-        permissions = RBACService.MyPermissions.fetch(context.active_workspace_id, context.account_id)
+        permissions = RBACService.MyPermissions.get(context.active_workspace_id, context.account_id)
         whitelist = RBACService.AppAccess.whitelist_resources(context.active_workspace_id, context.account_id)
         return app_access_filter_from_permissions(permissions, whitelist)
 

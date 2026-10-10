@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "इस एक्सेस टोकन को सुरक्षित स्थान पर रखें; इसे फिर से नहीं देखा जा सकेगा। जिसके पास यह टोकन होगा, वह Difyctl से अधिकृत संसाधन खोज और उपयोग कर सकेगा। इसे खो देने पर नया टोकन बनाएँ और पुराने को रद्द करें।",
   "resourceAccessToken.deleteDescription": "एक्सेस टोकन तुरंत निष्क्रिय हो जाएगा। इसका उपयोग करने वाले अनुरोध अस्वीकार किए जाएँगे, जिससे चल रहे कार्य रुक सकते हैं या विफल हो सकते हैं। हटाने के बाद आप टोकन को देख या बदल नहीं पाएँगे।",
   "resourceAccessToken.deleteTitle": "एक्सेस टोकन हटाएँ?",
-  "resourceAccessToken.deleted": "एक्सेस टोकन हटा दिया गया",
   "resourceAccessToken.done": "पूर्ण",
   "resourceAccessToken.editTitle": "एक्सेस टोकन संपादित करें",
   "resourceAccessToken.empty": "अभी कोई एक्सेस टोकन नहीं है",

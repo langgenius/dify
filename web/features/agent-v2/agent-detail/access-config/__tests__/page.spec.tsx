@@ -162,11 +162,7 @@ describe('AgentAccessConfigPage', () => {
   it('adds a workspace member with the default permission set', async () => {
     setup()
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    await userEvent.click(
-      await screen.findByRole('button', {
-        name: 'permission.accessRule.addMemberAria:{"name":"Mia"}',
-      }),
-    )
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Mia/ }))
     await waitFor(() => expect(screen.getByRole('row', { name: /Mia/ })).toBeInTheDocument())
     const mutation = sent.find((req) => req.method === 'PUT')!
     expect(new URL(mutation.url).pathname).toMatch(/\/users\/mia\/access-policies$/)

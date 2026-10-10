@@ -50,6 +50,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -92,6 +93,7 @@ def build_knowledge_services(
     providers: DatasourceProviderService,
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
+    rbac_members: MemberService,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -129,6 +131,7 @@ def build_knowledge_services(
                 session_factory=database_client,
                 tags=tags,
                 app_queries=ConsoleAppRepository(session_factory=database_client),
+                members=rbac_members,
             ),
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
@@ -137,7 +140,7 @@ def build_knowledge_services(
         ),
         external=ExternalKnowledgeApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client),
+            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client, members=rbac_members),
         ),
         documents=DatasetDocumentApplicationService(
             dataset_access=dataset_access,

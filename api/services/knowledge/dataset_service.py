@@ -102,6 +102,7 @@ from services.knowledge.segments.application import (
     validate_segment_values,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -130,11 +131,11 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str, *, session: Session) -> bool:
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
         if not dify_config.RBAC_ENABLED:
             return False
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=session)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
         workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
         return "dataset.create_and_management" in workspace_permission_keys
 
@@ -153,7 +154,7 @@ class DatasetService:
         *,
         tags: TagTargetQuery,
     ):
-        """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
+        """Return visible datasets for a tenant using the injected read session."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
@@ -179,9 +180,7 @@ class DatasetService:
                     return [], 0
             else:
                 if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(
-                        str(tenant_id), str(user.id), session=session
-                    )
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
@@ -384,7 +383,7 @@ class DatasetService:
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             account.id,
-            enterprise_rbac_service.RBACResourceType.DATASET,
+            rbac_contracts.RBACResourceType.DATASET,
             dataset.id,
         )
         return dataset

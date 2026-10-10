@@ -1,10 +1,10 @@
-import type { LoroMap } from 'loro-crdt/base64'
+import type { LoroMap } from 'loro-crdt'
 import type {
   NodePanelPresenceMap,
   NodePanelPresenceUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { CommonNodeType, Edge, Node, PromptItem } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt/base64'
+import { LoroDoc } from 'loro-crdt'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum, EditionType } from '@/app/components/workflow/types'

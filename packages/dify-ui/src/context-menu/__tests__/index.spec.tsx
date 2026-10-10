@@ -71,7 +71,7 @@ describe('context-menu wrapper', () => {
   })
 
   describe('ContextMenuSubContent', () => {
-    it('should position sub-content at right-start with default placement when props are omitted', async () => {
+    it('should place sub-content inline-end-start when placement is omitted', async () => {
       const screen = await renderWithSafeViewport(
         <ContextMenu open>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
@@ -86,12 +86,19 @@ describe('context-menu wrapper', () => {
         </ContextMenu>,
       )
 
+      const submenu = screen.getByRole('menu', { name: 'More actions' })
+      const submenuTrigger = screen.getByRole('menuitem', { name: 'More actions' })
+
+      await expect.element(submenu).toHaveAttribute('data-side', 'inline-end')
+      await expect.element(submenu).toHaveAttribute('data-align', 'start')
+      // Left-to-right, so the submenu sits to the right of its trigger.
       await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-side', 'right')
-      await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-align', 'start')
+        .poll(
+          () =>
+            submenu.element().getBoundingClientRect().left >=
+            submenuTrigger.element().getBoundingClientRect().right - 1,
+        )
+        .toBe(true)
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
   })

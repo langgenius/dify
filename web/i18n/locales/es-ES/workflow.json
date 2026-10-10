@@ -528,7 +528,6 @@
   "singleRun.testRun": "Ejecución de prueba",
   "snippet.confirm": "Confirmar",
   "snippet.createDialogTitle": "Crear fragmento",
-  "snippet.createSuccess": "Fragmento creado",
   "snippet.descriptionLabel": "Descripción (opcional)",
   "snippet.descriptionPlaceholder": "Describe brevemente tu fragmento",
   "snippet.nameLabel": "Nombre del fragmento",

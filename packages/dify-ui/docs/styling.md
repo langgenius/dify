@@ -74,7 +74,10 @@ share one ring. Rows inside a composite defer to its highlight. Parts that only 
 Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
 groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
 keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
-the indicator, because their checked fill is the indicator color.
+the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
+highlight, so the group draws the ring on that state and drops it once the arrow keys move the
+highlight into the list.
 
 Attach the indicator to the element that visually represents focus. If a visible wrapper contains
 the native focus target, select that descendant state from the wrapper; for example, `SliderThumb`

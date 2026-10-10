@@ -5,16 +5,16 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -64,7 +64,7 @@ export function ToolPickerContent({
   selectedTools,
   panelClassName,
 }: ToolPickerContentProps) {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const canManageTools = useCanManageTools()
@@ -137,7 +137,6 @@ export function ToolPickerContent({
     if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     hideEditCustomCollectionModal()
     invalidateCustomTools()
   }
@@ -160,21 +159,30 @@ export function ToolPickerContent({
         panelClassName,
       )}
     >
-      <div className="p-2 pb-1">
-        <SearchBox
-          search={searchText}
-          onSearchChange={setSearchText}
+      <div className="flex items-center gap-2 p-2 pb-1">
+        <PluginSearchInput
+          value={searchText}
+          onValueChange={setSearchText}
           tags={tags}
           onTagsChange={setTags}
           placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-          supportAddCustomTool={supportAddCustomTool && canManageTools}
-          onShowAddCustomCollectionModal={showEditCustomCollectionModal}
           // The picker replaces the focused menu item inside an already-open popover.
           // Focusing search keeps keyboard users in the same add-tool workflow.
-          /* oxlint-disable-next-line jsx-a11y/no-autofocus */
+          /* oxlint-disable-next-line jsx-a11y/no-autofocus -- The picker replaces the focused menu item in an open popover. */
           autoFocus={focusSearchOnMount}
-          inputClassName="grow"
+          className="flex-1"
         />
+        {supportAddCustomTool && canManageTools && (
+          <IconButton
+            variant="primary"
+            size="md"
+            aria-label={t(($) => $['addToolModal.custom.tip'], { ns: 'tools' })}
+            className="shrink-0 rounded-full"
+            onClick={showEditCustomCollectionModal}
+          >
+            <span className="i-ri-add-line size-4" aria-hidden />
+          </IconButton>
+        )}
       </div>
       <ToolBrowser
         className="mt-1"
