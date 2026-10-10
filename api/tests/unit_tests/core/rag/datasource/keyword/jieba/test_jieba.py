@@ -1,15 +1,16 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.jieba import jieba as jieba_module
-from core.rag.datasource.keyword.jieba.jieba import Jieba
+from core.rag.datasource.keyword.jieba.jieba import Jieba, KeywordSearchDiagnostics
 from core.rag.models.document import Document
-from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import load_keyword_table
 from tests.unit_tests.config_override import apply_config_overrides
@@ -110,6 +111,21 @@ def segment(node_id: str, *, tenant_id: str = "tenant-1") -> DocumentSegment:
         tokens=0,
         created_by="author",
         index_node_id=node_id,
+    )
+
+
+def child(node_id: str, parent: DocumentSegment, *, content: str) -> ChildChunk:
+    return ChildChunk(
+        tenant_id=parent.tenant_id,
+        dataset_id=parent.dataset_id,
+        document_id=parent.document_id,
+        segment_id=parent.id,
+        position=1,
+        content=content,
+        word_count=len(content),
+        created_by="author",
+        index_node_id=node_id,
+        index_node_hash=f"hash-{node_id}",
     )
 
 
@@ -217,6 +233,120 @@ def test_search_preserves_ranking_and_document_filters(runtime: KeywordRuntime) 
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-2", "node-1"]
     documents = keyword.search("alpha beta", session=runtime.session, top_k=2, document_ids_filter=["document-1"])
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-1"]
+
+
+def test_search_materializes_ranked_child_hits_and_applies_document_filter(runtime: KeywordRuntime) -> None:
+    first_parent, second_parent = segment("parent-1"), segment("parent-2")
+    second_parent.document_id = "document-2"
+    runtime.session.add_all([first_parent, second_parent])
+    runtime.session.flush()
+    runtime.session.add_all(
+        [
+            child("child-1", first_parent, content="alpha beta"),
+            child("child-2", second_parent, content="alpha"),
+        ]
+    )
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts(
+        [
+            Document(page_content="alpha beta", metadata={"doc_id": "child-1"}),
+            Document(page_content="alpha", metadata={"doc_id": "child-2"}),
+        ],
+        runtime.session,
+    )
+    runtime.session.commit()
+
+    documents = keyword.search("alpha beta", session=runtime.session, top_k=2)
+    assert [document.metadata["doc_id"] for document in documents] == ["child-1", "child-2"]
+    assert [document.page_content for document in documents] == ["alpha beta", "alpha"]
+    filtered = keyword.search("alpha beta", session=runtime.session, top_k=2, document_ids_filter=["document-1"])
+    assert [document.metadata["doc_id"] for document in filtered] == ["child-1"]
+    assert first_parent.keywords is None
+    assert second_parent.keywords is None
+
+
+@pytest.mark.parametrize(
+    ("keyword_hits", "materialized", "filter_applied", "status", "filtered_out", "unresolved"),
+    [
+        (0, 0, False, "empty_valid", 0, 0),
+        (0, 0, True, "empty_valid", 0, 0),
+        (2, 2, False, "ok", 0, 0),
+        (2, 2, True, "ok", 0, 0),
+        (2, 1, False, "partial", 0, 1),
+        (2, 0, False, "broken_empty", 0, 2),
+        (2, 1, True, "filter_indeterminate", None, None),
+        (2, 0, True, "filter_indeterminate", None, None),
+    ],
+)
+def test_keyword_search_diagnostics_classify_known_and_ambiguous_outcomes(
+    keyword_hits, materialized, filter_applied, status, filtered_out, unresolved
+) -> None:
+    diagnostics = KeywordSearchDiagnostics.from_counts(
+        keyword_hits=keyword_hits, materialized=materialized, filter_applied=filter_applied
+    )
+    assert asdict(diagnostics) == {
+        "keyword_hits": keyword_hits,
+        "materialized": materialized,
+        "filtered_out": filtered_out,
+        "unresolved": unresolved,
+        "filter_applied": filter_applied,
+        "status": status,
+    }
+
+
+@pytest.mark.parametrize("filtered", [False, True])
+def test_search_keeps_partial_results_and_logs_accurate_diagnostics(
+    runtime: KeywordRuntime, monkeypatch: pytest.MonkeyPatch, filtered: bool
+) -> None:
+    runtime.session.add(segment("present-node"))
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts(
+        [
+            Document(page_content="shared", metadata={"doc_id": "present-node"}),
+            Document(page_content="shared", metadata={"doc_id": "missing-node"}),
+        ],
+        runtime.session,
+    )
+    runtime.session.commit()
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
+
+    documents = keyword.search(
+        "shared", session=runtime.session, top_k=2, **({"document_ids_filter": ["document-1"]} if filtered else {})
+    )
+
+    assert [document.metadata["doc_id"] for document in documents] == ["present-node"]
+    logged = logger.debug if filtered else logger.warning
+    logged.assert_called_once()
+    diagnostics = logged.call_args.kwargs["extra"]["keyword_search_diagnostics"]
+    assert diagnostics == {
+        "keyword_hits": 2,
+        "materialized": 1,
+        "filtered_out": None if filtered else 0,
+        "unresolved": None if filtered else 1,
+        "filter_applied": filtered,
+        "status": "filter_indeterminate" if filtered else "partial",
+    }
+    (logger.warning if filtered else logger.debug).assert_not_called()
+
+
+def test_empty_keyword_hits_skip_materialization_queries(runtime: KeywordRuntime, sqlite_engine: Engine) -> None:
+    statements: list[str] = []
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_sql)
+    try:
+        result = Jieba(runtime.dataset)._search_with_diagnostics("unmatched", session=runtime.session)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_sql)
+
+    assert result.results == []
+    assert result.diagnostics.status == "empty_valid"
+    assert not any(
+        "FROM child_chunks" in statement or "FROM document_segments" in statement for statement in statements
+    )
 
 
 def test_delete_removes_the_database_record_and_file(runtime: KeywordRuntime) -> None:

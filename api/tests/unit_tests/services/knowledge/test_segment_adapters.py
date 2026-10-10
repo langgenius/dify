@@ -491,7 +491,15 @@ type IndexingProbe = tuple[DatasetSegmentApplicationService, SQLAlchemySegmentRe
 def indexing_probe(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[IndexingProbe]:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
     from services.knowledge.segments import indexing as indexing_module
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            return set(text.split())
+
+    # Segment tests exercise index lifecycle, not Jieba's global TF-IDF initialization.
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
 
     with sqlite_session_factory.begin() as session:
         dataset = _dataset("dataset-1", "workspace-1")
@@ -932,22 +940,28 @@ def test_batch_status_and_delete_only_modify_scoped_segments(
         assert document.word_count == 0
 
 
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
 def test_child_regeneration_reuses_splitter_outside_transaction(
     segment_update: SegmentUpdateEntry,
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    technique: IndexTechniqueType,
 ) -> None:
     import json
 
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
+    from core.rag.datasource.keyword.jieba.jieba import Jieba
     from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
     from models.dataset import DatasetProcessRule
     from models.enums import ProcessRuleMode
+    from tests.unit_tests.config_override import apply_config_overrides
 
     app, repository, probe = indexing_probe
     with sqlite_session_factory.begin() as session:
         dataset = session.get(Dataset, "dataset-1")
         assert dataset is not None
+        dataset.indexing_technique = technique
         dataset.embedding_model_provider = "provider"
         rule = DatasetProcessRule(
             dataset_id="dataset-1",
@@ -961,6 +975,19 @@ def test_child_regeneration_reuses_splitter_outside_transaction(
         document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
         document.dataset_process_rule_id = rule.id
 
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            return {text}
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+
+    def hits(term: str) -> list[str]:
+        with sqlite_session_factory() as session:
+            dataset = session.get(Dataset, "dataset-1")
+            assert dataset is not None
+            return [result.page_content for result in Jieba(dataset).search(term, session=session)]
+
     def split(_self, document: IndexDocument, _rule, _mode, _model) -> list[ChildDocument]:
         assert not probe.active_transactions
         return [
@@ -973,6 +1000,7 @@ def test_child_regeneration_reuses_splitter_outside_transaction(
     context = RequestContext("request", None, "author", "workspace-1")
     created = app.create_segment(context, dataset_id="dataset-1", document_id="document-1", values={"content": "first"})
     assert created.data.status == "completed"
+    assert hits("first") == ["first"]
     updated = segment_update(
         context,
         dataset_id="dataset-1",
@@ -985,6 +1013,8 @@ def test_child_regeneration_reuses_splitter_outside_transaction(
     children = repository.get_children(ref)
     assert children is not None
     assert [child.data.content for child in children] == ["second"]
+    assert hits("first") == []
+    assert hits("second") == ["second"]
 
 
 @pytest.mark.parametrize(
@@ -1683,14 +1713,19 @@ def test_batch_index_keeps_manual_keywords_aligned_with_segments(
     assert not probe.batches
 
 
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
 def test_batch_parent_child_index_uses_shared_splitter_without_open_transactions(
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    technique: IndexTechniqueType,
 ) -> None:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
+    from core.rag.datasource.keyword.jieba.jieba import Jieba
     from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
     from models.dataset import DatasetProcessRule
     from models.enums import ProcessRuleMode
+    from tests.unit_tests.config_override import apply_config_overrides
 
     app, repository, probe = indexing_probe
     _persist_index_batch(sqlite_session_factory, doc_form=IndexStructureType.PARENT_CHILD_INDEX)
@@ -1706,8 +1741,20 @@ def test_batch_parent_child_index_uses_shared_splitter_without_open_transactions
         dataset = session.get(Dataset, "dataset-1")
         assert document is not None
         assert dataset is not None
+        dataset.indexing_technique = technique
         dataset.embedding_model_provider = "provider"
         document.dataset_process_rule_id = rule.id
+
+    checking_indexing = True
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            if checking_indexing:
+                assert not probe.active_transactions
+            return {text}
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
 
     def split(_self, document: IndexDocument, _rule, _mode, _model) -> list[ChildDocument]:
         assert not probe.active_transactions
@@ -1720,10 +1767,92 @@ def test_batch_parent_child_index_uses_shared_splitter_without_open_transactions
     monkeypatch.setattr(ParentChildIndexProcessor, "split_child_nodes", split)
     document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
     app.mutations.index_segments(document_ref, segment_ids=["first", "second"])
+    checking_indexing = False
 
-    assert probe.batches == [("first",), ("second",)]
+    assert probe.batches == ([("first",), ("second",)] if technique == IndexTechniqueType.HIGH_QUALITY else [])
     for segment_id in ("first", "second"):
         children = repository.get_children(document_ref.segment(segment_id))
         assert children is not None
         assert len(children) == 1
         assert children[0].data.content == segment_id
+        with sqlite_session_factory() as session:
+            dataset = session.get(Dataset, "dataset-1")
+            assert dataset is not None
+            hits = Jieba(dataset).search(segment_id, session=session)
+            assert [hit.page_content for hit in hits] == [segment_id]
+
+
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
+def test_child_crud_keeps_keyword_index_in_sync(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    technique: IndexTechniqueType,
+) -> None:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
+    from core.rag.datasource.keyword.jieba.jieba import Jieba
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    app, _, probe = indexing_probe
+    _persist_index_batch(sqlite_session_factory, doc_form=IndexStructureType.PARENT_CHILD_INDEX)
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        dataset.indexing_technique = technique
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            return set(text.split())
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+
+    def hits(term: str) -> list[str]:
+        with sqlite_session_factory() as session:
+            dataset = session.get(Dataset, "dataset-1")
+            assert dataset is not None
+            return [result.page_content for result in Jieba(dataset).search(term, session=session)]
+
+    context = RequestContext("request", None, "author", "workspace-1")
+    first = app.create_child_chunk(
+        context, dataset_id="dataset-1", document_id="document-1", segment_id="first", content="alpha"
+    )
+    second = app.create_child_chunk(
+        context, dataset_id="dataset-1", document_id="document-1", segment_id="first", content="beta"
+    )
+    assert hits("alpha") == ["alpha"]
+    assert hits("beta") == ["beta"]
+
+    app.update_child_chunk(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="first",
+        child_chunk_id=first.id,
+        content="gamma",
+    )
+    assert hits("alpha") == []
+    assert hits("gamma") == ["gamma"]
+
+    updated = app.update_child_chunks(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="first",
+        chunks=[ChildChunkUpdateArgs(id=first.id, content="delta"), ChildChunkUpdateArgs(content="epsilon")],
+    )
+    assert hits("beta") == []
+    assert hits("gamma") == []
+    assert hits("delta") == ["delta"]
+    assert hits("epsilon") == ["epsilon"]
+    with sqlite_session_factory() as session:
+        assert session.get(ChildChunk, second.id) is None
+
+    for item in updated:
+        app.delete_child_chunk(
+            context, dataset_id="dataset-1", document_id="document-1", segment_id="first", child_chunk_id=item.id
+        )
+    assert hits("delta") == []
+    assert hits("epsilon") == []
+    if technique == IndexTechniqueType.ECONOMY:
+        assert probe.writes == 0

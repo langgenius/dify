@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -233,6 +234,72 @@ def test_economy_cleanup_preserves_unrelated_keyword_entries(
     assert json.loads(keyword_table.keyword_table)["__data__"]["table"] == {"term": ["unrelated-node"]}
     sqlite_session.expire_all()
     assert sqlite_session.get(DocumentSegmentSummary, summary_id) is None
+
+
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
+def test_parent_child_cleanup_removes_child_keywords_for_both_index_techniques(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    technique: IndexTechniqueType,
+) -> None:
+    dataset, document, _, _, child = graph
+    child_id = child.id
+    dataset.indexing_technique = technique
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    row = DatasetKeywordTable(
+        dataset_id=dataset.id,
+        data_source_type="database",
+        keyword_table=json.dumps({"__data__": {"table": {"term": ["child-node", "unrelated-node"]}}}),
+    )
+    sqlite_session.add(row)
+    sqlite_session.commit()
+    monkeypatch.setattr(cleanup, "redis_client", MagicMock())
+    backend = MagicMock()
+    monkeypatch.setattr(cleanup, "Vector", MagicMock(return_value=backend))
+
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id,
+        document_ids=[document.id],
+        doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+        new_session=sqlite_session_factory,
+    )
+
+    sqlite_session.refresh(row)
+    assert json.loads(row.keyword_table)["__data__"]["table"] == {"term": ["unrelated-node"]}
+    if technique == IndexTechniqueType.HIGH_QUALITY:
+        backend.delete_by_ids.assert_called_once_with(["summary-node", "child-node"])
+    else:
+        backend.delete_by_ids.assert_not_called()
+    sqlite_session.expire_all()
+    assert sqlite_session.get(ChildChunk, child_id) is None
+
+
+def test_high_quality_parent_child_cleanup_does_not_create_an_empty_keyword_table(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset, document, _, _, _ = graph
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    sqlite_session.commit()
+    vector = MagicMock()
+    redis = MagicMock()
+    monkeypatch.setattr(cleanup, "Vector", MagicMock(return_value=vector))
+    monkeypatch.setattr(cleanup, "redis_client", redis)
+
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id,
+        document_ids=[document.id],
+        doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+        new_session=sqlite_session_factory,
+    )
+
+    vector.delete_by_ids.assert_called_once_with(["summary-node", "child-node"])
+    redis.lock.assert_not_called()
+    assert sqlite_session.scalar(select(DatasetKeywordTable)) is None
 
 
 def test_legacy_summary_delete_does_not_commit_callers_transaction(
