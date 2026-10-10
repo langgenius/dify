@@ -375,6 +375,41 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is True
         assert result.data[-1].id == "msg-001"
 
+    def test_first_id_keeps_messages_that_share_created_at(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+        empty_extra_content_repository: MagicMock,
+    ) -> None:
+        # messages.created_at has second precision, so a burst of messages ties on the timestamp.
+        conversation = factory.create_conversation()
+        tied_at = datetime(2024, 1, 1, 12, 0, 0)
+        messages = [factory.create_message(f"msg-{index:03d}", created_at=tied_at) for index in range(5)]
+        _persist(sqlite_session, conversation, *messages)
+        _patch_conversation(monkeypatch, conversation)
+
+        seen: list[str] = []
+        first_id: str | None = None
+        for _ in range(10):
+            result = MessageService.pagination_by_first_id(
+                app_model=factory.create_app(),
+                user=factory.create_end_user(),
+                conversation_id=conversation.id,
+                first_id=first_id,
+                limit=2,
+                order="desc",
+                session=sqlite_session,
+            )
+            seen.extend(message.id for message in result.data)
+            if not result.has_more:
+                break
+            first_id = result.data[-1].id
+
+        # Every tied message is returned exactly once, newest id first, with has_more correct on each page.
+        assert seen == [f"msg-{index:03d}" for index in range(4, -1, -1)]
+        assert len(seen) == len(set(seen))
+
     def test_empty_conversation(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -442,6 +477,30 @@ class TestMessageServicePaginationByLastId:
         )
 
         assert [message.id for message in result.data] == [f"msg-{index:03d}" for index in range(4, -1, -1)]
+
+    def test_last_id_keeps_messages_that_share_created_at(
+        self, factory: MessageServiceTestDataFactory, sqlite_session: Session
+    ) -> None:
+        tied_at = datetime(2024, 1, 1, 12, 0, 0)
+        messages = [factory.create_message(f"msg-{index:03d}", created_at=tied_at) for index in range(5)]
+        _persist(sqlite_session, *messages)
+
+        pages: list[list[str]] = []
+        last_id: str | None = None
+        for _ in range(10):
+            result = MessageService.pagination_by_last_id(
+                app_model=factory.create_app(),
+                user=factory.create_end_user(),
+                last_id=last_id,
+                limit=2,
+                session=sqlite_session,
+            )
+            pages.append([message.id for message in result.data])
+            if not result.has_more:
+                break
+            last_id = result.data[-1].id
+
+        assert pages == [["msg-004", "msg-003"], ["msg-002", "msg-001"], ["msg-000"]]
 
     def test_missing_last_id_raises(self, factory: MessageServiceTestDataFactory, sqlite_session: Session) -> None:
         with pytest.raises(LastMessageNotExistsError):
