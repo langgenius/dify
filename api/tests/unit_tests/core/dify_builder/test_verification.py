@@ -3,16 +3,27 @@ from dataclasses import replace
 import pytest
 
 from core.dify_builder import models
+from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 
 
 def verified(**changes):
     run = models.Run(
         id="r",
+        dify_run_id="native",
         session_id="s",
         kind="verify",
         immutable=True,
         status="succeeded",
         verification=models.RunVerification(
+            execution_evidence=ExecutionEvidenceSummary(
+                request_id="request",
+                mode="restricted",
+                sealed=True,
+                safety_outcome="restricted_execution_completed",
+                sandbox_profile="disabled",
+                fixture_digest="a" * 64,
+                native_run_id="native",
+            ),
             execution_revision="rev",
             executed_graph_revision="graph",
             terminal_outputs={"result": None},
@@ -32,7 +43,7 @@ def verified(**changes):
         ({"immutable": False}, "no_verified_run"),
         ({"status": "failed"}, "execution_failed"),
         ({"status": "running"}, "execution_unknown"),
-        ({"verification": None}, "revision_unbound"),
+        ({"verification": None}, "execution_provenance_unbound"),
     ],
 )
 def test_verification_policy_denies(change, reason):

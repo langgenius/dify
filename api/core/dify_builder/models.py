@@ -31,7 +31,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from core.dify_builder.execution_policy import BuilderExecutionRefusal, HttpFixtureSetV1
+from core.dify_builder.execution_policy import BuilderExecutionRefusal, ExecutionEvidenceSummary, HttpFixtureSetV1
 from core.dify_builder.state import PcState
 
 
@@ -109,6 +109,7 @@ class RunVerification:
     output_findings: list[OutputFinding]
     executed_node_ids: list[str]
     no_output_dead_branch: bool
+    execution_evidence: ExecutionEvidenceSummary | None = None
 
 
 @dataclass(kw_only=True)
@@ -116,6 +117,10 @@ class PublicationDecision:
     allowed: bool
     reason: Literal[
         "eligible",
+        "execution_policy_blocked",
+        "execution_evidence_unknown",
+        "simulation_only",
+        "execution_provenance_unbound",
         "no_verified_run",
         "execution_failed",
         "execution_unknown",

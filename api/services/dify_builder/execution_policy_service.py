@@ -1,12 +1,9 @@
-"""Scoped ownership, immutable preparation, launch claims and evidence append.
-
-No executor or eligible seal lives here. Task 2 supplies native normalization
-and propagation; Task 4 seals using authoritative native Run/node records.
-"""
+"""Scoped ownership, immutable claims, receipts and authoritative native result sealing."""
 
 import json
 from copy import deepcopy
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -21,9 +18,11 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
+    ExecutionEvidenceSummary,
     HttpFixtureSetV1,
     HttpResponseFixtureV1,
     RestrictedAdmissionSnapshot,
+    TrustedExecutionCompletion,
     admit_raw_execution_metadata,
     admit_restricted_workflow,
     admitted_node_bindings,
@@ -35,10 +34,11 @@ from core.dify_builder.execution_policy import (
 )
 from core.dify_builder.input_schema import start_schema
 from core.dify_builder.models import Actor, Inputs
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 
 _ID_ADAPTER = TypeAdapter(BoundedID)
@@ -433,6 +433,317 @@ class BuilderExecutionPolicyService:
             if any(o["invocation_id"] == observation.invocation_id for o in observations):
                 raise BuilderExecutionPolicyError("duplicate_capability_invocation")
             row.observations = [*observations, observation.model_dump(mode="json")]
+
+    def seal(self, *, request_id: str, completion: TrustedExecutionCompletion) -> ExecutionEvidenceSummary:
+        """Freeze one owned canonical result; a later native write cannot upgrade it."""
+        try:
+            completion = TrustedExecutionCompletion.model_validate(completion.model_dump(mode="json"))
+        except (ValidationError, ValueError, TypeError):
+            raise BuilderExecutionPolicyError("invalid_execution_completion") from None
+        context = completion.context
+        if request_id != context.request_id:
+            raise BuilderExecutionPolicyError("execution_request_mismatch")
+        with self._session_factory.begin() as db:
+            row = _bound_request(db, context, lock=True)
+            _owners(
+                db,
+                app_id=context.app_id,
+                actor=Actor(account_id=context.actor_id, tenant_id=context.tenant_id),
+                workflow_id=context.workflow_id,
+                session_id=context.session_id,
+                test_input_id=context.test_input_id,
+            )
+            if (row.native_run_id, row.task_id) != (completion.native_run_id, completion.task_id):
+                raise BuilderExecutionPolicyError("execution_launch_mismatch")
+            native = db.get(WorkflowRun, row.native_run_id) if row.native_run_id else None
+            nodes = (
+                list(
+                    db.scalars(
+                        select(WorkflowNodeExecutionModel).where(
+                            WorkflowNodeExecutionModel.workflow_run_id == row.native_run_id
+                        )
+                    )
+                )
+                if native is not None
+                else []
+            )
+            if native is not None:
+                if (
+                    native.tenant_id,
+                    native.app_id,
+                    native.workflow_id,
+                    native.created_by,
+                    native.created_by_role,
+                    native.triggered_from,
+                    native.type,
+                    native.version,
+                ) != (
+                    context.tenant_id,
+                    context.app_id,
+                    context.workflow_id,
+                    context.actor_id,
+                    "account",
+                    "debugging",
+                    "workflow",
+                    "draft",
+                ):
+                    raise BuilderExecutionPolicyError("native_execution_owner_mismatch")
+                for node in nodes:
+                    if (
+                        node.tenant_id,
+                        node.app_id,
+                        node.workflow_id,
+                        node.created_by,
+                        node.created_by_role,
+                        node.triggered_from,
+                    ) != (
+                        context.tenant_id,
+                        context.app_id,
+                        context.workflow_id,
+                        context.actor_id,
+                        "account",
+                        "workflow-run",
+                    ):
+                        raise BuilderExecutionPolicyError("native_execution_owner_mismatch")
+            # Raw SQL projections avoid offloaded payload I/O under the short sidecar lock.
+            run_fields = (
+                "id",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "created_by",
+                "created_by_role",
+                "triggered_from",
+                "type",
+                "version",
+                "graph",
+                "inputs",
+                "status",
+                "outputs",
+                "error",
+                "finished_at",
+                "total_steps",
+                "exceptions_count",
+            )
+            node_fields = (
+                "id",
+                "node_execution_id",
+                "node_id",
+                "node_type",
+                "index",
+                "predecessor_node_id",
+                "status",
+                "finished_at",
+                "process_data",
+                "execution_metadata",
+                "inputs",
+                "outputs",
+                "error",
+            )
+
+            def projection(value, fields):
+                return {
+                    key: (
+                        getattr(value, key).isoformat()
+                        if key == "finished_at" and getattr(value, key)
+                        else getattr(value, key).value
+                        if isinstance(getattr(value, key), Enum)
+                        else getattr(value, key)
+                    )
+                    for key in fields
+                }
+
+            native_projection = projection(native, run_fields) if native is not None else None
+            node_projection = [projection(n, node_fields) for n in sorted(nodes, key=lambda n: (n.index, n.id))]
+            fingerprint = canonical_digest(
+                {
+                    "completion": completion.model_dump(mode="json"),
+                    "native": native_projection,
+                    "nodes": node_projection,
+                    "observations": row.observations,
+                }
+            )
+            if row.state == "sealed":
+                if fingerprint != row.completion_fingerprint:
+                    raise BuilderExecutionPolicyError("conflicting_execution_completion")
+                return ExecutionEvidenceSummary.model_validate(row.completion_summary)
+            if row.state not in {"prepared", "running"}:
+                raise BuilderExecutionPolicyError("execution_request_closed")
+            observations = []
+            receipts_valid = True
+            try:
+                for raw_observation in row.observations:
+                    try:
+                        observations.append(BuilderExecutionObservation.model_validate(raw_observation))
+                    except (ValidationError, ValueError, TypeError):
+                        receipts_valid = False
+                bindings = {b.node_id: b for b in context.admitted_nodes}
+                if (
+                    len(observations) > MAX_OBSERVATIONS
+                    or len({o.invocation_id for o in observations}) != len(observations)
+                    or len({o.observation_id for o in observations}) != len(observations)
+                ):
+                    receipts_valid = False
+                for o in observations:
+                    b = bindings.get(o.node_id)
+                    if (
+                        o.request_id != request_id
+                        or b is None
+                        or o.implementation_version != f"{b.implementation}:{b.node_version}"
+                        or not b.implementation.endswith(".HttpRequestNode")
+                        or o.profile_digest is not None
+                        or o.kind not in {"fixture_served", "effect_blocked"}
+                    ):
+                        receipts_valid = False
+                    if o.kind == "fixture_served":
+                        if o.fixture_digest != context.fixture_digest or not any(
+                            f.node_id == o.node_id for f in context.http_fixtures
+                        ):
+                            receipts_valid = False
+                    elif o.fixture_digest is not None:
+                        receipts_valid = False
+            except (ValidationError, ValueError, TypeError):
+                receipts_valid = False
+            blocked = tuple(sorted({o.node_id for o in observations if o.kind == "effect_blocked"}))
+            simulated = tuple(sorted({o.node_id for o in observations if o.kind == "fixture_served"}))
+            complete = (
+                completion.worker_finished
+                and completion.response_completed
+                and completion.recorder_healthy
+                and completion.worker_exit in {"returned", "stopped", "failed"}
+                and native is not None
+                and receipts_valid
+            )
+            if complete:
+                complete = self._native_proof(context, native, nodes, observations)
+            outcome = "execution_evidence_unknown"
+            # A typed pre-native refusal is the only exception to unknown-first.
+            if (
+                native is None
+                and completion.refusal is not None
+                and completion.response_completed
+                and (
+                    completion.preworker_refusal
+                    or (completion.worker_finished and completion.worker_exit == "policy_refused")
+                )
+            ):
+                outcome = "unsupported_safe_execution"
+            elif complete and native is not None:
+                if native.status != "succeeded":
+                    outcome = "native_failed"
+                elif blocked:
+                    outcome = "execution_blocked"
+                elif simulated:
+                    outcome = "simulation_completed"
+                elif context.mode == "restricted":
+                    outcome = "restricted_execution_completed"
+            summary = ExecutionEvidenceSummary(
+                request_id=request_id,
+                mode=context.mode,
+                sealed=True,
+                safety_outcome=outcome,
+                simulated_node_ids=simulated,
+                blocked_node_ids=blocked,
+                sandbox_profile=context.sandbox_profile,
+                fixture_digest=context.fixture_digest,
+                native_run_id=native.id if native is not None else None,
+            )
+            row.state = "sealed"
+            row.completion_fingerprint = fingerprint
+            row.completion_summary = summary.model_dump(mode="json")
+            row.sealed_at = naive_utc_now()
+            return summary
+
+    @staticmethod
+    def _native_proof(
+        context: BuilderExecutionContext,
+        native: WorkflowRun,
+        nodes: list[WorkflowNodeExecutionModel],
+        observations: list[BuilderExecutionObservation],
+    ) -> bool:
+        """Check the admitted single chain, including every persisted retry attempt."""
+        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+
+        try:
+            graph = _raw_object(native.graph, "invalid_native_graph")
+            snapshot = RestrictedAdmissionSnapshot(
+                app_mode="workflow",
+                workflow_kind="standard",
+                graph=graph,
+                input_schema=start_schema(graph),
+                features={},
+                has_environment_variables=False,
+                has_conversation_variables=False,
+                has_external_tracing=False,
+            )
+            if (
+                admitted_node_bindings(snapshot) != context.admitted_nodes
+                or executable_graph_revision(graph) != context.graph_revision
+            ):
+                return False
+            inputs = _raw_object(native.inputs, "invalid_native_inputs")
+            if (
+                scalar_inputs_digest({k: v for k, v in inputs.items() if not k.startswith("sys.")})
+                != context.effective_inputs_digest
+            ):
+                return False
+            if (
+                native.status not in {"succeeded", "failed", "stopped", "partial-succeeded"}
+                or native.finished_at is None
+            ):
+                return False
+            if not nodes or any(
+                n.node_execution_id is None
+                or n.finished_at is None
+                or n.status not in {"succeeded", "failed", "exception"}
+                for n in nodes
+            ):
+                return False
+            if len({n.node_execution_id for n in nodes}) != len(nodes) or len({n.node_id for n in nodes}) != len(nodes):
+                return False
+            by_id = {n["id"]: n for n in graph["nodes"]}
+            start = next(n["id"] for n in graph["nodes"] if n["data"]["type"] == "start")
+            next_ids = {e["source"]: e["target"] for e in graph["edges"]}
+            ordered = sorted(nodes, key=lambda n: n.index)
+            expected, previous, attempts = start, None, 0
+            for index, node in enumerate(ordered, 1):
+                if (
+                    node.node_id != expected
+                    or node.index != index
+                    or node.predecessor_node_id not in ({None, ""} if previous is None else {previous})
+                ):
+                    return False
+                if node.node_id not in by_id or node.node_type != by_id[node.node_id]["data"]["type"]:
+                    return False
+                process = _raw_object(node.process_data, "invalid_native_retries", absent_allowed=True)
+                retries = [
+                    WorkflowNodeRetryAttempt.model_validate(r) for r in process.get(RETRY_HISTORY_PROCESS_DATA_KEY, [])
+                ]
+                if [r.retry_index for r in retries] != list(range(1, len(retries) + 1)):
+                    return False
+                attempts += 1 + len(retries)
+                receipts = [o for o in observations if o.node_id == node.node_id]
+                if node.node_type == "http-request":
+                    if len(receipts) != 1 + len(retries):
+                        return False
+                elif receipts:
+                    return False
+                previous, expected = node.node_id, next_ids.get(node.node_id)
+            if any(o.node_id not in {n.node_id for n in nodes} for o in observations):
+                return False
+            if native.total_steps != attempts:
+                return False
+            if native.status in {"succeeded", "partial-succeeded"} and (
+                expected is not None or len(nodes) != len(by_id)
+            ):
+                return False
+            if native.status == "succeeded" and (
+                native.exceptions_count != 0 or any(n.status != "succeeded" for n in nodes)
+            ):
+                return False
+            return True
+        except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, StopIteration):
+            return False
 
     def recorder(
         self, *, context: BuilderExecutionContext, native_run_id: str, task_id: str
