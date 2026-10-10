@@ -5,7 +5,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Badge from '@/app/components/base/badge/index'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import Link from '@/next/link'
 import Card from '../../card'
@@ -121,7 +121,7 @@ const Installed: FC<Props> = ({
               installed={!isFailed}
               installFailed={isFailed}
               titleLeft={
-                <Badge className="mx-1" size="s" state={BadgeState.Default}>
+                <Badge className="mx-1" size="s">
                   {(payload as PluginDeclaration).version ||
                     (payload as PluginManifestInMarket).latest_version}
                 </Badge>

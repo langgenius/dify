@@ -172,7 +172,7 @@ function EnvEditorInput({
     <Input
       ref={inputRef}
       aria-label={ariaLabel}
-      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none hover:bg-state-base-hover focus-visible:bg-state-base-hover"
+      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none ring-inset hover:bg-state-base-hover focus-visible:bg-state-base-hover"
       placeholder={placeholder}
       value={value}
       onValueChange={onValueChange}

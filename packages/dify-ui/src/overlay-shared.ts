@@ -1,5 +1,9 @@
 export type MenuItemVariant = 'default' | 'destructive'
 
+// The focus indicator a trigger owns. The caller owns the appearance, directly or through `render`.
+export const triggerFocusClassName =
+  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
+
 export const menuItemClassName =
   'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-hidden data-highlighted:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-30'
 export const menuItemDestructiveClassName =

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import event
@@ -17,11 +17,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -29,6 +31,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
@@ -1023,15 +1026,12 @@ def test_get_api_provider_controller_returns_controller_and_credentials(
     tool_database.session.add(provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    controller = Mock()
+    built_controller, credentials = ToolManager.get_api_provider_controller(tenant_id, provider.id)
 
-    with patch("core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller) as mock_from_db:
-        built_controller, credentials = ToolManager.get_api_provider_controller(tenant_id, provider.id)
-
-    assert built_controller is controller
+    assert built_controller.provider_id == provider.id
+    assert built_controller.tenant_id == tenant_id
+    assert built_controller.tools == []
     assert credentials == provider.credentials
-    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY, session=ANY)
-    controller.load_bundled_tools.assert_called_once_with(provider.tools)
 
 
 def test_user_get_api_provider_masks_credentials_and_adds_labels(
@@ -1042,17 +1042,19 @@ def test_user_get_api_provider_masks_credentials_and_adds_labels(
     tool_database.session.add(provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    controller = Mock()
+    cache = NoOpProviderCredentialCache()
+    encrypter = ProviderConfigEncrypter(
+        tenant_id=tenant_id,
+        config=[BasicProviderConfig(name="api_key_value", type=ProviderConfigType.SECRET_INPUT)],
+        provider_config_cache=cache,
+    )
+    with (
+        patch("core.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, cache)),
+        patch("core.tools.tool_manager.ToolLabelManager.get_tool_labels", return_value=["search"]),
+    ):
+        user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id)
 
-    with patch("core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller):
-        encrypter = Mock()
-        encrypter.decrypt.return_value = {"api_key_value": "secret"}
-        encrypter.mask_plugin_credentials.return_value = {"api_key_value": "***"}
-        with patch("core.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, Mock())):
-            with patch("core.tools.tool_manager.ToolLabelManager.get_tool_labels", return_value=["search"]):
-                user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id)
-
-    assert user_payload["credentials"]["api_key_value"] == "***"
+    assert user_payload["credentials"]["api_key_value"] == "******"
     assert user_payload["labels"] == ["search"]
 
 
@@ -1229,8 +1231,8 @@ def test_convert_tool_parameters_type_agent_and_workflow_branches():
     )
     assert plain == {"text": "hello"}
 
-    variable_pool = Mock()
-    variable_pool.get.return_value = SimpleNamespace(value="from-variable")
+    variable_pool = VariablePool()
+    variable_pool.add(["sys", "query"], "from-variable")
 
     with patch("core.tools.tool_manager.convert_template", return_value=SimpleNamespace(text="from-template")):
         mixed = ToolManager._convert_tool_parameters_type(
@@ -1258,7 +1260,7 @@ def test_convert_tool_parameters_type_constant_branch():
         required=False,
     )
     text_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     constant = ToolManager._convert_tool_parameters_type(
         parameters=[text_param],
@@ -1278,7 +1280,7 @@ def test_convert_tool_parameters_type_model_selector_from_legacy_top_level_confi
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],
@@ -1314,7 +1316,7 @@ def test_convert_tool_parameters_type_model_selector_from_constant_value_config(
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],

@@ -3,11 +3,11 @@
 import type { SnippetDetail } from '@/models/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -196,7 +196,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
               {t(($) => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -206,7 +206,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             >
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

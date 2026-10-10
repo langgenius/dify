@@ -150,8 +150,8 @@ export function PublisherEnvironmentTabs({
                 type="button"
                 aria-current={selectedOverflowEnvironment ? 'true' : undefined}
                 className={cn(
-                  'flex h-7 min-w-0 items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-sm-medium text-text-tertiary outline-hidden',
-                  'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  'flex h-7 min-w-0 items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-sm-medium text-text-tertiary',
+                  'hover:bg-state-base-hover',
                   !showMoreEnvironmentsLabel && 'max-w-22 shrink-0',
                   selectedOverflowEnvironment &&
                     'bg-state-base-active system-sm-semibold text-text-primary',

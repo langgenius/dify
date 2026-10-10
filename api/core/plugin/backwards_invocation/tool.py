@@ -27,7 +27,7 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         tool_name: str,
         tool_parameters: dict[str, Any],
         credential_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke tool
         """

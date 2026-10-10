@@ -6,7 +6,13 @@ import type {
   WorkflowLaunchInputValue,
 } from '../app-card-utils'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -29,15 +35,12 @@ import {
 import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
-type Props = Readonly<{
+type EmbeddedDialogContentProps = Readonly<{
   siteInfo?: Partial<Pick<AppDetailSiteResponse, 'chat_color_theme' | 'chat_color_theme_inverted'>>
-  isShow: boolean
-  onClose: () => void
-  accessToken?: string
+  accessToken: string
   appBaseUrl?: string
   webAppRoute?: EmbeddedWebAppRoute
   hiddenInputs?: WorkflowHiddenStartVariable[]
-  className?: string
 }>
 
 const OPTION_KEYS = ['iframe', 'scripts', 'chromePlugin'] as const
@@ -114,8 +117,8 @@ const EmbeddedContent = ({
   accessToken,
   webAppRoute = 'chatbot',
   hiddenInputs,
-}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> &
-  Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
+}: Required<Pick<EmbeddedDialogContentProps, 'accessToken' | 'appBaseUrl'>> &
+  Pick<EmbeddedDialogContentProps, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
   const { t } = useTranslation(['appOverview'])
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
@@ -127,7 +130,6 @@ const EmbeddedContent = ({
   )
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
-  const [hiddenInputsCollapsed, setHiddenInputsCollapsed] = useState(true)
   const [hiddenInputValues, setHiddenInputValues] = useState<
     Record<string, WorkflowLaunchInputValue>
   >(() => initialHiddenInputValues)
@@ -213,16 +215,12 @@ const EmbeddedContent = ({
 
   return (
     <>
-      <div className="mt-8 mb-4 system-sm-medium text-text-primary">
+      <DialogDescription className="mt-8 mb-4 system-sm-medium text-text-primary">
         {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
-      </div>
+      </DialogDescription>
       {supportedHiddenInputs.length > 0 && (
-        <div className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-            onClick={() => setHiddenInputsCollapsed((prev) => !prev)}
-          >
+        <Collapsible className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left">
             <div>
               <div className="system-sm-medium text-text-primary">
                 {t(($) => $[`${prefixEmbedded}.hiddenInputs.title`], { ns: 'appOverview' })}
@@ -231,19 +229,12 @@ const EmbeddedContent = ({
                 {t(($) => $[`${prefixEmbedded}.hiddenInputs.description`], { ns: 'appOverview' })}
               </div>
             </div>
-            {hiddenInputsCollapsed ? (
-              <span
-                aria-hidden
-                className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
-              />
-            ) : (
-              <span
-                aria-hidden
-                className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
-              />
-            )}
-          </button>
-          {!hiddenInputsCollapsed && (
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary group-data-panel-open:rotate-90"
+            />
+          </CollapsibleTrigger>
+          <CollapsiblePanel>
             <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
               <WorkflowHiddenInputFields
                 hiddenVariables={supportedHiddenInputs}
@@ -252,8 +243,8 @@ const EmbeddedContent = ({
                 fieldIdPrefix="embedded-hidden-input"
               />
             </div>
-          )}
-        </div>
+          </CollapsiblePanel>
+        </Collapsible>
       )}
       <Tabs
         value={option}
@@ -368,58 +359,47 @@ const EmbeddedContent = ({
   )
 }
 
-const Embedded = ({
+export function EmbeddedDialogContent({
   siteInfo,
-  isShow,
-  onClose,
   appBaseUrl,
   accessToken,
   webAppRoute = 'chatbot',
   hiddenInputs,
-  className,
-}: Props) => {
+}: EmbeddedDialogContentProps) {
   const { t } = useTranslation(['appOverview', 'common'])
 
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (open) return
-        onClose()
-      }}
-    >
-      <DialogContent
-        className={cn('flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!', className)}
-      >
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
-        </DialogTitle>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
+    <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden">
+      <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
+        {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
+      </DialogTitle>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <Suspense
+          fallback={
+            <div className="py-8 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
           }
-        />
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {isShow && (
-            <EmbeddedContent
-              key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
-              siteInfo={siteInfo}
-              appBaseUrl={appBaseUrl ?? ''}
-              accessToken={accessToken ?? ''}
-              webAppRoute={webAppRoute}
-              hiddenInputs={hiddenInputs}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        >
+          <EmbeddedContent
+            key={`${appBaseUrl ?? ''}:${accessToken}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
+            siteInfo={siteInfo}
+            appBaseUrl={appBaseUrl ?? ''}
+            accessToken={accessToken}
+            webAppRoute={webAppRoute}
+            hiddenInputs={hiddenInputs}
+          />
+        </Suspense>
+      </div>
+    </DialogContent>
   )
 }
-
-export default Embedded

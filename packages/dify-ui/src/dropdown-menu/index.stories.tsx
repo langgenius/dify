@@ -1,16 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import {
   createDropdownMenuHandle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
+  DropdownMenuInput,
+  DropdownMenuInputGroup,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
@@ -27,7 +33,7 @@ function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
       render={
         <button
           type="button"
-          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover"
         />
       }
     >
@@ -44,7 +50,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, and disabled states.',
+          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, disabled states, and filtering. Filtering is a Base UI preview feature: wrap `DropdownMenu` in `DropdownMenuFilterProvider`, place `DropdownMenuInput` in a `DropdownMenuInputGroup` inside the content, and put the items in `DropdownMenuList`. The popup then becomes a dialog that holds the searchbox and the menu.',
       },
     },
   },
@@ -359,7 +365,7 @@ function DetachedTriggerDemo() {
       <DropdownMenuTrigger
         handle={handle}
         payload={{ name: 'Report' }}
-        className="rounded-lg border border-divider-subtle px-3 py-1.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="rounded-lg border border-divider-subtle px-3 py-1.5"
       >
         Report actions
       </DropdownMenuTrigger>
@@ -389,12 +395,228 @@ export const DetachedTrigger: Story = {
     trigger.focus()
     await userEvent.keyboard('{ArrowDown}')
     const archive = await body.findByRole('menuitem', { name: 'Archive' })
-    await expect(archive).toHaveFocus()
+    await waitFor(async () => {
+      await expect(archive).toHaveFocus()
+    })
     await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('status', { name: 'Archived document' })).toHaveTextContent(
       'Report',
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    await expect(trigger).toHaveFocus()
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
+  },
+}
+
+const filterableActionGroups = [
+  {
+    label: 'Workspace',
+    actions: ['Rename workspace', 'Invite members', 'Manage billing'],
+  },
+  {
+    label: 'Danger zone',
+    actions: ['Archive workspace', 'Delete workspace'],
+  },
+]
+
+const moveTargets = ['Personal space', 'Team space', 'Archive']
+const shareTargets = ['Design team', 'Engineering team', 'Everyone']
+
+function FilterableDemo() {
+  const [lastAction, setLastAction] = React.useState<string | null>(null)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <DropdownMenuFilterProvider>
+        <DropdownMenu>
+          <TriggerButton label="Workspace actions" />
+          <DropdownMenuContent className="w-64">
+            <DropdownMenuInputGroup>
+              <span
+                aria-hidden
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
+              <DropdownMenuInput aria-label="Filter actions" placeholder="Filter actions…" />
+              <DropdownMenuClear />
+            </DropdownMenuInputGroup>
+            <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
+            <DropdownMenuList>
+              {filterableActionGroups.map((group, index) => (
+                <DropdownMenuGroup key={group.label}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuGroupLabel>{group.label}</DropdownMenuGroupLabel>
+                  {group.actions.map((action) => (
+                    <DropdownMenuItem
+                      key={action}
+                      variant={group.label === 'Danger zone' ? 'destructive' : 'default'}
+                      onClick={() => setLastAction(action)}
+                    >
+                      {action}
+                    </DropdownMenuItem>
+                  ))}
+                  {index === 0 && (
+                    <React.Fragment>
+                      {/* A submenu without its own provider stays unfiltered. */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuList>
+                            {moveTargets.map((target) => (
+                              <DropdownMenuItem
+                                key={target}
+                                onClick={() => setLastAction(`Move to ${target}`)}
+                              >
+                                {target}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuList>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      {/* A submenu wrapped in its own provider filters with its own input. */}
+                      <DropdownMenuFilterProvider>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Share with</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuInputGroup>
+                              <span
+                                aria-hidden
+                                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+                              />
+                              <DropdownMenuInput
+                                aria-label="Filter teams"
+                                placeholder="Filter teams…"
+                              />
+                              <DropdownMenuClear />
+                            </DropdownMenuInputGroup>
+                            <DropdownMenuEmpty>No teams match</DropdownMenuEmpty>
+                            <DropdownMenuList>
+                              {shareTargets.map((target) => (
+                                <DropdownMenuItem
+                                  key={target}
+                                  onClick={() => setLastAction(`Share with ${target}`)}
+                                >
+                                  {target}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuList>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuFilterProvider>
+                    </React.Fragment>
+                  )}
+                </DropdownMenuGroup>
+              ))}
+            </DropdownMenuList>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </DropdownMenuFilterProvider>
+      <p role="status" aria-label="Last action" className="system-xs-regular text-text-tertiary">
+        {lastAction ?? 'No action yet'}
+      </p>
+    </div>
+  )
+}
+
+export const Filterable: Story = {
+  parameters: {
+    docs: {
+      story: { autoplay: false },
+      description: {
+        story:
+          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches. Place the separator between groups inside the later group so it hides with the groups before it. A submenu trigger matches like an item; a submenu stays unfiltered unless its `DropdownMenuSub` is wrapped in its own `DropdownMenuFilterProvider` with its own input, as "Share with" is. The right arrow opens a submenu and focuses its input when it has one, the left arrow closes it from an empty input and returns focus to the parent input, and each level keeps its own query. Pass `autoHighlight` to highlight the first match while typing.',
+      },
+    },
+  },
+  render: () => <FilterableDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'Workspace actions' })
+
+    await userEvent.click(trigger)
+    const input = await body.findByRole('searchbox', { name: 'Filter actions' })
+    await waitFor(async () => {
+      await expect(input).toHaveFocus()
+    })
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toBeInTheDocument()
+
+    await userEvent.type(input, 'billing')
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toBeInTheDocument()
+    await expect(body.queryByRole('menuitem', { name: 'Rename workspace' })).not.toBeInTheDocument()
+    await expect(body.queryByText('Danger zone')).not.toBeVisible()
+
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(body.getByRole('menuitem', { name: 'Manage billing' })).toHaveAttribute(
+      'data-highlighted',
+    )
+    await expect(input).toHaveFocus()
+    await expect(input).not.toHaveAttribute('data-highlighted')
+
+    await userEvent.clear(input)
+    await userEvent.type(input, 'archive')
+    await expect(body.getByRole('menuitem', { name: 'Archive workspace' })).toBeInTheDocument()
+    await expect(body.queryByText('Workspace')).not.toBeVisible()
+    for (const separator of body.queryAllByRole('separator', { hidden: true })) {
+      await expect(separator).not.toBeVisible()
+    }
+
+    // An unfiltered submenu opens from the parent query and closes back into it.
+    await userEvent.clear(input)
+    await userEvent.type(input, 'move')
+    await expect(body.getByRole('menuitem', { name: 'Move to' })).toBeInTheDocument()
+    await userEvent.keyboard('{ArrowDown}{ArrowRight}')
+    await expect(await body.findByRole('menuitem', { name: 'Team space' })).toBeInTheDocument()
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('menuitem', { name: 'Team space' })).not.toBeInTheDocument()
+    })
+
+    // A filterable submenu focuses its own input and keeps its own query.
+    await userEvent.clear(input)
+    await userEvent.type(input, 'share')
+    await userEvent.keyboard('{ArrowDown}{ArrowRight}')
+    const submenuInput = await body.findByRole('searchbox', { name: 'Filter teams' })
+    await waitFor(async () => {
+      await expect(submenuInput).toHaveFocus()
+    })
+    // The left arrow closes the submenu only from an empty input; with text it moves the caret.
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('searchbox', { name: 'Filter teams' })).not.toBeInTheDocument()
+    })
+    await waitFor(async () => {
+      await expect(input).toHaveFocus()
+    })
+    await expect(input).toHaveValue('share')
+    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.type(await body.findByRole('searchbox', { name: 'Filter teams' }), 'eng')
+    await expect(body.getByRole('menuitem', { name: 'Engineering team' })).toBeInTheDocument()
+    await expect(body.queryByRole('menuitem', { name: 'Everyone' })).not.toBeInTheDocument()
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await expect(canvas.getByRole('status', { name: 'Last action' })).toHaveTextContent(
+      'Share with Engineering team',
+    )
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(trigger)
+    const reopenedInput = await body.findByRole('searchbox', { name: 'Filter actions' })
+    await userEvent.type(reopenedInput, 'zzz')
+    await expect(await body.findByText('No actions match')).toHaveAttribute('role', 'status')
+
+    await userEvent.clear(reopenedInput)
+    await userEvent.type(reopenedInput, 'rename')
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await expect(canvas.getByRole('status', { name: 'Last action' })).toHaveTextContent(
+      'Rename workspace',
+    )
+
+    await userEvent.click(trigger)
+    await body.findByRole('searchbox', { name: 'Filter actions' })
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   },
 }

@@ -65,7 +65,14 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
             <Popover modal="trap-focus">
               <ContextMenuItem
                 closeOnClick={false}
-                render={<PopoverTrigger nativeButton={false} render={<div />} />}
+                // The menu row owns the focus treatment, so the trigger adds no ring.
+                render={
+                  <PopoverTrigger
+                    nativeButton={false}
+                    className="focus-visible:ring-0"
+                    render={<div />}
+                  />
+                }
                 className="data-popup-open:bg-state-base-hover"
               >
                 {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}

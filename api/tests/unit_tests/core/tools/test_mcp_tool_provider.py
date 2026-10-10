@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
+from models.tools import MCPToolProvider
 
 
 def _build_mcp_entity(*, icon: str = "icon.svg") -> MCPProviderEntity:
@@ -66,13 +70,31 @@ def test_mcp_tool_provider_controller_from_entity_requires_icon():
             MCPToolProviderController.from_entity(entity)
 
 
-def test_mcp_tool_provider_controller_from_db_delegates_to_entity():
+def test_mcp_tool_provider_controller_from_db_delegates_to_entity(sqlite_session: Session):
     entity = _build_mcp_entity()
-    db_provider = Mock()
-    db_provider.to_entity.return_value = entity
+    db_provider = MCPToolProvider(
+        name=entity.name,
+        server_identifier=entity.server_identifier,
+        server_url=entity.server_url,
+        server_url_hash="server-url-hash",
+        icon=str(entity.icon),
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        encrypted_credentials=json.dumps(entity.credentials),
+        authed=entity.authed,
+        tools=json.dumps(entity.tools),
+        timeout=entity.timeout,
+        sse_read_timeout=entity.sse_read_timeout,
+        encrypted_headers=json.dumps(entity.headers),
+        identity_mode=entity.identity_mode,
+    )
+    sqlite_session.add(db_provider)
+    sqlite_session.commit()
     with patch("core.tools.mcp_tool.provider.ToolTransformService.convert_mcp_schema_to_parameter", return_value=[]):
         controller = MCPToolProviderController.from_db(db_provider)
     assert isinstance(controller, MCPToolProviderController)
+    assert controller.server_identifier == entity.server_identifier
+    assert controller.entity.tools[0].identity.name == "remote-tool"
 
 
 def _build_mcp_entity_with_tools(tools: list[dict]) -> MCPProviderEntity:

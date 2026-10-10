@@ -6,6 +6,7 @@ import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlGroupInputClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
 const interactiveElementSelector =
@@ -21,13 +22,12 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
       className={cn(
         [
           'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal transition-[background-color,border-color]',
-          'has-[>input:enabled]:not-has-[>input:is([readonly],[data-invalid])]:hover:border-components-input-border-hover has-[>input:enabled]:not-has-[>input:is([readonly],[data-invalid])]:hover:bg-components-input-bg-hover',
-          'has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:border-components-input-border-active has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:bg-components-input-bg-active has-[>input:focus]:not-has-[>input[readonly]]:shadow-xs',
-          'has-[>input[data-invalid]]:border-components-input-border-destructive has-[>input[data-invalid]]:bg-components-input-bg-destructive',
-          'has-[>input[data-disabled]]:cursor-not-allowed has-[>input[data-disabled]]:border-transparent has-[>input[data-disabled]]:bg-components-input-bg-disabled has-[>input[data-disabled]]:text-components-input-text-filled-disabled',
-          'has-[>input[data-disabled]]:*:data-align:cursor-not-allowed has-[>input[data-disabled]]:*:data-align:text-components-input-text-filled-disabled',
-          'has-[>input[readonly]]:cursor-default has-[>input[readonly]]:*:data-align:cursor-default',
-          'has-[>input[readonly]:focus-visible]:ring-2 has-[>input[readonly]:focus-visible]:ring-state-accent-solid',
+          'has-[>input:enabled:not(:focus)]:not-has-[>input:is([readonly],[data-invalid])]:hover:border-components-input-border-hover has-[>input:enabled:not(:focus)]:not-has-[>input:is([readonly],[data-invalid])]:hover:bg-components-input-bg-hover',
+          'has-[>input:focus]:ring-2 has-[>input:focus]:ring-state-accent-solid has-[>input:focus]:transition-none has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:bg-components-input-bg-active',
+          'has-[>input:enabled[data-invalid]]:border-components-input-border-destructive has-[>input:enabled[data-invalid]]:bg-components-input-bg-destructive',
+          'has-[>input:disabled]:cursor-not-allowed has-[>input:disabled]:border-transparent has-[>input:disabled]:bg-components-input-bg-disabled has-[>input:disabled]:text-components-input-text-filled-disabled',
+          'has-[>input:disabled]:*:data-align:cursor-not-allowed has-[>input:disabled]:*:data-align:text-components-input-text-filled-disabled',
+          'has-[>input:enabled[readonly]]:cursor-default has-[>input:enabled[readonly]]:*:data-align:cursor-default',
           'has-[>[data-align=inline-start]]:[&>input]:ps-0',
           'has-[>[data-align=inline-end]]:[&>input]:pe-0',
           'motion-reduce:transition-none',
@@ -63,15 +63,7 @@ function InputGroupInput({ className, ...props }: InputGroupInputProps) {
     <BaseInput
       {...props}
       className={(state) =>
-        cn(
-          [
-            'w-0 min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent px-3 py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden',
-            'placeholder:text-components-input-text-placeholder',
-            'read-only:cursor-default',
-            'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled',
-          ],
-          resolveClassName(className, state),
-        )
+        cn(textControlGroupInputClassName, 'px-3', resolveClassName(className, state))
       }
     />
   )

@@ -7,11 +7,11 @@ import type { ConfigurationPublishConfig } from '@/app/components/app/configurat
 import type { Features, FileUpload } from '@/app/components/base/features/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { produce } from 'immer'
@@ -119,14 +119,14 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
               {t(($) => $['resetConfig.message'], { ns: 'appDebug' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleConfirm}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

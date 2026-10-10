@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Dovoljenje za dostop",
   "accessRule.actions": "Dejanja",
-  "accessRule.addMemberAria": "Dodaj {{name}}",
   "accessRule.addMembersTitle": "Dodaj člane",
   "accessRule.agentDescription": "Upravljajte dostop do tega agenta in dovoljenja uporabnikov.",
   "accessRule.agentTitle": "Nabor dovoljenj za agenta",

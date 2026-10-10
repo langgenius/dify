@@ -26,6 +26,7 @@ from pymochow.model.schema import (
     VectorIndex,
 )  # type: ignore
 from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams, Partition, Row  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField
@@ -378,7 +379,9 @@ class BaiduVector(BaseVector):
 
 class BaiduVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaiduVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaiduVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

@@ -418,7 +418,7 @@ def test_console_package_export_preserves_icons_without_holding_database_connect
     calls: list[str] = []
 
     class Storage:
-        def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+        def load_stream(self, filename: str) -> Generator[bytes]:
             assert not copy_connections, "Archive storage I/O must follow closure of both App read sessions"
             assert filename == upload.key
             calls.append("storage")

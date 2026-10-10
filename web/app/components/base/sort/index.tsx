@@ -33,7 +33,7 @@ function Sort({ order, value, items, onSelect }: Props) {
     <div className="inline-flex max-w-full min-w-0 items-center gap-px">
       <DropdownMenu>
         <div className="relative min-w-0 flex-1">
-          <DropdownMenuTrigger className="flex min-h-8 min-w-0 cursor-pointer items-center rounded-l-lg border-none bg-components-input-bg-normal px-2 py-1 outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt">
+          <DropdownMenuTrigger className="flex min-h-8 min-w-0 cursor-pointer items-center rounded-l-lg border-none bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt">
             <div className="flex min-w-0 items-center gap-0.5 px-1">
               <div className="system-sm-regular text-text-tertiary">
                 {t(($) => $['filter.sortBy'], { ns: 'appLog' })}

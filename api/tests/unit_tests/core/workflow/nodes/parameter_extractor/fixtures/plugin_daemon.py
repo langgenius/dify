@@ -27,7 +27,7 @@ def mock_plugin_daemon(
 
 
 @pytest.fixture
-def setup_model_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+def setup_model_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     unpatch = mock_plugin_daemon(monkeypatch)
     yield
     unpatch()

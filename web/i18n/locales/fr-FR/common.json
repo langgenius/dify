@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Généré sans succès",
   "actionMsg.modifiedSuccessfully": "Modifié avec succès",
   "actionMsg.modifiedUnsuccessfully": "Modifié sans succès",
-  "actionMsg.noModification": "Aucune modification pour le moment.",
   "actionMsg.payCancelled": "Paiement annulé",
   "actionMsg.paySucceeded": "Paiement réussi",
   "agentStrategyPage.description": "Définissez comment votre AI Agent raisonne et prend des décisions — y compris la sélection des outils, le traitement des résultats et la résolution autonome des problèmes.",

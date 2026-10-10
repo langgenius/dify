@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 from redis import RedisError
@@ -73,7 +73,7 @@ def test_security_gateway_preserves_shared_ip_limit(
     commands.side_effect = [None, str(count), None, True] if limited else [None, str(count), True, True]
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
-        login_security=Mock(spec=ConsoleAuthSecurityGateway),
+        login_security=create_autospec(ConsoleAuthSecurityGateway, instance=True),
         verification_failure_limit=5,
         verification_lockout_duration=600,
     )
@@ -128,11 +128,11 @@ def test_security_gateway_uses_registration_and_login_keys(
 
 @pytest.mark.parametrize(("count", "limited"), [(5, False), (6, True)])
 def test_registration_verification_limit_preserves_threshold(count: int, limited: bool) -> None:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     redis.get.return_value = str(count)
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
-        login_security=Mock(spec=ConsoleAuthSecurityGateway),
+        login_security=create_autospec(ConsoleAuthSecurityGateway, instance=True),
         verification_failure_limit=5,
         verification_lockout_duration=600,
     )
@@ -141,7 +141,7 @@ def test_registration_verification_limit_preserves_threshold(count: int, limited
 
 
 def test_registration_security_preserves_behavior_when_redis_is_unavailable() -> None:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     redis.get.side_effect = RedisError("offline")
     redis.delete.side_effect = RedisError("offline")
     gateway = RedisEmailRegistrationSecurityGateway(
@@ -182,7 +182,7 @@ def test_registration_gateway_preserves_domain_errors_and_translates_seat_limit(
     service_error: Exception,
     application_error: type[Exception],
 ) -> None:
-    gateway = AccountLifecycleRegistrationGateway(accounts=Mock(spec=AccountService))
+    gateway = AccountLifecycleRegistrationGateway(accounts=create_autospec(AccountService, instance=True))
 
     with patch.object(gateway._accounts, "create_account_and_tenant", side_effect=service_error):
         with pytest.raises(application_error) as raised:

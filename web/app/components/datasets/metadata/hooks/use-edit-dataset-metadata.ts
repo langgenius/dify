@@ -2,14 +2,12 @@ import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { isShowManageMetadataLocalStorageKey } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
 const useEditDatasetMetadata = ({ datasetId }: { datasetId: string }) => {
-  const { t } = useTranslation(['common'])
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   useEffect(() => {
     const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)
@@ -89,7 +87,6 @@ const useEditDatasetMetadata = ({ datasetId }: { datasetId: string }) => {
         params: { dataset_id: datasetId, action: enable ? 'enable' : 'disable' },
       })
       setBuiltInEnabled(enable)
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     },
   }
 }

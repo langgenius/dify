@@ -579,7 +579,7 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
 
 
 def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock):
-    def response_stream() -> Generator[str | Mapping[str, object] | BaseModel, None, None]:
+    def response_stream() -> Generator[str | Mapping[str, object] | BaseModel]:
         yield {
             "event": "error",
             "workflow_run_id": "workflow-run-id",

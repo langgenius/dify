@@ -25,7 +25,7 @@ jobs:
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           enable-cache: false
       - name: Download shared timing baseline
         # Public statistics are independent of PR refs and require no credentials.
@@ -49,7 +49,7 @@ jobs:
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests
       - name: Upload shared plan
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-unit-plan
           path: |
@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - '3.12'
+          - '3.13'
         shardIndex:
           - 1
           - 2
@@ -99,7 +99,7 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Download shared plan
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: api-unit-plan
 
@@ -128,7 +128,7 @@ jobs:
 
       - name: Upload unit test reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-test-results-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
           path: test-results/*.xml
@@ -136,7 +136,7 @@ jobs:
           retention-days: 7
 
       - name: Upload successful timing observations
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-unit-durations-${{ matrix.shardIndex }}
           path: test-results/durations-*.json
@@ -144,7 +144,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload unit coverage data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
           path: ${{ env.COVERAGE_FILE }}
@@ -152,11 +152,11 @@ jobs:
           retention-days: 1
 
   api-controllers:
-    name: API Controller Tests (3.12)
+    name: API Controller Tests (3.13)
     runs-on: depot-ubuntu-24.04
     env:
       PYTHONUNBUFFERED: '1'
-      COVERAGE_FILE: coverage-controllers-3.12
+      COVERAGE_FILE: coverage-controllers-3.13
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -167,7 +167,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
@@ -177,10 +177,12 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run Controller Tests
-        # Controller tests register Flask routes at import time, so keep them out of xdist.
+        # Workers have separate Flask registries; keep collection separate from the other unit suites.
         run: |
           uv run --project api pytest \
+            -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --junitxml=test-results/controllers.xml \
@@ -188,17 +190,17 @@ jobs:
 
       - name: Upload controller test reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: api-test-results-controllers-3.12
+          name: api-test-results-controllers-3.13
           path: test-results/*.xml
           if-no-files-found: warn
           retention-days: 7
 
       - name: Upload controller coverage data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: api-coverage-controllers-3.12
+          name: api-coverage-controllers-3.13
           path: ${{ env.COVERAGE_FILE }}
           if-no-files-found: error
           retention-days: 1
@@ -218,7 +220,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - '3.12'
+          - '3.13'
 
     steps:
       - name: Checkout code
@@ -254,7 +256,7 @@ jobs:
             api/tests/test_containers_integration_tests
 
       - name: Upload integration coverage data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-coverage-integration-${{ matrix.python-version }}
           path: ${{ env.COVERAGE_FILE }}
@@ -284,10 +286,10 @@ jobs:
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Download coverage data
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: coverage-data
           pattern: api-coverage-*

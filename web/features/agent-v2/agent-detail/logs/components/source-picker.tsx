@@ -11,6 +11,7 @@ import {
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -92,22 +93,25 @@ export function AgentLogSourcePicker({
     >
       <ComboboxTrigger
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
-        className="mt-0 w-fit max-w-full min-w-22"
+        className="group/source-trigger flex h-8 w-fit max-w-full min-w-22 items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-3 py-2 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none"
       >
-        <ComboboxValue<AgentLogSourceResponse['id'], true>
-          placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
-        >
-          {(selectedValue) => {
-            if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
-            if (selectedValue.length === 1) {
-              return (
-                sourceById.get(selectedValue[0]!)?.app_name ??
-                tCommon(($) => $['dynamicSelect.selected'], { count: 1 })
-              )
-            }
-            return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
-          }}
-        </ComboboxValue>
+        <span className="min-w-0 grow truncate">
+          <ComboboxValue<AgentLogSourceResponse['id'], true>
+            placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
+          >
+            {(selectedValue) => {
+              if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
+              if (selectedValue.length === 1) {
+                return (
+                  sourceById.get(selectedValue[0]!)?.app_name ??
+                  tCommon(($) => $['dynamicSelect.selected'], { count: 1 })
+                )
+              }
+              return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
+            }}
+          </ComboboxValue>
+        </span>
+        <ComboboxIcon className="block text-text-quaternary transition-colors group-hover/source-trigger:text-text-secondary group-data-popup-open/source-trigger:text-text-secondary" />
       </ComboboxTrigger>
       <ComboboxPortal>
         <ComboboxPositioner>
@@ -115,19 +119,16 @@ export function AgentLogSourcePicker({
             aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
             className="w-80 max-w-[calc(100vw-1rem)] p-0"
           >
-            <div className="p-2 pb-1">
-              <ComboboxInputGroup className="h-8 min-h-8 px-2">
-                <span
-                  aria-hidden
-                  className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-                />
-                <ComboboxInput
-                  aria-label={t(($) => $['agentDetail.logs.filters.source.searchLabel'])}
-                  placeholder={t(($) => $['agentDetail.logs.filters.source.searchPlaceholder'])}
-                  className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-                />
-              </ComboboxInputGroup>
-            </div>
+            <ComboboxInputGroup>
+              <span
+                aria-hidden
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
+              <ComboboxInput
+                aria-label={t(($) => $['agentDetail.logs.filters.source.searchLabel'])}
+                placeholder={t(($) => $['agentDetail.logs.filters.source.searchPlaceholder'])}
+              />
+            </ComboboxInputGroup>
             <div
               className={cn(
                 isLoading || isError
@@ -149,7 +150,7 @@ export function AgentLogSourcePicker({
               )}
             </div>
             {!isLoading && !isError && (
-              <ComboboxList<AgentLogSourceComboboxGroup> className="max-h-69 p-2 pt-1">
+              <ComboboxList<AgentLogSourceComboboxGroup> className="max-h-69">
                 {(group) => (
                   <ComboboxGroup<AgentLogSourceResponse> key={group.type} items={group.items}>
                     <ComboboxGroupLabel className="px-1 pt-2 pb-1">

@@ -61,7 +61,7 @@ jobs:
       - if: github.event_name != 'merge_group' && (steps.docker-compose-changes.outputs.any_changed == 'true' || steps.api-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true' || steps.dify-agent-changes.outputs.any_changed == 'true')
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.11'
+          python-version: '3.13'
 
       - if: github.event_name != 'merge_group' && (steps.api-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true' || steps.dify-agent-changes.outputs.any_changed == 'true')
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0

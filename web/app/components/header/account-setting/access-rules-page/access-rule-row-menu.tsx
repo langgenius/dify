@@ -3,11 +3,11 @@
 import type { AccessPolicy } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -137,14 +137,14 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
               {t(($) => $['accessRule.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={isDeletingAccessRule} onClick={handleDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

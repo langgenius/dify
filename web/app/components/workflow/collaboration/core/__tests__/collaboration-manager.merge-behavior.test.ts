@@ -1,6 +1,6 @@
-import type { LoroMap } from 'loro-crdt/base64'
+import type { LoroMap } from 'loro-crdt'
 import type { Node } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt/base64'
+import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { attachCrdtRuntime } from './test-crdt-runtime'
