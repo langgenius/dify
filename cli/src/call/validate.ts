@@ -23,13 +23,14 @@ function compile(schema: JsonSchema): ValidateFunction {
 
 const INSTANCE_PATH_SEPARATOR = '/'
 
-const READINGS: Readonly<Record<string, Readonly<{ param: string; msg: string }>>> = {
+// Errors that name a field: the ajv param holding the name, and the message to show.
+const FIELD_ERRORS: Readonly<Record<string, Readonly<{ param: string; msg: string }>>> = {
   required: { param: 'missingProperty', msg: 'required' },
   additionalProperties: { param: 'additionalProperty', msg: 'unknown field' },
 }
 
 function toDetail(error: ErrorObject): ValidationDetail {
-  const reading = READINGS[error.keyword]
+  const reading = FIELD_ERRORS[error.keyword]
   const loc: (string | number)[] = error.instancePath.split(INSTANCE_PATH_SEPARATOR).filter(Boolean)
   const named =
     reading === undefined ? undefined : (error.params as Record<string, unknown>)[reading.param]
