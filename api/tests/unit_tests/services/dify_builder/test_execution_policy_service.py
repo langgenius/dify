@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, delete
+from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -574,7 +574,8 @@ def native_rows(owned, context, status="succeeded"):
                     node_type=node["data"]["type"],
                     title="test",
                     index=index,
-                    predecessor_node_id=None if index == 1 else "start",
+                    # Native Graphon start events leave this optional field unset.
+                    predecessor_node_id=None,
                     triggered_from="workflow-run",
                     created_by_role="account",
                     created_by=actor.account_id,
@@ -596,6 +597,56 @@ def test_seal_requires_authoritative_native_rows_and_is_idempotent(owned):
     assert service.seal(request_id=context.request_id, completion=done) == result
     with pytest.raises(domain.BuilderExecutionPolicyError):
         service.seal(request_id=context.request_id, completion=done.model_copy(update={"response_completed": False}))
+
+
+@pytest.mark.parametrize(
+    ("start_predecessor", "end_predecessor", "outcome"),
+    [
+        (None, None, "restricted_execution_completed"),
+        (None, "start", "restricted_execution_completed"),
+        ("", None, "restricted_execution_completed"),
+        ("", "start", "restricted_execution_completed"),
+        ("start", None, "execution_evidence_unknown"),
+        ("end", None, "execution_evidence_unknown"),
+        (None, "end", "execution_evidence_unknown"),
+        (None, "foreign", "execution_evidence_unknown"),
+        (None, "", "execution_evidence_unknown"),
+    ],
+)
+def test_native_predecessor_corroborates_chain_when_present(owned, start_predecessor, end_predecessor, outcome):
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context)
+    with owned[0].begin() as db:
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
+        nodes[0].predecessor_node_id = start_predecessor
+        nodes[1].predecessor_node_id = end_predecessor
+    result = service.seal(request_id=context.request_id, completion=completion(context, run_id))
+    assert result.safety_outcome == outcome
+    with owned[0]() as db:
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
+        assert [node.predecessor_node_id for node in nodes] == [start_predecessor, end_predecessor]
+
+
+def test_optional_predecessor_change_cannot_rewrite_sealed_evidence(owned):
+    from models.dify_builder import DifyBuilderExecutionRequest
+
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context)
+    done = completion(context, run_id)
+    result = service.seal(request_id=context.request_id, completion=done)
+    assert result.safety_outcome == "restricted_execution_completed"
+    with owned[0].begin() as db:
+        end = db.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "end"))
+        assert end is not None
+        end.predecessor_node_id = "start"
+    with pytest.raises(domain.BuilderExecutionPolicyError, match="conflicting_execution_completion"):
+        service.seal(request_id=context.request_id, completion=done)
+    with owned[0]() as db:
+        request = db.get(DifyBuilderExecutionRequest, context.request_id)
+        assert request is not None
+        assert request.completion_summary == result.model_dump(mode="json")
 
 
 @pytest.mark.parametrize("missing", ["worker", "response", "recorder", "node", "run"])
@@ -684,7 +735,6 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
     with factory.begin() as db:
         db.get(WorkflowRun, run_id).total_steps = 3
         nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
-        nodes[-1].predecessor_node_id = "http"
         if missing == "malformed_receipt":
             from models.dify_builder import DifyBuilderExecutionRequest
 
@@ -699,7 +749,25 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
         assert db.get(WorkflowRun, run_id).status == status
 
 
-@pytest.mark.parametrize("mutation", ["actor", "node_actor", "graph", "inputs", "node_execution", "steps"])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "actor",
+        "node_actor",
+        "graph",
+        "inputs",
+        "node_execution",
+        "steps",
+        "node_order",
+        "index_gap",
+        "duplicate_index",
+        "missing_start",
+        "missing_end",
+        "unknown_node",
+        "duplicate_node",
+        "node_type",
+    ],
+)
 def test_canonical_native_owner_and_proof_mutations(owned, mutation):
     from sqlalchemy import select
 
@@ -708,7 +776,7 @@ def test_canonical_native_owner_and_proof_mutations(owned, mutation):
     run_id = native_rows(owned, context)
     with owned[0].begin() as db:
         run = db.get(WorkflowRun, run_id)
-        nodes = list(db.scalars(select(WorkflowNodeExecutionModel)))
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
         if mutation == "actor":
             run.created_by = str(uuid4())
         elif mutation == "node_actor":
@@ -719,6 +787,21 @@ def test_canonical_native_owner_and_proof_mutations(owned, mutation):
             run.inputs = '{"n":42}'
         elif mutation == "node_execution":
             nodes[0].node_execution_id = nodes[1].node_execution_id
+        elif mutation == "node_order":
+            nodes[0].index, nodes[1].index = 2, 1
+        elif mutation == "index_gap":
+            nodes[1].index = 3
+        elif mutation == "duplicate_index":
+            nodes[1].index = 1
+        elif mutation in {"missing_start", "missing_end"}:
+            db.delete(nodes[0] if mutation == "missing_start" else nodes[1])
+            run.total_steps = 1
+        elif mutation == "unknown_node":
+            nodes[1].node_id = "foreign"
+        elif mutation == "duplicate_node":
+            nodes[1].node_id = nodes[0].node_id
+        elif mutation == "node_type":
+            nodes[1].node_type = "start"
         else:
             run.total_steps = 3
     if mutation in {"actor", "node_actor"}:
@@ -729,6 +812,98 @@ def test_canonical_native_owner_and_proof_mutations(owned, mutation):
             service.seal(request_id=context.request_id, completion=completion(context, run_id)).safety_outcome
             == "execution_evidence_unknown"
         )
+
+
+@pytest.mark.parametrize(
+    ("status", "outcome"),
+    [
+        ("failed", "native_failed"),
+        ("stopped", "native_failed"),
+        ("succeeded", "execution_evidence_unknown"),
+        ("partial-succeeded", "execution_evidence_unknown"),
+    ],
+)
+def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned, status, outcome):
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(owned[0])
+    run_id = native_rows(owned, context, status)
+    with owned[0].begin() as db:
+        run = db.get(WorkflowRun, run_id)
+        assert run is not None
+        run.total_steps = 1
+        nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
+        nodes[0].status = "failed"
+        db.delete(nodes[1])
+    assert service.seal(request_id=context.request_id, completion=completion(context, run_id)).safety_outcome == outcome
+
+
+@pytest.mark.parametrize(
+    ("receipt_count", "retry_index", "total_steps", "outcome"),
+    [
+        (2, 1, 4, "native_failed"),
+        (1, 1, 4, "execution_evidence_unknown"),
+        (3, 1, 4, "execution_evidence_unknown"),
+        (2, 2, 4, "execution_evidence_unknown"),
+        (2, 1, 3, "execution_evidence_unknown"),
+    ],
+)
+def test_null_predecessor_http_retry_requires_all_attempt_proof(
+    owned, receipt_count, retry_index, total_steps, outcome
+):
+    from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+
+    factory, _, _, workflow, _, _ = owned
+    workflow.graph = json.dumps(graph(http=True))
+    with factory.begin() as db:
+        draft = db.get(Workflow, workflow.id)
+        assert draft is not None
+        draft.graph = workflow.graph
+    context = prepare_inputs(owned)
+    service = service_module().BuilderExecutionPolicyService(factory)
+    run_id = native_rows(owned, context, "partial-succeeded")
+    for attempt in range(receipt_count):
+        service.record(
+            context=context,
+            native_run_id=run_id,
+            task_id="task",
+            observation=domain.BuilderExecutionObservation(
+                observation_id=f"o-{attempt}",
+                invocation_id=f"i-{attempt}",
+                request_id=context.request_id,
+                node_id="http",
+                kind="effect_blocked",
+                implementation_version="graphon.nodes.http_request.node.HttpRequestNode:1",
+                reason_code="test",
+            ),
+        )
+    with factory.begin() as db:
+        run = db.get(WorkflowRun, run_id)
+        assert run is not None
+        run.total_steps = total_steps
+        run.exceptions_count = 1
+        http = db.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "http"))
+        assert http is not None
+        http.status = "exception"
+        http.process_data = json.dumps(
+            {
+                RETRY_HISTORY_PROCESS_DATA_KEY: [
+                    {
+                        "retry_index": retry_index,
+                        "inputs": {},
+                        "process_data": {},
+                        "outputs": {},
+                        "error": "blocked",
+                        "elapsed_time": 0.0,
+                        "execution_metadata": {},
+                        "created_at": 1,
+                        "finished_at": 2,
+                    }
+                ]
+            }
+        )
+    result = service.seal(request_id=context.request_id, completion=completion(context, run_id))
+    assert result.safety_outcome == outcome
+    assert result.blocked_node_ids == ("http",)
 
 
 @pytest.mark.parametrize("invalid", ["no_refusal", "claim", "recorder", "finished", "exit"])
