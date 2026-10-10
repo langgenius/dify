@@ -55,6 +55,7 @@ from repositories.annotation_reply_job_repository import RedisAnnotationReplyJob
 from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
+from repositories.app.service_api_access_repository import ServiceApiAppAccessRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
@@ -106,6 +107,7 @@ from services.api_based_extension_application_service import APIBasedExtensionAp
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
+from services.app.service_api_access_service import ServiceApiAppAccessService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -268,6 +270,7 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     resource_access_tokens: ResourceAccessTokenService
+    service_api_app_access: ServiceApiAppAccessService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -571,6 +574,9 @@ def build_application_services(
             dataset_access=dataset_dependencies.access,
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
+        service_api_app_access=ServiceApiAppAccessService(
+            apps=ServiceApiAppAccessRepository(session_factory=database_client),
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),

@@ -139,6 +139,19 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQ
             )
 
     @override
+    def create(
+        self, *, tenant_id: str, app_id: str, account_id: str, question: str, answer: str
+    ) -> AnnotationWriteResult:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotation = MessageAnnotation(app_id=app_id, question=question, content=answer, account_id=account_id)
+            session.add(annotation)
+            session.flush()
+            return AnnotationWriteResult(
+                annotation=self._record(annotation), collection_binding_id=self._binding_id(session, app_id=app_id)
+            )
+
+    @override
     def upsert(
         self,
         *,
