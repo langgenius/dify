@@ -152,6 +152,7 @@ jobs:
         with:
           files: ./coverage.xml
           disable_search: true
+          fail_ci_if_error: true
           flags: api
           name: api-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
         env:
@@ -212,6 +213,7 @@ jobs:
         with:
           files: ./coverage.xml
           disable_search: true
+          fail_ci_if_error: true
           flags: api
           name: api-controllers-3.13
         env:
@@ -276,6 +278,7 @@ jobs:
         with:
           files: ./coverage.xml
           disable_search: true
+          fail_ci_if_error: true
           flags: api
           name: api-integration-${{ matrix.python-version }}
         env:

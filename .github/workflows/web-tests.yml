@@ -41,6 +41,7 @@ jobs:
         with:
           files: web/coverage/coverage-final.json
           disable_search: true
+          fail_ci_if_error: true
           flags: web
           name: web-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
         env:
@@ -85,8 +86,6 @@ jobs:
     name: dify-ui Tests
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -123,10 +122,13 @@ jobs:
       - name: Report coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          directory: packages/dify-ui/coverage
+          files: packages/dify-ui/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
           flags: dify-ui
+          name: dify-ui
         env:
-          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   dify-ui-storybook-test:
     name: dify-ui Storybook Tests
