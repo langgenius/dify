@@ -56,6 +56,7 @@ from .output_failure_orchestrator import (
     OutputFailureOrchestrator,
 )
 from .output_type_checker import OutputTypeCheckOutcome, PerOutputTypeChecker
+from .process_recorder import WorkflowAgentProcessRecorder
 from .runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -563,6 +564,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         """
         stream_event_count = 0
         last_event_id: str | None = None
+        recorder = WorkflowAgentProcessRecorder(process_data, run_id)
         try:
             for public_event in self._agent_backend_client.stream_events(
                 run_id,
@@ -571,6 +573,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 stream_event_count += 1
                 if public_event.id is not None:
                     last_event_id = public_event.id
+                recorder.record(public_event)
                 for internal_event in self._event_adapter.adapt(public_event):
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
                         continue

@@ -1135,6 +1135,7 @@ export const zAgentLogFeedbackResponse = z.object({
  * AgentLogMessageItemResponse
  */
 export const zAgentLogMessageItemResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
   answer: z.string(),
   answer_tokens: z.int(),
   conversation_id: z.string(),
@@ -1147,6 +1148,7 @@ export const zAgentLogMessageItemResponse = z.object({
   from_end_user_id: z.string().nullish(),
   id: z.string(),
   latency: z.number(),
+  message_files: z.array(zMessageFile).optional(),
   message_id: z.string(),
   message_tokens: z.int(),
   query: z.string(),

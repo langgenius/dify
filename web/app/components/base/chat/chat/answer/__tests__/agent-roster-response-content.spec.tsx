@@ -19,28 +19,136 @@ vi.mock('react-i18next', async () => {
   }
 })
 
+const thinkingOnlyThought = {
+  id: 'thought-thinking-only',
+  thought: 'internal thought should not render',
+  tool: '',
+  tool_input: '',
+  observation: '',
+  message_id: 'answer-thinking-only',
+  conversation_id: 'conversation-thinking-only',
+  position: 1,
+}
+
 const thinkingOnlyItem = {
   id: 'answer-thinking-only',
   content: '',
   isAnswer: true,
-  agent_response_parts: [
-    {
-      type: 'thought',
-      thought: {
-        id: 'thought-thinking-only',
-        thought: 'internal thought should not render',
-        tool: '',
-        tool_input: '',
-        observation: '',
-        message_id: 'answer-thinking-only',
-        conversation_id: 'conversation-thinking-only',
-        position: 1,
-      },
-    },
-  ],
+  agent_response_parts: [{ type: 'thought', thought: thinkingOnlyThought }],
 } satisfies ChatItem
 
 describe('AgentRosterResponseContent', () => {
+  it('should show pure historical thoughts as markdown only when explicitly enabled', async () => {
+    const user = userEvent.setup()
+    const item = {
+      ...thinkingOnlyItem,
+      content: 'final answer',
+      agent_response_parts: undefined,
+      agent_thoughts: [{ ...thinkingOnlyThought, thought: '# Inspect the request' }],
+    } satisfies ChatItem
+    const { rerender } = render(<AgentRosterResponseContent item={item} content={item.content} />)
+
+    expect(screen.queryByRole('button', { name: /Thinking/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Inspect the request')).not.toBeInTheDocument()
+    expect(await screen.findByText('final answer', {}, { timeout: 5000 })).toBeInTheDocument()
+
+    rerender(<AgentRosterResponseContent item={item} content={item.content} showThoughts />)
+    const toggle = screen.getByRole('button', { name: 'Thinking' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Inspect the request')).not.toBeInTheDocument()
+
+    await user.click(toggle)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Inspect the request', level: 1 }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('final answer')).toBeInTheDocument()
+  })
+
+  it('should stream pure thoughts and preserve manual collapse until history replaces the stream', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AgentRosterResponseContent item={thinkingOnlyItem} responding showThoughts />,
+    )
+    expect(await screen.findByText('internal thought should not render')).toBeInTheDocument()
+    const toggle = screen.getByRole('button', { name: /Thinking/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await user.click(toggle)
+
+    const updatedThought = {
+      ...thinkingOnlyThought,
+      thought: 'Updated thought',
+    }
+    const updatedItem = {
+      ...thinkingOnlyItem,
+      agent_response_parts: [
+        { type: 'thought', thought: updatedThought },
+        { type: 'message', content: 'Final streamed answer' },
+      ],
+    } satisfies ChatItem
+    rerender(<AgentRosterResponseContent item={updatedItem} responding showThoughts />)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Updated thought')).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(await screen.findByText('Updated thought')).toBeInTheDocument()
+    expect(screen.getByText('Final streamed answer')).toBeInTheDocument()
+
+    rerender(<AgentRosterResponseContent item={updatedItem} responding={false} showThoughts />)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    rerender(
+      <AgentRosterResponseContent
+        item={{ ...updatedItem, agent_response_parts: undefined, agent_thoughts: [updatedThought] }}
+        content="Final streamed answer"
+        showThoughts
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByText('Updated thought')).not.toBeInTheDocument()
+    expect(screen.getByText('Final streamed answer')).toBeInTheDocument()
+  })
+
+  it('should omit empty historical thoughts even when enabled', () => {
+    render(
+      <AgentRosterResponseContent
+        item={{
+          ...thinkingOnlyItem,
+          agent_response_parts: undefined,
+          agent_thoughts: [{ ...thinkingOnlyThought, thought: ' \n ' }],
+        }}
+        showThoughts
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /Thinking/ })).not.toBeInTheDocument()
+  })
+
+  it('should keep annotations in place of process and answer content', async () => {
+    render(
+      <AgentRosterResponseContent
+        item={{
+          ...thinkingOnlyItem,
+          annotation: {
+            id: 'annotation-1',
+            authorName: 'Reviewer',
+            logAnnotation: {
+              id: 'annotation-1',
+              created_at: 0,
+              content: '**Reviewed answer**',
+              account: { id: 'reviewer', name: 'Reviewer', email: 'reviewer@example.com' },
+            },
+          },
+        }}
+        content="Original answer"
+        showThoughts
+      />,
+    )
+    expect(await screen.findByText('Reviewed answer')).toBeInTheDocument()
+    expect(screen.queryByText('Original answer')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Thinking/ })).not.toBeInTheDocument()
+  })
+
   it('should keep the live thinking status before visible activity arrives', () => {
     render(<AgentRosterResponseContent item={thinkingOnlyItem} responding />)
 
@@ -132,6 +240,105 @@ describe('AgentRosterResponseContent', () => {
       { timeout: 5000 },
     )
   })
+
+  it.each([false, true])(
+    'should keep the interleaved live timeline with showThoughts=%s',
+    async (showThoughts) => {
+      const user = userEvent.setup()
+      const item = {
+        id: 'answer-1',
+        content: 'first answer second answer',
+        isAnswer: true,
+        agent_response_parts: [
+          {
+            type: 'thought',
+            thought: {
+              id: 'thought-1',
+              thought: 'raw first thought',
+              tool: 'load_tools',
+              tool_input: '',
+              tool_labels: {
+                load_tools: {
+                  en_US: 'Loaded tools',
+                  zh_Hans: '已加载工具',
+                },
+                shell_run: {
+                  en_US: 'Ran commands',
+                  zh_Hans: '运行了命令',
+                },
+              },
+              observation: '',
+              message_id: 'answer-1',
+              conversation_id: 'conversation-1',
+              position: 1,
+            },
+          },
+          {
+            type: 'message',
+            content: 'first answer',
+          },
+          {
+            type: 'thought',
+            thought: {
+              id: 'thought-2',
+              thought: 'raw second thought',
+              tool: 'shell_run',
+              tool_input: '',
+              tool_labels: {
+                load_tools: {
+                  en_US: 'Loaded tools',
+                  zh_Hans: '已加载工具',
+                },
+                shell_run: {
+                  en_US: 'Ran commands',
+                  zh_Hans: '运行了命令',
+                },
+              },
+              observation: '',
+              message_id: 'answer-1',
+              conversation_id: 'conversation-1',
+              position: 2,
+            },
+          },
+          {
+            type: 'message',
+            content: 'second answer',
+          },
+        ],
+      } satisfies ChatItem
+
+      render(<AgentRosterResponseContent item={item} responding showThoughts={showThoughts} />)
+
+      const processToggle = screen.getByRole('button', { name: /Thinking/ })
+      expect(processToggle).toHaveAttribute('aria-expanded', 'true')
+
+      await waitFor(() => {
+        expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent(
+          'second answer',
+        )
+      })
+
+      const content = screen.getByTestId('agent-roster-response-content').textContent ?? ''
+      expect(content.indexOf('Loaded tools')).toBeLessThan(content.indexOf('first answer'))
+      expect(content.indexOf('first answer')).toBeLessThan(content.indexOf('Ran commands'))
+      expect(content.indexOf('Ran commands')).toBeLessThan(content.indexOf('second answer'))
+      if (showThoughts) {
+        expect(screen.getByText('raw first thought')).toBeInTheDocument()
+        expect(screen.getByText('raw second thought')).toBeInTheDocument()
+        expect(content.indexOf('raw first thought')).toBeLessThan(content.indexOf('Loaded tools'))
+        expect(content.indexOf('first answer')).toBeLessThan(content.indexOf('raw second thought'))
+        expect(content.indexOf('raw second thought')).toBeLessThan(content.indexOf('Ran commands'))
+      } else {
+        expect(screen.queryByText('raw first thought')).not.toBeInTheDocument()
+        expect(screen.queryByText('raw second thought')).not.toBeInTheDocument()
+      }
+
+      await user.click(processToggle)
+
+      expect(processToggle).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByText('Loaded tools')).not.toBeInTheDocument()
+    },
+  )
 
   it('should keep one collapsible thinking timeline while response parts interleave', async () => {
     const user = userEvent.setup()
@@ -461,6 +668,50 @@ describe('AgentRosterResponseContent', () => {
     )
     expect(screen.queryByText('new progress update')).not.toBeInTheDocument()
   })
+
+  it.each([false, true])(
+    'should preserve historical answers and tools with showThoughts=%s',
+    async (showThoughts) => {
+      const user = userEvent.setup()
+      const item = {
+        id: 'answer-history-with-activity',
+        content: 'final answer',
+        isAnswer: true,
+        agent_thoughts: [
+          {
+            id: 'thought-history-with-activity',
+            thought: 'internal thought should not render',
+            answer: 'public progress update',
+            tool: 'shell_run',
+            tool_input: 'pwd',
+            observation: '/workspace',
+            message_id: 'answer-history-with-activity',
+            conversation_id: 'conversation-history-with-activity',
+            position: 1,
+          },
+        ],
+      } satisfies ChatItem
+
+      render(
+        <AgentRosterResponseContent
+          item={item}
+          content={item.content}
+          showThoughts={showThoughts}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Thinking' }))
+
+      expect(screen.getByText('public progress update')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Ran commands' }))
+      expect(screen.getByText('pwd')).toBeInTheDocument()
+      expect(screen.getByText('/workspace')).toBeInTheDocument()
+      expect(screen.getByText('final answer')).toBeInTheDocument()
+      if (showThoughts)
+        expect(await screen.findByText('internal thought should not render')).toBeInTheDocument()
+      else expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+    },
+  )
 
   it('should keep a historical answer and its activity in the same process entry', async () => {
     const user = userEvent.setup()

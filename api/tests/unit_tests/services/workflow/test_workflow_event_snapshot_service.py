@@ -178,6 +178,8 @@ def test_build_snapshot_events_applies_message_context() -> None:
         "node_finished",
     ]
     assert events[1]["answer"] == "snapshot message"
+    # Snapshot replay uses the same detail-free node projection for every consumer.
+    assert events[3]["data"]["process_data"] is None
     for event in events:
         assert event["conversation_id"] == "conv-1"
         assert event["message_id"] == "msg-1"

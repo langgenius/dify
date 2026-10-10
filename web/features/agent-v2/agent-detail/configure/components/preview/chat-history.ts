@@ -1,31 +1,11 @@
-import type {
-  AgentThought,
-  MessageDetailResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
-import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { MessageDetailResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { MessageRating } from '@/models/log'
-import type { TransferMethod } from '@/types/app'
-import type { FileResponse } from '@/types/workflow'
 import { buildChatItemTree } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-
-const toFileResponse = (
-  file: NonNullable<MessageDetailResponse['message_files']>[number],
-): FileResponse => ({
-  related_id: file.id ?? file.upload_file_id,
-  extension: '',
-  filename: file.filename,
-  size: file.size ?? 0,
-  mime_type: file.mime_type ?? '',
-  transfer_method: file.transfer_method as TransferMethod,
-  type: file.type,
-  url: file.url ?? '',
-  upload_file_id: file.upload_file_id ?? '',
-  remote_url: file.url ?? '',
-})
+import { toAgentMessageFileResponse, toAgentThoughtItem } from '../../../agent-thoughts'
 
 const toLogMessages = (
   message: MessageDetailResponse['message'],
@@ -43,45 +23,13 @@ const toLogMessages = (
       role: 'assistant',
       text: answer,
       files: getProcessedFilesFromResponse(
-        (files?.filter((file) => file.belongs_to === 'assistant') || []).map(toFileResponse),
+        (files?.filter((file) => file.belongs_to === 'assistant') || []).map(
+          toAgentMessageFileResponse,
+        ),
       ),
     },
   ]
 }
-
-function toToolLabels(value: AgentThought['tool_labels']): ThoughtItem['tool_labels'] {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
-
-  const toolLabels: NonNullable<ThoughtItem['tool_labels']> = {}
-  for (const [name, label] of Object.entries(value)) {
-    if (!label || typeof label !== 'object' || Array.isArray(label)) continue
-
-    const enUS = 'en_US' in label ? label.en_US : undefined
-    const zhHans = 'zh_Hans' in label ? label.zh_Hans : undefined
-    if (typeof enUS !== 'string' || typeof zhHans !== 'string') continue
-
-    toolLabels[name] = { en_US: enUS, zh_Hans: zhHans }
-    for (const [locale, localizedLabel] of Object.entries(label)) {
-      if (typeof localizedLabel === 'string') toolLabels[name][locale] = localizedLabel
-    }
-  }
-
-  return Object.keys(toolLabels).length ? toolLabels : undefined
-}
-
-const toAgentThoughtItem = (thought: AgentThought, conversationId: string): ThoughtItem => ({
-  id: thought.id,
-  tool: thought.tool ?? '',
-  thought: thought.thought ?? '',
-  answer: thought.answer ?? '',
-  tool_input: thought.tool_input ?? '',
-  tool_labels: toToolLabels(thought.tool_labels),
-  message_id: thought.message_id,
-  conversation_id: conversationId,
-  observation: thought.observation ?? '',
-  position: thought.position,
-  files: thought.files,
-})
 
 const toFeedback = (
   feedback: NonNullable<MessageDetailResponse['feedbacks']>[number] | undefined,
@@ -114,7 +62,7 @@ export function getFormattedAgentDebugChatTree(
       id: `question-${item.id}`,
       content: item.query,
       isAnswer: false,
-      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toAgentMessageFileResponse)),
       parentMessageId: item.parent_message_id || undefined,
     })
     chatList.push({
@@ -126,12 +74,12 @@ export function getFormattedAgentDebugChatTree(
             toAgentThoughtItem(thought, item.conversation_id),
           ),
         ),
-        item.message_files as unknown as FileEntity[],
+        getProcessedFilesFromResponse((item.message_files ?? []).map(toAgentMessageFileResponse)),
       ),
       feedback: toFeedback(item.feedbacks?.find((feedback) => feedback.from_source === 'user')),
       isAnswer: true,
       log: toLogMessages(item.message, answer, item.message_files),
-      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toAgentMessageFileResponse)),
       parentMessageId: `question-${item.id}`,
       workflow_run_id: item.workflow_run_id ?? undefined,
       conversationId: item.conversation_id,

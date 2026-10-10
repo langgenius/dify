@@ -14856,6 +14856,7 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
@@ -14868,6 +14869,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
 | latency | number |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | No |
 | message_id | string |  | Yes |
 | message_tokens | integer |  | Yes |
 | query | string |  | Yes |

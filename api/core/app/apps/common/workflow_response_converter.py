@@ -227,6 +227,20 @@ class WorkflowResponseConverter:
         truncated, is_truncated = self._truncator.truncate_variable_mapping(dict(normalized))
         return truncated, is_truncated
 
+    def _prepare_process_data(
+        self, *, node_type: str, process_data: Mapping[str, Any] | None
+    ) -> tuple[Mapping[str, Any] | None, bool]:
+        # Queue events lack versions; this key is reserved for Agent V2 console diagnostics.
+        if (
+            self._application_generate_entity.invoke_from != InvokeFrom.DEBUGGER
+            and node_type == BuiltinNodeTypes.AGENT
+            and process_data is not None
+            and "agent_thoughts" in process_data
+        ):
+            # Filter before truncation without mutating the queued or persisted result.
+            process_data = {key: value for key, value in process_data.items() if key != "agent_thoughts"}
+        return self._truncate_mapping(process_data)
+
     @staticmethod
     def _encode_outputs(outputs: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         if outputs is None:
@@ -576,7 +590,9 @@ class WorkflowResponseConverter:
         elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)
-        process_data, process_data_truncated = self._truncate_mapping(event.process_data)
+        process_data, process_data_truncated = self._prepare_process_data(
+            node_type=event.node_type, process_data=event.process_data
+        )
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
@@ -636,7 +652,9 @@ class WorkflowResponseConverter:
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)
-        process_data, process_data_truncated = self._truncate_mapping(event.process_data)
+        process_data, process_data_truncated = self._prepare_process_data(
+            node_type=event.node_type, process_data=event.process_data
+        )
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)

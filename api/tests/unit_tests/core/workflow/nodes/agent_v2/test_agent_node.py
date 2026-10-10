@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -22,7 +23,20 @@ from dify_agent.protocol import (
     RunSucceededEvent,
     RunSucceededEventData,
 )
-from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartEndEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+    ThinkingPart,
+    ThinkingPartDelta,
+    ToolCallPart,
+    ToolCallPartDelta,
+    ToolReturnPart,
+)
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -50,6 +64,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentWorkspaceStore,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from fields.agent_fields import AgentLogMessageItemResponse
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import (
@@ -71,6 +86,9 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowNodeExecutionModel
+from services.agent.observability_service import AgentObservabilityService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
@@ -1111,6 +1129,138 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
     )
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     node._agent_backend_client.cancel_run_and_wait.assert_called_once()
+
+
+@pytest.mark.parametrize("chatflow", [False, True], ids=["workflow", "chatflow"])
+@pytest.mark.parametrize("terminal", ["success", "failed", "cancelled", "paused", "transport_error"])
+def test_agent_node_preserves_process_in_every_terminal_result(chatflow: bool, terminal: str) -> None:
+    class ProcessClient(FakeAgentBackendRunClient):
+        def _events(self, run_id: str):
+            created_at = datetime(2026, 9, 28, tzinfo=UTC)
+            yield RunStartedEvent(id="start", run_id=run_id, created_at=created_at)
+            stream = [
+                PartStartEvent(index=0, part=ThinkingPart(content="先检查")),
+                PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta="请求条件")),
+                PartEndEvent(index=0, part=ThinkingPart(content="先检查请求条件")),
+                PartStartEvent(index=1, part=TextPart(content="开始查询")),
+                PartStartEvent(index=2, part=ToolCallPart("search", '{"query":', tool_call_id="call-1")),
+                PartDeltaEvent(index=2, delta=ToolCallPartDelta(args_delta='"Dify"}')),
+                FunctionToolCallEvent(ToolCallPart("search", {"query": "Dify"}, tool_call_id="call-1")),
+                FunctionToolResultEvent(ToolReturnPart("search", {"result": "found"}, tool_call_id="call-1")),
+                PartStartEvent(index=0, part=ThinkingPart(content="整理结果")),
+                PartStartEvent(index=1, part=TextPart(content="最终")),
+                PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="回答")),
+            ]
+            for index, data in enumerate(stream):
+                event = PydanticAIStreamRunEvent(id=f"process-{index}", run_id=run_id, created_at=created_at, data=data)
+                yield PydanticAIStreamRunEvent.model_validate_json(event.model_dump_json())
+            if terminal == "transport_error":
+                raise AgentBackendStreamError("interrupted connection")
+            if terminal == "cancelled":
+                yield RunCancelledEvent(run_id=run_id, data=RunCancelledEventData(message="cancelled"))
+            elif terminal == "success":
+                yield RunSucceededEvent(
+                    run_id=run_id,
+                    data=RunSucceededEventData(
+                        output="最终回答", session_snapshot=CompositorSessionSnapshot(layers=[])
+                    ),
+                )
+            else:
+                self.scenario = FakeAgentBackendScenario(terminal)
+                yield super()._events(run_id)[-1]
+
+    node = _node(agent_backend_client=ProcessClient())
+    if not chatflow:
+        original_get = node.graph_runtime_state.variable_pool.get
+        node.graph_runtime_state.variable_pool.get = lambda selector: (
+            None if tuple(selector) == ("sys", "conversation_id") else original_get(selector)
+        )
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    node._build_human_input_form_repository = lambda **_kwargs: fake_repo
+    event = list(node._run())[-1]
+    result = event.node_run_result
+    steps = result.process_data["agent_thoughts"]
+    assert [step["thought"] for step in steps if step["thought"]] == ["先检查请求条件", "整理结果"]
+    assert steps[1]["answer"] == "开始查询"
+    tool_steps = [step for step in steps if step["tool"]]
+    assert len(tool_steps) == 1
+    assert tool_steps[0]["tool"] == "search"
+    assert json.loads(tool_steps[0]["tool_input"]) == {"query": "Dify"}
+    assert json.loads(tool_steps[0]["observation"]) == {"result": "found"}
+    assert [step["position"] for step in steps] == list(range(1, len(steps) + 1))
+    assert len({step["id"] for step in steps}) == len(steps)
+    assert all(step["created_at"] == int(datetime(2026, 9, 28, tzinfo=UTC).timestamp()) for step in steps)
+    assert "先检查请求条件" not in json.dumps(result.metadata, ensure_ascii=False)
+    stored = WorkflowNodeExecutionModel(
+        id="persisted-execution-id",
+        inputs=json.dumps(result.inputs),
+        process_data=json.dumps(result.process_data),
+        outputs=json.dumps(result.outputs),
+        execution_metadata=json.dumps(result.metadata),
+        status=result.status,
+        error=result.error,
+        elapsed_time=1,
+        title="Agent node",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+    )
+    response = AgentLogMessageItemResponse.model_validate(
+        AgentObservabilityService.serialize_workflow_node_message(stored)
+    )
+    assert [step.thought for step in response.agent_thoughts if step.thought] == ["先检查请求条件", "整理结果"]
+    assert all(step.message_id == stored.id for step in response.agent_thoughts)
+    assert [step.observation for step in response.agent_thoughts if step.tool] == [tool_steps[0]["observation"]]
+    if terminal == "success":
+        assert result.outputs == {"text": "最终回答"}
+        assert not any(step["answer"] == "最终回答" for step in steps)
+    else:
+        assert steps[-1]["answer"] == "最终回答"
+    assert result.status == (
+        WorkflowNodeExecutionStatus.SUCCEEDED
+        if terminal == "success"
+        else WorkflowNodeExecutionStatus.PAUSED
+        if terminal == "paused"
+        else WorkflowNodeExecutionStatus.FAILED
+    )
+
+
+def test_node_output_retry_keeps_process_from_both_attempts():
+    class RetryingClient(FakeAgentBackendRunClient):
+        def create_run(self, request):
+            self.run_id = "run-0" if self.request is None else "run-1"
+            return super().create_run(request)
+
+        def _events(self, run_id):
+            yield PydanticAIStreamRunEvent(
+                run_id=run_id,
+                data=PartStartEvent(index=0, part=ThinkingPart(content=f"thinking-{run_id}")),
+            )
+            yield RunSucceededEvent(
+                run_id=run_id,
+                data=RunSucceededEventData(
+                    output={"summary": 42 if run_id == "run-0" else "valid"},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            )
+
+    node = _node(
+        agent_backend_client=RetryingClient(),
+        declared_outputs=[
+            {
+                "name": "summary",
+                "type": DeclaredOutputType.STRING,
+                "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+            }
+        ],
+    )
+    result = list(node._run())[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    steps = result.process_data["agent_thoughts"]
+    assert [step["thought"] for step in steps] == ["thinking-run-0", "thinking-run-1"]
+    assert [step["chain_id"] for step in steps] == ["run-0", "run-1"]
+    assert [step["position"] for step in steps] == [1, 2]
+    assert result.outputs == {"summary": "valid"}
 
 
 def test_agent_node_records_stream_usage_metadata():
