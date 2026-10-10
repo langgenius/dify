@@ -240,15 +240,19 @@ function AccessControlSession({
       : chip.kind === 'paused'
         ? t(($) => $['studio.accessControl.tooltipPaused'], {
             ns: 'deployments',
-            name: chip.policyName ?? '',
           })
-        : chip.kind === 'on' || chip.kind === 'partial'
-          ? t(($) => $['studio.accessControl.tooltipProtected'], {
+        : chip.kind === 'on'
+          ? t(($) => $['studio.accessControl.tooltipAllProtected'], {
               ns: 'deployments',
-              n: chip.coveredCount,
               total: chip.inServiceCount,
             })
-          : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
+          : chip.kind === 'partial'
+            ? t(($) => $['studio.accessControl.tooltipProtected'], {
+                ns: 'deployments',
+                n: chip.coveredCount,
+                total: chip.inServiceCount,
+              })
+            : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 
   const handleTurnOn = () => {
     trackNetworkAccessEvent('access_control_upgrade_click', {
