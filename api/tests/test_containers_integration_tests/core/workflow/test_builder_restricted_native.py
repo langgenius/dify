@@ -34,7 +34,9 @@ FIXTURES = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted"
 def native_owner(flask_req_ctx_with_containers, db_session_with_containers):
     assert flask_req_ctx_with_containers is None  # Request context fixture is active.
     session = db_session_with_containers
-    assert session.bind.dialect.name == "postgresql"
+    engine = db.engine
+    assert session.get_bind() is engine
+    assert engine.dialect.name == "postgresql"
     tenant = Tenant(name="Restricted native CI")
     account = Account(name="Native owner", email=f"{uuid4()}@example.invalid")
     session.add_all([tenant, account])
@@ -96,7 +98,7 @@ def native_owner(flask_req_ctx_with_containers, db_session_with_containers):
     session.add(test_input)
     session.commit()
     yield (
-        sessionmaker(bind=db.engine, expire_on_commit=False),
+        sessionmaker(bind=engine, expire_on_commit=False),
         Actor(account_id=account.id, tenant_id=tenant.id),
         app,
         workflow,
