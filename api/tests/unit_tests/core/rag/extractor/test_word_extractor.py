@@ -539,6 +539,16 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     cell = SimpleNamespace(paragraphs=[paragraph, paragraph])
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
 
+    missing_image_part = object()
+    paragraph_without_extracted_image = SimpleNamespace(
+        _element=[FakeRunChild([FakeBlip("missing")]), FakeRunChild([], text="plain")],
+        part=SimpleNamespace(rels={"missing": SimpleNamespace(is_external=False, target_part=missing_image_part)}),
+    )
+    cell_with_missing_image = SimpleNamespace(
+        paragraphs=[paragraph_without_extracted_image, paragraph_without_extracted_image]
+    )
+    assert extractor._parse_cell(cell_with_missing_image, {}) == "plain plain"
+
 
 def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
@@ -564,6 +574,43 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+def test_extract_preserves_repeated_table_cell_paragraphs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    doc = Document()
+    table = doc.add_table(rows=2, cols=1)
+    table.cell(0, 0).text = "Content"
+    cell = table.cell(1, 0)
+    cell.text = "first"
+    cell.add_paragraph("middle")
+    cell.add_paragraph("first")
+
+    for index in range(2):
+        paragraph = cell.add_paragraph()
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), f"rIdLink{index}")
+        run = OxmlElement("w:r")
+        text = OxmlElement("w:t")
+        _set_oxml_text(text, "Dify")
+        run.append(text)
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
+        doc.part.rels.add_relationship(
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+            "https://dify.ai",
+            f"rIdLink{index}",
+            is_external=True,
+        )
+
+    docx_path = tmp_path / "repeated-paragraphs.docx"
+    doc.save(docx_path)
+
+    extractor = WordExtractor(str(docx_path), "tenant_id", "user_id")
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda _doc: {})
+
+    assert extractor.extract()[0].page_content == (
+        "| Content |\n| --- |\n| first middle first [Dify](https://dify.ai) [Dify](https://dify.ai) |"
+    )
 
 
 def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
