@@ -1114,6 +1114,7 @@ type = forbidden
 source_modules =
     services.annotation_query
     services.annotation_command_service
+    services.annotation_import_service
     services.annotation_reply_service
 forbidden_modules =
     controllers

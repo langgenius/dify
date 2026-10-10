@@ -67,6 +67,12 @@ class AnnotationSettingRecord:
     embedding_model: AnnotationEmbeddingModel | None
 
 
+class AnnotationAppQuery(Protocol):
+    def require_app(self, *, tenant_id: str, app_id: str) -> None:
+        """Validate a normal app's workspace and close the database session before returning."""
+        ...
+
+
 class AnnotationQuery(Protocol):
     def count(self, *, tenant_id: str, app_id: str) -> int: ...
 

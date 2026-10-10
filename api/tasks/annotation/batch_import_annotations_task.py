@@ -13,13 +13,17 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
+from repositories.annotation_import_job_repository import annotation_import_job_owner_key
+from services.annotation_import_service import AnnotationImportRecord
 from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id: str, tenant_id: str, user_id: str):
+def batch_import_annotations_task(
+    job_id: str, content_list: list[AnnotationImportRecord], app_id: str, tenant_id: str, user_id: str
+) -> None:
     """
     Add annotation to index.
     :param job_id: job_id
@@ -82,6 +86,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
 
                 session.commit()
                 redis_client.setex(indexing_cache_key, 600, "completed")
+                redis_client.expire(annotation_import_job_owner_key(job_id=job_id), 600)
                 end_at = time.perf_counter()
                 logger.info(
                     click.style(
@@ -94,6 +99,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             except Exception as e:
                 session.rollback()
                 redis_client.setex(indexing_cache_key, 600, "error")
+                redis_client.expire(annotation_import_job_owner_key(job_id=job_id), 600)
                 indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id}"
                 redis_client.setex(indexing_error_msg_key, 600, str(e))
                 logger.exception("Build index for batch import annotations failed")

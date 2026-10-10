@@ -1,8 +1,15 @@
+from http import HTTPStatus
+
 from core.app.apps.agent_app.errors import (
     AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE,
     AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE,
 )
 from libs.exception import BaseHTTPException
+
+
+class AnnotationImportRateLimitError(BaseHTTPException):
+    error_code = "too_many_requests"
+    code = HTTPStatus.TOO_MANY_REQUESTS
 
 
 class AppNotFoundError(BaseHTTPException):

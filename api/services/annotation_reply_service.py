@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 from uuid import uuid4
 
+from services.annotation_query import AnnotationAppQuery
+
 type AnnotationReplyAction = Literal["enable", "disable"]
 
 
@@ -16,12 +18,6 @@ class AnnotationReplyJob:
     job_id: str
     job_status: str
     error_msg: str = ""
-
-
-class AnnotationReplyAppQuery(Protocol):
-    def require_app(self, *, tenant_id: str, app_id: str) -> None:
-        """Check the normal app's workspace and release its database session before returning."""
-        ...
 
 
 class AnnotationReplyJobStore(Protocol):
@@ -60,7 +56,7 @@ class AnnotationReplyService:
     def __init__(
         self,
         *,
-        apps: AnnotationReplyAppQuery,
+        apps: AnnotationAppQuery,
         jobs: AnnotationReplyJobStore,
         enable_task: EnableAnnotationReplyTask,
         disable_task: DisableAnnotationReplyTask,

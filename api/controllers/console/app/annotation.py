@@ -2,32 +2,28 @@ from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
-from flask import abort, request
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
-from controllers.common.errors import NoFileUploadedError, NotFoundError, TooManyFilesError
+from controllers.common.errors import (
+    FileTooLargeError,
+    InternalServerError,
+    NoFileUploadedError,
+    NotFoundError,
+    TooManyFilesError,
+)
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AnnotationImportRateLimitError, AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
-    annotation_import_concurrency_limit,
-    annotation_import_rate_limit,
-    cloud_edition_billing_resource_check,
-    edit_permission_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
 )
 from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_application_services import application_services
-from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
     AnnotationExportList,
@@ -39,13 +35,16 @@ from fields.annotation_fields import (
 )
 from fields.base import ResponseModel
 from libs.helper import dump_response, uuid_value
-from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.annotation_command_service import AnnotationSettingNotFoundError
+from services.annotation_import_service import (
+    AnnotationImportJobNotFoundError,
+    AnnotationImportLimitError,
+    AnnotationImportValidationError,
+)
 from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
 from services.annotation_reply_service import AnnotationReplyJobNotFoundError
-from services.annotation_service import AppAnnotationService
 from services.errors.message import MessageNotExistsError
 
 
@@ -503,58 +502,59 @@ class AnnotationBatchImportApi(Resource):
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
-        200, "Batch import started successfully", console_ns.models[AnnotationBatchImportResponse.__name__]
+        HTTPStatus.OK,
+        "Import started, or CSV/subscription validation failed (error_msg)",
+        console_ns.models[AnnotationBatchImportResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "No file uploaded or too many files")
-    @console_ns.response(413, "File too large")
-    @console_ns.response(429, "Too many requests or concurrent imports")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @annotation_import_rate_limit
-    @annotation_import_concurrency_limit
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_session
-    def post(self, session: Session, app_id: UUID):
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Missing, multiple, empty or invalid file")
+    @console_ns.response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "File too large")
+    @console_ns.response(HTTPStatus.TOO_MANY_REQUESTS, "Too many requests or concurrent imports")
+    @console_ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, "Import infrastructure failed")
+    @console_account_admission(
+        billing_resource="annotation",
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_EDIT, PlainApp()),),
+    )
+    def post(self, context: RequestContext, app_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
         from configs import dify_config
 
-        # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
-        if len(request.files) > 1:
+        if len(list(request.files.items(multi=True))) > 1:
             raise TooManyFilesError()
-
-        # get file from request
         file = request.files["file"]
-
-        # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
-
-        # Check file size before processing
-        file.stream.seek(0, 2)  # Seek to end of file
+        file.stream.seek(0, 2)
         file_size = file.stream.tell()
-        file.stream.seek(0)  # Reset to beginning
-
-        max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
-        if file_size > max_size_bytes:
-            abort(
-                413,
+        file.stream.seek(0)
+        if file_size > dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024:
+            raise FileTooLargeError(
                 f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
-                f"Please reduce the file size and try again.",
+                "Please reduce the file size and try again."
             )
-
         if file_size == 0:
             raise ValueError("The uploaded file is empty")
-
-        return dump_response(
-            AnnotationBatchImportResponse,
-            AppAnnotationService.batch_import_app_annotations(str(app_id), file, session),
-        )
+        try:
+            result = application_services().annotation_imports.import_csv(
+                tenant_id=context.active_workspace_id,
+                app_id=str(app_id),
+                account_id=context.account_id,
+                stream=file.stream,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationImportLimitError as exc:
+            raise AnnotationImportRateLimitError(str(exc)) from exc
+        except AnnotationImportValidationError as exc:
+            # Retain the existing import response for CSV and record-quota validation failures.
+            return dump_response(AnnotationBatchImportResponse, {"error_msg": str(exc)}), HTTPStatus.OK
+        except Exception as exc:
+            # Infrastructure ValueErrors must not become client-side invalid_param responses.
+            raise InternalServerError() from exc
+        return dump_response(AnnotationBatchImportResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
@@ -563,29 +563,30 @@ class AnnotationBatchImportStatusApi(Resource):
     @console_ns.doc(description="Get status of batch import job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
     @console_ns.response(
-        200, "Job status retrieved successfully", console_ns.models[AnnotationJobStatusDetailResponse.__name__]
+        HTTPStatus.OK,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusDetailResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, app_id: UUID, job_id: UUID):
-        indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
-        cache_result = redis_client.get(indexing_cache_key)
-        if cache_result is None:
-            raise ValueError("The job does not exist.")
-        job_status = cache_result.decode()
-        error_msg = ""
-        if job_status == "error":
-            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
-            error_msg = redis_client.get(indexing_error_msg_key).decode()
-
-        return AnnotationJobStatusDetailResponse(
-            job_id=str(job_id), job_status=job_status, error_msg=error_msg
-        ).model_dump(mode="json"), 200
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or owned job not found")
+    @console_ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, "Import status could not be read")
+    @console_account_admission(
+        billing_resource="annotation",
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, context: RequestContext, app_id: UUID, job_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
+        try:
+            result = application_services().annotation_imports.get_status(
+                tenant_id=context.active_workspace_id, app_id=str(app_id), job_id=str(job_id)
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationImportJobNotFoundError as exc:
+            raise NotFoundError("The job does not exist.") from exc
+        except Exception as exc:
+            raise InternalServerError() from exc
+        return dump_response(AnnotationJobStatusDetailResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")

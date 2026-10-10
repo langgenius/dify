@@ -22,6 +22,7 @@ from services.annotation_command_service import (
 )
 from services.annotation_query import (
     AnnotationAppNotFoundError,
+    AnnotationAppQuery,
     AnnotationEmbeddingModel,
     AnnotationHitHistoryRecord,
     AnnotationNotFoundError,
@@ -30,11 +31,10 @@ from services.annotation_query import (
     AnnotationRecord,
     AnnotationSettingRecord,
 )
-from services.annotation_reply_service import AnnotationReplyAppQuery
 from services.errors.message import MessageNotExistsError
 
 
-class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationReplyAppQuery):
+class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 

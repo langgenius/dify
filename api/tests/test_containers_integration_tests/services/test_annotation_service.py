@@ -5,7 +5,6 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from enums import DeploymentEdition
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import MessageAnnotation
@@ -13,7 +12,6 @@ from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
 from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
-from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestAnnotationService:
@@ -24,13 +22,11 @@ class TestAnnotationService:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
-            patch("services.annotation_service.FeatureService") as mock_feature_service,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_add_task,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_update_task,
             patch("services.annotation_service.delete_annotation_index_task") as mock_delete_task,
             patch("services.annotation_service.enable_annotation_reply_task") as mock_enable_task,
             patch("services.annotation_service.disable_annotation_reply_task") as mock_disable_task,
-            patch("services.annotation_service.batch_import_annotations_task") as mock_batch_import_task,
             patch("services.annotation_service.current_account_with_tenant") as mock_current_account_with_tenant,
         ):
             # Setup default mock returns
@@ -39,20 +35,17 @@ class TestAnnotationService:
             mock_delete_task.delay.return_value = None
             mock_enable_task.delay.return_value = None
             mock_disable_task.delay.return_value = None
-            mock_batch_import_task.delay.return_value = None
 
             # Create mock user that will be returned by current_account_with_tenant
             mock_user = create_autospec(Account, instance=True)
 
             yield {
                 "account_feature_service": mock_account_feature_service,
-                "feature_service": mock_feature_service,
                 "add_task": mock_add_task,
                 "update_task": mock_update_task,
                 "delete_task": mock_delete_task,
                 "enable_task": mock_enable_task,
                 "disable_task": mock_disable_task,
-                "batch_import_task": mock_batch_import_task,
                 "current_account_with_tenant": mock_current_account_with_tenant,
                 "current_user": mock_user,
             }
@@ -656,130 +649,6 @@ class TestAnnotationService:
         assert retrieved_annotation.question == annotation_args["question"]
         assert retrieved_annotation.content == annotation_args["answer"]
         assert retrieved_annotation.account_id == account.id
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_batch_import_app_annotations_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful batch import of app annotations.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create CSV content
-        csv_content = "Question 1,Answer 1\nQuestion 2,Answer 2\nQuestion 3,Answer 3"
-
-        # Mock FileStorage
-        from io import BytesIO
-
-        from werkzeug.datastructures import FileStorage
-
-        file_storage = FileStorage(
-            stream=BytesIO(csv_content.encode("utf-8")), filename="annotations.csv", content_type="text/csv"
-        )
-
-        # Mock pandas to return expected DataFrame
-        import pandas as pd
-
-        with patch("services.annotation_service.pd") as mock_pd:
-            mock_df = pd.DataFrame(
-                {0: ["Question 1", "Question 2", "Question 3"], 1: ["Answer 1", "Answer 2", "Answer 3"]}
-            )
-            mock_pd.read_csv.return_value = mock_df
-
-            # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
-
-        # Verify result structure
-        assert "job_id" in result
-        assert "job_status" in result
-        assert result["job_status"] == "waiting"
-        assert result["job_id"] is not None
-
-        # Verify task was called
-        mock_external_service_dependencies["batch_import_task"].delay.assert_called_once()
-
-    def test_batch_import_app_annotations_empty_file(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test batch import with empty CSV file.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create empty CSV content
-        csv_content = ""
-
-        # Mock FileStorage
-        from io import BytesIO
-
-        from werkzeug.datastructures import FileStorage
-
-        file_storage = FileStorage(
-            stream=BytesIO(csv_content.encode("utf-8")), filename="annotations.csv", content_type="text/csv"
-        )
-
-        # Mock pandas to return empty DataFrame
-        import pandas as pd
-
-        with patch("services.annotation_service.pd") as mock_pd:
-            mock_df = pd.DataFrame()
-            mock_pd.read_csv.return_value = mock_df
-
-            # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
-
-        # Verify error result
-        assert "error_msg" in result
-        assert "empty" in result["error_msg"].lower()
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_batch_import_app_annotations_quota_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test batch import when quota is exceeded.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create CSV content
-        csv_content = "Question 1,Answer 1\nQuestion 2,Answer 2\nQuestion 3,Answer 3"
-
-        # Mock FileStorage
-        from io import BytesIO
-
-        from werkzeug.datastructures import FileStorage
-
-        file_storage = FileStorage(
-            stream=BytesIO(csv_content.encode("utf-8")), filename="annotations.csv", content_type="text/csv"
-        )
-
-        # Mock pandas to return DataFrame
-        import pandas as pd
-
-        with patch("services.annotation_service.pd") as mock_pd:
-            mock_df = pd.DataFrame(
-                {0: ["Question 1", "Question 2", "Question 3"], 1: ["Answer 1", "Answer 2", "Answer 3"]}
-            )
-            mock_pd.read_csv.return_value = mock_df
-
-            # Mock FeatureService to return billing enabled with quota exceeded
-            mock_external_service_dependencies[
-                "feature_service"
-            ].get_features.return_value.annotation_quota_limit.limit = 1
-            mock_external_service_dependencies[
-                "feature_service"
-            ].get_features.return_value.annotation_quota_limit.size = 0
-
-            # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
-
-        # Verify error result
-        assert "error_msg" in result
-        assert "limit" in result["error_msg"].lower()
 
     def test_insert_app_annotation_directly_with_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies

@@ -6,22 +6,16 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta
-from io import BytesIO
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import patch
 
-import pandas as pd
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 import services.annotation_service as annotation_service_module
-from enums import DeploymentEdition
 from models.account import Account
 from models.model import (
     App,
@@ -33,7 +27,6 @@ from models.model import (
 )
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
-from tests.unit_tests.config_override import config_overrides_context
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -157,10 +150,6 @@ def _app_ref(app: App) -> AppRef:
 
 def _annotation_ref(app: App, annotation_id: str) -> AnnotationRef:
     return AnnotationRef(app=_app_ref(app), annotation_id=annotation_id)
-
-
-def _file(content: bytes) -> FileStorage:
-    return FileStorage(stream=BytesIO(content))
 
 
 def _observer_get(factory: sessionmaker[Session], model: type[Any], identifier: str) -> Any:
@@ -346,193 +335,6 @@ class TestAppAnnotationServiceDirectManipulation:
             assert observer.get(MessageAnnotation, annotation.id) is None
             assert [observer.get(AppAnnotationHitHistory, history.id) for history in histories] == [None, None]
         task.delay.assert_called_once_with(annotation.id, app.id, TENANT_ID, setting.collection_binding_id)
-
-
-class TestAppAnnotationServiceBatchImport:
-    @staticmethod
-    def _invoke(
-        sqlite_session: Session,
-        app: App,
-        *,
-        dataframe: Any,
-        content: bytes = b"question,answer\nq,a\n",
-        maximum: int = 5,
-        minimum: int = 1,
-        features: Any | None = None,
-    ) -> dict[str, Any]:
-        if features is None:
-            features = SimpleNamespace(annotation_quota_limit=None)
-        with (
-            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
-            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
-            config_overrides_context(
-                ANNOTATION_IMPORT_MAX_RECORDS=maximum,
-                ANNOTATION_IMPORT_MIN_RECORDS=minimum,
-            ),
-        ):
-            return AppAnnotationService.batch_import_app_annotations(app.id, _file(content), sqlite_session)
-
-    def test_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.batch_import_app_annotations(app.id, _file(b"question,answer\nq,a\n"), sqlite_session)
-
-    @pytest.mark.parametrize(
-        ("dataframe", "content", "maximum", "minimum", "expected"),
-        [
-            (pd.DataFrame({"q": ["only"]}), b"question\nq\n", 5, 1, "Invalid CSV format"),
-            (pd.DataFrame({"q": ["q"], "a": ["a"]}), b"", 5, 1, "empty or invalid"),
-            (pd.DataFrame({"q": ["q"], "a": ["a"]}), b"question,answer\nq,a\n", 5, 2, "at least"),
-            (
-                pd.DataFrame({"q": ["q1", "q2"], "a": ["a1", "a2"]}),
-                b"question,answer\nq1,a1\nq2,a2\n",
-                1,
-                1,
-                "too many records",
-            ),
-            (pd.DataFrame({"q": ["nan"], "a": ["nan"]}), b"question,answer\nnan,nan\n", 5, 1, "at least"),
-            (
-                pd.DataFrame({"q": ["q" * 2001], "a": ["a"]}),
-                b"question,answer\nq,a\n",
-                5,
-                1,
-                "Question at row",
-            ),
-            (
-                pd.DataFrame({"q": ["q"], "a": ["a" * 10001]}),
-                b"question,answer\nq,a\n",
-                5,
-                1,
-                "Answer at row",
-            ),
-        ],
-    )
-    def test_validation_errors(
-        self,
-        sqlite_session: Session,
-        current_user: Account,
-        dataframe: pd.DataFrame,
-        content: bytes,
-        maximum: int,
-        minimum: int,
-        expected: str,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-
-        result = self._invoke(
-            sqlite_session,
-            app,
-            dataframe=dataframe,
-            content=content,
-            maximum=maximum,
-            minimum=minimum,
-        )
-
-        assert expected in cast(str, result["error_msg"])
-
-    def test_skips_malformed_rows(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        malformed_row = MagicMock()
-        malformed_row.iloc.__getitem__.side_effect = IndexError()
-        dataframe = MagicMock()
-        dataframe.columns = ["q", "a"]
-        dataframe.iterrows.return_value = [(0, malformed_row)]
-
-        result = self._invoke(sqlite_session, app, dataframe=dataframe)
-
-        assert "at least" in cast(str, result["error_msg"])
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_rejects_subscription_quota_overflow(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        features = SimpleNamespace(
-            annotation_quota_limit=SimpleNamespace(limit=1, size=1),
-        )
-
-        result = self._invoke(
-            sqlite_session,
-            app,
-            dataframe=pd.DataFrame({"q": ["q1"], "a": ["a1"]}),
-            features=features,
-        )
-
-        assert "exceeds the limit" in cast(str, result["error_msg"])
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_valid_import_enqueues_job(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
-        features = SimpleNamespace(annotation_quota_limit=None)
-        with (
-            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
-            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
-            patch.object(annotation_service_module, "batch_import_annotations_task") as task,
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-3"),
-            patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
-            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-        ):
-            result = AppAnnotationService.batch_import_app_annotations(
-                app.id, _file(b"question,answer\nq,a\n"), sqlite_session
-            )
-
-        assert result == {"job_id": "uuid-3", "job_status": "waiting", "record_count": 1}
-        redis.zadd.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", {"uuid-3": 1000})
-        redis.expire.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", 7200)
-        redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-3", "waiting")
-        task.delay.assert_called_once_with(
-            "uuid-3", [{"question": "q1", "answer": "a1"}], app.id, TENANT_ID, current_user.id
-        )
-
-    @pytest.mark.parametrize("limit", [0, 2], ids=["unlimited", "exactly-at-limit"])
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_import_with_available_quota_enqueues_job(
-        self, sqlite_session: Session, current_user: Account, limit: int
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        features = SimpleNamespace(annotation_quota_limit=SimpleNamespace(limit=limit, size=1))
-        with (
-            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
-            patch.object(annotation_service_module, "batch_import_annotations_task") as task,
-            patch.object(annotation_service_module, "redis_client"),
-            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-        ):
-            result = AppAnnotationService.batch_import_app_annotations(
-                app.id, _file(b"question,answer\nq,a\n"), sqlite_session
-            )
-
-        assert result["job_status"] == "waiting"
-        assert result["record_count"] == 1
-        task.delay.assert_called_once_with(
-            result["job_id"], [{"question": "q", "answer": "a"}], app.id, TENANT_ID, current_user.id
-        )
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_unexpected_error_cleans_active_job(
-        self, sqlite_session: Session, current_user: Account, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
-        features = SimpleNamespace(annotation_quota_limit=None)
-        with (
-            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
-            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-4"),
-            patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
-            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-        ):
-            redis.zadd.side_effect = RuntimeError("boom")
-            redis.zrem.side_effect = RuntimeError("cleanup-failed")
-            with caplog.at_level(logging.DEBUG):
-                result = AppAnnotationService.batch_import_app_annotations(
-                    app.id, _file(b"question,answer\nq,a\n"), sqlite_session
-                )
-
-        assert result["error_msg"] == "An error occurred while processing the file: boom"
-        redis.zrem.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", "uuid-4")
-        assert "Failed to clean up active job tracking" in caplog.text
 
 
 class TestAppAnnotationServiceHitHistoryAndSettings:
