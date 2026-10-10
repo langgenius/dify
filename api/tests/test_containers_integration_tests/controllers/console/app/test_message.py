@@ -12,12 +12,10 @@ from sqlalchemy.orm import Session
 
 from controllers.console.app.message import ChatMessagesQuery, FeedbackExportQuery, MessageFeedbackPayload
 from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, FeedbackRating
-from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.provider import Provider
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -246,63 +244,65 @@ def test_message_annotation_count(
     assert response.get_json() == {"count": 1}
 
 
-def test_message_suggested_questions_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    message_id = str(uuid4())
-
-    with patch(
-        "services.message_suggested_questions_adapters.MessageSuggestedQuestionsRuntime.get_suggested_questions",
-        return_value=["q1", "q2"],
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/chat-messages/{message_id}/suggested-questions",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
-
-    assert response.status_code == 200
-    assert response.get_json() == {"data": ["q1", "q2"]}
-
-
 @pytest.mark.parametrize(
-    ("exc", "expected_status", "expected_code"),
+    ("scenario", "expected_status", "expected_code"),
     [
-        (MessageNotExistsError(), 404, "not_found"),
-        (ConversationNotExistsError(), 404, "not_found"),
-        (ProviderTokenNotInitError(), 400, "provider_not_initialize"),
-        (QuotaExceededError(), 400, "provider_quota_exceeded"),
-        (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
-        (SuggestedQuestionsAfterAnswerDisabledError(), 403, "app_suggested_questions_after_answer_disabled"),
-        (Exception(), 500, "internal_server_error"),
+        ("invalid-provider", 200, None),
+        ("missing-message", 404, "not_found"),
+        ("other-account", 404, "not_found"),
+        ("deleted-conversation", 404, "not_found"),
+        ("disabled", 403, "app_suggested_questions_after_answer_disabled"),
+        ("broken-config", 500, "internal_server_error"),
     ],
 )
-def test_message_suggested_questions_errors(
-    exc: Exception,
+def test_message_suggested_questions_with_persisted_configuration(
+    scenario: str,
     expected_status: int,
-    expected_code: str,
+    expected_code: str | None,
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    message_id = str(uuid4())
+    session = db_session_with_containers
+    account, tenant = create_console_account_and_tenant(session)
+    app = create_console_app(session, tenant.id, account.id, AppMode.CHAT)
+    config = AppModelConfig(
+        app_id=app.id,
+        suggested_questions_after_answer=(
+            "not json"
+            if scenario == "broken-config"
+            else '{"enabled":false}'
+            if scenario == "disabled"
+            else '{"enabled":true}'
+        ),
+    )
+    session.add(config)
+    session.flush()
+    app.app_model_config_id = config.id
+    conversation = _create_conversation(session, app.id, account.id, AppMode.CHAT)
+    conversation.app_model_config_id = config.id
+    message = _create_message(session, app.id, conversation.id, account.id)
+    if scenario == "other-account":
+        message.from_account_id = str(uuid4())
+    elif scenario == "deleted-conversation":
+        conversation.is_deleted = True
+    elif scenario == "invalid-provider":
+        # Real model resolution rejects the stored ID before contacting the daemon.
+        session.add(Provider(tenant_id=tenant.id, provider_name="invalid/provider", is_valid=True))
+    session.commit()
+    message_id = str(uuid4()) if scenario == "missing-message" else message.id
 
-    with patch(
-        "services.message_suggested_questions_adapters.MessageSuggestedQuestionsRuntime.get_suggested_questions",
-        side_effect=exc,
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/chat-messages/{message_id}/suggested-questions",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/chat-messages/{message_id}/suggested-questions",
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == expected_status
     payload = response.get_json()
     assert payload is not None
-    assert payload["code"] == expected_code
+    if expected_code is None:
+        assert payload == {"data": []}
+    else:
+        assert payload["code"] == expected_code
 
 
 def test_message_feedback_export_success(

@@ -674,11 +674,12 @@ export const moreLikeThis = {
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
 export const get5 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',

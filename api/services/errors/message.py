@@ -1,6 +1,10 @@
 from services.errors.base import BaseServiceError
 
 
+class MessageActorNotFoundError(LookupError):
+    """The account is missing, or the end user is outside the admitted app and tenant scope."""
+
+
 class FirstMessageNotExistsError(BaseServiceError):
     pass
 

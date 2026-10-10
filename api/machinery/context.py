@@ -25,6 +25,14 @@ class ServiceApiRequestContext:
     app_id: str
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServiceApiEndUserContext(ServiceApiRequestContext):
+    """Validated application mode and end-user identity for a Service API request."""
+
+    app_mode: str
+    end_user_id: str
+
+
 class AccountRequestContext(NamedTuple):
     """Stable identity for account-scoped use cases that do not require a workspace."""
 

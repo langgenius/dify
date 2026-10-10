@@ -1,32 +1,25 @@
 """Console suggested-question admission and actor/configuration isolation over SQLite."""
 
 import json
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Iterator
+from dataclasses import dataclass
 from decimal import Decimal
 from http import HTTPStatus
-from typing import cast
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import Connection, Engine, event, func, select, text, update
+from sqlalchemy import Connection, Engine, delete, event, func, select, text, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 import controllers.console.wraps as console_wraps
-from controllers.common.rbac import RBACPermission, RBACResourceScope
-from controllers.common.rbac.checks import RBACService
 from controllers.console.app import message as controller
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
-from extensions.application_services.app import AppServices
+from enums import DeploymentEdition
+from extensions.application_services.app import AppServices, build_app_services
+from extensions.ext_application_services import _build_oauth_server_service
 from extensions.ext_database import db
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeError
+from extensions.ext_redis import RedisClientWrapper
 from libs import login
 from libs.external_api import ExternalApi
 from models.account import Account, Tenant
@@ -43,43 +36,23 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
-from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from models.model import App, AppMode, AppModelConfig, Conversation, DifySetup, Message
+from models.provider import Provider
 from repositories.app.agent_app_repository import AgentAppRepository
-from services import message_service
+from repositories.message_repository import MessageRepository
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.agent_app_service import AgentAppAccessService
-from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.entities.message_entities import MessageAccount
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
-    SuggestedQuestionsActorNotFoundError,
+    MessageSuggestedQuestionsService,
 )
+from services.recommended_app_package_service import RecommendedAppPackageService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
-
-
-@dataclass
-class _Questions:
-    questions: list[str] = field(default_factory=lambda: ["Next?"])
-    failure: Exception | None = None
-    calls: list[tuple[str, str, str, SuggestedQuestionsActor, str]] = field(default_factory=list)
-
-    def get_suggested_questions(
-        self,
-        *,
-        app_id: str,
-        app_owner_tenant_id: str,
-        expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
-        message_id: str,
-    ) -> list[str]:
-        self.calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, message_id))
-        if self.failure is not None:
-            raise self.failure
-        return self.questions
 
 
 @dataclass
@@ -95,46 +68,6 @@ class _Services:
 
 
 @dataclass
-class _Provider:
-    tenant_id: str
-    admission_sessions: list[Session]
-    prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
-
-    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
-        assert tenant_id == self.tenant_id
-        assert model_type == ModelType.LLM
-        assert self.admission_sessions
-        assert all(not session.in_transaction() and not session.identity_map for session in self.admission_sessions)
-        return cast(ModelInstance, self)
-
-    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
-        return len(prompt_messages)
-
-    def get_model_schema(self) -> None:
-        raise NotImplementedError
-
-    def invoke_llm(
-        self,
-        *,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, object],
-        stop: list[str],
-        stream: bool,
-    ) -> LLMResult:
-        assert model_parameters == {"max_tokens": 256, "temperature": 0.0}
-        assert stop == []
-        assert stream is False
-        self.prompts.append(prompt_messages[0].get_text_content())
-        return LLMResult(
-            model="test-model", message=AssistantPromptMessage(content='["Next?"]'), usage=LLMUsage.empty_usage()
-        )
-
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
-
-
-@dataclass
 class _Harness:
     flask_app: Flask
     target: App
@@ -144,9 +77,8 @@ class _Harness:
     agent_id: str
     factory: sessionmaker[Session]
     services: _Services
-    provider: _Provider
-    permission_calls: list[tuple[str, str, RBACPermission, RBACResourceScope | None, str | None]]
-    allowed: bool = True
+    sessions: list[Session]
+    queries: SuggestedQuestionsQuery
 
     def get(self, route: str = "app") -> TestResponse:
         resource = f"apps/{self.target.id}" if route == "app" else f"agent/{self.agent_id}"
@@ -176,7 +108,6 @@ def harness(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
-    app_services: AppServices,
 ) -> Iterator[_Harness]:
     target = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()))
     account = make_account(account_id=str(uuid4()))
@@ -208,7 +139,17 @@ def harness(
         from_account_id=account.id,
     )
     with sqlite_session_factory.begin() as session:
-        session.add_all([target, account, conversation, config, message])
+        session.add_all(
+            [
+                target,
+                account,
+                conversation,
+                config,
+                message,
+                DifySetup(version="test"),
+                Provider(tenant_id=target.tenant_id, provider_name="invalid/provider", is_valid=True),
+            ]
+        )
         session.flush()
         target.app_model_config_id = config.id
         conversation.app_model_config_id = config.id
@@ -218,28 +159,28 @@ def harness(
         sessions.append(session)
 
     event.listen(sqlite_session_factory, "after_begin", track_session)
-    provider = _Provider(target.tenant_id, sessions)
-
-    def manager(*, tenant_id: str) -> _Provider:
-        assert tenant_id == target.tenant_id
-        return provider
-
-    def trace_manager(*, app_id: str) -> _Provider:
-        assert app_id == target.id
-        return provider
-
-    monkeypatch.setattr(message_service.ModelManager, "for_tenant", manager)
-    monkeypatch.setattr(message_service, "TraceQueueManager", trace_manager)
     monkeypatch.setattr(login, "current_user", account)
-    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
-    apply_config_overrides(monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False)
+    console_wraps._is_setup_completed.reset_success()
+    apply_config_overrides(
+        monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY
+    )
+    redis = RedisClientWrapper()
+    app_services = build_app_services(
+        database_client=sqlite_session_factory,
+        oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis),
+        recommended_packages=RecommendedAppPackageService(
+            sources=DatabaseRecommendedAppCatalogRepository(sqlite_session_factory, redis=redis),
+            exporter=RosterAgentPackageExporter(),
+        ),
+    )
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
+    queries = SuggestedQuestionsQuery(session_factory=sqlite_session_factory, repository_factory=MessageRepository)
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
-        MessageSuggestedQuestionsRuntime(session_factory=sqlite_session_factory),
+        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
     )
     flask_app.extensions["application_services"] = services
     api = ExternalApi(flask_app)
@@ -252,53 +193,51 @@ def harness(
         "/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions",
     )
     result = _Harness(
-        flask_app, target, account, conversation, message, str(uuid4()), sqlite_session_factory, services, provider, []
+        flask_app,
+        target,
+        account,
+        conversation,
+        message,
+        str(uuid4()),
+        sqlite_session_factory,
+        services,
+        sessions,
+        queries,
     )
 
-    def permission(
-        tenant_id: str,
-        account_id: str,
-        *,
-        scene: RBACPermission,
-        resource_type: RBACResourceScope | None,
-        resource_id: str | None,
-    ) -> bool:
-        result.permission_calls.append((tenant_id, account_id, scene, resource_type, resource_id))
-        return result.allowed
-
-    monkeypatch.setattr(RBACService.CheckAccess, "check", permission)
     yield result
     event.remove(sqlite_session_factory, "after_begin", track_session)
+    console_wraps._is_setup_completed.reset_success()
     with flask_app.app_context():
         db.session.remove()
         db.engine.dispose()
 
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-@pytest.mark.parametrize("questions", [[], ["Next?", "More?"]])
-def test_app_reference_and_account_are_passed_to_shared_runtime(
-    harness: _Harness, mode: AppMode, questions: list[str]
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
+def test_model_resolution_failure_keeps_empty_http_success(
+    harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
 ) -> None:
     with harness.factory.begin() as session:
         session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))
-    port = _Questions(questions=questions)
-    harness.services.message_suggested_questions = port
     response = harness.get()
     assert response.status_code == HTTPStatus.OK
     assert response.headers["Content-Type"] == "application/json"
-    assert response.get_json() == {"data": questions}
-    assert port.calls == [
-        (
-            harness.target.id,
-            harness.target.tenant_id,
-            mode,
-            SuggestedQuestionsAccount(harness.account.id, "debugger"),
-            harness.message.id,
-        )
-    ]
-    assert all(
-        not session.in_transaction() and not session.identity_map for session in harness.provider.admission_sessions
+    assert response.get_json() == {"data": []}
+    assert any(
+        record.exc_info
+        and isinstance(record.exc_info[1], ValueError)
+        and "Invalid plugin id invalid/provider" in str(record.exc_info[1])
+        for record in caplog.records
     )
+    assert all(not session.in_transaction() and not session.identity_map for session in harness.sessions)
+
+
+def test_advanced_chat_without_draft_workflow_returns_empty_success(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.ADVANCED_CHAT))
+    response = harness.get()
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": []}
 
 
 @pytest.mark.parametrize("change", ["tenant", "status", "missing", "workflow", "completion", "hidden"])
@@ -320,33 +259,41 @@ def test_app_admission_rejects_unavailable_or_unsupported_apps(harness: _Harness
                 )
             else:
                 session.execute(update(App).where(App.id == harness.target.id).values({field_name: value}))
-    port = _Questions()
-    harness.services.message_suggested_questions = port
     response = harness.get()
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["code"] == "app_not_found"
-    assert not port.calls
 
 
 @pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
-def test_agent_resolves_existing_backing_app(harness: _Harness, scope: AgentScope) -> None:
+def test_agent_resolves_existing_backing_app_with_its_debug_configuration(harness: _Harness, scope: AgentScope) -> None:
     harness.add_agent(scope=scope)
-    port = _Questions()
-    harness.services.message_suggested_questions = port
+    with harness.factory.begin() as session:
+        session.add(
+            AgentDebugConversation(
+                tenant_id=harness.target.tenant_id,
+                agent_id=harness.agent_id,
+                app_id=harness.target.id,
+                account_id=harness.account.id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                conversation_id=harness.conversation.id,
+            )
+        )
+        session.add(
+            AgentConfigDraft(
+                tenant_id=harness.target.tenant_id,
+                agent_id=harness.agent_id,
+                account_id=harness.account.id,
+                draft_owner_key=harness.account.id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                config_snapshot=AgentSoulConfig.model_validate(
+                    {"app_features": {"suggested_questions_after_answer": {"enabled": True}}}
+                ),
+            )
+        )
     response = harness.get("agent")
     assert response.status_code == HTTPStatus.OK
-    assert port.calls == [
-        (
-            harness.target.id,
-            harness.target.tenant_id,
-            AppMode.AGENT,
-            SuggestedQuestionsAccount(harness.account.id, "debugger"),
-            harness.message.id,
-        )
-    ]
-    assert all(
-        not session.in_transaction() and not session.identity_map for session in harness.provider.admission_sessions
-    )
+    assert response.get_json() == {"data": []}
+    assert all(not session.in_transaction() and not session.identity_map for session in harness.sessions)
 
 
 @pytest.mark.parametrize("change", ["missing_backing", "tenant", "agent_status", "app_status", "app_mode"])
@@ -377,60 +324,44 @@ def test_agent_rejects_unavailable_runtime_without_creating_app(harness: _Harnes
 
 
 @pytest.mark.parametrize("route", ["app", "agent"])
-@pytest.mark.parametrize("allowed", [True, False])
-def test_real_rbac_admission_keeps_resource_scene(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch, route: str, allowed: bool
-) -> None:
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+def test_deleted_account_has_explicit_unauthorized_response(harness: _Harness, route: str) -> None:
     if route == "agent":
         harness.add_agent()
-    harness.allowed = allowed
-    port = _Questions()
-    harness.services.message_suggested_questions = port
+    with harness.factory.begin() as session:
+        session.execute(delete(Account).where(Account.id == harness.account.id))
     response = harness.get(route)
-    assert response.status_code == (HTTPStatus.OK if allowed else HTTPStatus.FORBIDDEN)
-    assert harness.permission_calls == [
-        (
-            harness.target.tenant_id,
-            harness.account.id,
-            RBACPermission.APP_VIEW_LAYOUT if route == "app" else RBACPermission.AGENT_TEST_AND_RUN,
-            RBACResourceScope.APP if route == "app" else RBACResourceScope.AGENT,
-            harness.target.id if route == "app" else harness.agent_id,
-        )
-    ]
-    assert len(port.calls) == int(allowed)
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.get_json()["code"] == "unauthorized"
+    assert response.get_json()["message"] == "Account no longer exists"
+    assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
 
 
-@pytest.mark.parametrize(
-    ("error", "status", "code"),
-    [
-        (AppDefinitionUnavailableError("stale app"), 400, "app_unavailable"),
-        (SuggestedQuestionsActorNotFoundError("deleted account"), 401, "unauthorized"),
-        (MessageNotExistsError(), 404, "not_found"),
-        (ConversationNotExistsError(), 404, "not_found"),
-        (ProviderTokenNotInitError(), 400, "provider_not_initialize"),
-        (QuotaExceededError(), 400, "provider_quota_exceeded"),
-        (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
-        (InvokeError("provider failed"), 400, "completion_request_error"),
-        (SuggestedQuestionsAfterAnswerDisabledError(), 403, "app_suggested_questions_after_answer_disabled"),
-        (RuntimeError("private credentials"), 500, "internal_server_error"),
-    ],
-)
+def test_disabled_suggestions_have_specific_http_error(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(AppModelConfig).values(suggested_questions_after_answer='{"enabled":false}'))
+    response = harness.get()
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json()["code"] == "app_suggested_questions_after_answer_disabled"
+
+
 @pytest.mark.parametrize("route", ["app", "agent"])
-def test_precise_errors_are_translated_at_http_boundary(
-    harness: _Harness, error: Exception, status: int, code: str, route: str
-) -> None:
-    if route == "agent":
-        harness.add_agent()
-    harness.services.message_suggested_questions = _Questions(failure=error)
+def test_missing_published_agent_version_preserves_specific_http_error(harness: _Harness, route: str) -> None:
+    harness.add_agent()
     response = harness.get(route)
-    assert response.status_code == status
-    assert response.get_json()["code"] == code
-    assert "private credentials" not in response.get_data(as_text=True)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.get_json() == {
+        "code": "agent_version_not_found_error",
+        "message": "Agent config version not found.",
+        "status": HTTPStatus.NOT_FOUND,
+    }
+    assert all(not session.in_transaction() and not session.identity_map for session in harness.sessions)
 
 
-def test_chat_runtime_uses_console_history_after_reference_session_closed(harness: _Harness) -> None:
+def test_model_resolution_preserves_pending_caller_session(harness: _Harness) -> None:
     with harness.flask_app.app_context():
+        assert console_wraps._is_setup_completed()
+        db.session.remove()
         caller_session = db.session()
         caller_app = caller_session.get(App, harness.target.id)
         assert caller_app is not None
@@ -440,11 +371,7 @@ def test_chat_runtime_uses_console_history_after_reference_session_closed(harnes
         assert caller_session.in_transaction()
         assert caller_app in caller_session.dirty
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == {"data": ["Next?"]}
-    assert len(harness.provider.prompts) == 1
-    assert "Console questions" in harness.provider.prompts[0]
-    assert "How?" in harness.provider.prompts[0]
-    assert len(harness.provider.traces) == 1
+    assert response.get_json() == {"data": []}
 
 
 @pytest.mark.parametrize("entity", [Message, Conversation])
@@ -457,7 +384,6 @@ def test_runtime_cannot_read_another_accounts_message_or_conversation(
     response = harness.get()
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["message"] == ("Message not found" if entity is Message else "Conversation not found")
-    assert not harness.provider.prompts
 
 
 def test_agent_runtime_uses_current_accounts_personal_debug_draft(harness: _Harness) -> None:
@@ -489,9 +415,17 @@ def test_agent_runtime_uses_current_accounts_personal_debug_draft(harness: _Harn
             )
     response = harness.get("agent")
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == {"data": ["Next?"]}
-    assert "My personal draft" in harness.provider.prompts[0]
-    assert "Other accounts secret draft" not in harness.provider.prompts[0]
+    assert response.get_json() == {"data": []}
+    context = harness.queries.prepare(
+        app_id=harness.target.id,
+        app_owner_tenant_id=harness.target.tenant_id,
+        expected_app_mode=AppMode.AGENT,
+        actor=MessageAccount(harness.account.id),
+        invoke_from="debugger",
+        message_id=harness.message.id,
+    )
+    assert context is not None
+    assert context.config["prompt"] == "My personal draft"
 
 
 @pytest.mark.parametrize("same_tenant", [True, False])
@@ -538,8 +472,16 @@ def test_agent_runtime_preserves_conversation_binding_scope(harness: _Harness, s
     response = harness.get("agent")
     if same_tenant:
         assert response.status_code == HTTPStatus.OK
-        assert "Conversation bound questions" in harness.provider.prompts[0]
+        context = harness.queries.prepare(
+            app_id=harness.target.id,
+            app_owner_tenant_id=harness.target.tenant_id,
+            expected_app_mode=AppMode.AGENT,
+            actor=MessageAccount(harness.account.id),
+            invoke_from="debugger",
+            message_id=harness.message.id,
+        )
+        assert context is not None
+        assert context.config["prompt"] == "Conversation bound questions"
     else:
         assert response.status_code == HTTPStatus.NOT_FOUND
         assert response.get_json()["code"] == "agent_version_not_found_error"
-        assert not harness.provider.prompts

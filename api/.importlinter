@@ -947,7 +947,7 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:message-suggested-questions-boundary]
-name = Message suggested questions port is framework and persistence neutral
+name = Message suggested questions use case is framework and persistence neutral
 type = forbidden
 source_modules =
     services.message_suggested_questions_service
@@ -960,6 +960,31 @@ forbidden_modules =
     services.message_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:message-suggested-questions-legacy-boundary]
+name = Suggested questions do not return to the legacy message or generation service
+type = forbidden
+source_modules =
+    services.message_suggested_questions_service
+    services.message_suggested_questions_queries
+    services.message_suggested_questions_generator
+    repositories.message_repository
+forbidden_modules =
+    services.message_service
+    services.app_generate_service
+allow_indirect_imports = True
+
+[importlinter:contract:message-suggested-questions-persistence-boundary]
+name = Suggested questions persistence does not call concrete configuration services
+type = forbidden
+source_modules =
+    repositories.message_repository
+forbidden_modules =
+    services.conversation_service
+    services.workflow_service
+    services.agent.runtime_config_service
+    services.agent.roster_service
+allow_indirect_imports = True
 
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral

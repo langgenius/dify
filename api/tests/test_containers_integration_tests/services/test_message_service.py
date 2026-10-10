@@ -1,4 +1,4 @@
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -11,7 +11,6 @@ from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
     MessageNotExistsError,
-    SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -23,53 +22,8 @@ class TestMessageService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with (
-            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
-            patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.message_service.WorkflowService") as mock_workflow_service,
-            patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
-            patch("services.message_service.LLMGenerator") as mock_llm_generator,
-            patch("services.message_service.TraceQueueManager") as mock_trace_manager_class,
-            patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
-        ):
-            # Setup default mock returns
-
-            # Mock ModelManager
-            mock_model_instance = mock_model_manager.return_value.get_default_model_instance.return_value
-            mock_model_instance.get_tts_voices.return_value = [{"value": "test-voice"}]
-
-            # Mock get_model_instance method as well
-            mock_model_manager.return_value.get_model_instance.return_value = mock_model_instance
-
-            # Mock WorkflowService
-            mock_workflow = mock_workflow_service.return_value.get_published_workflow.return_value
-            mock_workflow_service.return_value.get_draft_workflow.return_value = mock_workflow
-
-            # Mock AdvancedChatAppConfigManager
-            mock_app_config = mock_app_config_manager.get_app_config.return_value
-            mock_app_config.additional_features.suggested_questions_after_answer = True
-
-            # Mock LLMGenerator
-            mock_llm_generator.generate_suggested_questions_after_answer.return_value = ["Question 1", "Question 2"]
-
-            # Mock TraceQueueManager
-            mock_trace_manager_instance = mock_trace_manager_class.return_value
-
-            # Mock TokenBufferMemory
-            mock_memory_instance = mock_token_buffer_memory.return_value
-            mock_memory_instance.get_history_prompt_text.return_value = "Mocked history prompt"
-
-            yield {
-                "account_feature_service": mock_account_feature_service,
-                "model_manager": mock_model_manager,
-                "workflow_service": mock_workflow_service,
-                "app_config_manager": mock_app_config_manager,
-                "llm_generator": mock_llm_generator,
-                "trace_manager_class": mock_trace_manager_class,
-                "trace_manager_instance": mock_trace_manager_instance,
-                "token_buffer_memory": mock_token_buffer_memory,
-                # "current_user": mock_current_user,
-            }
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
+            yield {"account_feature_service": mock_account_feature_service}
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -104,7 +58,7 @@ class TestMessageService:
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            mode="advanced-chat",  # Use advanced-chat mode to use mocked workflow,
+            mode="advanced-chat",
             icon_type="emoji",
             icon="🤖",
             icon_background="#FF6B6B",
@@ -715,170 +669,3 @@ class TestMessageService:
             MessageService.get_message(
                 app_model=app, user=other_account, message_id=message.id, session=db_session_with_containers
             )
-
-    def test_get_suggested_questions_after_answer_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful generation of suggested questions after answer.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a conversation and message
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
-        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
-
-        # Mock the LLMGenerator to return specific questions
-        mock_questions = ["What is AI?", "How does machine learning work?", "Tell me about neural networks"]
-        mock_external_service_dependencies[
-            "llm_generator"
-        ].generate_suggested_questions_after_answer.return_value = mock_questions
-
-        # Get suggested questions
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=account,
-            message_id=message.id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=db_session_with_containers,
-        )
-
-        # Verify results
-        assert result == mock_questions
-
-        # Verify LLMGenerator was called
-        mock_external_service_dependencies[
-            "llm_generator"
-        ].generate_suggested_questions_after_answer.assert_called_once()
-
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
-
-    def test_get_suggested_questions_after_answer_no_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting suggested questions when no user is provided.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a conversation and message
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
-        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
-
-        # Test getting suggested questions with no user
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        with pytest.raises(ValueError, match="user cannot be None"):
-            MessageService.get_suggested_questions_after_answer(
-                app_model=app,
-                user=None,
-                message_id=message.id,
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=db_session_with_containers,
-            )
-
-    def test_get_suggested_questions_after_answer_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting suggested questions when feature is disabled.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a conversation and message
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
-        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
-
-        # Mock the feature to be disabled
-        mock_external_service_dependencies[
-            "app_config_manager"
-        ].get_app_config.return_value.additional_features.suggested_questions_after_answer = False
-
-        # Test getting suggested questions when feature is disabled
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
-            MessageService.get_suggested_questions_after_answer(
-                app_model=app,
-                user=account,
-                message_id=message.id,
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=db_session_with_containers,
-            )
-
-    def test_get_suggested_questions_after_answer_no_workflow(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting suggested questions when no workflow exists.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a conversation and message
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
-        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
-
-        # Mock no workflow
-        mock_external_service_dependencies["workflow_service"].return_value.get_published_workflow.return_value = None
-
-        # Get suggested questions (should return empty list)
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=account,
-            message_id=message.id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=db_session_with_containers,
-        )
-
-        # Verify empty result
-        assert result == []
-
-    def test_get_suggested_questions_after_answer_debugger_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting suggested questions in debugger mode.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a conversation and message
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
-        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
-
-        # Mock questions
-        mock_questions = ["Debug question 1", "Debug question 2"]
-        mock_external_service_dependencies[
-            "llm_generator"
-        ].generate_suggested_questions_after_answer.return_value = mock_questions
-
-        # Get suggested questions in debugger mode
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=account,
-            message_id=message.id,
-            invoke_from=InvokeFrom.DEBUGGER,
-            session=db_session_with_containers,
-        )
-
-        # Verify results
-        assert result == mock_questions
-
-        # Verify draft workflow was used instead of published workflow
-        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
-            app_model=app, session=ANY
-        )
-
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()

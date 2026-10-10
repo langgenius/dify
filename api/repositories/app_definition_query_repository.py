@@ -2,7 +2,8 @@
 
 from typing import Any, cast, override
 
-from sqlalchemy import select
+from sqlalchemy import String, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
@@ -21,6 +22,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    ServiceApiAppRecord,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
@@ -80,6 +82,31 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
+        with self._session_factory() as session:
+            statement = (
+                # Let admission reject abnormal historical statuses with a domain
+                # error instead of failing enum deserialization before policy runs.
+                select(App.id, App.tenant_id, App.mode, sql_cast(App.status, String), App.enable_api, Tenant.status)
+                .outerjoin(Tenant, Tenant.id == App.tenant_id)
+                .where(App.id == app_id)
+            )
+            if tenant_id is not None:
+                statement = statement.where(App.tenant_id == tenant_id)
+            row = session.execute(statement).one_or_none()
+            if row is None:
+                return None
+            resolved_id, tenant_id, mode, status, enable_api, tenant_status = row
+            return ServiceApiAppRecord(
+                app_id=resolved_id,
+                tenant_id=tenant_id,
+                mode=mode.value,
+                status=status,
+                enable_api=enable_api,
+                tenant_status=tenant_status.value if tenant_status is not None else None,
+            )
 
     @override
     def get_mode(self, app_id: str) -> str | None:

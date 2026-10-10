@@ -1,29 +1,48 @@
 import logging
+from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
-from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.app.error import (
+    AppSuggestedQuestionsAfterAnswerDisabledError,
+    AppUnavailableError,
+    CompletionRequestError,
+    NotChatAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import dump_response
+from machinery.context import ServiceApiEndUserContext
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from services.agent.errors import AgentVersionNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageEndUser
+from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
@@ -128,9 +147,9 @@ class MessageListApi(Resource):
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFoundError("First Message Not Exists.")
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -178,7 +197,7 @@ class MessageFeedbackApi(Resource):
                 session=db.session(),
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -228,59 +247,90 @@ class MessageSuggestedApi(Resource):
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(
         summary="Get Next Suggested Questions",
-        description="Get next questions suggestions for the current message.",
+        description=(
+            "Get next question suggestions for the current message. "
+            "If no usable model can be resolved or the model call to generate questions fails, "
+            "the response is HTTP 200 with an empty data list. "
+            "Model invocation failures during history token counting instead return "
+            "HTTP 400 with `completion_request_error`."
+        ),
         tags=["Chats", "Chatflows"],
         responses={
-            200: "Successfully retrieved suggested questions.",
-            400: (
+            HTTPStatus.OK: "Suggested questions retrieved successfully",
+            HTTPStatus.BAD_REQUEST: (
                 "- `not_chat_app` : App mode does not match the API route.\n"
-                "- `bad_request` : Suggested questions feature is disabled."
+                "- `app_unavailable` : App is no longer available.\n"
+                "- `completion_request_error` : Model invocation failed while counting history tokens."
             ),
-            404: "`not_found` : Message does not exist.",
-            500: "`internal_server_error` : Internal server error.",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
+            HTTPStatus.FORBIDDEN: (
+                "- `forbidden` : Token scope does not allow access.\n"
+                "- `app_not_found` : The token's app no longer exists.\n"
+                "- `app_abnormal_status` : App status does not allow API access.\n"
+                "- `app_api_disabled` : The app's API service has been disabled.\n"
+                "- `workspace_not_found` : The app's workspace no longer exists.\n"
+                "- `workspace_archived` : The app's workspace is archived.\n"
+                "- `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled."
+            ),
+            HTTPStatus.NOT_FOUND: (
+                "- `not_found` : End user, message, or conversation does not exist.\n"
+                "- `agent_version_not_found_error` : Agent config version does not exist."
+            ),
+            HTTPStatus.INTERNAL_SERVER_ERROR: "`internal_server_error` : Internal server error.",
         },
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Suggested questions retrieved successfully",
         service_api_ns.models[SimpleResultStringListResponse.__name__],
     )
-    @service_api_ns.doc(description="Get suggested follow-up questions for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
-    @service_api_ns.doc(
-        responses={
-            200: "Suggested questions retrieved successfully",
-            400: "Suggested questions feature is disabled",
-            401: "Unauthorized - invalid API token",
-            404: "Message not found",
-            500: "Internal server error",
-        }
-    )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
-    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+    def get(self, context: ServiceApiEndUserContext, message_id: UUID) -> dict[str, object]:
         """Get suggested follow-up questions for a message.
 
-        Returns AI-generated follow-up questions based on the message content.
+        Returns an empty list when model resolution or the question-generation
+        model call fails. History token-counting invocation failures return
+        HTTP 400 with completion_request_error.
         """
         message_id_str = str(message_id)
-        app_mode = AppMode.value_of(app_model.mode)
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=end_user,
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=context.app_id,
+                app_owner_tenant_id=context.tenant_id,
+                expected_app_mode=context.app_mode,
+                actor=MessageEndUser(end_user_id=context.end_user_id),
+                invoke_from="service-api",
                 message_id=message_id_str,
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=db.session(),
             )
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except MessageActorNotFoundError:
+            raise NotFoundError("End user not found") from None
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
+        except ConversationNotExistsError:
+            raise NotFoundError("Conversation not found") from None
         except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
+            raise AppSuggestedQuestionsAfterAnswerDisabledError() from None
+        except ProviderTokenNotInitError as error:
+            raise ProviderNotInitializeError(error.description) from error
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError() from None
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError() from None
+        except InvokeError as error:
+            raise CompletionRequestError(error.description) from error
+        except AgentVersionNotFoundError:
+            # The legacy Agent config reader still owns this HTTP error.
+            # Remove this compatibility case when it exposes a domain error.
+            raise
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return SimpleResultStringListResponse(result="success", data=questions).model_dump(mode="json")
+        return dump_response(SimpleResultStringListResponse, {"result": "success", "data": questions})
