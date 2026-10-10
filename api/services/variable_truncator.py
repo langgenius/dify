@@ -301,7 +301,7 @@ class VariableTruncator(BaseTruncator):
                 raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
             truncated_value.append(part_result.value)
             used_size += part_result.value_size
-            truncated = part_result.truncated
+            truncated = truncated or part_result.truncated
         return _PartResult(truncated_value, used_size, truncated)
 
     @classmethod
