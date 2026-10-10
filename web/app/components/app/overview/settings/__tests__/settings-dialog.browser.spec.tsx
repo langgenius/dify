@@ -1,11 +1,11 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, useQuery } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { useAccessPointActions } from '@/app/components/app/access-point/shared/use-access-point-actions'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
+import { consoleQuery } from '@/service/console'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -17,23 +17,6 @@ const { saveSite, fetchApp, notify } = vi.hoisted(() => ({
   notify: vi.fn(),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return {
-    ...actual,
-    consoleClient: {
-      ...actual.consoleClient,
-      apps: {
-        ...actual.consoleClient.apps,
-        byAppId: {
-          ...actual.consoleClient.apps.byAppId,
-          get: fetchApp,
-          site: { ...actual.consoleClient.apps.byAppId.site, post: saveSite },
-        },
-      },
-    },
-  }
-})
 vi.mock('@/app/notifications', () => ({
   toast: Object.assign(notify, { success: notify, error: notify, warning: notify, info: notify }),
 }))
@@ -42,6 +25,9 @@ vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 const settingsTitle = 'appOverview.overview.appInfo.settings.title'
 const titleLabel = 'appOverview.overview.appInfo.settings.webName'
 const triggerLabel = 'navigation.settings.settings'
+const appQuery = consoleQuery.apps.byAppId.get.queryOptions({
+  input: { params: { app_id: 'settings-app' } },
+})
 
 function createApp(title = 'Original app'): AppDetailWithSite {
   return createAppDetailFixture({
@@ -59,7 +45,7 @@ function createApp(title = 'Original app'): AppDetailWithSite {
 }
 
 function SettingsOwner() {
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useQuery(appQuery)
   const { saveSiteConfig } = useAccessPointActions('settings-app', true)
   return (
     <SettingsDialog
@@ -76,6 +62,7 @@ async function renderSettings() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
+  client.setQueryData(appQuery.queryKey, createApp())
   seedSystemFeatures(client, { deployment_edition: 'COMMUNITY' })
   seedFeatures(client, { webapp_copyright_enabled: true })
   client.setQueryData(emojiCatalogOptions.queryKey, [
@@ -97,11 +84,21 @@ async function renderSettings() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useAppStore.setState({ appDetail: createApp() })
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init)
+    const appId = /\/apps\/([^/]+)/.exec(new URL(request.url).pathname)?.[1]
+    if (request.method === 'GET')
+      return Response.json(await fetchApp({ params: { app_id: appId } }))
+    return Response.json(
+      await saveSite({
+        params: { app_id: appId },
+        body: await request.json(),
+      }),
+    )
+  })
 })
 afterEach(() => {
   vi.unstubAllGlobals()
-  useAppStore.setState({ appDetail: undefined })
 })
 
 it('retains a failed save draft and closes a successful retry before the background refresh finishes', async () => {
@@ -150,10 +147,10 @@ it('retains a failed save draft and closes a successful retry before the backgro
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(saveSite).toHaveBeenCalledTimes(2)
-  expect(useAppStore.getState().appDetail?.site?.title).toBe('Original app')
+  expect(client.getQueryData(appQuery.queryKey)?.site?.title).toBe('Original app')
   const refreshed = createApp('Saved after retry')
   finishRefresh(refreshed)
-  await expect.poll(() => useAppStore.getState().appDetail).toEqual(refreshed)
+  await expect.poll(() => client.getQueryData(appQuery.queryKey)).toEqual(refreshed)
   await trigger.click()
   await expect.element(title).toHaveValue('Saved after retry')
   await dialog.getByRole('button', { name: 'common.operation.close' }).click()
@@ -213,11 +210,11 @@ it('keeps the draft through the exit animation and reopens with the latest owner
   expect(closing.opacity).toBeGreaterThan(0)
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  useAppStore.setState({ appDetail: createApp('Fresh metadata') })
+  client.setQueryData(appQuery.queryKey, createApp('Fresh metadata'))
   await userEvent.keyboard(' ')
   await expect.element(title).toHaveValue('Fresh metadata')
   await title.fill('Another local draft')
-  useAppStore.setState({ appDetail: createApp('Changed while open') })
+  client.setQueryData(appQuery.queryKey, createApp('Changed while open'))
   await expect.element(title).toHaveValue('Changed while open')
   await expect
     .poll(() => {

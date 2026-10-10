@@ -47,7 +47,12 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { IconPicker, IconPickerContent, IconPickerIcon, IconPickerTrigger } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
