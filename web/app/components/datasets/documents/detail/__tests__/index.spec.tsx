@@ -423,6 +423,23 @@ describe('DocumentDetail', () => {
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
     })
 
+    it('should render metadata inside a scroll area on desktop so long content stays reachable', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      expect(
+        screen.getByTestId('metadata').closest('[data-dify-scroll-area-viewport]'),
+      ).toBeInTheDocument()
+    })
+
+    it('should leave scrolling to the drawer on mobile', () => {
+      mocks.state.media = 'mobile'
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByRole('button', { name: /metadata\.title/ }))
+
+      expect(
+        screen.getByTestId('metadata').closest('[data-dify-scroll-area-viewport]'),
+      ).not.toBeInTheDocument()
+    })
+
     it('should pass correct props to Metadata', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const metadata = screen.getByTestId('metadata')

@@ -5,6 +5,13 @@ import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/mode
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -260,6 +267,16 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [documentDetail, documentMetadata],
   )
 
+  const metadataPanel = (
+    <Metadata
+      className={cn(isMobile && 'mt-3 mr-2')}
+      datasetId={datasetId}
+      documentId={documentId}
+      docDetail={docDetail}
+      canEdit={canEditDocument}
+    />
+  )
+
   const backButtonLabel = t(($) => $['operation.back'], { ns: 'common' })
   const metadataToggleLabel = `${
     showMetadata
@@ -389,13 +406,18 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             isMobile={isMobile}
             panelClassName="justify-start!"
           >
-            <Metadata
-              className="mt-3 mr-2"
-              datasetId={datasetId}
-              documentId={documentId}
-              docDetail={docDetail}
-              canEdit={canEditDocument}
-            />
+            {isMobile ? (
+              metadataPanel
+            ) : (
+              <ScrollArea className="relative mt-3 mr-2 min-h-0 shrink-0 overflow-hidden">
+                <ScrollAreaViewport className="overscroll-contain">
+                  <ScrollAreaContent className="pb-3">{metadataPanel}</ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar orientation="vertical">
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollArea>
+            )}
           </FloatRightContainer>
         </div>
         <BatchModal
