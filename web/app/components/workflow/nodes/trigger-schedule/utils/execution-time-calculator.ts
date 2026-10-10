@@ -1,5 +1,5 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { convertTimezoneToOffsetStr } from '@/utils/timezone'
+import { convertTimezoneToOffsetStr, getTimezoneOffsetMinutes } from '@/utils/timezone'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
@@ -28,6 +28,23 @@ const getUserTimezoneCurrentTime = (timezone?: string): Date => {
   return new Date(year!, month! - 1, day, hour, minute, second)
 }
 
+// The Date objects here hold the wall time of the target timezone in local fields.
+// Turn that wall time back into the real instant so the offset label follows DST.
+const getWallTimeInstant = (date: Date, timezone: string): Date => {
+  const wallAsUtc = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  )
+  const guessOffset = getTimezoneOffsetMinutes(timezone, new Date(wallAsUtc)) ?? 0
+  const offset =
+    getTimezoneOffsetMinutes(timezone, new Date(wallAsUtc - guessOffset * 60_000)) ?? guessOffset
+  return new Date(wallAsUtc - offset * 60_000)
+}
+
 // Format date that is already in user timezone, no timezone conversion
 const formatUserTimezoneDate = (
   date: Date,
@@ -53,7 +70,7 @@ const formatUserTimezoneDate = (
   const timeStr = date.toLocaleTimeString('en-US', timeOptions)
 
   if (includeTimezone) {
-    const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+    const timezoneOffset = convertTimezoneToOffsetStr(timezone, getWallTimeInstant(date, timezone))
     return `${dateStr}, ${timeStr} (${timezoneOffset})`
   }
 
