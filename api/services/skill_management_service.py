@@ -43,6 +43,7 @@ from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
+from core.rbac import RBACPermission
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.message_entities import (
@@ -93,6 +94,7 @@ from models.skill import (
 from models.tools import ToolFile
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
+from services.enterprise.rbac_service import RBACService
 from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
@@ -616,6 +618,7 @@ class SkillManagementService:
                 icon=payload.icon,
                 description=description,
                 name_manually_edited=payload.name is not None,
+                maintainer=user_id,
                 created_by=user_id,
                 updated_by=user_id,
             )
@@ -2079,6 +2082,7 @@ class SkillManagementService:
                 icon=source.icon,
                 description=source.description,
                 name_manually_edited=True,
+                maintainer=user_id,
                 created_by=user_id,
                 updated_by=user_id,
             )
@@ -2141,6 +2145,7 @@ class SkillManagementService:
                 icon="📄",
                 description=description[:1024],
                 name_manually_edited=True,
+                maintainer=user_id,
                 created_by=user_id,
                 updated_by=user_id,
             )
@@ -2160,9 +2165,41 @@ class SkillManagementService:
                 "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
             }
 
-    def delete_skill(self, *, tenant_id: str, skill_id: str, confirmation_name: str | None = None) -> dict[str, Any]:
+    def _authorize_skill_delete(self, *, tenant_id: str, user_id: str, skill_id: str) -> bool:
+        """Return whether deletion relies on maintainership, without holding a transaction across RBAC I/O."""
+        if not dify_config.RBAC_ENABLED:
+            return False
+        with session_factory.create_session() as session:
+            maintainer = session.scalar(
+                select(Skill.maintainer).where(Skill.tenant_id == tenant_id, Skill.id == skill_id)
+            )
+        if user_id and maintainer == user_id:
+            return True
+        if not RBACService.CheckAccess.check(
+            tenant_id, user_id, scene=RBACPermission.SKILL_DELETE, resource_type=None, resource_id=None
+        ):
+            raise SkillManagementServiceError(
+                "skill_delete_forbidden", "You do not have permission to delete this skill.", status_code=403
+            )
+        return False
+
+    def delete_skill(
+        self, *, tenant_id: str, user_id: str, skill_id: str, confirmation_name: str | None = None
+    ) -> dict[str, Any]:
+        requires_maintainer = self._authorize_skill_delete(tenant_id=tenant_id, user_id=user_id, skill_id=skill_id)
         with self._session_scope() as session:
-            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            # A caller-owned Session may already cache this Skill before maintainership changes.
+            skill = session.scalar(
+                select(Skill)
+                .where(Skill.tenant_id == tenant_id, Skill.id == skill_id)
+                .execution_options(populate_existing=True)
+            )
+            if skill is None:
+                raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
+            if requires_maintainer and skill.maintainer != user_id:
+                raise SkillManagementServiceError(
+                    "skill_delete_forbidden", "You do not have permission to delete this skill.", status_code=403
+                )
             reference_count = self._reference_counts(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(
                 skill.id, 0
             )
@@ -2941,6 +2978,7 @@ class SkillManagementService:
             "latest_published_version_number": latest_published_version_number,
             "latest_published_at": latest_published_at,
             "reference_count": reference_count,
+            "maintainer": skill.maintainer,
             "created_by": skill.created_by,
             "created_by_name": created_by_account.name if created_by_account else None,
             "updated_by": skill.updated_by,

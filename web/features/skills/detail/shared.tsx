@@ -1519,6 +1519,7 @@ function updateSkillListCache(
       latest_published_at: detail.latest_published_at,
       latest_published_version_id: detail.latest_published_version_id,
       latest_published_version_number: detail.latest_published_version_number,
+      maintainer: detail.maintainer,
       name: detail.name,
       name_manually_edited: detail.name_manually_edited,
       reference_count: detail.reference_count,

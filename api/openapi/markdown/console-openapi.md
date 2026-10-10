@@ -23440,6 +23440,7 @@ One user message and optional uploaded context for the Skill Authoring assistant
 | latest_published_at | integer |  | No |
 | latest_published_version_id | string |  | No |
 | latest_published_version_number | integer |  | No |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | name_manually_edited | boolean |  | No |
 | reference_count | integer |  | No |
@@ -23652,6 +23653,7 @@ How a draft file's content is stored.
 | latest_published_at | integer |  | No |
 | latest_published_version_id | string |  | No |
 | latest_published_version_number | integer |  | No |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | name_manually_edited | boolean |  | No |
 | reference_count | integer |  | No |

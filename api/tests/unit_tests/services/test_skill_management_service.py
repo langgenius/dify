@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import MagicMock, patch
@@ -932,7 +932,7 @@ def test_delete_unreferenced_placeholder_skill_deletes_initial_draft() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
 
-    deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"])
+    deleted = service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
 
     assert deleted == {"id": created["id"], "deleted": True}
     assert service.list_skills(tenant_id=TENANT)["data"] == []
@@ -952,7 +952,7 @@ def test_delete_unreferenced_modified_placeholder_skill() -> None:
         ),
     )
 
-    deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"])
+    deleted = service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
 
     assert deleted == {"id": created["id"], "deleted": True}
     assert service.list_skills(tenant_id=TENANT)["data"] == []
@@ -966,9 +966,17 @@ def test_create_update_publish_and_bind_skill() -> None:
         payload=SkillCreatePayload(name="finance-sop", display_name="Finance SOP", description="Handle finance."),
     )
 
+    updated = service.update_metadata(
+        tenant_id=TENANT,
+        user_id="77777777-7777-7777-7777-777777777777",
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Finance SOP"),
+    )
+    assert updated["maintainer"] == USER
+    assert updated["created_by"] == USER
     draft = service.replace_draft_tree(
         tenant_id=TENANT,
-        user_id=USER,
+        user_id="77777777-7777-7777-7777-777777777777",
         skill_id=created["id"],
         payload=SkillDraftTreePayload(
             files=[
@@ -988,6 +996,8 @@ def test_create_update_publish_and_bind_skill() -> None:
             ]
         ),
     )
+    assert draft["maintainer"] == USER
+    assert draft["created_by"] == USER
     file = next(item for item in draft["files"] if item["path"] == "SKILL.md")
     assert file["path"] == "SKILL.md"
     assert "name: finance-sop" in file["content"]
@@ -995,11 +1005,14 @@ def test_create_update_publish_and_bind_skill() -> None:
 
     version = service.publish_skill(
         tenant_id=TENANT,
-        user_id=USER,
+        user_id="77777777-7777-7777-7777-777777777777",
         skill_id=created["id"],
         payload=SkillPublishPayload(publish_note="initial"),
     )
     assert version["version_number"] == 1
+    published = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert published["maintainer"] == USER
+    assert published["created_by"] == USER
 
     service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
     bindings = service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)
@@ -2647,11 +2660,12 @@ def test_delete_skill_requires_confirmation_when_referenced() -> None:
     service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
 
     with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.delete_skill(tenant_id=TENANT, skill_id=created["id"])
+        service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
     assert exc_info.value.code == "skill_delete_confirmation_required"
 
     deleted = service.delete_skill(
         tenant_id=TENANT,
+        user_id=USER,
         skill_id=created["id"],
         confirmation_name=created["display_name"],
     )
@@ -2721,6 +2735,7 @@ def test_delete_skill_removes_bindings_without_writing_agent_config_skill_refs()
 
     deleted = service.delete_skill(
         tenant_id=TENANT,
+        user_id=USER,
         skill_id=created["id"],
         confirmation_name=created["display_name"],
     )
@@ -3059,7 +3074,7 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
     with patch("services.skill_management_service.storage.load_once", return_value=captured[0]):
         restored = service.restore_version(
             tenant_id=TENANT,
-            user_id=USER,
+            user_id="77777777-7777-7777-7777-777777777777",
             skill_id=created["id"],
             payload=SkillRestorePayload(version_id=first["id"], publish_note="restore first"),
         )
@@ -3068,6 +3083,8 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
     assert restored["latest_published_version_number"] == 2
     files = restored["files"]
     assert "# First" in files[0]["content"]
+    assert restored["maintainer"] == USER
+    assert restored["created_by"] == USER
     assert restored["name"] == "finance-sop-v1"
     assert restored["description"] == "Finance SOP version one"
 
@@ -3490,3 +3507,181 @@ def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeyp
         apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
         with pytest.raises(SkillManagementServiceError, match="uncompressed size limit"):
             SkillManagementService._validate_archive_limits(archive)
+
+
+def test_create_import_duplicate_assign_current_maintainer() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    other = "77777777-7777-7777-7777-777777777777"
+    duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=other, skill_id=created["id"])
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=other,
+        payload=SkillImportPayload(
+            filename="imported.zip",
+            content=_zip_payload(
+                {"SKILL.md": _skill_md(name="imported").replace("---\nname", "---\nmaintainer: attacker\nname", 1)}
+            ),
+        ),
+    )
+    assert created["maintainer"] == USER
+    assert duplicated["maintainer"] == other
+    assert imported["maintainer"] == other
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["maintainer"] == USER
+    assert {item["id"]: item["maintainer"] for item in service.list_skills(tenant_id=TENANT)["data"]} == {
+        created["id"]: USER,
+        duplicated["id"]: other,
+        imported["id"]: other,
+    }
+
+
+@pytest.mark.parametrize("maintainer", [None, "77777777-7777-7777-7777-777777777777"])
+@pytest.mark.parametrize("allowed", [False, True])
+def test_delete_uses_workspace_permission_for_nonmaintainer(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    maintainer: str | None,
+    allowed: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    from core.rbac import RBACPermission
+    from services.enterprise.rbac_service import RBACService
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    with session_factory.create_session() as session:
+        skill = session.get(Skill, created["id"])
+        assert skill is not None
+        skill.maintainer = maintainer
+        session.commit()
+    config_overrides(RBAC_ENABLED=True)
+    remote = Mock(return_value=allowed)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    if allowed:
+        assert service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])["deleted"]
+    else:
+        with pytest.raises(SkillManagementServiceError) as denied:
+            service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
+        assert denied.value.code == "skill_delete_forbidden"
+        assert denied.value.status_code == 403
+        assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["created_by"] == USER
+    remote.assert_called_once_with(
+        TENANT, USER, scene=RBACPermission.SKILL_DELETE, resource_type=None, resource_id=None
+    )
+
+
+def test_delete_refreshes_cached_maintainer(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    config_overrides(RBAC_ENABLED=True)
+    authorize = SkillManagementService._authorize_skill_delete
+
+    def transfer_after_check(self: SkillManagementService, *, tenant_id: str, user_id: str, skill_id: str) -> bool:
+        result = authorize(self, tenant_id=tenant_id, user_id=user_id, skill_id=skill_id)
+        with session_factory.create_session() as other:
+            skill = other.get(Skill, created["id"])
+            assert skill is not None
+            skill.maintainer = "77777777-7777-7777-7777-777777777777"
+            other.commit()
+        return result
+
+    monkeypatch.setattr(SkillManagementService, "_authorize_skill_delete", transfer_after_check)
+    with session_factory.create_session() as session:
+        cached = session.get(Skill, created["id"])
+        assert cached is not None
+        session.commit()
+        with pytest.raises(SkillManagementServiceError) as denied:
+            SkillManagementService(session=session).delete_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
+        assert denied.value.code == "skill_delete_forbidden"
+        assert denied.value.status_code == 403
+        assert cached.maintainer != USER
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["id"] == created["id"]
+
+
+def test_denied_delete_does_not_read_references_or_mutate(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    from unittest.mock import Mock
+
+    from services.enterprise.rbac_service import RBACService
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", Mock(side_effect=RuntimeError("remote unavailable")))
+    references = Mock(side_effect=AssertionError("references must not be read"))
+    monkeypatch.setattr(service, "_reference_counts", references)
+    with pytest.raises(RuntimeError, match="remote unavailable"):
+        service.delete_skill(tenant_id=TENANT, user_id="other", skill_id=created["id"])
+    references.assert_not_called()
+    with session_factory.create_session() as session:
+        assert session.get(Skill, created["id"]) is not None
+
+
+@pytest.mark.parametrize("exists_in_other_tenant", [False, True])
+@pytest.mark.parametrize("global_delete", [False, True])
+def test_delete_missing_or_cross_tenant_skill(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    exists_in_other_tenant: bool,
+    global_delete: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    from services.enterprise.rbac_service import RBACService
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    skill_id = "missing"
+    if exists_in_other_tenant:
+        skill_id = service.create_skill(tenant_id="other", user_id=USER, payload=SkillCreatePayload())["id"]
+    config_overrides(RBAC_ENABLED=True)
+    remote = Mock(return_value=global_delete)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    if global_delete:
+        with pytest.raises(SkillManagementServiceError) as error:
+            service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id)
+        assert error.value.status_code == 404
+    else:
+        with pytest.raises(SkillManagementServiceError) as denied:
+            service.delete_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id)
+        assert denied.value.code == "skill_delete_forbidden"
+        assert denied.value.status_code == 403
+    remote.assert_called_once()
+    if exists_in_other_tenant:
+        assert service.get_skill(tenant_id="other", skill_id=skill_id)["maintainer"] == USER
+
+
+def test_delete_closes_preflight_transaction_before_remote_check(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    from sqlalchemy.orm import Session
+
+    from services.enterprise.rbac_service import RBACService
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    config_overrides(RBAC_ENABLED=True)
+    original_create = session_factory.create_session
+    preflight_sessions: list[Session] = []
+    with original_create() as write_session:
+
+        def track_session() -> Session:
+            session = original_create()
+            preflight_sessions.append(session)
+            return session
+
+        def remote_check(*_args: object, **_kwargs: object) -> bool:
+            assert len(preflight_sessions) == 1
+            assert not preflight_sessions[0].in_transaction()
+            assert not write_session.in_transaction()
+            return True
+
+        monkeypatch.setattr(session_factory, "create_session", track_session)
+        monkeypatch.setattr(RBACService.CheckAccess, "check", remote_check)
+        result = SkillManagementService(session=write_session).delete_skill(
+            tenant_id=TENANT, user_id="other", skill_id=created["id"]
+        )
+        assert result["deleted"]

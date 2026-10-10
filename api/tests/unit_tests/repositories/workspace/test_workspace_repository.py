@@ -184,3 +184,54 @@ def test_sessions_are_closed_before_feature_and_plan_io(
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+@pytest.mark.parametrize("rollback", [False, True])
+def test_remove_member_transfers_skills_atomically(
+    seeded: WorkspaceRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    rollback: bool,
+) -> None:
+    from models.skill import Skill
+
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                Skill(
+                    id="s1", tenant_id="w2", name="owned", display_name="Owned", maintainer="a1", created_by="creator"
+                ),
+                Skill(id="s2", tenant_id="w1", name="other-workspace", display_name="Other", maintainer="a1"),
+                Skill(id="s3", tenant_id="w2", name="other-member", display_name="Other", maintainer="other"),
+            ]
+        )
+        session.commit()
+
+    def fail_before_commit(_session: Session) -> None:
+        raise RuntimeError("injected transaction failure")
+
+    if rollback:
+        event.listen(sqlite_session_factory, "before_commit", fail_before_commit)
+    try:
+        if rollback:
+            with pytest.raises(RuntimeError, match="injected"):
+                seeded.remove_member(workspace_id="w2", account_id="a1", owner_id="other")
+        else:
+            seeded.remove_member(workspace_id="w2", account_id="a1", owner_id="other")
+    finally:
+        if rollback:
+            event.remove(sqlite_session_factory, "before_commit", fail_before_commit)
+    with sqlite_session_factory() as session:
+        owned = session.get(Skill, "s1")
+        assert owned is not None
+        assert owned.maintainer == ("a1" if rollback else "other")
+        assert owned.created_by == "creator"
+        other_workspace = session.get(Skill, "s2")
+        other_member = session.get(Skill, "s3")
+        assert other_workspace is not None
+        assert other_workspace.maintainer == "a1"
+        assert other_member is not None
+        assert other_member.maintainer == "other"
+        membership = session.scalar(
+            select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == "w2", TenantAccountJoin.account_id == "a1")
+        )
+        assert (membership is not None) == rollback
