@@ -50,7 +50,13 @@ def test_supported_metrics_cover_all_ragas_llm_and_retrieval_metrics() -> None:
         "context_recall",
         "context_relevance",
     ]
-    assert evaluator.get_supported_metrics(EvaluationCategory.AGENT) == ["tool_call_accuracy"]
+    assert evaluator.get_supported_metrics(EvaluationCategory.AGENT) == [
+        "task_completion",
+        "trajectory_quality",
+        "tool_selection_correctness",
+        "tool_argument_correctness",
+        "tool_call_accuracy",
+    ]
     assert evaluator.metric_requires_expected_tool_calls("tool_call_accuracy") is True
     assert evaluator.metric_requires_expected_tool_calls("argument_correctness") is False
 

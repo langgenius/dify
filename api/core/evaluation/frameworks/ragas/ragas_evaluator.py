@@ -6,11 +6,13 @@ from importlib import import_module
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, override
 
+from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator, merge_agent_evaluation_results
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import RagasConfig
 from core.evaluation.entities.evaluation_entity import (
     AGENT_METRIC_NAMES,
     LLM_METRIC_NAMES,
+    NATIVE_AGENT_METRIC_NAMES,
     RETRIEVAL_METRIC_NAMES,
     WORKFLOW_METRIC_NAMES,
     AgentEvaluationItem,
@@ -52,6 +54,8 @@ _RAGAS_REFERENCE_METRICS = {
     EvaluationMetricName.CONTEXT_RECALL.value,
 }
 
+_NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
+
 
 class RagasEvaluator(BaseEvaluationInstance):
     """RAGAS framework adapter for evaluation."""
@@ -71,7 +75,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                 candidates = WORKFLOW_METRIC_NAMES
             case _:
                 return []
-        return [m.value for m in candidates if m in _RAGAS_METRIC_MAP]
+        return [m.value for m in candidates if m in _RAGAS_METRIC_MAP or m.value in _NATIVE_AGENT_METRICS]
 
     @override
     def metric_requires_embeddings(self, metric_name: str) -> bool:
@@ -84,6 +88,10 @@ class RagasEvaluator(BaseEvaluationInstance):
     @override
     def metric_requires_expected_tool_calls(self, metric_name: str) -> bool:
         return metric_name == EvaluationMetricName.TOOL_CALL_ACCURACY.value
+
+    @override
+    def metric_accepts_success_criteria(self, metric_name: str) -> bool:
+        return metric_name == EvaluationMetricName.TASK_COMPLETION.value
 
     def evaluate_llm(
         self,
@@ -113,14 +121,40 @@ class RagasEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        del model_provider, model_name, tenant_id
         requested_metrics = metric_names or self.get_supported_metrics(EvaluationCategory.AGENT)
+        native_metrics = [name for name in requested_metrics if name in _NATIVE_AGENT_METRICS]
         supported_metrics = [
             name for name in requested_metrics if name == EvaluationMetricName.TOOL_CALL_ACCURACY.value
         ]
-        unsupported_metrics = [name for name in requested_metrics if name not in supported_metrics]
-        if not supported_metrics:
+        unsupported_metrics = [
+            name for name in requested_metrics if name not in supported_metrics and name not in native_metrics
+        ]
+        result_groups: list[list[EvaluationItemResult]] = []
+        if native_metrics:
+            result_groups.append(
+                AgentLLMJudgeEvaluator().evaluate(
+                    items,
+                    native_metrics,
+                    model_provider,
+                    model_name,
+                    tenant_id,
+                )
+            )
+        if supported_metrics:
+            result_groups.append(self._evaluate_agent_tool_call_accuracy(items, unsupported_metrics))
+        elif unsupported_metrics and not native_metrics:
             raise ValueError(f"RAGAS does not support any requested Agent metrics: {requested_metrics}")
+
+        if not result_groups:
+            raise ValueError(f"RAGAS does not support any requested Agent metrics: {requested_metrics}")
+        return merge_agent_evaluation_results(items, *result_groups)
+
+    def _evaluate_agent_tool_call_accuracy(
+        self,
+        items: list[AgentEvaluationItem],
+        unsupported_metrics: list[str],
+    ) -> list[EvaluationItemResult]:
+        """Evaluate the retained reference-based legacy Agent metric."""
 
         components = _load_ragas_agent_components()
         metric = components.ToolCallAccuracy(name=EvaluationMetricName.TOOL_CALL_ACCURACY.value)

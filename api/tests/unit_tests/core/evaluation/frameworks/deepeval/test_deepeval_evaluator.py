@@ -76,7 +76,13 @@ def test_supported_metrics_use_native_deepeval_coverage() -> None:
         "context_recall",
         "context_relevance",
     ]
-    assert evaluator.get_supported_metrics(EvaluationCategory.AGENT) == ["argument_correctness"]
+    assert evaluator.get_supported_metrics(EvaluationCategory.AGENT) == [
+        "task_completion",
+        "trajectory_quality",
+        "tool_selection_correctness",
+        "tool_argument_correctness",
+        "argument_correctness",
+    ]
     assert evaluator.metric_requires_embeddings("answer_relevancy") is False
     assert evaluator.metric_requires_expected_output("answer_correctness") is True
     assert evaluator.metric_requires_expected_output("context_relevance") is False

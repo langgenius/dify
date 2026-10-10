@@ -80,7 +80,13 @@ class EvaluationService:
     ALLOWED_APP_MODES = {AppMode.WORKFLOW}
     CONSOLE_DISABLED_CATEGORIES: set[str] = set()
     SUPPORTED_NODE_TYPES = {"llm", "knowledge-retrieval", "knowledge_retrieval", "agent"}
-    CONSOLE_DISABLED_METRICS = {"tool_correctness", "task_completion"}
+    # Retain legacy Agent metric execution for saved runs and API compatibility,
+    # but do not offer those metrics in console selectors or templates.
+    CONSOLE_DISABLED_METRICS = {
+        "tool_correctness",
+        "argument_correctness",
+        "tool_call_accuracy",
+    }
     STRING_DATASET_INPUT_TYPES = {"", "string", "text", "text-input", "paragraph", "select"}
     NUMBER_DATASET_INPUT_TYPES = {"number", "integer", "float", "int"}
     BOOLEAN_DATASET_INPUT_TYPES = {"boolean", "bool", "checkbox", "switch"}
@@ -1556,9 +1562,14 @@ class EvaluationService:
         return EvaluationManager.get_supported_metrics(category)
 
     @classmethod
+    def get_console_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
+        """Return selectable metrics while retaining hidden legacy metrics for old runs."""
+        return [metric for metric in cls.get_supported_metrics(category) if metric not in cls.CONSOLE_DISABLED_METRICS]
+
+    @classmethod
     def get_available_metrics(cls) -> list[str]:
-        """Return metrics implemented by the configured framework."""
-        return cls._union_supported_metric_names()
+        """Return console-visible metrics implemented by the configured framework."""
+        return [metric for metric in cls._union_supported_metric_names() if metric not in cls.CONSOLE_DISABLED_METRICS]
 
     @classmethod
     def filter_console_default_metrics(
@@ -1631,11 +1642,13 @@ class EvaluationService:
         """Build dataset template columns from target inputs and the selected evaluation config."""
         input_columns = cls._get_target_input_columns(target, target_type, session)
         expected_output_columns = cls._get_expected_output_columns(data.default_metrics)
+        success_criteria_columns = cls._get_success_criteria_columns(data.default_metrics)
         expected_tool_call_columns = cls._get_expected_tool_call_columns(data.default_metrics)
         return [
             {"name": "index", "type": "number"},
             *input_columns,
             *expected_output_columns,
+            *success_criteria_columns,
             *expected_tool_call_columns,
         ]
 
@@ -1721,6 +1734,34 @@ class EvaluationService:
                 continue
             for node_info in metric.node_info_list:
                 column_name = f"{node_info.title} : expected_tool_calls"
+                if column_name in seen:
+                    continue
+                seen.add(column_name)
+                columns.append({"name": column_name, "type": "string"})
+        return columns
+
+    @classmethod
+    def _get_success_criteria_columns(
+        cls,
+        default_metrics: Sequence[DefaultMetric | Mapping[str, Any]],
+        *,
+        evaluation_instance: BaseEvaluationInstance | None = None,
+    ) -> list[EvaluationTemplateColumn]:
+        """Build optional node-scoped success criteria columns for Agent outcome metrics."""
+        filtered_metrics = cls.filter_console_default_metrics(default_metrics)
+        if not filtered_metrics:
+            return []
+        evaluation_instance = evaluation_instance or EvaluationManager.get_evaluation_instance()
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
+
+        columns: list[EvaluationTemplateColumn] = []
+        seen: set[str] = set()
+        for metric in filtered_metrics:
+            if evaluation_instance.metric_accepts_success_criteria(metric.metric) is not True:
+                continue
+            for node_info in metric.node_info_list:
+                column_name = f"{node_info.title} : success_criteria"
                 if column_name in seen:
                     continue
                 seen.add(column_name)
@@ -2228,6 +2269,7 @@ class EvaluationService:
         - ``index,<input...>,expected_output`` for the legacy single-reference flow
         - ``index,<input...>,<node_title> : expected_output`` for node-specific references
         - ``index,<input...>,<node_title> : expected_tool_calls`` for Agent trace references
+        - ``index,<input...>,<node_title> : success_criteria`` for optional Agent outcome criteria
 
         Column parsing treats the *last* ``:`` as the separator between the
         node title and the reference-field suffix.
@@ -2333,9 +2375,20 @@ class EvaluationService:
             expected_outputs: dict[str, str] = {}
             expected_tool_calls: list[AgentToolCall] | None = None
             expected_tool_calls_by_node: dict[str, list[AgentToolCall]] = {}
+            success_criteria: list[str] | None = None
+            success_criteria_by_node: dict[str, list[str]] = {}
             for col_idx, header in enumerate(input_headers):
                 val = values[col_idx + 1] if col_idx + 1 < len(values) else None
                 string_value = str(val) if val is not None else ""
+                success_criteria_target = cls._parse_success_criteria_header(header)
+                if success_criteria_target is not None:
+                    parsed_criteria = cls._parse_success_criteria_cell(val)
+                    if success_criteria_target == "":
+                        success_criteria = parsed_criteria
+                    elif parsed_criteria is not None:
+                        success_criteria_by_node[success_criteria_target] = parsed_criteria
+                    continue
+
                 expected_tool_calls_target = cls._parse_expected_tool_calls_header(header)
                 if expected_tool_calls_target is not None:
                     parsed_tool_calls = cls._parse_expected_tool_calls_cell(
@@ -2372,6 +2425,8 @@ class EvaluationService:
                     expected_outputs=expected_outputs,
                     expected_tool_calls=expected_tool_calls,
                     expected_tool_calls_by_node=expected_tool_calls_by_node,
+                    success_criteria=success_criteria,
+                    success_criteria_by_node=success_criteria_by_node,
                 )
             )
 
@@ -2462,6 +2517,49 @@ class EvaluationService:
             return None
         normalized_node_key = node_key.strip()
         return normalized_node_key or None
+
+    @staticmethod
+    def _parse_success_criteria_header(header: str) -> str | None:
+        """Return the node title or legacy node ID for a success-criteria column, if any."""
+        normalized_header = header.strip()
+        if normalized_header == "success_criteria":
+            return ""
+        if ":" not in normalized_header:
+            return None
+
+        node_key, suffix = normalized_header.rsplit(":", 1)
+        if suffix.strip() != "success_criteria":
+            return None
+        normalized_node_key = node_key.strip()
+        return normalized_node_key or None
+
+    @staticmethod
+    def _parse_success_criteria_cell(value: Any) -> list[str] | None:
+        """Parse user-friendly newline text or a JSON string array into criteria."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, list):
+            criteria = [str(item).strip() for item in value if str(item).strip()]
+            return criteria or None
+
+        text = str(value).strip()
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
+                criteria = [item.strip() for item in parsed if item.strip()]
+                return criteria or None
+
+        criteria = []
+        for line in text.splitlines():
+            normalized = line.strip()
+            if normalized.startswith(("- ", "* ")):
+                normalized = normalized[2:].strip()
+            if normalized:
+                criteria.append(normalized)
+        return criteria or None
 
     @staticmethod
     def _parse_expected_tool_calls_cell(
