@@ -90,7 +90,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             <Input
               aria-labelledby={`${baseId}-${form.variable}-label`}
               type="number"
-              value={inputsFormValue?.[form.variable] || ''}
+              value={inputsFormValue?.[form.variable] ?? ''}
               onValueChange={(value) => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />

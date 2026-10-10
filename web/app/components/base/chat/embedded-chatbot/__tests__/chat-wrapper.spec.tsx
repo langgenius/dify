@@ -440,6 +440,21 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(screen.getByRole('button', { name: 'send message' })).toBeDisabled()
     })
 
+    it('should not disable sending when a required number input is zero', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+        createContextValue({
+          inputsForms: [
+            { variable: 'count', label: 'Count', required: true, type: InputVarType.number },
+          ],
+          newConversationInputsRef: { current: { count: 0 } },
+        }),
+      )
+
+      render(<ChatWrapper />)
+
+      expect(screen.getByRole('button', { name: 'send message' })).not.toBeDisabled()
+    })
+
     it('should show the user avatar fallback when avatar data is provided', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
         createContextValue({
