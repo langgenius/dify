@@ -133,6 +133,28 @@ def test_parse_dataset_preserves_node_title_scoped_expected_tool_calls() -> None
     ]
 
 
+def test_parse_dataset_preserves_optional_agent_success_criteria() -> None:
+    items = EvaluationService._rows_to_dataset_items(
+        [
+            ["index", "query", "Research Agent : success_criteria"],
+            [1, "weather in Paris", "- Use real weather data\n- Include the temperature"],
+        ]
+    )
+
+    assert items[0].inputs == {"query": "weather in Paris"}
+    assert items[0].success_criteria_by_node == {"Research Agent": ["Use real weather data", "Include the temperature"]}
+    assert items[0].get_success_criteria_for_node("agent-1", "Research Agent") == [
+        "Use real weather data",
+        "Include the temperature",
+    ]
+    assert items[0].iter_expected_output_columns() == [
+        (
+            "Research Agent : success_criteria",
+            "Use real weather data\nInclude the temperature",
+        )
+    ]
+
+
 def test_parse_dataset_rejects_invalid_expected_tool_calls() -> None:
     with pytest.raises(EvaluationDatasetInvalidError, match="JSON array of tool calls.*7"):
         EvaluationService._rows_to_dataset_items(
@@ -291,7 +313,7 @@ def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric
     )
 
 
-def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metrics() -> None:
+def test_hidden_reference_agent_metrics_do_not_generate_template_columns() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_expected_tool_calls.side_effect = lambda metric: metric == "tool_call_accuracy"
 
@@ -312,10 +334,75 @@ def test_expected_tool_call_columns_are_generated_for_reference_based_agent_metr
         evaluation_instance=evaluation_instance,
     )
 
+    assert columns == []
+
+
+def test_task_completion_generates_optional_success_criteria_columns() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
+
+    columns = EvaluationService._get_success_criteria_columns(
+        [
+            DefaultMetric(
+                metric="task_completion",
+                node_info_list=[
+                    NodeInfo(node_id="agent-1", type="agent", title="Research Agent"),
+                    NodeInfo(node_id="agent-2", type="agent", title="Backup Agent"),
+                ],
+            ),
+            DefaultMetric(
+                metric="trajectory_quality",
+                node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+            ),
+        ],
+        evaluation_instance=evaluation_instance,
+    )
+
     assert columns == [
-        {"name": "Research Agent : expected_tool_calls", "type": "string"},
-        {"name": "Backup Agent : expected_tool_calls", "type": "string"},
+        {"name": "Research Agent : success_criteria", "type": "string"},
+        {"name": "Backup Agent : success_criteria", "type": "string"},
     ]
+
+
+def test_console_supported_metrics_hide_legacy_agent_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        EvaluationService,
+        "get_supported_metrics",
+        MagicMock(
+            return_value=[
+                "task_completion",
+                "trajectory_quality",
+                "tool_selection_correctness",
+                "tool_argument_correctness",
+                "argument_correctness",
+                "tool_call_accuracy",
+            ]
+        ),
+    )
+
+    assert EvaluationService.get_console_supported_metrics(EvaluationCategory.AGENT) == [
+        "task_completion",
+        "trajectory_quality",
+        "tool_selection_correctness",
+        "tool_argument_correctness",
+    ]
+
+
+def test_available_metrics_hide_legacy_agent_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        EvaluationService,
+        "_union_supported_metric_names",
+        MagicMock(
+            return_value=[
+                "faithfulness",
+                "task_completion",
+                "argument_correctness",
+                "tool_call_accuracy",
+            ]
+        ),
+    )
+
+    assert EvaluationService.get_available_metrics() == ["faithfulness", "task_completion"]
 
 
 def test_expected_output_columns_use_node_titles() -> None:

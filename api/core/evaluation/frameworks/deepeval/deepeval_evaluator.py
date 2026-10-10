@@ -6,11 +6,13 @@ from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any, override
 
+from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator, merge_agent_evaluation_results
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import DeepEvalConfig
 from core.evaluation.entities.evaluation_entity import (
     AGENT_METRIC_NAMES,
     LLM_METRIC_NAMES,
+    NATIVE_AGENT_METRIC_NAMES,
     RETRIEVAL_METRIC_NAMES,
     WORKFLOW_METRIC_NAMES,
     AgentEvaluationItem,
@@ -33,6 +35,8 @@ _DEEPEVAL_METRICS = {
     EvaluationMetricName.CONTEXT_RELEVANCE.value,
     EvaluationMetricName.ARGUMENT_CORRECTNESS.value,
 }
+
+_NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
 
 _DEEPEVAL_REFERENCE_METRICS = {
     EvaluationMetricName.ANSWER_CORRECTNESS.value,
@@ -66,11 +70,19 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
                 candidates = WORKFLOW_METRIC_NAMES
             case _:
                 return []
-        return [metric.value for metric in candidates if metric.value in _DEEPEVAL_METRICS]
+        return [
+            metric.value
+            for metric in candidates
+            if metric.value in _DEEPEVAL_METRICS or metric.value in _NATIVE_AGENT_METRICS
+        ]
 
     @override
     def metric_requires_expected_output(self, metric_name: str) -> bool:
         return metric_name in _DEEPEVAL_REFERENCE_METRICS
+
+    @override
+    def metric_accepts_success_criteria(self, metric_name: str) -> bool:
+        return metric_name == EvaluationMetricName.TASK_COMPLETION.value
 
     def evaluate_llm(
         self,
@@ -107,14 +119,34 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items,
-            metric_names,
-            model_provider,
-            model_name,
-            tenant_id,
-            EvaluationCategory.AGENT,
-        )
+        requested_metrics = metric_names or self.get_supported_metrics(EvaluationCategory.AGENT)
+        native_metrics = [name for name in requested_metrics if name in _NATIVE_AGENT_METRICS]
+        legacy_metrics = [name for name in requested_metrics if name not in _NATIVE_AGENT_METRICS]
+        result_groups: list[list[EvaluationItemResult]] = []
+        if native_metrics:
+            result_groups.append(
+                AgentLLMJudgeEvaluator().evaluate(
+                    items,
+                    native_metrics,
+                    model_provider,
+                    model_name,
+                    tenant_id,
+                )
+            )
+        if legacy_metrics:
+            result_groups.append(
+                self._evaluate(
+                    items,
+                    legacy_metrics,
+                    model_provider,
+                    model_name,
+                    tenant_id,
+                    EvaluationCategory.AGENT,
+                )
+            )
+        if not result_groups:
+            raise ValueError(f"DeepEval does not support any requested Agent metrics: {requested_metrics}")
+        return merge_agent_evaluation_results(items, *result_groups)
 
     def evaluate_workflow(
         self,

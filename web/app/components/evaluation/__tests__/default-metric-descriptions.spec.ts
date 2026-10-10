@@ -20,6 +20,13 @@ describe('default metric descriptions', () => {
     expect(getDefaultMetricDescription('TOOL_CALL_ACCURACY')).toContain(
       'selects and invokes the expected tools',
     )
+    expect(getDefaultMetricDescription('TOOL_SELECTION_CORRECTNESS')).toContain(
+      'exact tools available at runtime',
+    )
+    expect(getDefaultMetricDescription('TOOL_ARGUMENT_CORRECTNESS')).toContain(
+      'model-controlled tool arguments',
+    )
+    expect(getDefaultMetricDescription('TRAJECTORY_QUALITY')).toContain('observable execution path')
   })
 
   it('resolves the matching i18n key', () => {
@@ -28,6 +35,9 @@ describe('default metric descriptions', () => {
     )
     expect(getDefaultMetricDescriptionI18nKey('argument-correctness')).toBe(
       'metrics.builtin.description.argumentCorrectness',
+    )
+    expect(getDefaultMetricDescriptionI18nKey('task_completion')).toBe(
+      'metrics.builtin.description.taskCompletion',
     )
   })
 })
