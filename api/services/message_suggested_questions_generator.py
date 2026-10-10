@@ -86,7 +86,7 @@ class SuggestedQuestionsGenerator:
         context: "SuggestedQuestionsContext",
         instruction_prompt: str | None,
         model_config: object | None,
-    ) -> Generator[Callable[["PreparedHistory"], list[str]] | None, None, None]:
+    ) -> Generator[Callable[["PreparedHistory"], list[str]] | None]:
         """Yield a request-local generator, or None if its history model is unavailable."""
         # Model resolution and tracing may use or commit the scoped session.
         # Isolate them from the caller, retaining one app context across phases.
