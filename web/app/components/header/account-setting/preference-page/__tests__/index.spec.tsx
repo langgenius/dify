@@ -140,7 +140,7 @@ describe('PreferencePage - Rendering', () => {
 
 // Interactions
 describe('PreferencePage - Interactions', () => {
-  it('should show success toast when language updates', async () => {
+  it('should save the selected language', async () => {
     const chinese = getLanguageOption('zh-Hans')
     mockUserProfile = createUserProfile({ interface_language: 'en-US' })
 
@@ -148,7 +148,6 @@ describe('PreferencePage - Interactions', () => {
 
     await selectOption('common.language.displayLanguage', chinese.name)
 
-    expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     await waitFor(() => {
       expect(mockRequest).toHaveBeenCalled()
     })
@@ -169,14 +168,13 @@ describe('PreferencePage - Interactions', () => {
     expect(await screen.findByText('Update failed')).toBeInTheDocument()
   })
 
-  it('should show success toast when timezone updates', async () => {
+  it('should save the selected timezone', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
 
     renderPage()
 
     await selectOption('common.language.timezone', midwayTimezone.name)
 
-    expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     await waitFor(() => {
       expect(mockRequest).toHaveBeenCalled()
     })

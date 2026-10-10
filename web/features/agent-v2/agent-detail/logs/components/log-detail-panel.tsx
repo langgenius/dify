@@ -80,7 +80,6 @@ export function AgentLogDetailPanel({
           queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
         }),
       ])
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     } catch (error) {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       throw error
