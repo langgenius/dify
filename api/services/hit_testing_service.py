@@ -18,6 +18,7 @@ from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
+from repositories.knowledge.segment_read_adapter import sign_segment_content
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ class HitTestingService:
             record = retrieval_record.model_dump()
             segment_dict = record["segment"]
             segment_dict["created_at"] = segment.created_at
+            segment_dict["sign_content"] = sign_segment_content(segment, session=session)
             segment_dict["document"] = document
             records_with_documents.append(record)
 
