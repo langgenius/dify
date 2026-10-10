@@ -1,7 +1,7 @@
 import type { StorageMode } from './store'
 import type { TokenStore } from './token-store'
 import { join } from 'node:path'
-import { getEnv } from '@/sys'
+import { getEnv, platform } from '@/sys'
 import { resolveConfigDir } from './dir'
 import { YamlStore } from './store'
 import { FileTokenStore, KeychainTokenStore } from './token-store'
@@ -34,18 +34,14 @@ export type GetTokenStoreOptions = {
 
 export type DetectTokenStoreOptions = GetTokenStoreOptions & {
   readonly skipKeyring?: boolean
-  readonly keyringDurable?: boolean
 }
 
 /**
  * Without a DBus session, the Linux keyring falls back to the kernel keyutils
  * store: the probe round-trips, but the token is gone when the session ends.
  */
-export function keyringDurable(
-  platform: string,
-  env: (name: string) => string | undefined,
-): boolean {
-  return platform !== LINUX || Boolean(env(DBUS_SESSION))
+export function keyringDurable(): boolean {
+  return platform() !== LINUX || Boolean(getEnv(DBUS_SESSION))
 }
 
 const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
@@ -62,8 +58,7 @@ const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => T
 export async function detectTokenStore(
   opts: DetectTokenStoreOptions = {},
 ): Promise<{ store: TokenStore; mode: StorageMode }> {
-  const durable = opts.keyringDurable ?? keyringDurable(process.platform, getEnv)
-  if (opts.skipKeyring === true || !durable)
+  if (opts.skipKeyring === true || !keyringDurable())
     return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
   try {
     const k = TOKEN_STORE_OPENERS.keychain(opts)
