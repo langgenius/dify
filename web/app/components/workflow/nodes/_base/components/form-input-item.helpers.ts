@@ -17,7 +17,7 @@ export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
     min: number
     max: number
     _type: FormTypeEnum
-    multiple: boolean
+    multiple: boolean | string | number
     options: FormOption[]
     placeholder: TypeWithI18N
     scope: string
@@ -33,6 +33,7 @@ type ShowOnCondition = {
 type OptionLabel = string | Record<string, string>
 
 type SelectableOption = {
+  children?: SelectableOption[]
   icon?: string
   label: OptionLabel
   show_on?: ShowOnCondition[]
@@ -45,6 +46,19 @@ export type SelectItem = {
   value: string
 }
 
+/** Serialized sibling parameter values for plugin dynamic-options API (`parameter_values` query). */
+export function serializeResourceVarInputsForDynamicOptions(
+  inputs: ResourceVarInputs,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, entry] of Object.entries(inputs)) {
+    if (!entry) continue
+    if (entry.type === VarKindType.constant) out[key] = entry.value
+    else out[key] = { kind: entry.type, value: entry.value }
+  }
+  return out
+}
+
 type FormInputState = {
   defaultValue: unknown
   isAppSelector: boolean
@@ -55,6 +69,7 @@ type FormInputState = {
   isDate: boolean
   isDateRange: boolean
   isDynamicSelect: boolean
+  isDynamicTreeSelect: boolean
   isFile: boolean
   isFiles: boolean
   isModelSelector: boolean
@@ -80,6 +95,16 @@ const getOptionLabel = (option: SelectableOption, language: string) => {
   if (typeof option.label === 'string') return option.label
 
   return option.label[language] || option.label.en_US || option.value
+}
+
+const normalizeMultipleFlag = (multiple: FormInputSchema['multiple']) => {
+  if (typeof multiple === 'string') {
+    const normalized = multiple.trim().toLowerCase()
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
+  }
+
+  return multiple === true || multiple === 1
 }
 
 export const getFormInputState = (
@@ -110,12 +135,14 @@ export const getFormInputState = (
   const isCheckbox = _type === FormTypeEnum.checkbox
   const isSelect = type === FormTypeEnum.select
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
+  const isDynamicTreeSelect = type === FormTypeEnum.dynamicTreeSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect || isDate
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
+  const isMultipleSelect =
+    normalizeMultipleFlag(multiple) && (isSelect || isDynamicSelect || isDynamicTreeSelect)
 
   return {
     defaultValue,
@@ -127,6 +154,7 @@ export const getFormInputState = (
     isDate,
     isDateRange,
     isDynamicSelect,
+    isDynamicTreeSelect,
     isFile,
     isFiles,
     isModelSelector,
@@ -194,6 +222,7 @@ export const getVarKindType = (state: FormInputState) => {
   if (
     state.isSelect ||
     state.isDynamicSelect ||
+    state.isDynamicTreeSelect ||
     state.isBoolean ||
     state.isNumber ||
     state.isArray ||

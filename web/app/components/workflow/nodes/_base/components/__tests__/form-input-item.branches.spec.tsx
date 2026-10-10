@@ -12,12 +12,21 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-const { mockFetchDynamicOptions, mockTriggerDynamicOptionsState } = vi.hoisted(() => ({
+const {
+  mockFetchDynamicOptions,
+  mockFetchDynamicTreeOptions,
+  mockTriggerDynamicOptionsState,
+  mockDynamicOptionParams,
+  mockDynamicTreeParams,
+} = vi.hoisted(() => ({
   mockFetchDynamicOptions: vi.fn(),
+  mockFetchDynamicTreeOptions: vi.fn(),
   mockTriggerDynamicOptionsState: {
     data: undefined as { options: FormOption[] } | undefined,
     isLoading: false,
   },
+  mockDynamicOptionParams: { current: undefined as unknown },
+  mockDynamicTreeParams: { current: undefined as unknown },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -25,9 +34,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useFetchDynamicOptions: () => ({
-    mutateAsync: mockFetchDynamicOptions,
-  }),
+  useFetchDynamicOptions: (params: unknown) => {
+    mockDynamicOptionParams.current = params
+    return {
+      mutateAsync: mockFetchDynamicOptions,
+    }
+  },
+  useFetchDynamicTreeOptions: (params: unknown) => {
+    mockDynamicTreeParams.current = params
+    return {
+      mutateAsync: mockFetchDynamicTreeOptions,
+    }
+  },
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -155,8 +173,11 @@ describe('FormInputItem branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetchDynamicOptions.mockResolvedValue({ options: [] })
+    mockFetchDynamicTreeOptions.mockResolvedValue({ options: [] })
     mockTriggerDynamicOptionsState.data = undefined
     mockTriggerDynamicOptionsState.isLoading = false
+    mockDynamicOptionParams.current = undefined
+    mockDynamicTreeParams.current = undefined
   })
 
   it('should update mixed string inputs via the shared text input', () => {
@@ -444,6 +465,204 @@ describe('FormInputItem branches', () => {
         type: VarKindType.variable,
         value: ['node-2', 'asset'],
       },
+    })
+  })
+
+  it('should prefetch tool tree options, hide conditional branches, and select a visible node', async () => {
+    mockFetchDynamicTreeOptions.mockResolvedValueOnce({
+      options: [
+        createOption('hidden-root', {
+          show_on: [{ variable: 'region', value: 'eu' }],
+        }),
+        createOption('parent', {
+          children: [
+            createOption('visible-child'),
+            createOption('hidden-child', {
+              show_on: [{ variable: 'region', value: 'eu' }],
+            }),
+          ],
+        }),
+      ],
+    })
+    const { onChange } = renderFormInputItem({
+      schema: createSchema({
+        placeholder: { en_US: 'Pick tree', zh_Hans: '选树' },
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      currentProvider: {
+        plugin_id: 'provider-1',
+        name: 'provider-1',
+        credential_id: 'credential-1',
+      } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.tool,
+      extraParams: { locale: 'en' },
+      value: {
+        region: {
+          type: VarKindType.constant,
+          value: 'us',
+        },
+        field: {
+          type: VarKindType.constant,
+          value: 'visible-child',
+        },
+      },
+    })
+
+    expect(await screen.findByRole('button', { name: 'visible-child' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'hidden-root' })).not.toBeInTheDocument()
+    expect(mockDynamicTreeParams.current).toEqual(
+      expect.objectContaining({
+        credential_id: 'credential-1',
+        parameter_values: expect.objectContaining({
+          field: 'visible-child',
+          locale: 'en',
+          region: 'us',
+        }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'visible-child' }))
+    expect(screen.queryByRole('option', { name: 'hidden-child' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: 'parent' }))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        field: expect.objectContaining({
+          type: VarKindType.constant,
+          value: ['parent'],
+        }),
+      }),
+    )
+  })
+
+  it('should recover when prefetching tool tree options fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFetchDynamicTreeOptions.mockRejectedValueOnce(new Error('tree-network'))
+
+    renderFormInputItem({
+      schema: createSchema({
+        placeholder: { en_US: 'Pick tree', zh_Hans: '选树' },
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.tool,
+    })
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled()
+    })
+    expect(screen.getByRole('button', { name: 'Pick tree' })).toBeInTheDocument()
+    consoleSpy.mockRestore()
+  })
+
+  it('should load lazy tool options when the select or tree opens', async () => {
+    mockFetchDynamicOptions.mockResolvedValue({
+      options: [createOption('lazy-option')],
+    })
+    const select = renderFormInputItem({
+      schema: createSchema({
+        dynamic_select_lazy_load: true,
+        type: FormTypeEnum.dynamicSelect,
+      }),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.tool,
+    })
+
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.click(screen.getByRole('combobox'))
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2)
+    })
+    select.unmount()
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let rejectLazyTree: (error: Error) => void = () => {}
+    let treeFetches = 0
+    mockFetchDynamicTreeOptions.mockImplementation(() => {
+      treeFetches += 1
+      if (treeFetches === 1) return Promise.resolve({ options: [createOption('tree-node')] })
+      return new Promise((_resolve, reject) => {
+        rejectLazyTree = reject
+      })
+    })
+    renderFormInputItem({
+      schema: createSchema({
+        dynamic_select_lazy_load: true,
+        placeholder: { en_US: 'Pick tree', zh_Hans: '选树' },
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.tool,
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Pick tree' }))
+    expect(await screen.findByRole('option', { name: 'tree-node' })).toBeInTheDocument()
+    rejectLazyTree(new Error('lazy-tree'))
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled()
+    })
+    expect(screen.queryByRole('option', { name: 'tree-node' })).not.toBeInTheDocument()
+    consoleSpy.mockRestore()
+  })
+
+  it('should refetch tool options after the tool identity changes', async () => {
+    mockFetchDynamicOptions.mockResolvedValue({
+      options: [createOption('remote')],
+    })
+    const { rerender } = renderFormInputItem({
+      schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.tool,
+    })
+
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
+    })
+
+    rerender(
+      <FormInputItem
+        readOnly={false}
+        nodeId="node-1"
+        schema={createSchema({ type: FormTypeEnum.dynamicSelect })}
+        value={{
+          field: {
+            type: VarKindType.constant,
+            value: '',
+          },
+        }}
+        onChange={vi.fn()}
+        currentProvider={{ plugin_id: 'provider-1', name: 'provider-1' } as never}
+        currentTool={{ name: 'tool-2' } as never}
+        providerType={PluginCategoryEnum.tool}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('should not prefetch tree options for trigger providers', async () => {
+    renderFormInputItem({
+      schema: createSchema({
+        placeholder: { en_US: 'Pick tree', zh_Hans: '选树' },
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      providerType: PluginCategoryEnum.trigger,
+    })
+
+    expect(screen.getByRole('button', { name: 'Pick tree' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockFetchDynamicTreeOptions).not.toHaveBeenCalled()
     })
   })
 })

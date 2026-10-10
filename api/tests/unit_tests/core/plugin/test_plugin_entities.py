@@ -147,6 +147,15 @@ class TestPluginParameterEntities:
     def test_cast_parameter_value_string_like(self, value, expected):
         assert cast_parameter_value(PluginParameterType.STRING, value) == expected
 
+    def test_cast_parameter_value_dynamic_tree_select(self):
+        assert cast_parameter_value(PluginParameterType.DYNAMIC_TREE_SELECT, ["leaf", 2]) == ["leaf", "2"]
+        assert cast_parameter_value(PluginParameterType.DYNAMIC_TREE_SELECT, None) == ""
+        assert cast_parameter_value(PluginParameterType.DYNAMIC_TREE_SELECT, "leaf") == "leaf"
+        assert cast_parameter_value(PluginParameterType.DYNAMIC_TREE_SELECT, 3) == "3"
+
+    def test_as_normal_type_dynamic_tree_select(self):
+        assert as_normal_type(PluginParameterType.DYNAMIC_TREE_SELECT) == "string"
+
     @pytest.mark.parametrize(
         ("value", "expected"),
         [

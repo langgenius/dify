@@ -12,13 +12,17 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../var-reference-picker'
 
-const { mockFetchDynamicOptions } = vi.hoisted(() => ({
+const { mockFetchDynamicOptions, mockFetchDynamicTreeOptions } = vi.hoisted(() => ({
   mockFetchDynamicOptions: vi.fn(),
+  mockFetchDynamicTreeOptions: vi.fn(),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
   useFetchDynamicOptions: () => ({
     mutateAsync: mockFetchDynamicOptions,
+  }),
+  useFetchDynamicTreeOptions: () => ({
+    mutateAsync: mockFetchDynamicTreeOptions,
   }),
 }))
 
@@ -147,6 +151,7 @@ describe('VarReferencePicker branches', () => {
     resetFixtureCounters()
     vi.clearAllMocks()
     mockFetchDynamicOptions.mockResolvedValue({ options: [] as FormOption[] })
+    mockFetchDynamicTreeOptions.mockResolvedValue({ options: [] as FormOption[] })
   })
 
   it('should toggle a custom trigger and call onOpen when opening the popup', async () => {
@@ -292,5 +297,136 @@ describe('VarReferencePicker branches', () => {
 
     expect(screen.getByText('API_KEY')).toBeInTheDocument()
     expect(screen.queryByTestId('var-reference-picker-error-icon')).not.toBeInTheDocument()
+  })
+
+  it('should keep a saved dynamic value visible while options load, then show the fetched label', async () => {
+    let resolveOptions: (value: { options: FormOption[] }) => void = () => {}
+    mockFetchDynamicOptions.mockReturnValue(
+      new Promise((resolve) => {
+        resolveOptions = resolve
+      }),
+    )
+
+    renderPicker({
+      currentProvider: {
+        plugin_id: 'provider-1',
+        name: 'provider-1',
+        credential_id: 'credential-1',
+      } as never,
+      currentTool: { name: 'tool-1' } as never,
+      isSupportConstantValue: true,
+      schema: {
+        variable: 'field',
+        type: 'dynamic-select',
+      } as never,
+      value: 'saved-region',
+    })
+
+    expect(await screen.findByText('saved-region')).toBeInTheDocument()
+    resolveOptions({
+      options: [
+        {
+          value: 'saved-region',
+          label: { en_US: 'Saved region', zh_Hans: 'Saved region' },
+          show_on: [],
+        },
+      ],
+    })
+    expect(await screen.findByText('Saved region')).toBeInTheDocument()
+  })
+
+  it('should preserve selected tree values while options load and refetch when the tool changes', async () => {
+    let resolveOptions: (value: { options: FormOption[] }) => void = () => {}
+    mockFetchDynamicTreeOptions.mockReturnValue(
+      new Promise((resolve) => {
+        resolveOptions = resolve
+      }),
+    )
+    const schema = {
+      variable: 'field',
+      type: 'dynamic-tree-select',
+      options: [
+        {
+          value: 'schema-fallback',
+          label: { en_US: 'Schema fallback', zh_Hans: 'Schema fallback' },
+          show_on: [],
+        },
+      ],
+    } as never
+    const { rerender, onChange } = renderPicker({
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      dynamicSelectLazy: true,
+      isSupportConstantValue: true,
+      schema,
+      value: ['alpha', 'beta', ''],
+    })
+
+    expect(await screen.findByText('common.dynamicSelect.loading')).toBeInTheDocument()
+    resolveOptions({
+      options: [
+        {
+          value: 'alpha',
+          label: { en_US: 'Alpha', zh_Hans: 'Alpha' },
+          show_on: [],
+        },
+      ],
+    })
+    expect(await screen.findByRole('button', { name: 'Alpha' })).toBeEnabled()
+
+    rerender(
+      <div id="workflow-container" style={{ width: 800, height: 600 }}>
+        <VarReferencePicker
+          nodeId="node-current"
+          readonly={false}
+          value={['']}
+          onChange={onChange}
+          availableNodes={[startNode, sourceNode, currentNode]}
+          availableVars={availableVars}
+          currentProvider={{ plugin_id: 'provider-1', name: 'provider-1' } as never}
+          currentTool={{ name: 'tool-2' } as never}
+          dynamicSelectLazy
+          isSupportConstantValue
+          schema={schema}
+        />
+      </div>,
+    )
+
+    await waitFor(() => {
+      expect(mockFetchDynamicTreeOptions).toHaveBeenCalledTimes(2)
+    })
+    expect(screen.getByRole('button', { name: 'common.placeholder.select' })).toBeInTheDocument()
+  })
+
+  it('should refetch lazy dynamic options when the constant select opens', async () => {
+    mockFetchDynamicOptions.mockResolvedValue({
+      options: [
+        {
+          value: 'dyn-1',
+          label: { en_US: 'Dynamic 1', zh_Hans: '动态 1' },
+          show_on: [],
+        },
+      ],
+    })
+
+    renderPicker({
+      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+      currentTool: { name: 'tool-1' } as never,
+      dynamicSelectLazy: true,
+      isSupportConstantValue: true,
+      schema: {
+        variable: 'field',
+        type: 'dynamic-select',
+      } as never,
+      value: '',
+    })
+
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.click(screen.getByRole('combobox'))
+    await waitFor(() => {
+      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(2)
+    })
   })
 })

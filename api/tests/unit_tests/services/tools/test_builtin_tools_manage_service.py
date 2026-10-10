@@ -454,6 +454,100 @@ class TestGetBuiltinToolProviderCredentials:
         assert stored.is_default is False
 
 
+class TestGetBuiltinToolProviderRuntimeCredentials:
+    def test_returns_unauthorized_when_provider_does_not_need_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        controller = MagicMock()
+        controller.need_credentials = False
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+
+        credentials, credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+            "tenant-1", "google", None
+        )
+
+        assert credentials == {}
+        assert credential_type == CredentialType.UNAUTHORIZED.value
+
+    def test_decrypts_the_credential_selected_by_id(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="First", credentials={"key": "first"})
+        _persist_provider(repository_session, credential_id="cred-2", name="Second", credentials={"key": "second"})
+        controller = MagicMock()
+        controller.need_credentials = True
+        controller.get_credentials_schema_by_type.return_value = [
+            SimpleNamespace(to_basic_provider_config=lambda: {"name": "key"})
+        ]
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        encrypter = MagicMock()
+        encrypter.decrypt.side_effect = lambda raw: {"decrypted": raw["key"]}
+        monkeypatch.setattr(
+            service_module,
+            "create_provider_encrypter",
+            MagicMock(return_value=(encrypter, MagicMock())),
+        )
+
+        credentials, credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+            "tenant-1", "google", "cred-2"
+        )
+
+        assert credentials == {"decrypted": "second"}
+        assert credential_type == CredentialType.API_KEY
+        assert encrypter.decrypt.call_args.args[0] == {"key": "second"}
+
+    def test_falls_back_to_the_default_credential(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        _persist_provider(
+            repository_session,
+            credential_id="older",
+            name="Older",
+            is_default=False,
+            credentials={"key": "older"},
+        )
+        _persist_provider(
+            repository_session,
+            credential_id="default",
+            name="Default",
+            is_default=True,
+            credentials={"key": "default"},
+        )
+        controller = MagicMock()
+        controller.need_credentials = True
+        controller.get_credentials_schema_by_type.return_value = []
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        encrypter = MagicMock()
+        encrypter.decrypt.side_effect = lambda raw: raw
+        monkeypatch.setattr(
+            service_module,
+            "create_provider_encrypter",
+            MagicMock(return_value=(encrypter, MagicMock())),
+        )
+
+        credentials, _credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+            "tenant-1", "google", None
+        )
+
+        assert credentials == {"key": "default"}
+
+    def test_raises_when_no_credential_exists(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        controller = MagicMock()
+        controller.need_credentials = True
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+
+        with pytest.raises(ValueError, match="Builtin provider google not found"):
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", "missing")
+
+
 class TestGetBuiltinProvider:
     def test_returns_none_when_not_found(self, repository_session: Session) -> None:
         assert BuiltinToolManageService.get_builtin_provider("google", "tenant-1") is None

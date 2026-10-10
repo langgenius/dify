@@ -37,8 +37,8 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
                 for val in value:
                     if not isinstance(val, str):
                         raise ValueError("value must be a list of strings")
-            elif typ == "constant" and not isinstance(value, str | int | float | bool):
-                raise ValueError("value must be a string, int, float, or bool")
+            elif typ == "constant" and not isinstance(value, (allowed_types := (str, int, float, bool, dict, list))):
+                raise ValueError(f"value must be one of: {', '.join(t.__name__ for t in allowed_types)}")
             return typ
 
     datasource_parameters: dict[str, DatasourceInput] | None = None
