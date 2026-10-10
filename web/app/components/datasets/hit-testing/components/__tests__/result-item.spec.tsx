@@ -69,21 +69,21 @@ describe('ResultItem detail entries', () => {
     expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
   })
 
-  it('leaves Markdown text and link interaction outside the detail entry', async () => {
+  it('opens from Markdown text and leaves a Markdown link to its own action', async () => {
     const user = userEvent.setup()
     render(
       <ResultItem
         payload={makePayload({
-          segment: { content: 'Selectable preview\n\n[Reference](https://example.com)' },
+          segment: { content: 'Preview text\n\n[Reference](https://example.com)' },
         })}
       />,
     )
-    await user.click(await screen.findByText('Selectable preview'))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    const link = screen.getByRole('link', { name: 'Reference' })
+    const link = await screen.findByRole('link', { name: 'Reference' })
     expect(link).toHaveAttribute('href', 'https://example.com/')
     await user.click(link)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByText('Preview text'))
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
   })
 
   it('folds child chunks by keyboard without opening details and retains the fold across sessions', async () => {

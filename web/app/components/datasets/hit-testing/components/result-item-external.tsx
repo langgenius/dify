@@ -29,7 +29,7 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
       <DialogTrigger
         aria-label={`${t(($) => $.open, { ns: 'datasetHitTesting' })} ${title}`}
         aria-describedby={descriptionId}
-        className="block w-full cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 text-left hover:shadow-lg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="block w-full cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 text-left hover:shadow-lg"
       >
         <span id={descriptionId} className="block">
           <ResultItemMeta
@@ -39,10 +39,10 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
             wordCount={content.length}
             score={score}
           />
-          <span className="mt-1 block px-3">
-            <span className="line-clamp-2 body-md-regular break-all text-text-primary">
-              {content}
-            </span>
+        </span>
+        <span className="mt-1 block px-3">
+          <span className="line-clamp-2 body-md-regular break-all text-text-primary">
+            {content}
           </span>
         </span>
         <ResultItemFooter docType={FileAppearanceTypeEnum.custom} docTitle={title} />

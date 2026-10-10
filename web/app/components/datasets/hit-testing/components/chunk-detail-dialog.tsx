@@ -68,7 +68,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
         ref={triggerRef}
         type="button"
         aria-label={`${t(($) => $.open, { ns: 'datasetHitTesting' })} ${document.name}`}
-        className="block w-full cursor-pointer rounded-b-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+        className="block w-full cursor-pointer rounded-b-xl text-left"
       >
         <ResultItemFooter docType={extensionToFileType(extension)} docTitle={document.name} />
       </DialogTrigger>

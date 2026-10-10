@@ -3,7 +3,7 @@ import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
@@ -14,6 +14,8 @@ import { ChunkDetailDialog } from './chunk-detail-dialog'
 import { ResultItemMeta } from './result-item-meta'
 
 const i18nPrefix = ''
+const INTERACTIVE_SELECTOR =
+  'a, button, input, select, textarea, summary, audio, video, [role="button"]'
 type ResultItemProps = {
   payload: HitTesting
 }
@@ -28,7 +30,6 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
   const Icon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
   const [open, setOpen] = useState(false)
-  const richPreviewRef = useRef<HTMLDivElement>(null)
 
   const images = useMemo(() => {
     if (!files) return []
@@ -45,12 +46,10 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
     <div
       className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')}
       onClick={(event) => {
-        if (
-          !(event.target instanceof Node) ||
-          !event.currentTarget.contains(event.target) ||
-          richPreviewRef.current?.contains(event.target)
-        )
-          return
+        const { target, currentTarget } = event
+        if (!(target instanceof Element) || !currentTarget.contains(target)) return
+        const interactive = target.closest(INTERACTIVE_SELECTOR)
+        if (interactive && currentTarget.contains(interactive)) return
         setOpen(true)
       }}
     >
@@ -65,13 +64,11 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
 
       {/* Main */}
       <div className="mt-1 px-3">
-        <div ref={richPreviewRef} className="cursor-auto">
-          <Markdown
-            className="line-clamp-2"
-            content={sign_content || content}
-            customDisallowedElements={['input']}
-          />
-        </div>
+        <Markdown
+          className="line-clamp-2"
+          content={sign_content || content}
+          customDisallowedElements={['input']}
+        />
         {images.length > 0 && <ImageList images={images} size="md" className="py-1" />}
         {isParentChildRetrieval && (
           <div className="mt-1">

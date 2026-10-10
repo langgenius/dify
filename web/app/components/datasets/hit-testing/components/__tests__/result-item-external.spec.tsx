@@ -26,9 +26,8 @@ describe('ResultItemExternal', () => {
     render(<ResultItemExternal payload={payload} positionId={3} />)
 
     const trigger = screen.getByRole('button', { name: triggerName })
-    expect(trigger).toHaveAccessibleDescription(
-      /Chunk-03.*0\.85.*This is the chunk content for testing\./,
-    )
+    expect(trigger).toHaveAccessibleDescription(/Chunk-03.*0\.85/)
+    expect(trigger).not.toHaveAccessibleDescription(/This is the chunk content/)
     expect(trigger.tagName).toBe('BUTTON')
     expect(screen.getAllByRole('button')).toHaveLength(1)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
