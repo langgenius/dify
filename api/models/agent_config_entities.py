@@ -791,6 +791,8 @@ class AppVariableConfig(BaseModel):
     type: str = Field(min_length=1, max_length=64)
     required: bool = False
     default: Any = Field(default=None)
+    hide: bool = False
+    options: list[str] | None = None
 
 
 class AgentSoulConfig(BaseModel):

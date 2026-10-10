@@ -121,9 +121,9 @@ function getChangeSections({
   const pushItemSection = (
     key: string,
     label: string,
-    items: readonly AgentBuildDraftChangeItem[],
+    items?: readonly AgentBuildDraftChangeItem[],
   ) => {
-    if (items.length === 0) return
+    if (!items?.length) return
 
     sections.push({
       key,
@@ -146,6 +146,11 @@ function getChangeSections({
     'envVariables',
     t(($) => $['agentDetail.configure.advancedSettings.envEditor.shortLabel']),
     changeSummary.envVariables,
+  )
+  pushItemSection(
+    'appVariables',
+    t(($) => $['agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel']),
+    changeSummary.appVariables,
   )
 
   return sections

@@ -17071,7 +17071,9 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default |  |  | No |
+| hide | boolean |  | No |
 | name | string |  | Yes |
+| options | [ string ] |  | No |
 | required | boolean |  | No |
 | type | string |  | Yes |
 
