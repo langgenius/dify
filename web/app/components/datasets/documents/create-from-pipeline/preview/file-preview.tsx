@@ -15,7 +15,7 @@ type FilePreviewProps = {
 }
 
 const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { data: fileData, isFetching } = useFilePreview(file.id || '')
 
   const fileName = useMemo(() => {

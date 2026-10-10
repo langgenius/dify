@@ -4,13 +4,14 @@ import type { ReadmePanelState } from './store'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
@@ -22,7 +23,7 @@ type ReadmeDrawerProps = {
 }
 
 export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Drawer
@@ -45,8 +46,15 @@ export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDr
                   </DrawerTitle>
                 }
                 closeButton={
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="lg"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 }
               />

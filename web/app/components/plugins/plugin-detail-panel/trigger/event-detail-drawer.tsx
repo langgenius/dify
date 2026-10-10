@@ -1,4 +1,5 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
@@ -29,7 +30,7 @@ type EventDetailDrawerProps = {
   onClose: () => void
 }
 
-const getType = (type: string, t: TFunction) => {
+const getType = (type: string, t: TFunction<['tools']>) => {
   if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
   if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
   if (type === 'checkbox') return 'boolean'
@@ -67,7 +68,7 @@ const convertSchemaToField = (schema: any): any => {
 export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
   const { eventInfo, providerInfo, onClose } = props
   const language = useLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'common', 'plugin', 'pluginTrigger'])
   const parametersSchemas = triggerEventParametersToFormSchemas(eventInfo.parameters)
 
   // Convert output_schema properties to array for direct rendering
@@ -106,13 +107,14 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     <RiCloseLine aria-hidden="true" className="size-4" />
                   </IconButton>
                 </div>
-                <div
-                  className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                <button
+                  type="button"
+                  className="mb-2 flex cursor-pointer items-center gap-1 rounded-sm system-xs-semibold-uppercase text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={onClose}
                 >
-                  <RiArrowLeftLine className="size-4" />
+                  <RiArrowLeftLine aria-hidden="true" className="size-4" />
                   {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
-                </div>
+                </button>
                 <div className="flex items-center gap-1">
                   <Icon size="tiny" className="size-6" src={providerInfo.icon!} />
                   <OrgInfo

@@ -145,8 +145,8 @@ function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessin
 }
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
@@ -832,7 +832,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     const shouldRestoreFocus =
       tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current
     if (tasksOpen) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
       setTasksOpen(false)
     }
     if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
@@ -866,9 +865,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     )
       return
     writePermissionRecoveryFetchSeenRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A post-denial permission request is the authoritative event that retires the local mutation lock.
     setWritePermissionRevoked(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The completed recovery generation is retired with its write lock.
     setWritePermissionRecoveryGeneration(undefined)
   }, [
     canEdit,

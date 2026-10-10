@@ -137,7 +137,7 @@ class TestDefaultModelApi:
 
         with (
             app.test_request_context("/"),
-            patch("services.model_provider_service.create_plugin_provider_manager", return_value=manager),
+            patch("services.model_provider.service.create_plugin_provider_manager", return_value=manager),
             patch.object(manager, "get_configurations", return_value=configurations),
         ):
             result = unwrap(api.post)(api, payload, "tenant1")
@@ -164,7 +164,7 @@ class TestDefaultModelApi:
 
         with (
             app.test_request_context("/"),
-            patch("services.model_provider_service.create_plugin_provider_manager", return_value=manager),
+            patch("services.model_provider.service.create_plugin_provider_manager", return_value=manager),
         ):
             result = unwrap(api.post)(api, ParserPostDefault(model_settings=[]), "tenant1")
 

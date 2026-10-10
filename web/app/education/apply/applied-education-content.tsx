@@ -28,7 +28,7 @@ const AppliedEducationContent = ({
   isSwitchingWorkspace,
   onSwitchWorkspace,
 }: AppliedEducationContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const currentWorkspaceInList = workspaces.find((workspace) => workspace.current)
   const workspacePlan = currentWorkspaceInList?.plan ?? plan
   const workspaceName = currentWorkspaceInList?.name || currentWorkspace?.name

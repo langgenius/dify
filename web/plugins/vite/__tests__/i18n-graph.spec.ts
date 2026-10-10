@@ -410,6 +410,66 @@ describe('translation graph analysis', () => {
       })
     })
 
+    it('uses the selected overload namespace instead of the first declaration', () => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/overloaded.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function metadata(namespace: 'app', selector: SelectorParam<'app'>): string
+        declare function metadata(namespace: 'login', selector: SelectorParam<'login'>): string
+        export const title = metadata('login', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
+      })
+    })
+
+    it('retains selector types inferred through an unconstrained generic parameter', () => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/inferred.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function invoke<T>(selector: T): string
+        const selector: SelectorParam<'login'> = $ => $.title
+        export const title = invoke(selector)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
+      })
+    })
+
+    it.each([
+      ['conditional', "T extends 'login' ? SelectorParam<'login'> : SelectorParam<'app'>"],
+      ['indexed access', 'Selectors[T]'],
+    ])('retains selectors resolved through a generic %s type', (_, parameterType) => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/deferred-selector.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        type Selectors = { app: SelectorParam<'app'>; login: SelectorParam<'login'> }
+        declare function invoke<T extends keyof Selectors>(namespace: T, selector: ${parameterType}): string
+        export const title = invoke('login', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
+      })
+    })
+
     it('keeps possible matches across namespaces when a selector namespace cannot be resolved', () => {
       writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
       writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })

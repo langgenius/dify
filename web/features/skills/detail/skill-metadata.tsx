@@ -49,8 +49,8 @@ export function SkillTagsEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
   const [showTagManagement, setShowTagManagement] = useState(false)
@@ -230,11 +230,10 @@ export function SkillTagsEditor({
             }
           >
             <ComboboxTrigger
-              icon={false}
               disabled={!detail || isSavingTags}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
-                'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
+                'flex h-4.5 min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm text-start whitespace-nowrap text-text-tertiary transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover motion-reduce:transition-none',
                 visibleTags.length === 0 && 'border-dashed px-1.25',
               )}
             >
@@ -301,7 +300,7 @@ export function SkillReferencesPanel({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
       input: {
@@ -327,7 +326,7 @@ export function SkillReferencesPanel({
           embedded ? 'w-full px-1' : 'w-max',
         )}
       >
-        {t(($) => $['skillManagement.detail.referencedBy_other'], { count: 0 })}
+        {t(($) => $['skillManagement.detail.referencedBy'], { count: 0 })}
       </div>
     )
   }
@@ -381,7 +380,7 @@ export function SkillReferencesList({
   testId?: string
   visibleLimit?: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [expanded, setExpanded] = useState(false)
   const hasMoreReferences = visibleLimit != null && references.length > visibleLimit
   const visibleReferences =
@@ -442,8 +441,8 @@ export function SkillPublishConfirmPanel({
   referenceCount: number
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   if (!open) return null
 
   return (
@@ -461,13 +460,9 @@ export function SkillPublishConfirmPanel({
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
         <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
-          {t(
-            ($) =>
-              referenceCount === 1
-                ? $['skillManagement.detail.publishReferencesDescription_one']
-                : $['skillManagement.detail.publishReferencesDescription_other'],
-            { count: referenceCount },
-          )}
+          {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
+            count: referenceCount,
+          })}
         </p>
       </div>
       <div className="px-4 py-2">

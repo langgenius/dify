@@ -18,7 +18,7 @@ const CSV_TEMPLATE_QA_CN = [
 ]
 
 const CSVDownload: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'share'])
 
   const locale = useLocale()
   const { CSVDownloader, Type } = useCSVDownloader()

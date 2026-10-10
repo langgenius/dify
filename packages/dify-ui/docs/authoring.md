@@ -13,6 +13,15 @@ Use React namespace imports throughout this package, including stories and tests
 import also covers React types; do not add separate named type imports. JSX alone does not
 require an explicit React import.
 
+Use namespace imports for `react-dom`, `react-dom/client`, and `react-dom/server` as well.
+Write grouping fragments as `<React.Fragment>` and remove unnecessary fragment wrappers.
+
+## Component writing style
+
+Define named components with function declarations or function expressions. Arrow functions
+remain appropriate for event handlers, render props, and Storybook render callbacks. Name function
+expressions when JavaScript cannot infer their name. Use `event` or `error` instead of `e`.
+
 ## Subpaths and names
 
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between
@@ -20,8 +29,8 @@ package components; consumers import only through public subpaths.
 
 Use the primitive name without a `Root` suffix for the canonical boundary and matching props type:
 `Select` and `SelectProps`, `Drawer` and `DrawerProps`. Keep `Root` only when the same subpath
-exports both low-level anatomy and a higher-level convenience component, such as `CheckboxRoot`
-and `Checkbox`.
+exports both low-level anatomy and a higher-level convenience component, such as `AvatarRoot`
+and `Avatar`.
 
 Every runtime component must have an accurate, importable props type with the matching name. Use a
 direct alias for an unchanged Base UI part. Define Dify-authored composite props at the Dify UI
@@ -53,8 +62,8 @@ A type is not public merely because Base UI names it or an implementation once e
 addition to matching component props, export a type only when it pairs with a public factory or a
 real consumer must name it independently.
 
-State, event details and reasons, actions, controlled-state helpers, context values, render
-helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
+State, event details and reasons, controlled-state helpers, context values, render helpers,
+styling helpers, and upstream passthrough aliases are private by default. Public props
 already provide contextual typing for inline render and event callbacks.
 
 Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI

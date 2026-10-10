@@ -2,7 +2,7 @@
 
 import type { AppListUrlQuery } from './query-params'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
-import dynamic from '@/next/dynamic'
+import dynamic from 'next/dynamic'
 
 type AppListCategory = AppListUrlQuery['category']
 

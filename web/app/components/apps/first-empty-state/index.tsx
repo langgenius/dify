@@ -40,7 +40,7 @@ function FirstEmptyState({
   onTryLearnDify,
   showLearnDify,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const actions: EmptyCreateAction[] = [
     {
@@ -62,7 +62,7 @@ function FirstEmptyState({
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t(($) => $.importDSL, { ns: 'app' }),
+      title: t(($) => $.importApp, { ns: 'app' }),
       description: t(($) => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,

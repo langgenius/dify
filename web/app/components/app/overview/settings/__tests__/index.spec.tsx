@@ -1,13 +1,14 @@
 import type { ReactElement, ReactNode } from 'react'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import type { SettingsAppInfo } from '../index'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
 
@@ -75,6 +76,7 @@ vi.mock('@/context/i18n', async () => {
 })
 
 const mockAppInfo = {
+  id: 'test-app',
   site: {
     title: 'Test App',
     icon_type: 'emoji',
@@ -93,10 +95,9 @@ const mockAppInfo = {
     use_icon_as_answer_icon: true,
   },
   mode: AppModeEnum.ADVANCED_CHAT,
-  enable_sso: false,
-} as unknown as AppDetailResponse & Partial<AppSSO>
+} satisfies SettingsAppInfo
 
-const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
+const renderSettingsModal = (appInfo: SettingsAppInfo = mockAppInfo, canDeploy = false) =>
   render(
     <SettingsModal
       isChat
@@ -133,6 +134,29 @@ describe('SettingsModal', () => {
     vi.useRealTimers()
   })
 
+  it('edits a site with nullable optional fields as empty form values', async () => {
+    renderSettingsModal({ id: 'app-null-fields', mode: 'chat', site: createAppSiteFixture() })
+
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() =>
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'App',
+          description: '',
+          chat_color_theme: '',
+          privacy_policy: '',
+          input_placeholder: '',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+        }),
+      ),
+    )
+    expect(mockOnClose).toHaveBeenCalledOnce()
+  })
+
   it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
@@ -160,6 +184,20 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
     )
+  })
+
+  it('names the Inverted switch from its visible label and exposes its state', async () => {
+    const user = userEvent.setup()
+    renderSettingsModal()
+
+    const invertedSwitch = screen.getByRole('switch', {
+      name: 'appOverview.overview.appInfo.settings.chatColorThemeInverted',
+    })
+    expect(invertedSwitch).toBeChecked()
+
+    await user.click(invertedSwitch)
+
+    expect(invertedSwitch).not.toBeChecked()
   })
 
   it('should notify the user when the name is empty', async () => {
@@ -235,7 +273,6 @@ describe('SettingsModal', () => {
         icon_background: mockAppInfo.site.icon_background,
         show_workflow_steps: mockAppInfo.site.show_workflow_steps,
         use_icon_as_answer_icon: mockAppInfo.site.use_icon_as_answer_icon,
-        enable_sso: mockAppInfo.enable_sso,
       }),
     )
     expect(mockOnClose).toHaveBeenCalled()
@@ -322,15 +359,13 @@ describe('SettingsModal', () => {
         isChat
         canDeploy={false}
         isShow={true}
-        appInfo={
-          {
-            ...mockAppInfo,
-            site: {
-              ...mockAppInfo.site,
-              input_placeholder: 'Updated prompt',
-            },
-          } as typeof mockAppInfo
-        }
+        appInfo={{
+          ...mockAppInfo,
+          site: {
+            ...mockAppInfo.site,
+            input_placeholder: 'Updated prompt',
+          },
+        }}
         onClose={mockOnClose}
         onSave={mockOnSave}
       />,
@@ -423,7 +458,7 @@ describe('SettingsModal', () => {
         icon_background: null,
         icon_url: 'https://example.com/uploaded.png',
       },
-    } as typeof mockAppInfo
+    } satisfies SettingsAppInfo
 
     renderSettingsModal(imageAppInfo)
 

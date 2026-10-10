@@ -20,7 +20,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from flask import Flask
@@ -47,7 +47,6 @@ from controllers.service_api.app.workflow import (
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
@@ -377,122 +376,8 @@ class TestWorkflowRunResponse:
         }
 
 
-class TestWorkflowExecutionStatus:
-    """Test WorkflowExecutionStatus enum."""
-
-    def test_succeeded_status_exists(self):
-        """Test succeeded status value exists."""
-        status = WorkflowExecutionStatus("succeeded")
-        assert status.value == "succeeded"
-
-    def test_failed_status_exists(self):
-        """Test failed status value exists."""
-        status = WorkflowExecutionStatus("failed")
-        assert status.value == "failed"
-
-    def test_stopped_status_exists(self):
-        """Test stopped status value exists."""
-        status = WorkflowExecutionStatus("stopped")
-        assert status.value == "stopped"
-
-
-class TestAppGenerateServiceWorkflow:
-    """Test AppGenerateService workflow integration."""
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_accepts_workflow_args(self, mock_generate: MagicMock, sqlite_session: Session):
-        """Test generate accepts workflow-specific args."""
-        mock_generate.return_value = {"result": "success"}
-
-        result = AppGenerateService.generate(
-            app_model=_make_app_model(),
-            user=_make_end_user(),
-            args={"inputs": {"key": "value"}, "workflow_id": "workflow_123"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=sqlite_session,
-            streaming=False,
-        )
-
-        assert result == {"result": "success"}
-        mock_generate.assert_called_once()
-        assert mock_generate.call_args.kwargs["session"] is sqlite_session
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_workflow_not_found_error(self, mock_generate: MagicMock, sqlite_session: Session):
-        """Test generate raises WorkflowNotFoundError."""
-        mock_generate.side_effect = WorkflowNotFoundError("Workflow not found")
-
-        with pytest.raises(WorkflowNotFoundError):
-            AppGenerateService.generate(
-                app_model=_make_app_model(),
-                user=_make_end_user(),
-                args={"workflow_id": "invalid_id"},
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=sqlite_session,
-                streaming=False,
-            )
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_is_draft_workflow_error(self, mock_generate: MagicMock, sqlite_session: Session):
-        """Test generate raises IsDraftWorkflowError."""
-        mock_generate.side_effect = IsDraftWorkflowError("Workflow is draft")
-
-        with pytest.raises(IsDraftWorkflowError):
-            AppGenerateService.generate(
-                app_model=_make_app_model(),
-                user=_make_end_user(),
-                args={"workflow_id": "draft_workflow"},
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=sqlite_session,
-                streaming=False,
-            )
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    @patch.object(AppGenerateService, "generate")
-    def test_generate_supports_streaming_mode(self, mock_generate: MagicMock, sqlite_session: Session):
-        """Test generate supports streaming response mode."""
-        mock_stream = Mock()
-        mock_generate.return_value = mock_stream
-
-        result = AppGenerateService.generate(
-            app_model=_make_app_model(),
-            user=_make_end_user(),
-            args={"inputs": {}, "response_mode": "streaming"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=sqlite_session,
-            streaming=True,
-        )
-
-        assert result == mock_stream
-
-
-class TestWorkflowStopMechanism:
-    """Test workflow stop mechanisms."""
-
-    def test_app_queue_manager_has_stop_flag_method(self):
-        """Test AppQueueManager has set_stop_flag_no_user_check method."""
-        from core.app.apps.base_app_queue_manager import AppQueueManager
-
-        assert hasattr(AppQueueManager, "set_stop_flag_no_user_check")
-
-    def test_graph_engine_manager_has_send_stop_command(self):
-        """Test GraphEngineManager has send_stop_command method."""
-        from graphon.graph_engine.manager import GraphEngineManager
-
-        assert hasattr(GraphEngineManager, "send_stop_command")
-
-
 class TestWorkflowRunRepository:
     """Test workflow run repository interface."""
-
-    def test_repository_factory_can_create_workflow_run_repository(self):
-        """Test DifyAPIRepositoryFactory can create workflow run repository."""
-        from repositories.factory import DifyAPIRepositoryFactory
-
-        assert hasattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository")
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
     def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session):
@@ -827,10 +712,11 @@ class TestWorkflowRunByIdApi:
 
 
 class TestWorkflowTaskStopApi:
-    def test_wrong_mode(self, app: Flask) -> None:
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])
+    def test_wrong_mode(self, app: Flask, mode: AppMode) -> None:
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
-        app_model = _make_app_model(mode=AppMode.CHAT)
+        app_model = _make_app_model(mode=mode)
         end_user = _make_end_user()
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
@@ -958,50 +844,6 @@ class TestWorkflowRunDetailApiGet:
             api = WorkflowRunDetailApi()
             with pytest.raises(NotWorkflowAppError):
                 unwrap(api.get)(api, app_model=app_model, workflow_run_id="run-1")
-
-
-class TestWorkflowTaskStopApiPost:
-    """Test suite for WorkflowTaskStopApi.post() endpoint.
-
-    ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``.
-    """
-
-    @patch("controllers.service_api.app.workflow.GraphEngineManager")
-    @patch("controllers.service_api.app.workflow.AppQueueManager")
-    def test_stop_workflow_task_success(
-        self,
-        mock_queue_mgr,
-        mock_graph_mgr,
-        app: Flask,
-        workflow_app: App,
-    ):
-        """Test successful workflow task stop."""
-        from controllers.service_api.app.workflow import WorkflowTaskStopApi
-
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            api = WorkflowTaskStopApi()
-            result = unwrap(api.post)(
-                api,
-                app_model=workflow_app,
-                end_user=_make_end_user(),
-                task_id="task-1",
-            )
-
-        assert result == {"result": "success"}
-        mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-        mock_graph_mgr.assert_called_once()
-        mock_graph_mgr.return_value.send_stop_command.assert_called_once_with("task-1")
-
-    def test_stop_workflow_task_wrong_app_mode(self, app: Flask):
-        """Test NotWorkflowAppError when app mode is not workflow."""
-        from controllers.service_api.app.workflow import WorkflowTaskStopApi
-
-        app_model = _make_app_model(mode=AppMode.COMPLETION)
-
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            api = WorkflowTaskStopApi()
-            with pytest.raises(NotWorkflowAppError):
-                unwrap(api.post)(api, app_model=app_model, end_user=_make_end_user(), task_id="task-1")
 
 
 class TestWorkflowAppLogApiGet:

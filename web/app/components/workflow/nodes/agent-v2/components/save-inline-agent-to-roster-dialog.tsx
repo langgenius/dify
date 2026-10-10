@@ -21,7 +21,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
@@ -52,8 +51,8 @@ function SaveInlineAgentToRosterFormSession({
   onCancel,
   onSubmit,
 }: SaveInlineAgentToRosterFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: initialAgent.description ?? '',
@@ -63,16 +62,15 @@ function SaveInlineAgentToRosterFormSession({
     icon: createAgentIconSelection(initialAgent),
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
       <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.saveToRosterDialog.title'])}
+          {t(($) => $['roster.saveToRosterDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          {t(($) => $['roster.saveToRosterDialog.description'])}
+          {t(($) => $['roster.saveToRosterDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
       </div>
       <Form<AgentFormValues>
@@ -83,8 +81,8 @@ function SaveInlineAgentToRosterFormSession({
           ref={nameInputRef}
           defaultValues={initialValues.fields}
           icon={agentIcon}
-          iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'])}
-          onIconClick={() => setIconPickerOpen(true)}
+          iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -95,16 +93,6 @@ function SaveInlineAgentToRosterFormSession({
           </Button>
         </div>
       </Form>
-      <AppIconPicker
-        open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
-        onOpenChange={setIconPickerOpen}
-        onSelect={setAgentIcon}
-      />
     </>
   )
 }
@@ -118,7 +106,7 @@ export function SaveInlineAgentToRosterDialog({
   onOpenChange,
   onSaved,
 }: SaveInlineAgentToRosterDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),

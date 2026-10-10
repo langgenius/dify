@@ -72,6 +72,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
+import { InlineAgentLoading } from './inline-agent-loading'
 
 type WorkflowRosterAgentOrchestratePanelContentProps = {
   agentId?: string
@@ -188,11 +189,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
       : undefined
 
   if (!agentId) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <LoadingPlaceholder className="h-full" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   const composerSessionKey = `${nodeId}:${agentId}`
@@ -239,11 +236,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
   if (!agentSoulConfig || buildDraft.isPending) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <LoadingPlaceholder className="h-full" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   return (
@@ -291,8 +284,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation('common')
-  const { t: tAgent } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
@@ -742,13 +735,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             <AgentConfigureRightPanelChat
               agentId={agentId}
               answerActionPosition="below"
-              agentIcon={composerState?.agent?.icon}
-              agentIconBackground={composerState?.agent?.icon_background}
-              agentIconType={
-                composerState?.agent?.icon_type as Parameters<
-                  typeof AgentConfigureRightPanelChat
-                >[0]['agentIconType']
-              }
               agentName={composerState?.agent?.name}
               agentSoulConfig={buildDraft.agentSoulConfig}
               clearChatList={clearPreviewChat}
@@ -815,7 +801,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null
@@ -826,7 +812,7 @@ function WorkflowInlineAgentConfigureMoreAction({
         render={
           <button
             type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             aria-label={t(($) => $['operation.more'])}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
@@ -839,7 +825,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

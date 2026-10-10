@@ -128,7 +128,7 @@ export function AgentWorkingDirectoryBreadcrumb({
   path: AgentWorkingDirectoryPath
   onPathChange: (path: AgentWorkingDirectoryPath) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const items = getBreadcrumbItems(path)
   const { hiddenItems, visibleItems } = getVisibleBreadcrumbItems(items)
 

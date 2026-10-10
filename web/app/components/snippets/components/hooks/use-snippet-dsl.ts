@@ -10,7 +10,7 @@ type UseSnippetDSLOptions = {
 }
 
 export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const exportSnippetMutation = useExportSnippetMutation()
 
   const handleExportDSL = useCallback(

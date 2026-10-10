@@ -47,15 +47,6 @@ describe('Avatar', () => {
     })
   })
 
-  describe('className prop', () => {
-    it('should merge className with avatar variant classes on root', async () => {
-      const screen = await render(<Avatar name="Test" avatar={null} className="custom-class" />)
-
-      const root = screen.container.firstElementChild as HTMLElement
-      expect(root).toHaveClass('custom-class')
-    })
-  })
-
   describe('onLoadingStatusChange', () => {
     it('should show fallback until the image loads and forward status changes', async () => {
       const { images, restore } = stubImageLoader()

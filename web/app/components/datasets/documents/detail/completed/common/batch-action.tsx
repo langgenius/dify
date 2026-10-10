@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -56,7 +56,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchReIndex,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -158,7 +158,7 @@ const BatchAction: FC<IBatchActionProps> = ({
                 {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
@@ -169,7 +169,7 @@ const BatchAction: FC<IBatchActionProps> = ({
               >
                 {t(($) => $['operation.sure'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}

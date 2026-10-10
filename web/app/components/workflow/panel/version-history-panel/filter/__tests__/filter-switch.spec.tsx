@@ -9,7 +9,7 @@ describe('FilterSwitch', () => {
     render(<FilterSwitch enabled={false} handleSwitch={handleSwitch} />)
 
     expect(
-      screen.getByText('workflow.versionHistory.filter.onlyShowNamedVersions'),
+      screen.getByText('workflowHistory.versionHistory.filter.onlyShowNamedVersions'),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch'))

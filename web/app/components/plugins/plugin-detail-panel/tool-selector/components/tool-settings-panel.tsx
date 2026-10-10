@@ -35,7 +35,7 @@ type ToolSettingsPanelProps = {
  * Renders the settings/params tips section
  */
 function ParamsTips() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   return (
     <div className="pb-1">
       <div className="system-xs-regular text-text-tertiary">
@@ -65,7 +65,7 @@ export function ToolSettingsPanel({
   onSettingsFormChange,
   onParamsFormChange,
 }: ToolSettingsPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   // Check if panel should be shown
   const hasSettings = settingsFormSchemas.length > 0
@@ -77,7 +77,6 @@ export function ToolSettingsPanel({
   const settingsForm = (
     <div className="px-4 py-2">
       <ToolForm
-        inPanel
         readOnly={false}
         nodeId={nodeId}
         schema={settingsFormSchemas as CredentialFormSchema[]}

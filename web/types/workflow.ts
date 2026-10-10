@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -16,7 +17,7 @@ import type {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { AppModeEnum, TransferMethod } from '@/types/app'
+import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
   node_execution_id: string
@@ -454,11 +455,9 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
-export type WorkflowKind = 'standard'
-
 export type UpdateWorkflowParams = {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   url: string
   title: string
   releaseNotes: string

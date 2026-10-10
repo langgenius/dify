@@ -22,7 +22,7 @@ export default function TemplateDetailDialog({
   onInstall,
   onOpenChange,
 }: TemplateDetailDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   // resolvedTheme maps the "system" preference to the concrete light/dark
   // value the marketplace page expects.

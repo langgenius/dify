@@ -4,11 +4,11 @@ import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/con
 import type { ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -41,7 +41,7 @@ export function AgentVersionRestore({
   onBeforeRestore?: () => void | Promise<void>
   onRestored?: () => void | Promise<void>
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
   const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -137,10 +137,10 @@ export function AgentVersionRestore({
               {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-md-regular text-text-secondary">
-              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
+              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -152,7 +152,7 @@ export function AgentVersionRestore({
             >
               {t(($) => $['agentDetail.versionHistory.restore'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

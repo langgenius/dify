@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 function Item({ payload }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const language = useGetLanguage()
   const getLocalizedText = (obj: Record<string, string> | undefined) =>

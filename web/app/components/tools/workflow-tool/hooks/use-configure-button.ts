@@ -126,7 +126,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     onRefreshData,
     onConfigured,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   // Data fetching via React Query
   const { data: detail, isLoading } = useWorkflowToolDetailByAppID(

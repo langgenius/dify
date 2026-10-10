@@ -28,7 +28,6 @@ const baseProps = {
     editable: true,
     is_pinned: false,
     last_used_at: null,
-    uninstallable: false,
     app: {
       id: 'source-app-123',
       name: 'My App',
@@ -43,7 +42,6 @@ const baseProps = {
   } satisfies InstalledAppResponse,
   isSelected: false,
   onTogglePin: vi.fn(),
-  onDelete: vi.fn(),
 }
 
 describe('AppNavItem', () => {
@@ -108,18 +106,6 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('aria-current', 'page')
     })
 
-    it('should call onDelete with app id when delete action is clicked', async () => {
-      const user = userEvent.setup()
-      render(<AppNavItem {...baseProps} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      )
-      await user.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(baseProps.onDelete).toHaveBeenCalledWith('app-123')
-    })
-
     it('should request the next pin state', async () => {
       const user = userEvent.setup()
       render(<AppNavItem {...baseProps} />)
@@ -130,27 +116,6 @@ describe('AppNavItem', () => {
       await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(baseProps.onTogglePin).toHaveBeenCalledWith('app-123', true)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should not render delete action when app is uninstallable', async () => {
-      const user = userEvent.setup()
-      render(
-        <AppNavItem
-          {...baseProps}
-          app={{
-            ...baseProps.app,
-            uninstallable: true,
-          }}
-        />,
-      )
-
-      await user.click(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      )
-
-      expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()
     })
   })
 })

@@ -143,7 +143,7 @@ function initialSyncPolicy(source: Source): SyncPolicy | undefined {
 }
 
 function PolicyLoading() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div
       role="status"
@@ -192,7 +192,7 @@ function ReadyCrawlSelectionForm({
   source: Source
   workflowUncertain: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const customIntervalErrorId = 'crawl-custom-interval-error'
@@ -601,7 +601,7 @@ export function CrawlSelectionForm({
   source: Source
   workflowUncertain?: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const policyQuery = useQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
       context: { silent: true },

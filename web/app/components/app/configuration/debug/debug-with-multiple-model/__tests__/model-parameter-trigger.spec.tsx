@@ -393,7 +393,7 @@ describe('ModelParameterTrigger', () => {
       })
 
       // When currentProvider and currentModel are null, shows "Select Model"
-      expect(screen.getByText('common.modelProvider.selectModel')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.selectModel')).toBeInTheDocument()
     })
 
     it('should render configured model id and incompatible tooltip when model is missing from the provider list', async () => {
@@ -402,13 +402,13 @@ describe('ModelParameterTrigger', () => {
 
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument()
       const trigger = screen.getByRole('button', {
-        name: /common.modelProvider.selector.incompatibleTip/,
+        name: /modelProvider.modelProvider.selector.incompatibleTip/,
       })
       await user.hover(trigger)
       expect(
         await screen.findByText(
           (content, element) =>
-            content === 'common.modelProvider.selector.incompatibleTip' &&
+            content === 'modelProvider.modelProvider.selector.incompatibleTip' &&
             !!element &&
             !trigger.contains(element),
         ),
@@ -424,13 +424,13 @@ describe('ModelParameterTrigger', () => {
       renderComponent()
 
       const trigger = screen.getByRole('button', {
-        name: /common.modelProvider.selector.configureRequired/,
+        name: /modelProvider.modelProvider.selector.configureRequired/,
       })
       await user.hover(trigger)
       expect(
         await screen.findByText(
           (content, element) =>
-            content === 'common.modelProvider.selector.configureRequired' &&
+            content === 'modelProvider.modelProvider.selector.configureRequired' &&
             !!element &&
             !trigger.contains(element),
         ),
@@ -445,12 +445,14 @@ describe('ModelParameterTrigger', () => {
       })
       renderComponent()
 
-      const trigger = screen.getByRole('button', { name: /common.modelProvider.selector.disabled/ })
+      const trigger = screen.getByRole('button', {
+        name: /modelProvider.modelProvider.selector.disabled/,
+      })
       await user.hover(trigger)
       expect(
         await screen.findByText(
           (content, element) =>
-            content === 'common.modelProvider.selector.disabled' &&
+            content === 'modelProvider.modelProvider.selector.disabled' &&
             !!element &&
             !trigger.contains(element),
         ),

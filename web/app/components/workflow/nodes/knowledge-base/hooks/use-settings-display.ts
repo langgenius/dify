@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
 export const useSettingsDisplay = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetCreation', 'datasetSettings'])
 
   return {
     [IndexMethodEnum.QUALIFIED]: t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' }),

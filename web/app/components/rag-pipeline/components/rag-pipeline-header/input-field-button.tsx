@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 const InputFieldButton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const setShowInputFieldPanel = useStore((state) => state.setShowInputFieldPanel)
   const setShowEnvPanel = useStore((state) => state.setShowEnvPanel)
   const handleClick = useCallback(() => {

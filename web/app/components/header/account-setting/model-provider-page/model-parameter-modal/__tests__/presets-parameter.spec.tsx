@@ -12,7 +12,9 @@ describe('PresetsParameter', () => {
     const onSelect = vi.fn()
     render(<PresetsParameter onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /modelProvider\.modelProvider\.loadPresets/i }),
+    )
     fireEvent.click(screen.getByText('common.model.tone.Creative'))
     expect(onSelect).toHaveBeenCalledWith(1)
   })
@@ -21,7 +23,7 @@ describe('PresetsParameter', () => {
     render(<PresetsParameter onSelect={vi.fn()} supportedParameterNames={['max_tokens']} />)
 
     expect(
-      screen.queryByRole('button', { name: /common\.modelProvider\.loadPresets/i }),
+      screen.queryByRole('button', { name: /modelProvider\.modelProvider\.loadPresets/i }),
     ).not.toBeInTheDocument()
   })
 

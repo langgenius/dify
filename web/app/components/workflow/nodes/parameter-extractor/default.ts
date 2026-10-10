@@ -31,7 +31,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: ParameterExtractorNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: ParameterExtractorNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
       errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {

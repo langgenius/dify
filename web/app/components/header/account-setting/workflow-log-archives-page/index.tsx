@@ -64,7 +64,7 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
 }
 
 export default function WorkflowLogArchivesPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -281,7 +281,7 @@ export default function WorkflowLogArchivesPage() {
 }
 
 function ArchivedLogsUpgradeBanner() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'billing'])
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
@@ -306,7 +306,7 @@ function ArchivedLogsUpgradeBanner() {
 }
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(

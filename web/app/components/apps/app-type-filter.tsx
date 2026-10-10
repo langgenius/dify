@@ -17,7 +17,7 @@ import { studioAppListCategories } from './query-params'
 type AppListCategory = AppListUrlQuery['category']
 
 const chipClassName =
-  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
 
 type AppTypeFilterProps = {
   value: AppListCategory
@@ -25,7 +25,7 @@ type AppTypeFilterProps = {
 }
 
 export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const options = useMemo(() => {
     const optionsByCategory = {

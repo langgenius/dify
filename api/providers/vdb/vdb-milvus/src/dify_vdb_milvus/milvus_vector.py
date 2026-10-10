@@ -6,6 +6,7 @@ from packaging import version
 from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException  # type: ignore
 from pymilvus.milvus_client import IndexParams  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -160,8 +161,8 @@ class MilvusVector(BaseVector):
             # Insert into the collection.
             batch_insert_list = insert_dict_list[i : i + 1000]
             try:
-                ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
-                pks.extend(ids)
+                result = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
+                pks.extend(result.get("ids", []))
             except MilvusException as e:
                 logger.exception("Failed to insert batch starting at entity: %s/%s", i, total_count)
                 raise e
@@ -422,7 +423,9 @@ class MilvusVectorFactory(AbstractVectorFactory):
     """
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MilvusVector:
         """
         Initialize a MilvusVector instance for the given dataset.
         """

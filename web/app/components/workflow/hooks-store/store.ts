@@ -74,7 +74,8 @@ type CommonHooksFnMap = {
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
-  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
+  isExporting: boolean
   fetchInspectVars: (params: {
     passInVars?: boolean
     vars?: VarInInspect[]
@@ -139,7 +140,8 @@ export const createHooksStore = ({
     traceUrl: '',
   }),
   exportCheck = async () => noop(),
-  handleExportDSL = async () => noop(),
+  handleExportDSL = async () => false,
+  isExporting = false,
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -179,6 +181,7 @@ export const createHooksStore = ({
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

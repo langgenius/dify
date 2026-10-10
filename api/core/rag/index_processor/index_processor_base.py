@@ -1,6 +1,5 @@
 """Abstract interface for document loader implementations."""
 
-import cgi
 import logging
 import mimetypes
 import os
@@ -13,6 +12,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
@@ -147,7 +147,12 @@ class BaseIndexProcessor(ABC):
         return character_splitter
 
     def _get_content_files(
-        self, document: Document, current_user: Account | None = None, *, session: Session
+        self,
+        document: Document,
+        current_user: Account | None = None,
+        *,
+        tenant_id: str,
+        session: Session,
     ) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
@@ -185,7 +190,12 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    upload_file_id = self._download_tool_file(tool_file_id, current_user, session=session)
+                    upload_file_id = self._download_tool_file(
+                        tool_file_id,
+                        current_user,
+                        tenant_id=tenant_id,
+                        session=session,
+                    )
                     if upload_file_id:
                         upload_file_id_list.append(upload_file_id)
                 continue
@@ -208,7 +218,12 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
+        upload_files = session.scalars(
+            select(UploadFile).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id.in_(unique_upload_file_ids),
+            )
+        ).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -263,10 +278,10 @@ class BaseIndexProcessor(ABC):
 
             content_disposition = response.headers.get("content-disposition")
             if content_disposition:
-                _, params = cgi.parse_header(content_disposition)
+                _, params = parse_options_header(content_disposition)
                 if "filename" in params:
+                    # Werkzeug decodes filename*; preserve literal percent escapes in the result.
                     filename = params["filename"]
-                    filename = unquote(filename)
 
             if not filename:
                 parsed_url = urlparse(image_url)
@@ -314,13 +329,22 @@ class BaseIndexProcessor(ABC):
             logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
-    def _download_tool_file(self, tool_file_id: str, current_user: Account, *, session: Session) -> str | None:
+    def _download_tool_file(
+        self,
+        tool_file_id: str,
+        current_user: Account,
+        *,
+        tenant_id: str,
+        session: Session,
+    ) -> str | None:
         """
         Download the tool file from the ID.
         """
         from services.file_service import FileService
 
-        tool_file = session.get(ToolFile, tool_file_id)
+        tool_file = session.scalar(
+            select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id).limit(1)
+        )
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

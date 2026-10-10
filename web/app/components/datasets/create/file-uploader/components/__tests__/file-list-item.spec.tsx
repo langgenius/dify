@@ -18,7 +18,7 @@ vi.mock('@/types/app', () => ({
 }))
 
 // Mock SimplePieChart with dynamic import handling
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     const DynamicComponent = ({
       percentage,

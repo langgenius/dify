@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} набор прав",
   "accessRule.summary_other": "{{count}} наборов прав",
   "accessRule.updated": "Правило доступа успешно обновлено",
+  "accessRule.workspaceAdmin": "Администратор рабочего пространства",
   "accessRule.workspaceOwner": "Владелец рабочего пространства",
   "common.duplicateAction": "Дублировать",
   "group.agent": "Агенты",

@@ -52,7 +52,7 @@ function EnvironmentTableColumns() {
 }
 
 function EnvironmentTableHeader() {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
 
   return (
     <thead>
@@ -90,8 +90,8 @@ export const EnvironmentTable = memo(
     onRedeploy,
     onUndeploy,
   }: EnvironmentTableProps) => {
-    const { t } = useTranslation('deployments')
-    const { t: tCommon } = useTranslation('common')
+    const { t } = useTranslation(['deployments'])
+    const { t: tCommon } = useTranslation(['common'])
     const deployments = useAtomValue(appEnvironmentDeploymentsAtom) ?? []
     const isLoading = useAtomValue(appEnvironmentDeploymentsIsLoadingAtom)
     const isError = useAtomValue(appEnvironmentDeploymentsIsErrorAtom)

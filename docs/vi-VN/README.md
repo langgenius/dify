@@ -89,7 +89,7 @@ Tất cả các dịch vụ của Dify đều đi kèm với các API tương �
 ## Sử dụng Dify
 
 - **Cloud </br>**
-  Chúng tôi lưu trữ dịch vụ [Dify Cloud](https://dify.ai) cho bất kỳ ai muốn thử mà không cần cài đặt. Nó cung cấp tất cả các khả năng của phiên bản tự triển khai và bao gồm 200 lượt gọi GPT-4 miễn phí trong gói sandbox.
+  Dùng thử [Dify Cloud](https://cloud.dify.ai) mà không cần quản lý máy chủ. Xem các gói và hạn mức sử dụng hiện tại tại [trang giá](https://dify.ai/pricing).
 
 - **Tự triển khai Dify Community Edition</br>**
   Nhanh chóng chạy Dify trong môi trường của bạn với [hướng dẫn bắt đầu](#bắt-đầu-nhanh) này.
@@ -158,7 +158,7 @@ Chọn kênh phù hợp nhất với câu hỏi của bạn:
 
 ## Tiết lộ bảo mật
 
-Để bảo vệ quyền riêng tư của bạn, vui lòng tránh đăng các vấn đề bảo mật trên GitHub. Thay vào đó, hãy gửi câu hỏi của bạn đến security@dify.ai và chúng tôi sẽ cung cấp cho bạn câu trả lời chi tiết hơn.
+Báo cáo lỗ hổng riêng tư qua GitHub Security Advisories theo [chính sách bảo mật](../../SECURITY.md). Không công bố trong issue, thảo luận hoặc pull request công khai.
 
 ## Giấy phép
 

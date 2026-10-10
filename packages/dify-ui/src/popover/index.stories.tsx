@@ -208,7 +208,7 @@ const PLACEMENTS: PopoverPlacement[] = [
   'left-end',
 ]
 
-const PlacementsDemo = () => {
+function PlacementsDemo() {
   const [placement, setPlacement] = React.useState<PopoverPlacement>('bottom')
 
   return (
@@ -254,7 +254,7 @@ export const Placements: Story = {
   render: () => <PlacementsDemo />,
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [open, setOpen] = React.useState(false)
 
   return (

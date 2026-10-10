@@ -37,10 +37,10 @@ type CreatorOption = {
 }
 
 const baseChipClassName =
-  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors motion-reduce:transition-none'
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -122,16 +122,15 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
       <div className="relative inline-flex h-8 items-stretch">
         <ComboboxTrigger
           ref={triggerRef}
-          icon={false}
           aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
-            'peer/creators-trigger w-auto min-w-0 border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-8 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
           <ComboboxValue<string, true>>
             <span aria-hidden className="flex min-w-0 items-center">
-              <span className="px-1 text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary">
+              <span className="px-1 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">
                 {creatorFilterLabel}
               </span>
               {selectedCount > 0 ? (
@@ -147,10 +146,10 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                       />
                     ))}
                   </span>
-                  <span className="text-xs leading-4 font-medium text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary">{`+${selectedCount}`}</span>
+                  <span className="text-xs leading-4 font-medium text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">{`+${selectedCount}`}</span>
                 </>
               ) : (
-                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary" />
+                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary" />
               )}
             </span>
             <span className="sr-only">{selectedCountLabel}</span>

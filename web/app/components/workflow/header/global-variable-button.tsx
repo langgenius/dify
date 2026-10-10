@@ -9,7 +9,7 @@ import useTheme from '@/hooks/use-theme'
 
 const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)

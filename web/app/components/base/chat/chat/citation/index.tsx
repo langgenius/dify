@@ -21,7 +21,7 @@ const Citation: FC<CitationProps> = ({
   showHitInfo,
   containerClassName = 'chat-answer-container',
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const elesRef = useRef<HTMLDivElement[]>([])
   const [limitNumberInOneLine, setLimitNumberInOneLine] = useState(0)
   const [showMore, setShowMore] = useState(false)

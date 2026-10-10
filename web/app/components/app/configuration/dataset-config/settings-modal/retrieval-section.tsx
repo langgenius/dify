@@ -1,4 +1,4 @@
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -11,10 +11,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 
-export type RetrievalTranslate = (
-  selector: SelectorParam<'datasetSettings'>,
-  options: { ns: 'datasetSettings' },
-) => string
+type RetrievalTranslate = TFunction<['datasetSettings']>
 
 type CommonSectionProps = {
   rowClass: string

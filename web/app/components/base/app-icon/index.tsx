@@ -2,11 +2,8 @@
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEditLine } from '@remixicon/react'
-import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { useRef } from 'react'
 import { resolveEmoji } from '@/utils/emoji'
 
 type AppIconProps = {
@@ -19,9 +16,7 @@ type AppIconProps = {
   decorative?: boolean
   className?: string
   innerIcon?: React.ReactNode
-  coverElement?: React.ReactNode
   showEditIcon?: boolean
-  onClick?: () => void
 }
 const appIconVariants = cva(
   'relative flex shrink-0 grow-0 items-center justify-center overflow-hidden border-[0.5px] border-divider-regular leading-none',
@@ -46,30 +41,7 @@ const appIconVariants = cva(
     },
   },
 )
-const EditIconWrapperVariants = cva(
-  'absolute top-0 left-0 z-10 flex items-center justify-center bg-background-overlay-alt',
-  {
-    variants: {
-      size: {
-        xs: 'size-4 rounded-sm',
-        tiny: 'size-6 rounded-md',
-        small: 'size-8 rounded-lg',
-        medium: 'h-9 w-9 rounded-[10px]',
-        large: 'h-10 w-10 rounded-[10px]',
-        xl: 'size-12 rounded-xl',
-        xxl: 'size-14 rounded-2xl',
-      },
-      rounded: {
-        true: 'rounded-full',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-      rounded: false,
-    },
-  },
-)
-const EditIconVariants = cva('text-text-primary-on-surface', {
+const EditIconVariants = cva('i-ri-edit-line text-text-primary-on-surface', {
   variants: {
     size: {
       xs: 'size-3',
@@ -95,46 +67,30 @@ const AppIcon: FC<AppIconProps> = ({
   decorative = false,
   className,
   innerIcon,
-  coverElement,
-  onClick,
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const isDecorative = decorative && !onClick
   const Icon = resolveEmoji(icon)
-  const wrapperRef = useRef<HTMLSpanElement>(null)
-  const isHovering = useHover(wrapperRef)
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
-    if (!onClick) return
-
-    if (event.key !== 'Enter' && event.key !== ' ') return
-
-    event.preventDefault()
-    onClick()
-  }
 
   return (
     <span
-      ref={wrapperRef}
-      className={cn(appIconVariants({ size, rounded }), className)}
+      className={cn('group/app-icon', appIconVariants({ size, rounded }), className)}
       style={{ background: isValidImageIcon ? undefined : background || '#FFEAD5' }}
-      onClick={onClick}
-      onKeyDown={onClick ? handleKeyDown : undefined}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-hidden={isDecorative || undefined}
+      aria-hidden={decorative || undefined}
     >
       {isValidImageIcon ? (
-        <img src={imageUrl} className="size-full" alt={isDecorative ? '' : 'app icon'} />
+        <img src={imageUrl} className="size-full" alt={decorative ? '' : 'app icon'} />
       ) : (
         innerIcon || Icon
       )}
-      {showEditIcon && isHovering && (
-        <div className={EditIconWrapperVariants({ size, rounded })}>
-          <RiEditLine className={EditIconVariants({ size })} />
-        </div>
+      {showEditIcon && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-background-overlay-alt group-hover/app-icon:flex group-focus-visible/edit-icon:flex"
+        >
+          <span className={EditIconVariants({ size })} />
+        </span>
       )}
-      {coverElement}
     </span>
   )
 }

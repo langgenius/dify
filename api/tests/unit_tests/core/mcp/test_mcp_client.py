@@ -14,7 +14,8 @@ from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
-from core.mcp.types import CallToolResult, ListToolsResult, OAuthTokens, TextContent, Tool, ToolAnnotations
+from core.mcp.types import CallToolResult, ListToolsResult, TextContent, Tool, ToolAnnotations
+from tests.unit_tests.core.mcp.fixtures import make_provider
 
 
 class TestMCPClient:
@@ -214,6 +215,43 @@ class TestMCPClient:
         # Verify session was created with MCP
         assert client._session == mock_session
 
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_closes_partial_sse_connection(
+        self, mock_client_session, mock_streamable_client, mock_sse_client
+    ):
+        """A failed SSE handshake is closed before streamable HTTP fallback starts."""
+        events: list[str] = []
+
+        sse_context = MagicMock()
+        sse_context.__enter__.return_value = (Mock(), Mock())
+        sse_context.__exit__.side_effect = lambda *_args: events.append("sse_closed")
+        mock_sse_client.return_value = sse_context
+
+        mcp_context = MagicMock()
+        mcp_context.__enter__.side_effect = lambda *_args: events.append("mcp_opened") or (Mock(), Mock(), Mock())
+        mock_streamable_client.return_value = mcp_context
+
+        failed_session_context = MagicMock()
+        failed_session = Mock()
+        failed_session.initialize.side_effect = MCPConnectionError("SSE handshake failed")
+        failed_session_context.__enter__.return_value = failed_session
+        failed_session_context.__exit__.side_effect = lambda *_args: events.append("session_closed")
+
+        live_session_context = MagicMock()
+        live_session = Mock()
+        live_session_context.__enter__.return_value = live_session
+        mock_client_session.side_effect = [failed_session_context, live_session_context]
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        assert events[:3] == ["session_closed", "sse_closed", "mcp_opened"]
+        failed_session_context.__exit__.assert_called_once()
+        sse_context.__exit__.assert_called_once()
+        assert client._session is live_session
+
     @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
     @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")
@@ -391,23 +429,25 @@ class TestMCPClient:
     def test_cleanup(self):
         """Test cleanup method."""
         client = MCPClient(server_url="http://test.example.com")
-        mock_exit_stack = Mock(spec=ExitStack)
-        client._exit_stack = mock_exit_stack
+        cleaned = []
+        client._exit_stack.callback(cleaned.append, "closed")
         client._session = Mock()
         client._initialized = True
 
         client.cleanup()
 
-        mock_exit_stack.close.assert_called_once()
+        assert cleaned == ["closed"]
         assert client._session is None
         assert client._initialized is False
 
     def test_cleanup_with_error(self):
         """Test cleanup method with error."""
         client = MCPClient(server_url="http://test.example.com")
-        mock_exit_stack = Mock(spec=ExitStack)
-        mock_exit_stack.close.side_effect = Exception("Cleanup error")
-        client._exit_stack = mock_exit_stack
+
+        def fail_cleanup():
+            raise RuntimeError("Cleanup error")
+
+        client._exit_stack.callback(fail_cleanup)
         client._session = Mock()
         client._initialized = True
 
@@ -493,43 +533,41 @@ class TestMCPClientWithAuthRetry:
     """Test suite for MCPClientWithAuthRetry."""
 
     @pytest.fixture
-    def mock_provider(self):
-        provider = MagicMock(spec=MCPProviderEntity)
-        provider.id = "test-provider-id"
-        provider.server_identifier = "test-server-identifier"
-        provider.tenant_id = "test-tenant-id"
-        provider.retrieve_tokens.return_value = OAuthTokens(
-            access_token="new-token",
-            token_type="Bearer",
-            expires_in=3600,
-            refresh_token="refresh-token",
+    def provider(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(MCPProviderEntity, "_decrypt_dict", lambda _self, data: data.copy())
+        return make_provider(
+            credentials={
+                "access_token": "new-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "refresh-token",
+            }
         )
-        return provider
 
     @pytest.fixture
-    def auth_client(self, mock_provider):
+    def auth_client(self, provider):
         client = MCPClientWithAuthRetry(
             server_url="http://test.example.com",
             headers={"Authorization": "Bearer old-token"},
-            provider_entity=mock_provider,
+            provider_entity=provider,
             authorization_code="test-code",
         )
         return client
 
-    def test_init(self, mock_provider):
+    def test_init(self, provider):
         """Test initialization."""
         client = MCPClientWithAuthRetry(
             server_url="http://test.example.com",
             headers={"Authorization": "Bearer test"},
             timeout=30.0,
-            provider_entity=mock_provider,
+            provider_entity=provider,
             authorization_code="initial-code",
         )
 
         assert client.server_url == "http://test.example.com"
         assert client.headers == {"Authorization": "Bearer test"}
         assert client.timeout == 30.0
-        assert client.provider_entity == mock_provider
+        assert client.provider_entity == provider
         assert client.authorization_code == "initial-code"
         assert client._has_retried is False
 
@@ -538,19 +576,20 @@ class TestMCPClientWithAuthRetry:
         self,
         mock_service_class,
         auth_client,
-        mock_provider,
+        provider,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ):
         monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
 
         mock_service = mock_service_class.return_value
-        new_provider = MagicMock(spec=MCPProviderEntity)
-        new_provider.retrieve_tokens.return_value = OAuthTokens(
-            access_token="new-access-token",
-            token_type="Bearer",
-            expires_in=3600,
-            refresh_token="new-refresh-token",
+        new_provider = make_provider(
+            credentials={
+                "access_token": "new-access-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "new-refresh-token",
+            }
         )
         mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
@@ -566,13 +605,13 @@ class TestMCPClientWithAuthRetry:
 
         # Verify service calls - error.resource_metadata_url and error.scope_hint are parsed from header
         mock_service.auth_with_actions.assert_called_once_with(
-            mock_provider,
+            provider,
             "test-code",
             resource_metadata_url="http://meta",
             scope_hint="read",
         )
         mock_service.get_provider_entity_by_server_identifier.assert_called_once_with(
-            server_identifier=mock_provider.server_identifier, tenant_id=mock_provider.tenant_id
+            server_identifier=provider.server_identifier, tenant_id=provider.tenant_id
         )
 
         # Verify client updates
@@ -606,7 +645,7 @@ class TestMCPClientWithAuthRetry:
         self,
         mock_service_class,
         auth_client,
-        mock_provider,
+        provider,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ):
@@ -614,8 +653,7 @@ class TestMCPClientWithAuthRetry:
         monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
 
-        new_provider = MagicMock(spec=MCPProviderEntity)
-        new_provider.retrieve_tokens.return_value = None
+        new_provider = make_provider(credentials={})
         mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         error = MCPAuthError("Auth failed")

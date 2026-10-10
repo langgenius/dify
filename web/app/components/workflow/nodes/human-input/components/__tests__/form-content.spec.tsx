@@ -183,7 +183,7 @@ describe('FormContent', () => {
         editable: true,
         shortcutPopups: [
           expect.objectContaining({
-            hotkey: ['mod', '/'],
+            hotkey: 'Mod+/',
             displayMode: 'workflow-panel-adjacent-center',
           }),
         ],

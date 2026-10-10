@@ -24,7 +24,7 @@ const Form: FC<Props> = ({ className, label, inputs, values, onChange }) => {
     InputVarType.iterator,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const mapKeysWithSameValueSelector = useMemo(() => {
     const keysWithSameValueSelector = (key: string) => {
       const targetValueSelector = inputs.find((item) => item.variable === key)?.value_selector

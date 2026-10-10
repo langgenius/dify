@@ -24,7 +24,12 @@ const getRetrievalIcon = (method?: RETRIEVE_METHOD) => {
 
 const RuleDetail: FC<RuleDetailProps> = React.memo(
   ({ sourceData, indexingType, retrievalMethod }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation([
+      'dataset',
+      'datasetCreation',
+      'datasetDocuments',
+      'datasetSettings',
+    ])
 
     const segmentationRuleMap = {
       mode: t(($) => $['embedding.mode'], { ns: 'datasetDocuments' }),

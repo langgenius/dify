@@ -29,7 +29,7 @@ type DebugItemProps = {
   style?: CSSProperties
 }
 const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode } = useDebugConfigurationContext()
   const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
     useDebugWithMultipleModelContext()

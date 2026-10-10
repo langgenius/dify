@@ -1,21 +1,29 @@
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
+    MessageQueueMessage,
     QueueAgentMessageEvent,
     QueueErrorEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
     QueueMessageFileEvent,
     QueuePingEvent,
+    WorkflowQueueMessage,
 )
 from core.app.entities.task_entities import (
     EasyUITaskState,
@@ -31,9 +39,57 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
+from tests.unit_tests.core.model_fixtures import make_model_config
+
+
+class _QueueManager(AppQueueManager):
+    """Finite in-memory event source for stream dispatch tests."""
+
+    def __init__(self) -> None:
+        self.messages: list[MessageQueueMessage] = []
+
+    def listen(self) -> Generator[MessageQueueMessage]:
+        yield from self.messages
+
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        raise AssertionError("Stream dispatch must not publish queue events")
+
+
+class _Publisher(AppGeneratorTTSPublisher):
+    """Record speech input without starting synthesis or a worker thread."""
+
+    def __init__(self) -> None:
+        self.messages: list[WorkflowQueueMessage | MessageQueueMessage | None] = []
+
+    def publish(self, message: WorkflowQueueMessage | MessageQueueMessage | None, /) -> None:
+        self.messages.append(message)
+
+
+def queue_message(event: AppQueueEvent) -> MessageQueueMessage:
+    return MessageQueueMessage(
+        task_id="test-task-id",
+        app_mode=AppMode.CHAT,
+        message_id="test-message-id",
+        conversation_id="test-conversation-id",
+        event=event,
+    )
+
+
+def llm_chunk(content: str) -> LLMResultChunk:
+    return LLMResultChunk(
+        model="test-model",
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=content)),
+    )
+
+
+def llm_result(content: str) -> RuntimeLLMResult:
+    return RuntimeLLMResult(
+        model="test-model", message=AssistantPromptMessage(content=content), usage=LLMUsage.empty_usage()
+    )
 
 
 @pytest.fixture
@@ -53,42 +109,49 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     """Test cases for EasyUIBasedGenerateTaskPipeline._process_stream_response method."""
 
     @pytest.fixture
-    def mock_application_generate_entity(self):
-        """Create a mock application generate entity."""
-        entity = Mock(spec=ChatAppGenerateEntity)
-        entity.task_id = "test-task-id"
-        entity.app_id = "test-app-id"
-        # minimal app_config used by pipeline internals
-        entity.app_config = SimpleNamespace(
-            tenant_id="test-tenant-id",
-            app_id="test-app-id",
-            app_mode=AppMode.CHAT,
-            app_model_config_dict={},
-            additional_features=None,
-            sensitive_word_avoidance=None,
+    def application_generate_entity(self):
+        """Create a validated application request with real model configuration."""
+        return ChatAppGenerateEntity(
+            task_id="test-task-id",
+            app_config=EasyUIBasedAppConfig(
+                tenant_id="test-tenant-id",
+                app_id="test-app-id",
+                app_mode=AppMode.CHAT,
+                app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                app_model_config_dict={},
+                model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+            ),
+            model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+            inputs={},
+            files=[],
+            user_id="test-user-id",
+            stream=True,
+            invoke_from=InvokeFrom.WEB_APP,
         )
-        # minimal model_conf for LLMResult init
-        entity.model_conf = SimpleNamespace(
-            model="test-model",
-            provider_model_bundle=SimpleNamespace(model_type_instance=Mock()),
-            credentials={},
-        )
-        return entity
 
     @pytest.fixture
-    def mock_queue_manager(self):
-        """Create a mock queue manager."""
-        manager = Mock(spec=AppQueueManager)
-        return manager
+    def queue_manager(self):
+        return _QueueManager()
 
     @pytest.fixture
     def mock_message_cycle_manager(self):
         """Create a mock message cycle manager."""
         manager = Mock()
         manager.get_message_event_type.return_value = StreamEvent.MESSAGE
-        manager.message_to_stream_response.return_value = Mock(spec=MessageStreamResponse)
-        manager.message_file_to_stream_response.return_value = Mock(spec=MessageFileStreamResponse)
-        manager.message_replace_to_stream_response.return_value = Mock(spec=MessageReplaceStreamResponse)
+        manager.message_to_stream_response.return_value = MessageStreamResponse(
+            task_id="test-task-id", id="test-message-id", answer="response"
+        )
+        manager.message_file_to_stream_response.return_value = MessageFileStreamResponse(
+            task_id="test-task-id",
+            id="file-id",
+            type="image",
+            belongs_to="assistant",
+            url="https://example.com/file.png",
+        )
+        manager.message_replace_to_stream_response.return_value = MessageReplaceStreamResponse(
+            task_id="test-task-id", answer="replacement", reason="moderation"
+        )
         manager.handle_retriever_resources = Mock()
         manager.handle_annotation_reply.return_value = None
         return manager
@@ -115,59 +178,41 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         )
 
     @pytest.fixture
-    def mock_task_state(self):
-        """Create a mock task state."""
-        task_state = Mock(spec=EasyUITaskState)
-
-        # Create LLM result mock
-        llm_result = Mock(spec=RuntimeLLMResult)
-        llm_result.prompt_messages = []
-        llm_result.message = Mock()
-        llm_result.message.content = ""
-
-        task_state.llm_result = llm_result
-        task_state.answer = ""
-
-        return task_state
+    def task_state(self):
+        """Create real mutable state for the stream response pipeline."""
+        return EasyUITaskState(llm_result=llm_result(""))
 
     @pytest.fixture
     def pipeline(
         self,
-        mock_application_generate_entity,
-        mock_queue_manager,
+        application_generate_entity,
+        queue_manager,
         conversation,
         message,
         mock_message_cycle_manager,
-        mock_task_state,
+        task_state,
     ):
         """Create an EasyUIBasedGenerateTaskPipeline instance with mocked dependencies."""
-        with patch(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.EasyUITaskState", return_value=mock_task_state
-        ):
-            pipeline = EasyUIBasedGenerateTaskPipeline(
-                application_generate_entity=mock_application_generate_entity,
-                queue_manager=mock_queue_manager,
-                conversation=conversation,
-                message=message,
-                stream=True,
-            )
-            pipeline._message_cycle_manager = mock_message_cycle_manager
-            pipeline._task_state = mock_task_state
-            return pipeline
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        pipeline._message_cycle_manager = mock_message_cycle_manager
+        pipeline._task_state = task_state
+        return pipeline
 
     def test_get_message_event_type_called_once_when_first_llm_chunk_arrives(
         self, pipeline, mock_message_cycle_manager
     ):
         """Expect get_message_event_type to be called when processing the first LLM chunk event."""
         # Setup a minimal LLM chunk event
-        chunk = Mock()
-        chunk.delta.message.content = "hi"
-        chunk.prompt_messages = []
-        llm_chunk_event = Mock(spec=QueueLLMChunkEvent)
-        llm_chunk_event.chunk = chunk
-        mock_queue_message = Mock()
-        mock_queue_message.event = llm_chunk_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        chunk = llm_chunk("hi")
+        llm_chunk_event = QueueLLMChunkEvent(chunk=chunk)
+        message = queue_message(llm_chunk_event)
+        pipeline.queue_manager.messages = [message]
 
         # Execute
         list(pipeline._process_stream_response(publisher=None, trace_manager=None))
@@ -175,19 +220,15 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         # Assert
         mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
 
-    def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
+    def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling of LLM chunk events with text content."""
         # Setup
-        chunk = Mock()
-        chunk.delta.message.content = "Hello, world!"
-        chunk.prompt_messages = []
+        chunk = llm_chunk("Hello, world!")
 
-        llm_chunk_event = Mock(spec=QueueLLMChunkEvent)
-        llm_chunk_event.chunk = chunk
+        llm_chunk_event = QueueLLMChunkEvent(chunk=chunk)
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = llm_chunk_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(llm_chunk_event)
+        pipeline.queue_manager.messages = [message]
 
         mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
 
@@ -199,24 +240,20 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
             answer="Hello, world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
         )
-        assert mock_task_state.llm_result.message.content == "Hello, world!"
+        assert task_state.llm_result.message.content == "Hello, world!"
 
-    def test_llm_chunk_event_with_list_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
+    def test_llm_chunk_event_with_list_content(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling of LLM chunk events with list content."""
         # Setup
-        text_content = Mock(spec=TextPromptMessageContent)
-        text_content.data = "Hello"
+        text_content = TextPromptMessageContent(data="Hello")
+        chunk = llm_chunk("")
+        # Preserve the legacy mixed-list payload handled by _chunk_delta_text.
+        chunk.delta.message = AssistantPromptMessage.model_construct(content=[text_content, " world!"])
 
-        chunk = Mock()
-        chunk.delta.message.content = [text_content, " world!"]
-        chunk.prompt_messages = []
+        llm_chunk_event = QueueLLMChunkEvent(chunk=chunk)
 
-        llm_chunk_event = Mock(spec=QueueLLMChunkEvent)
-        llm_chunk_event.chunk = chunk
-
-        mock_queue_message = Mock()
-        mock_queue_message.event = llm_chunk_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(llm_chunk_event)
+        pipeline.queue_manager.messages = [message]
 
         mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
 
@@ -228,20 +265,17 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
             answer="Hello world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
         )
-        assert mock_task_state.llm_result.message.content == "Hello world!"
+        assert task_state.llm_result.message.content == "Hello world!"
 
-    def test_agent_message_event(self, pipeline, mock_message_cycle_manager, mock_task_state):
+    def test_agent_message_event(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling of agent message events."""
         # Setup
-        chunk = Mock()
-        chunk.delta.message.content = "Agent response"
+        chunk = llm_chunk("Agent response")
 
-        agent_message_event = Mock(spec=QueueAgentMessageEvent)
-        agent_message_event.chunk = chunk
+        agent_message_event = QueueAgentMessageEvent(chunk=chunk)
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = agent_message_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(agent_message_event)
+        pipeline.queue_manager.messages = [message]
 
         # Ensure method under assertion is a mock to track calls
         pipeline._agent_message_to_stream_response = Mock(return_value=Mock())
@@ -256,28 +290,25 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             answer="Agent response", message_id="test-message-id"
         )
 
-    def test_message_end_event(self, pipeline, mock_message_cycle_manager, mock_task_state, committed_sessions):
+    def test_message_end_event(self, pipeline, mock_message_cycle_manager, task_state, committed_sessions):
         """Test handling of message end events."""
         # Setup
-        llm_result = Mock(spec=RuntimeLLMResult)
-        llm_result.message = Mock()
-        llm_result.message.content = "Final response"
+        result = llm_result("Final response")
+        message_end_event = QueueMessageEndEvent(llm_result=result)
 
-        message_end_event = Mock(spec=QueueMessageEndEvent)
-        message_end_event.llm_result = llm_result
-
-        mock_queue_message = Mock()
-        mock_queue_message.event = message_end_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(message_end_event)
+        pipeline.queue_manager.messages = [message]
 
         pipeline._save_message = Mock()
-        pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
+        pipeline._message_end_to_stream_response = Mock(
+            return_value=MessageEndStreamResponse(task_id="test-task-id", id="test-message-id")
+        )
 
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
-        assert mock_task_state.llm_result == llm_result
+        assert task_state.llm_result == result
         session = pipeline._save_message.call_args.kwargs["session"]
         assert isinstance(session, Session)
         assert committed_sessions == [session]
@@ -286,15 +317,15 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     def test_error_event(self, pipeline, committed_sessions):
         """Test handling of error events."""
         # Setup
-        error_event = Mock(spec=QueueErrorEvent)
-        error_event.error = Exception("Test error")
+        error_event = QueueErrorEvent(error=Exception("Test error"))
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = error_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(error_event)
+        pipeline.queue_manager.messages = [message]
 
         pipeline.handle_error = Mock(return_value=Exception("Test error"))
-        pipeline.error_to_stream_response = Mock(return_value=Mock(spec=ErrorStreamResponse))
+        pipeline.error_to_stream_response = Mock(
+            return_value=ErrorStreamResponse(task_id="test-task-id", err=Exception("Test error"))
+        )
 
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
@@ -309,13 +340,12 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     def test_ping_event(self, pipeline):
         """Test handling of ping events."""
         # Setup
-        ping_event = Mock(spec=QueuePingEvent)
+        ping_event = QueuePingEvent()
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = ping_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(ping_event)
+        pipeline.queue_manager.messages = [message]
 
-        pipeline.ping_stream_response = Mock(return_value=Mock(spec=PingStreamResponse))
+        pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
@@ -327,14 +357,18 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     def test_file_event(self, pipeline, mock_message_cycle_manager):
         """Test handling of file events."""
         # Setup
-        file_event = Mock(spec=QueueMessageFileEvent)
-        file_event.message_file_id = "file-id"
+        file_event = QueueMessageFileEvent(message_file_id="file-id")
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = file_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(file_event)
+        pipeline.queue_manager.messages = [message]
 
-        file_response = Mock(spec=MessageFileStreamResponse)
+        file_response = MessageFileStreamResponse(
+            task_id="test-task-id",
+            id="file-id",
+            type="image",
+            belongs_to="assistant",
+            url="https://example.com/file.png",
+        )
         mock_message_cycle_manager.message_file_to_stream_response.return_value = file_response
 
         # Execute
@@ -348,35 +382,38 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
     def test_publisher_is_called_with_messages(self, pipeline):
         """Test that publisher publishes messages when provided."""
         # Setup
-        publisher = Mock(spec=AppGeneratorTTSPublisher)
+        publisher = _Publisher()
 
-        ping_event = Mock(spec=QueuePingEvent)
-        mock_queue_message = Mock()
-        mock_queue_message.event = ping_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        ping_event = QueuePingEvent()
+        message = queue_message(ping_event)
+        pipeline.queue_manager.messages = [message]
 
-        pipeline.ping_stream_response = Mock(return_value=Mock(spec=PingStreamResponse))
+        pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
         list(pipeline._process_stream_response(publisher=publisher, trace_manager=None))
 
         # Assert
-        publisher.publish.assert_called_once_with(mock_queue_message)
+        assert publisher.messages == [message]
 
     def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
         """Test that trace manager is passed to _save_message."""
         # Setup
-        trace_manager = Mock(spec=TraceQueueManager)
+        with (
+            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
+            patch.object(TraceQueueManager, "start_timer"),
+        ):
+            trace_manager = TraceQueueManager(app_id="test-app-id")
 
-        message_end_event = Mock(spec=QueueMessageEndEvent)
-        message_end_event.llm_result = None
+        message_end_event = QueueMessageEndEvent(llm_result=None)
 
-        mock_queue_message = Mock()
-        mock_queue_message.event = message_end_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
+        message = queue_message(message_end_event)
+        pipeline.queue_manager.messages = [message]
 
         pipeline._save_message = Mock()
-        pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
+        pipeline._message_end_to_stream_response = Mock(
+            return_value=MessageEndStreamResponse(task_id="test-task-id", id="test-message-id")
+        )
 
         list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
@@ -386,41 +423,35 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         assert committed_sessions == [session]
         pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
 
-    def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
+    def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling multiple events in sequence."""
         # Setup
-        chunk1 = Mock()
-        chunk1.delta.message.content = "Hello"
-        chunk1.prompt_messages = []
+        chunk1 = llm_chunk("Hello")
 
-        chunk2 = Mock()
-        chunk2.delta.message.content = " world!"
-        chunk2.prompt_messages = []
+        chunk2 = llm_chunk(" world!")
 
-        llm_chunk_event1 = Mock(spec=QueueLLMChunkEvent)
-        llm_chunk_event1.chunk = chunk1
+        llm_chunk_event1 = QueueLLMChunkEvent(chunk=chunk1)
 
-        ping_event = Mock(spec=QueuePingEvent)
+        ping_event = QueuePingEvent()
 
-        llm_chunk_event2 = Mock(spec=QueueLLMChunkEvent)
-        llm_chunk_event2.chunk = chunk2
+        llm_chunk_event2 = QueueLLMChunkEvent(chunk=chunk2)
 
         mock_queue_messages = [
-            Mock(event=llm_chunk_event1),
-            Mock(event=ping_event),
-            Mock(event=llm_chunk_event2),
+            queue_message(llm_chunk_event1),
+            queue_message(ping_event),
+            queue_message(llm_chunk_event2),
         ]
-        pipeline.queue_manager.listen.return_value = mock_queue_messages
+        pipeline.queue_manager.messages = mock_queue_messages
 
         mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
-        pipeline.ping_stream_response = Mock(return_value=Mock(spec=PingStreamResponse))
+        pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 3
-        assert mock_task_state.llm_result.message.content == "Hello world!"
+        assert task_state.llm_result.message.content == "Hello world!"
 
         # Verify calls to message_to_stream_response
         assert mock_message_cycle_manager.message_to_stream_response.call_count == 2

@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const Empty = ({ text, lightCard, className }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div className={cn('relative flex h-0 grow flex-wrap overflow-hidden p-2', className)}>

@@ -24,7 +24,7 @@ export const DEFAULT_OBJECT_VALUE = {
 }
 
 const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [isFocus, setIsFocus] = useState(false)
 
   const handleKeyChange = useCallback(

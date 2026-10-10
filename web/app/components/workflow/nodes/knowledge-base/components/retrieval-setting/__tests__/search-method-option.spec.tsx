@@ -107,7 +107,7 @@ describe('SearchMethodOption', () => {
     renderSearchMethodOption(props)
 
     expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(2)
   })
@@ -160,7 +160,9 @@ describe('SearchMethodOption', () => {
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
     expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
     expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
     ).not.toBeInTheDocument()
@@ -195,7 +197,9 @@ describe('SearchMethodOption', () => {
     renderSearchMethodOption(hybridProps)
 
     expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
     expect(
       screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),

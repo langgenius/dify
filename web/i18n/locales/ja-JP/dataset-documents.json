@@ -257,6 +257,7 @@
   "segment.searchResults_one": "検索結果",
   "segment.searchResults_other": "検索結果",
   "segment.searchResults_zero": "検索結果",
+  "segment.statusFilterLabel": "ステータスでセグメントを絞り込む",
   "segment.summary": "要約",
   "segment.summaryPlaceholder": "より良い検索のために簡潔な要約を記入してください…"
 }

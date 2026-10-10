@@ -20,7 +20,7 @@ import { useConfig } from './hooks/use-config'
 import { DataSourceClassification } from './types'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { nodesReadOnly } = useNodesReadOnly()
   const dataSourceList = useStore((s) => s.dataSourceList)
   const { provider_type, fileExtensions = [], datasource_parameters } = data

@@ -15,7 +15,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection, getAgentIconKey } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -54,8 +53,8 @@ function EditAgentFormSession({
   onCancel,
   onSubmit,
 }: EditAgentFormSessionProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
   const [initialValues] = useState(() => ({
     fields: {
       description: agent.description ?? '',
@@ -65,7 +64,6 @@ function EditAgentFormSession({
     icon: createAgentIconSelection(agent),
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [hasTextChanges, setHasTextChanges] = useState(false)
   const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(initialValues.icon)
   const hasChanges = hasTextChanges || hasIconChanges
@@ -84,10 +82,10 @@ function EditAgentFormSession({
     <>
       <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.editDialog.title'])}
+          {t(($) => $['roster.editDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          {t(($) => $['roster.editDialog.description'])}
+          {t(($) => $['roster.editDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
       </div>
       <Form<AgentFormValues>
@@ -101,8 +99,8 @@ function EditAgentFormSession({
           ref={nameInputRef}
           defaultValues={initialValues.fields}
           icon={agentIcon}
-          iconAriaLabel={t(($) => $['roster.createForm.changeIcon'])}
-          onIconClick={() => setIconPickerOpen(true)}
+          iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -119,22 +117,12 @@ function EditAgentFormSession({
           </Button>
         </div>
       </Form>
-      <AppIconPicker
-        open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
-        onOpenChange={setIconPickerOpen}
-        onSelect={setAgentIcon}
-      />
     </>
   )
 }
 
 export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 

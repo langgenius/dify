@@ -58,7 +58,7 @@ function DataSourceTypeSelector({
   onChange,
   onClearPreviews,
 }: DataSourceTypeSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const isWebEnabled =
     ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL

@@ -25,7 +25,7 @@ export const TagManagementModal = ({
   onClose,
   onTagsChange,
 }: TagManagementModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const { data: tagList = [] } = useQuery(

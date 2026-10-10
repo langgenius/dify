@@ -105,8 +105,8 @@ describe('Signup Set Password Page', () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
 
       expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
       expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
@@ -130,12 +130,12 @@ describe('Signup Set Password Page', () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       await user.type(passwordInput, 'ValidPass123!')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
 
-      const error = await screen.findByText('common.account.notEqual')
+      const error = await screen.findByText('accountSettings.account.notEqual')
       expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
       expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
       expect(confirmPasswordInput).toHaveFocus()
@@ -145,7 +145,7 @@ describe('Signup Set Password Page', () => {
       await user.type(passwordInput, 'DifferentPass123!')
 
       await waitFor(() => {
-        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+        expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
       })
       expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
       expect(mockRegister).not.toHaveBeenCalled()
@@ -157,8 +157,11 @@ describe('Signup Set Password Page', () => {
   describe('Registration success tracking', () => {
     const fillAndSubmit = async () => {
       const user = userEvent.setup()
-      await user.type(screen.getByLabelText('common.account.newPassword'), 'ValidPass123!')
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), 'ValidPass123!')
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), 'ValidPass123!')
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        'ValidPass123!',
+      )
       await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
     }
 

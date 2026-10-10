@@ -5,11 +5,11 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -96,7 +96,7 @@ export type IConfigVarProps = {
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -335,7 +335,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
           <div className="pt-2 pb-1 text-xs text-text-tertiary">
-            {t(($) => $.notSetVar, { ns: 'appDebug' })}
+            {t(($) => $.notSetVar, { ns: 'appDebug', input: '{{input}}' })}
           </div>
         </div>
       )}
@@ -404,14 +404,14 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
-                varName: promptVariables[removeIndex as number]?.name,
+                varName: promptVariables[removeIndex as number]?.name ?? '',
               })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -423,7 +423,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </Panel>

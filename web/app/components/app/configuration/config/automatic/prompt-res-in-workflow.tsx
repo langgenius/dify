@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const PromptResInWorkflow: FC<Props> = ({ value, nodeId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (_payload) => true,

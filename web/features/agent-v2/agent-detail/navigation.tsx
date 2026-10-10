@@ -1,6 +1,5 @@
 'use client'
 
-import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentDetailSectionKey } from './section'
 import {
   Breadcrumb,
@@ -78,8 +77,8 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 ]
 
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['navigation', 'agentRoster'])
 
   if (!expand) {
     return (
@@ -100,14 +99,14 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <Breadcrumb
-        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentV2' })}
+        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentRoster' })}
         className="flex-1"
       >
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={tCommon(($) => $['mainNav.home'])}
+              aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -134,7 +133,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
                 <button
                   type="button"
                   aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                 </button>
@@ -145,8 +144,8 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         <TooltipContent placement="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
-            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>
@@ -165,7 +164,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 }
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
@@ -179,8 +178,12 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
   const imageUrl =
-    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
-  const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
+    agent?.icon_type === 'image'
+      ? agent.icon_url
+      : agent?.icon_type === 'link'
+        ? agent.icon
+        : undefined
+  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -207,7 +210,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
                 size="large"
                 rounded
                 iconType={iconType}
-                icon={agent?.icon ?? undefined}
+                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
                 background={agent?.icon_background}
                 imageUrl={imageUrl}
               />
@@ -219,7 +222,10 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
               !expand && 'hidden',
             )}
           >
-            <div className="truncate system-md-semibold text-text-secondary">
+            <div
+              className="truncate system-md-semibold text-text-secondary"
+              title={agent?.name ?? t(($) => $['agentDetail.title'])}
+            >
               {agent?.name ?? t(($) => $['agentDetail.title'])}
             </div>
             {agent?.role?.trim() && (

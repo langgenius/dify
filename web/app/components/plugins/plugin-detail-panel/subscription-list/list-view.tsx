@@ -20,7 +20,7 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
 }) => {
   const titleId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
 
   const subscriptionCount = subscriptions?.length || 0

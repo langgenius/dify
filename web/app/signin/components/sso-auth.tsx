@@ -13,13 +13,30 @@ type SSOAuthProps = {
   protocol: SsoProtocol
 }
 
+// The request layer already toasts HTTP errors whose JSON body carries a message.
+const hasNotifiedRequestError = async (error: unknown) => {
+  if (!(error instanceof Response) || error.status === 401) return false
+  try {
+    const body: unknown = await error.clone().json()
+    if (!body || typeof body !== 'object') return false
+    return ('message' in body && !!body.message) || ('error' in body && !!body.error)
+  } catch {
+    return false
+  }
+}
+
 const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 
   const [isLoading, setIsLoading] = useState(false)
+
+  const handleSSOError = async (error: unknown) => {
+    if (await hasNotifiedRequestError(error)) return
+    toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))
+  }
 
   const handleSSOLogin = () => {
     setIsLoading(true)
@@ -28,6 +45,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -37,6 +55,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oidc-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -46,6 +65,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oauth2-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })

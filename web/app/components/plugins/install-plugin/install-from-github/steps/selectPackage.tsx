@@ -51,7 +51,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   onFailed,
   onBack,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
   const selectedVersionOption = versions.find((item) => item.value === selectedVersion) ?? null

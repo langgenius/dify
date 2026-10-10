@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import type { RetrievalTranslate } from './retrieval-section'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -68,8 +67,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       select: (response) => response.data,
     }),
   )
-  const { t } = useTranslation()
-  const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
+  const { t } = useTranslation(['datasetSettings', 'appDebug', 'common'])
   const docLink = useDocLink()
   const ref = useRef(null)
   const nameInputId = useId()
@@ -352,7 +350,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             isExternal
             rowClass={rowClass}
             labelClass={labelClass}
-            t={translateRetrieval}
+            t={t}
             topK={topK}
             scoreThreshold={scoreThreshold}
             scoreThresholdEnabled={scoreThresholdEnabled}
@@ -364,7 +362,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             isExternal={false}
             rowClass={rowClass}
             labelClass={labelClass}
-            t={translateRetrieval}
+            t={t}
             indexMethod={indexMethod}
             retrievalConfig={retrievalConfig}
             showMultiModalTip={showMultiModalTip}

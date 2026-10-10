@@ -11,7 +11,7 @@ import { BlockEnum } from '../types'
 import { getWorkflowEntryNode } from '../utils/workflow-entry'
 
 export const useDynamicTestRunOptions = (): TestRunOptions => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const nodes = useNodes()
   const buildInTools = useStore((s) => s.buildInTools)
   const customTools = useStore((s) => s.customTools)

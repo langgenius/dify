@@ -10,19 +10,21 @@ from extensions.ext_database import db
 
 
 class TestExternalDataTool:
-    def test_module_attribute(self):
+    def test_module_attribute(self) -> None:
         assert ExternalDataTool.module == ExtensionModule.EXTERNAL_DATA_TOOL
 
-    def test_init(self):
+    def test_init(self) -> None:
         # Create a concrete subclass to test init
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
+            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
                 return super().validate_config(tenant_id, config, session)
 
             @override
-            def query(self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None):
+            def query(
+                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+            ) -> str:
                 return super().query(inputs, session, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
@@ -31,12 +33,12 @@ class TestExternalDataTool:
         assert tool.variable == "var_1"
         assert tool.config == {"key": "value"}
 
-    def test_init_without_config(self):
+    def test_init_without_config(self) -> None:
         # Create a concrete subclass to test init
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
+            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
                 pass
 
             @override
@@ -51,29 +53,33 @@ class TestExternalDataTool:
         assert tool.variable == "var_1"
         assert tool.config is None
 
-    def test_validate_config_raises_not_implemented(self):
+    def test_validate_config_raises_not_implemented(self) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
+            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
                 return super().validate_config(tenant_id, config, session)
 
             @override
-            def query(self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None):
+            def query(
+                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+            ) -> str:
                 return ""
 
         with pytest.raises(NotImplementedError):
             ConcreteTool.validate_config("tenant_1", {}, db.session)
 
-    def test_query_raises_not_implemented(self):
+    def test_query_raises_not_implemented(self) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
+            def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session) -> None:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None):
+            def query(
+                self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None
+            ) -> str:
                 return super().query(inputs, session, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")

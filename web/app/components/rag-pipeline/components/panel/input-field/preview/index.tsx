@@ -11,7 +11,7 @@ import DataSource from './data-source'
 import ProcessDocuments from './process-documents'
 
 const PreviewPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const [datasource, setDatasource] = useState<Datasource>()
   const { toggleInputFieldPreviewPanel } = useInputFieldPanel()
 

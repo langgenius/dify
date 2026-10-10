@@ -16,7 +16,7 @@ export const ReadmeEntrance = ({
   className?: string
   showShortTip?: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const triggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
 

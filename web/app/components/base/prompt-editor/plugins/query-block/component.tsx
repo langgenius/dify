@@ -8,7 +8,7 @@ type QueryBlockComponentProps = {
 }
 
 const QueryBlockComponent: FC<QueryBlockComponentProps> = ({ nodeKey }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_QUERY_BLOCK_COMMAND)
 
   return (

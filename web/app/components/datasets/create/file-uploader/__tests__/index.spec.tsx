@@ -1,5 +1,5 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
@@ -64,7 +64,7 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 }))
 
 // Mock SimplePieChart
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     const Component = ({ percentage }: { percentage: number }) => (
       <div data-testid="pie-chart">{percentage}%</div>
@@ -180,25 +180,29 @@ describe('FileUploader', () => {
       expect(onPreview).toHaveBeenCalledWith(fileItem.file)
     })
 
-    it('should handle file remove click', () => {
+    it('keeps other uploaded files when removing one after mounting with an existing list', async () => {
+      const user = userEvent.setup()
       const onFileListUpdate = vi.fn()
-      const fileItem = createMockFileItem()
+      const firstFile = createMockFileItem({
+        fileID: 'first',
+        file: createMockFile({ name: 'first.pdf', id: 'first-id' }),
+      })
+      const secondFile = createMockFileItem({
+        fileID: 'second',
+        file: createMockFile({ name: 'second.pdf', id: 'second-id' }),
+      })
 
-      const { container } = render(
+      render(
         <FileUploader
           {...defaultProps}
-          fileList={[fileItem]}
+          fileList={[firstFile, secondFile]}
           onFileListUpdate={onFileListUpdate}
         />,
       )
 
-      // Find the delete button (the span with cursor-pointer containing the icon)
-      const deleteButtons = container.querySelectorAll('[class*="cursor-pointer"]')
-      // Get the last one which should be the delete button (not the browse label)
-      const deleteButton = deleteButtons[deleteButtons.length - 1]
-      if (deleteButton) fireEvent.click(deleteButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove first.pdf' }))
 
-      expect(onFileListUpdate).toHaveBeenCalled()
+      expect(onFileListUpdate).toHaveBeenCalledWith([secondFile])
     })
 
     it('should handle browse button click', () => {

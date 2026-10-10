@@ -2,7 +2,7 @@
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from werkzeug.exceptions import (
     UnprocessableEntity,
 )
 
+from constants.oauth_bearer import TokenType
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
@@ -49,8 +50,9 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from libs.oauth_bearer import AuthContext, TokenType
+from libs.oauth_bearer import AuthContext
 from models.account import Account, AccountStatus
+from services.oauth_device_contracts import ExpiredTokenError
 
 
 @pytest.fixture
@@ -261,12 +263,9 @@ class TestWireContract:
         # not intercepted → Flask's default HTML 404, not the canonical JSON body
         assert "application/json" not in (resp.content_type or "")
 
-    @patch("controllers.openapi.oauth_device.DeviceFlowRedis")
-    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_redis_cls, openapi_app):
-        store = MagicMock()
-        mock_redis_cls.return_value = store
-        store.record_poll.return_value = None  # not SlowDownDecision.SLOW_DOWN
-        store.load_by_device_code.return_value = None  # unknown code → expired_token
+    @patch("controllers.openapi.oauth_device.application_services")
+    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_application_services, openapi_app):
+        mock_application_services.return_value.oauth_device.poll.side_effect = ExpiredTokenError
 
         client = openapi_app.test_client()
 

@@ -38,7 +38,7 @@ const Prompt: FC<IPromptProps> = ({
   noResize,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   const {
     isAdvancedMode,

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'cli/**'
+      - 'skills/**'
       - 'packages/contracts/generated/api/openapi/**'
   workflow_dispatch:
 

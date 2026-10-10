@@ -15,7 +15,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')

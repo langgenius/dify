@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -26,7 +26,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   onClose,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowHistory'])
 
   return (
     <AlertDialog
@@ -40,21 +40,21 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {`${t(($) => $['operation.delete'], { ns: 'common' })} ${getWorkflowVersionName(
               versionInfo,
-              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t(($) => $['versionHistory.deletionTip'], { ns: 'workflow' })}
+            {t(($) => $['versionHistory.deletionTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onDelete.bind(null, versionInfo.id)}>
             {t(($) => $['operation.delete'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

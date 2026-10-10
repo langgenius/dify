@@ -35,7 +35,7 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
   isEmbedding,
   isCompleted,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div
@@ -60,7 +60,7 @@ const ActionButtons: FC<{
   documentsHref: string
   onNavigateToDocuments: () => void
 }> = ({ apiReferenceUrl, documentsHref, onNavigateToDocuments }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2 py-2">

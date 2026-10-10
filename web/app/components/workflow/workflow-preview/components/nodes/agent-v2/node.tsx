@@ -7,7 +7,7 @@ import { NodeSourceHandle } from '../../node-handle'
 
 const Node = (props: NodeProps) => {
   const { data } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   if (!hasAgentV2OutputRoutes(data)) return null
 
@@ -18,7 +18,10 @@ const Node = (props: NodeProps) => {
           <InfoPanel
             title={
               route.label?.trim() ||
-              t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index: index + 1 })
+              t(($) => $['nodes.agent.outputRoutes.route'], {
+                ns: 'workflow',
+                index: index + 1,
+              })
             }
             content=""
           />

@@ -2,20 +2,19 @@ import type { ReactNode } from 'react'
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { lazy, startTransition } from 'react'
+import { lazy, startTransition, Suspense, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
 import { AppToastHost } from '@/app/notifications/host'
 import { changeLanguage } from '../client'
-import { getDeclaredRouteNamespaces, getRouteNamespaces } from '../route-namespaces'
+import { useLocale } from '../lib.client'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
-vi.mock('@/next/navigation', () => ({ usePathname: () => mocks.pathname }))
 vi.mock('@/next/headers', () => ({
-  headers: async () => new Headers({ 'x-dify-pathname': mocks.pathname }),
+  headers: async () => new Headers(),
   cookies: async () => ({ get: () => ({ value: 'zh-Hans' }) }),
 }))
 vi.mock('../load-resource', () => ({ loadI18nResource: mocks.loadResource }))
@@ -23,13 +22,12 @@ vi.mock('../load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 const makeResources = () => ({
   'en-US': {
     common: { 'operation.save': 'Save', 'operation.cancel': 'Cancel' },
-    login: { signBtn: 'Sign in' },
   },
-  'zh-Hans': { common: { 'operation.save': '保存' }, login: { signBtn: '登录' } },
+  'zh-Hans': { common: { 'operation.save': '保存' } },
 })
 let resources = makeResources()
 function Label() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <span>
       {t(($) => $['operation.save'], { ns: 'common' })} /{' '}
@@ -38,16 +36,36 @@ function Label() {
   )
 }
 
-describe('route translation loading', () => {
+function Destination() {
+  const { t } = useTranslation(['workflow'])
+  return <span>{t(($) => $['blocks.agent'], { ns: 'workflow' })}</span>
+}
+
+describe('on-demand translation loading', () => {
   beforeEach(() => {
     resources = makeResources()
     mocks.pathname = '/signin'
     mocks.loadResource.mockReset()
     mocks.loadResource.mockImplementation(
       async (locale: keyof typeof resources, namespace: string) => ({
-        default: resources[locale]?.[namespace as 'common' | 'login'] ?? {},
+        default: resources[locale]?.[namespace as 'common'] ?? {},
       }),
     )
+  })
+
+  it('reads and updates the locale without loading any translation namespace', async () => {
+    function LocaleLabel() {
+      return <span>{useLocale()}</span>
+    }
+    render(
+      <I18nClientProvider locale="en-US" resource={{}}>
+        <LocaleLabel />
+      </I18nClientProvider>,
+    )
+    expect(await screen.findByText('en-US')).toBeVisible()
+    await act(() => changeLanguage('zh-Hans'))
+    expect(await screen.findByText('zh-Hans')).toBeVisible()
+    expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
   it('renders localized text and fallback without requesting missing unrelated namespaces', async () => {
@@ -60,17 +78,24 @@ describe('route translation loading', () => {
     expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
-  it('includes localized content and English fallback in an unmigrated route server response', async () => {
-    mocks.pathname = '/agents/example/configure'
+  it('starts the root provider without preloading and loads common only when rendered', async () => {
     const page = await I18nServerProvider({
-      children: <Label />,
+      children: (
+        <Suspense fallback={<span>Loading</span>}>
+          <Label />
+        </Suspense>
+      ),
     })
-    const html = renderToString(page)
-    expect(html).toContain('保存')
-    expect(html).toContain('Cancel')
+    expect(mocks.loadResource).not.toHaveBeenCalled()
+    render(page)
+    expect(await screen.findByText('保存 / Cancel')).toBeVisible()
+    expect(mocks.loadResource.mock.calls.map(([lng, ns]) => `${lng}/${ns}`).sort()).toEqual([
+      'en-US/common',
+      'zh-Hans/common',
+    ])
   })
 
-  it('loads only active namespaces when switching language and retains that language on rerender', async () => {
+  it('switches language for requested namespaces and retains it on rerender', async () => {
     const view = render(
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
         <Label />
@@ -79,7 +104,7 @@ describe('route translation loading', () => {
     await waitFor(() => expect(screen.getByText('Save / Cancel')).toBeVisible())
     await act(() => changeLanguage('zh-Hans'))
     expect(await screen.findByText('保存 / Cancel')).toBeVisible()
-    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'login'])
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common'])
     view.rerender(
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
         <Label />
@@ -88,38 +113,71 @@ describe('route translation loading', () => {
     expect(screen.getByText('保存 / Cancel')).toBeVisible()
   })
 
-  it('loads unmigrated route resources on navigation, then scopes the next language change back to signin', async () => {
-    const view = render(
+  it('loads destination namespaces on navigation without requesting unrelated features', async () => {
+    mocks.loadResource.mockImplementation(async (locale, namespace) => ({
+      default:
+        namespace === 'workflow'
+          ? { 'blocks.agent': locale === 'en-US' ? 'Agent' : '代理' }
+          : (resources[locale as keyof typeof resources]?.common ?? {}),
+    }))
+    const content = (destination = false) => (
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <Label />
-      </I18nClientProvider>,
+        {destination ? <Destination /> : <Label />}
+      </I18nClientProvider>
     )
-    await waitFor(() => expect(screen.getByText('Save / Cancel')).toBeVisible())
-    mocks.pathname = '/apps'
-    view.rerender(
-      <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <Label />
-      </I18nClientProvider>,
-    )
-    await waitFor(() => expect(screen.getByText('Save / Cancel')).toBeVisible())
-    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns)).toContain('workflow')
-    mocks.pathname = '/signin'
-    view.rerender(
-      <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <Label />
-      </I18nClientProvider>,
-    )
+    const view = render(content())
+    await screen.findByText('Save / Cancel')
+    startTransition(() => view.rerender(content(true)))
+    expect(await screen.findByText('Agent')).toBeVisible()
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns)).toEqual(['workflow'])
+    startTransition(() => view.rerender(content()))
+    await screen.findByText('Save / Cancel')
     mocks.loadResource.mockClear()
     await act(() => changeLanguage('zh-Hans'))
     expect(await screen.findByText('保存 / Cancel')).toBeVisible()
-    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'login'])
+    // i18next retains requested namespaces for subsequent language changes.
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'workflow'])
+  })
+
+  it('loads an optional feature only when opened and keeps the shell visible while loading', async () => {
+    let finishLoading!: () => void
+    const pending = new Promise<void>((resolve) => {
+      finishLoading = resolve
+    })
+    mocks.loadResource.mockImplementation(async () => {
+      await pending
+      return { default: { 'blocks.agent': 'Agent' } }
+    })
+    function Page() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <Label />
+          <button onClick={() => setOpen(true)}>Open editor</button>
+          <Suspense fallback={<span>Loading editor</span>}>{open && <Destination />}</Suspense>
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    render(
+      <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
+        <Page />
+      </I18nClientProvider>,
+    )
+    expect(mocks.loadResource).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Open editor' }))
+    expect(screen.getByText('Save / Cancel')).toBeVisible()
+    expect(screen.getByText('Loading editor')).toBeVisible()
+    expect(screen.queryByText('blocks.agent')).not.toBeInTheDocument()
+    await act(async () => {
+      finishLoading()
+      await pending
+    })
+    expect(await screen.findByText('Agent')).toBeVisible()
+    expect(mocks.loadResource).toHaveBeenCalledExactlyOnceWith('en-US', 'workflow')
   })
 
   it('retains committed content and shared state until destination translations are ready', async () => {
-    function Destination() {
-      const { t } = useTranslation('common')
-      return <span>{t(($) => $['blocks.agent'], { ns: 'workflow' })}</span>
-    }
     const user = userEvent.setup()
     const manager = createToastManager()
     const toast = createToast(manager)
@@ -165,21 +223,6 @@ describe('route translation loading', () => {
     expect(await screen.findByText('Still relevant after navigation')).toBeVisible()
   })
 
-  it('preserves route state when navigating within the same namespace scope', async () => {
-    mocks.pathname = '/apps'
-    const user = userEvent.setup()
-    const content = () => (
-      <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <input aria-label="Draft" />
-      </I18nClientProvider>
-    )
-    const view = render(content())
-    await user.type(await screen.findByRole('textbox', { name: 'Draft' }), 'Keep this draft')
-    mocks.pathname = '/agents'
-    startTransition(() => view.rerender(content()))
-    expect(screen.getByRole('textbox', { name: 'Draft' })).toHaveValue('Keep this draft')
-  })
-
   it('keeps server-rendered navigation visible while a client module hydrates', async () => {
     let finishLoading!: () => void
     const pending = new Promise<{ default: () => ReactNode }>((resolve) => {
@@ -205,17 +248,5 @@ describe('route translation loading', () => {
     })
     expect(screen.getByRole('navigation', { name: 'App navigation' })).toBeVisible()
     expect(screen.getByRole('main')).toHaveTextContent('Page content')
-  })
-
-  it('matches signin segments with a base path and keeps unknown routes complete', () => {
-    expect(getRouteNamespaces('/console/signin/check-code', '/console')).toEqual([
-      'common',
-      'login',
-    ])
-    expect(getDeclaredRouteNamespaces('/signin/check-code')).toEqual(['common', 'login'])
-    expect(getDeclaredRouteNamespaces('/signin-other')).toBeUndefined()
-    expect(getDeclaredRouteNamespaces('/datasets')).toBeUndefined()
-    expect(getRouteNamespaces('/signin-other')).toContain('workflow')
-    expect(getRouteNamespaces(null)).toContain('workflow')
   })
 })

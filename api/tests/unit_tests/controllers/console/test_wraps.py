@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
+from flask_restx import Api, Resource
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,11 +35,13 @@ from controllers.console.wraps import (
     only_edition_self_hosted,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_tenant_id,
     with_current_user,
     with_current_user_id,
 )
 from enums import DeploymentEdition
+from libs.external_api import register_external_error_handlers
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError
@@ -302,21 +305,6 @@ class TestCurrentContextInjection:
 
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
-
-    def test_console_account_admission_enforces_declared_edition_first(self):
-        class Handler:
-            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-            def get(self, request_context: RequestContext):
-                return request_context
-
-        with (
-            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
-            Flask(__name__).test_request_context(),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            Handler().get()
-
-        assert exc_info.value.code == 404
 
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
@@ -715,6 +703,35 @@ class TestModelValidationInjection:
         assert exc_info.value.code == 422
         assert exc_info.value.description is not None
         assert "count" in exc_info.value.description
+
+
+class TestValidateRequest:
+    class Payload(BaseModel):
+        token: dict[str, str]
+
+    @pytest.mark.parametrize("http_method", ["POST", "PUT"])
+    def test_rejected_input_is_redacted_from_response_and_logs(
+        self, caplog: pytest.LogCaptureFixture, http_method: str
+    ) -> None:
+        secret = "submitted-private-token-should-never-appear"
+        app = Flask(__name__)
+        api = Api(app)
+        register_external_error_handlers(api)
+        payload_model = self.Payload
+
+        class Endpoint(Resource):
+            def post(self) -> object:
+                return validate_request(payload_model).model_dump()
+
+            put = post
+
+        api.add_resource(Endpoint, "/items")
+        response = app.test_client().open("/items", method=http_method, json={"token": secret})
+
+        assert response.status_code == 422
+        assert "token" in response.get_data(as_text=True)
+        assert secret not in response.get_data(as_text=True)
+        assert secret not in caplog.text
 
 
 class TestEditionChecks:

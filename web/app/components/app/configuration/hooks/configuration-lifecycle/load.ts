@@ -1,30 +1,14 @@
 import type { DataSet } from '@/models/datasets'
-import type { AnnotationReplyConfig } from '@/models/debug'
-import type { AppModeEnum, ModelConfig as BackendModelConfig } from '@/types/app'
+import { zAppLegacyDatasetToolResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { PromptMode } from '@/models/debug'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { consoleClient } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
-import { correctModelProvider } from '@/utils'
+import { AppModeEnum } from '@/types/app'
 import { withCollectionIconBasePath } from '../../utils'
 import { buildConfigurationDatasetConfigs } from './dataset'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
-import { buildPublishedConfig } from './published-config'
-
-function normalizeAnnotationConfig(annotationReply?: BackendModelConfig['annotation_reply']) {
-  if (!annotationReply) return undefined
-  if (!annotationReply.enabled) return annotationReply as AnnotationReplyConfig
-
-  return {
-    ...annotationReply,
-    embedding_model: {
-      ...annotationReply.embedding_model,
-      embedding_provider_name: correctModelProvider(
-        annotationReply.embedding_model.embedding_provider_name,
-      ),
-    },
-  } as AnnotationReplyConfig
-}
+import { buildAnnotationDraft, buildPublishedConfig } from './published-config'
 
 export async function loadConfigurationState({
   appId,
@@ -38,24 +22,29 @@ export async function loadConfigurationState({
   currentRerankProvider?: string
 }) {
   const collectionList = withCollectionIconBasePath(await fetchCollectionList(), basePath)
-  const response = await fetchAppDetailDirect({ url: '/apps', id: appId })
-  const backendModelConfig = response.model_config as BackendModelConfig
+  const response = await consoleClient.apps.byAppId.get({ params: { app_id: appId } })
+  const mode = response.mode
+  if (
+    mode !== AppModeEnum.CHAT &&
+    mode !== AppModeEnum.AGENT_CHAT &&
+    mode !== AppModeEnum.COMPLETION
+  )
+    throw new Error(`App mode ${mode} does not use model configuration`)
+  const backendModelConfig = response.model_config
+  if (!backendModelConfig) throw new Error(`App ${appId} has no model configuration`)
   const nextPromptMode =
     backendModelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
   let nextDataSets: DataSet[] = []
-  const agentModeTools = (backendModelConfig.agent_mode?.tools ?? []) as Array<{
-    dataset?: { enabled: boolean; id: string }
-  }>
+  const agentDatasets = (backendModelConfig.agent_mode.tools ?? []).flatMap((tool) => {
+    const result = zAppLegacyDatasetToolResponse.safeParse(tool)
+    return result.success ? [result.data.dataset] : []
+  })
+  const configuredDatasets = agentDatasets.some((dataset) => dataset.enabled)
+    ? agentDatasets
+    : (backendModelConfig.dataset_configs.datasets?.datasets ?? []).map((item) => item.dataset)
+  const datasetIds = configuredDatasets.flatMap(({ id }) => (id ? [id] : []))
 
-  if (agentModeTools.find((tool) => tool.dataset?.enabled))
-    nextDataSets = agentModeTools as unknown as DataSet[]
-  else if (backendModelConfig.dataset_configs.datasets?.datasets?.length)
-    nextDataSets = backendModelConfig.dataset_configs.datasets.datasets as unknown as DataSet[]
-
-  if (nextDataSets.length) {
-    const datasetIds = (nextDataSets as Array<DataSet & { dataset?: { id: string } }>)
-      .map((item) => item.dataset?.id || item.id)
-      .filter((id): id is string => Boolean(id))
+  if (datasetIds.length) {
     const { data } = await fetchDatasets({
       url: '/datasets',
       params: {
@@ -73,8 +62,17 @@ export async function loadConfigurationState({
     nextDataSets,
   })
 
+  const publishedConfig = buildPublishedConfig({
+    backendModelConfig,
+    collectionList,
+    datasetConfigs,
+    deletedTools: response.deleted_tools,
+    mode,
+    nextDataSets,
+  })
+
   return {
-    annotationConfig: normalizeAnnotationConfig(backendModelConfig.annotation_reply),
+    annotationConfig: buildAnnotationDraft(backendModelConfig.annotation_reply),
     backendModelConfig,
     canReturnToSimpleMode: nextPromptMode !== PromptMode.advanced,
     collectionList,
@@ -82,19 +80,12 @@ export async function loadConfigurationState({
       backendModelConfig.completion_prompt_config,
     ),
     datasetConfigs,
-    externalDataToolsConfig: backendModelConfig.external_data_tools ?? [],
-    mode: response.mode as AppModeEnum,
+    externalDataToolsConfig: publishedConfig.externalDataToolsConfig,
+    mode,
     moreLikeThisConfig: backendModelConfig.more_like_this || { enabled: false },
     nextDataSets,
     promptMode: nextPromptMode,
-    publishedConfig: buildPublishedConfig({
-      backendModelConfig,
-      collectionList,
-      datasetConfigs,
-      deletedTools: response.deleted_tools,
-      mode: response.mode as AppModeEnum,
-      nextDataSets,
-    }),
+    publishedConfig,
     response,
     speechToTextConfig: backendModelConfig.speech_to_text || { enabled: false },
     suggestedQuestions: backendModelConfig.suggested_questions || [],

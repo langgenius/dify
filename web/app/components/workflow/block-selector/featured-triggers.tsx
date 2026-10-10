@@ -1,4 +1,5 @@
 'use client'
+
 import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
@@ -56,7 +57,7 @@ const FeaturedTriggers = ({
   isLoading = false,
   onInstallSuccess,
 }: FeaturedTriggersProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() =>
     createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
@@ -129,7 +130,7 @@ const FeaturedTriggers = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="group/collapsible ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-panel-open:text-text-primary">
+      <CollapsibleTrigger className="group/collapsible ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
@@ -240,7 +241,7 @@ type FeaturedTriggerUninstalledItemProps = {
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedTriggerUninstalledItem({

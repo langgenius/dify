@@ -1,4 +1,4 @@
-import type { SelectorParam } from 'i18next'
+import type { SelectorParam, TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { ChatVarType } from '../type'
 import type { ConversationVariable } from '@/app/components/workflow/types'
@@ -32,10 +32,7 @@ export type ToastPayload = {
 
 export const MAX_DESCRIPTION_LENGTH = 255
 
-export type ChatVariableTranslator = <Namespace extends 'workflow' | 'appDebug'>(
-  selector: SelectorParam<Namespace>,
-  options: { ns: Namespace } & Record<string, unknown>,
-) => string
+export type ChatVariableTranslator = TFunction<['appDebug', 'workflow']>
 
 type VariableNameErrorKey = Exclude<ReturnType<typeof checkKeys>['errorMessageKey'], ''>
 

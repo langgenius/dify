@@ -27,15 +27,7 @@ NAMESPACES = (console_ns, openapi_ns)
 
 HTTP_METHODS = ("delete", "get", "head", "options", "patch", "post", "put")
 
-# Known violations tracked separately: DatasetDocumentSegmentBatchImportApi binds one class
-# to both the dataset-scoped import route and the job-scoped status route, so every method
-# on it is reachable at a path carrying only a job id. Its permission points are genuinely
-# per-dataset, so it needs the route split rather than a Workspace() locator. Remove these
-# entries with that fix.
-KNOWN_VIOLATIONS = {
-    ("DatasetDocumentSegmentBatchImportApi", "post"),
-    ("DatasetDocumentSegmentBatchImportApi", "get"),
-}
+KNOWN_VIOLATIONS: set[tuple[str, str]] = set()
 
 # The generated access-permission endpoints, spelled out here so this guard fails loudly if
 # the factory stops registering them (or renames a URL) rather than silently checking less.

@@ -5,6 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import DocumentList from '../list'
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'dataset.newKnowledge.documentsSelected': '{{count}} documents selected',
+  })
+})
+
 // Mock hooks used by DocumentList
 const mockClearSelection = vi.fn()
 const mockHandleAction = vi.fn(() => vi.fn())
@@ -246,6 +253,19 @@ describe('DocumentList', () => {
 
   // Verify batch action bar appears when items selected
   describe('Batch Actions', () => {
+    it('announces selection totals in the same status region, including clearing selection', () => {
+      const { rerender } = render(<DocumentList {...defaultProps} />)
+      const status = screen.getByRole('status')
+      expect(status).toHaveAttribute('aria-atomic', 'true')
+      expect(status).toHaveTextContent('0 documents selected')
+      rerender(<DocumentList {...defaultProps} selectedIds={['doc-1', 'doc-2']} />)
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('2 documents selected')
+      rerender(<DocumentList {...defaultProps} selectedIds={[]} />)
+      expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('0 documents selected')
+    })
+
     it('should show batch action bar when selectedIds is non-empty', () => {
       render(<DocumentList {...defaultProps} selectedIds={['doc-1']} />)
 

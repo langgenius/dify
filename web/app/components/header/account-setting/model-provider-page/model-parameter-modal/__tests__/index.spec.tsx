@@ -211,9 +211,11 @@ describe('ModelParameterModal', () => {
     const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'common.modelProvider.modelSettings' }))
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
+    )
     expect(
-      screen.getByRole('dialog', { name: 'common.modelProvider.modelSettings' }),
+      screen.getByRole('dialog', { name: 'modelProvider.modelProvider.modelSettings' }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('param-temperature')).toBeInTheDocument()

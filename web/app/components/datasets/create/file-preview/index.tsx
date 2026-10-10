@@ -16,7 +16,7 @@ type IProps = {
 }
 
 const FilePreview = ({ file, hidePreview }: IProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const headingId = useId()
   const fileID = file?.id
   const { data, isPending, isError } = useQuery(

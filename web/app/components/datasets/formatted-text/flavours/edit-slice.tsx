@@ -31,7 +31,7 @@ type EditSliceProps = SliceProps<{
 }>
 
 export const EditSlice: FC<EditSliceProps> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     label,
     className,

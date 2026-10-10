@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flask_restx import Resource
 
+from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._files import end_read_transaction, upload
@@ -18,7 +19,6 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from fields.file_fields import FileResponse
-from libs.oauth_bearer import Scope
 
 
 @openapi_ns.route("/apps/<string:app_id>/files")
@@ -35,7 +35,7 @@ class AppFileUploadApi(Resource):
         }
     )
     @endpoint(
-        op="console_app.file.upload",
+        op="upload.console_app.file",
         kind=Kind.OBJECT,
         summary="Upload a file and get a file id for later runs",
         examples=(

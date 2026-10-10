@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
@@ -15,7 +16,7 @@ from pydantic import (
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
@@ -34,12 +35,8 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from fields.dataset_fields import (
-    DatasetDetailPrefetch,
-    build_dataset_detail_prefetch,
-    dataset_detail_response_source,
-)
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
@@ -49,9 +46,11 @@ from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
-from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.knowledge.entities.datasets import DatasetDetailRecord
+from services.knowledge.entities.knowledge_entities import (
     ExternalRetrievalModel,
     KnowledgeProvider,
     RetrievalModel,
@@ -102,12 +101,8 @@ _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
-def _dump_service_dataset_detail(
-    dataset: Any, *, session: Session, prefetch: DatasetDetailPrefetch | None = None
-) -> dict[str, Any]:
-    return DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session, prefetch=prefetch), from_attributes=True
-    ).model_dump(
+def _dump_service_dataset_detail(detail: DatasetDetailRecord) -> dict[str, Any]:
+    return DatasetDetailResponse.model_validate(detail).model_dump(
         mode="json",
         exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
     )
@@ -417,20 +412,20 @@ class DatasetListApi(DatasetApiResource):
         description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
         tags=["Knowledge Bases"],
         responses={
-            200: "List of knowledge bases.",
+            HTTPStatus.OK: "List of knowledge bases.",
         },
     )
     @service_api_ns.doc("list_datasets")
     @service_api_ns.doc(description="List all datasets")
     @service_api_ns.doc(
         responses={
-            200: "Datasets retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Datasets retrieved successfully",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.doc(params=query_params_from_model(DatasetListQuery))
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
@@ -453,6 +448,7 @@ class DatasetListApi(DatasetApiResource):
             query.keyword,
             query.tag_ids,
             query.include_all,
+            tags=application_services().tags,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -467,8 +463,7 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        prefetch = build_dataset_detail_prefetch(datasets, session=session)
-        data = [_dump_service_dataset_detail(dataset, session=session, prefetch=prefetch) for dataset in datasets]
+        data = [_dump_service_dataset_detail(detail) for detail in load_dataset_details(datasets, session=session)]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -486,7 +481,7 @@ class DatasetListApi(DatasetApiResource):
             "total": total,
             "page": effective_page,
         }
-        return _dump_service_dataset_list(response), 200
+        return _dump_service_dataset_list(response), HTTPStatus.OK
 
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
@@ -568,7 +563,7 @@ class DatasetListApi(DatasetApiResource):
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
 
-        return _dump_service_dataset_detail(dataset, session=session), 200
+        return _dump_service_dataset_detail(load_dataset_detail(dataset, session=session)), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>")
@@ -612,9 +607,9 @@ class DatasetApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = _dump_service_dataset_detail(dataset, session=session)
+        data = _dump_service_dataset_detail(load_dataset_detail(dataset, session=session))
         # check embedding setting
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -725,13 +720,12 @@ class DatasetApi(DatasetApiResource):
                 payload.partial_member_list,
                 session=session,
             )
-
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, session=session)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = _dump_service_dataset_detail(dataset, session=session)
+        result_data = _dump_service_dataset_detail(load_dataset_detail(dataset, session=session))
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
@@ -870,7 +864,7 @@ class DocumentStatusApi(DatasetApiResource):
         # Check user's permission
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         # Check dataset model setting

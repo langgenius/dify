@@ -1,4 +1,4 @@
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
@@ -13,10 +13,7 @@ type HeaderMetaProps = {
   t: WorkflowTranslator
 }
 
-export type WorkflowTranslator = (
-  selector: SelectorParam<'workflow'>,
-  options: { ns: 'workflow' } & Record<string, unknown>,
-) => string
+type WorkflowTranslator = TFunction<['workflow']>
 
 export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
   return (

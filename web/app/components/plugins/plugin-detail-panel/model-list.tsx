@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const ModelList = ({ detail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data: res } = useModelProviderModelList(
     `${detail.plugin_id}/${detail.declaration.model.provider}`,
   )

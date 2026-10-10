@@ -21,7 +21,7 @@ const CSV_TEMPLATE_EN = [['segment content'], ['content1'], ['content2']]
 const CSV_TEMPLATE_CN = [['分段内容'], ['内容 1'], ['内容 2']]
 
 const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments', 'share'])
   const locale = useLocale()
   const { CSVDownloader, Type } = useCSVDownloader()
 

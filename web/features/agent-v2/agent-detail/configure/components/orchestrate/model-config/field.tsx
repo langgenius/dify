@@ -3,12 +3,13 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { consoleQuery } from '@/service/console'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { isAgentCompatibleModel, isAgentSuggestedModel } from '../../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -18,7 +19,7 @@ type AgentModelFieldProps = {
 }
 
 export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const readOnly = useAgentOrchestrateReadOnly()
   const modelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
@@ -40,12 +41,22 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
     (providerUnavailable && providerQuery.isError)
 
   return (
-    <Field name="model" className="gap-0 pb-4">
-      <FieldLabel className="system-sm-semibold-uppercase! text-text-secondary">
+    <Fieldset className="grid gap-1 py-3">
+      <FieldsetLegend className="mb-0 w-fit py-1 system-sm-semibold-uppercase! text-text-secondary">
         {t(($) => $['agentDetail.configure.model.label'])}
-      </FieldLabel>
+      </FieldsetLegend>
       {readOnly ? (
-        <div className="flex h-8 w-full min-w-0 items-center rounded-lg bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
+        <div className="flex h-8 w-full min-w-0 items-center gap-1 rounded-lg bg-components-input-bg-disabled px-1 system-sm-regular text-components-input-text-filled">
+          {currentModel?.plugin_id && (
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-5 shrink-0 rounded-md"
+              height={20}
+              src={getIconFromMarketPlace(currentModel.plugin_id)}
+              width={20}
+            />
+          )}
           <span className="truncate">{currentModel?.model}</span>
         </div>
       ) : (
@@ -93,6 +104,6 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           </Button>
         </div>
       )}
-    </Field>
+    </Fieldset>
   )
 }

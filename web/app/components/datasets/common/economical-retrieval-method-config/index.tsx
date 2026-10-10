@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({ disabled = false, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetSettings'])
 
   return (
     <RadioGroup<RETRIEVE_METHOD>

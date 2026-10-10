@@ -13,7 +13,7 @@ import { EnvironmentVariablesSection } from './environment-variables-section'
 import { getDeploymentErrorMessage } from './utils/deployment-error'
 
 function ConfigurationError({ messages }: { messages: string[] }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="alert" className="flex gap-2 text-text-destructive">
@@ -45,8 +45,8 @@ export function DeploymentConfigurationContent({
   request: DeploymentDialogRequest
   version: DeploymentVersion
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const horizontalPaddingClassName = compact ? 'px-4' : 'px-6'
   const {
     deploymentOptions,

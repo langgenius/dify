@@ -73,6 +73,9 @@
   "studio.noCredentialsYetDescription": "Dodaj poświadczenia w Integracjach lub ustawieniach węzła",
   "studio.precheck.description": "Zawiera ona typy węzłów, które nie są jeszcze obsługiwane:",
   "studio.precheck.from": "Z",
+  "studio.precheck.nodeCount_few": "{{count}} węzły",
+  "studio.precheck.nodeCount_many": "{{count}} węzłów",
+  "studio.precheck.nodeCount_one": "{{count}} węzeł",
   "studio.precheck.nodeCount_other": "{{count}} węzłów",
   "studio.precheck.supportMessage": "Obsługa tych typów węzłów pojawi się w przyszłej wersji.",
   "studio.precheck.title": "Nie można wdrożyć tej wersji w tym środowisku",
@@ -84,6 +87,8 @@
   "studio.undeployConfirmTitle": "Wycofaj wdrożenie {{versionName}} ze środowiska {{envName}}",
   "studio.updatedAtBy": "Zaktualizowano {{time}} przez {{name}}",
   "studio.versionValue": "Wartość wersji",
+  "studio.versionsBehind_few": "{{count}} wersje wstecz",
+  "studio.versionsBehind_many": "{{count}} wersji wstecz",
   "studio.versionsBehind_one": "{{count}} wersja wstecz",
   "studio.versionsBehind_other": "{{count}} wersji wstecz",
   "versions.deployTo": "Wdróż do {{name}}"

@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
 const mockFetchTextGenerationMessage = vi.fn()
 const mockUpdateFeedback = vi.fn()
-const mockSetCurrentLogItem = vi.fn()
-const mockSetShowPromptLogModal = vi.fn()
+const mockOnOpenLog = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
@@ -32,14 +32,6 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@/service/debug', () => ({
   fetchTextGenerationMessage: (...args: unknown[]) => mockFetchTextGenerationMessage(...args),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      setCurrentLogItem: mockSetCurrentLogItem,
-      setShowPromptLogModal: mockSetShowPromptLogModal,
-    }),
 }))
 
 vi.mock('@/app/components/base/chat/chat/context', () => ({
@@ -146,7 +138,7 @@ describe('GenerationItem', () => {
     )
   })
 
-  it('should open the prompt log modal with normalized log data', async () => {
+  it('should send normalized log data to the owning surface', async () => {
     mockFetchTextGenerationMessage.mockResolvedValue({
       answer: 'assistant answer',
       message: [{ role: 'user', text: 'hello' }],
@@ -160,6 +152,7 @@ describe('GenerationItem', () => {
         isError={false}
         messageId="msg-1"
         onRetry={vi.fn()}
+        onOpenLog={mockOnOpenLog}
         siteInfo={null}
       />,
     )
@@ -172,7 +165,7 @@ describe('GenerationItem', () => {
       appId: 'app-1',
       messageId: 'msg-1',
     })
-    expect(mockSetCurrentLogItem).toHaveBeenCalledWith(
+    expect(mockOnOpenLog).toHaveBeenCalledWith(
       expect.objectContaining({
         log: [
           { role: 'user', text: 'hello' },
@@ -184,7 +177,64 @@ describe('GenerationItem', () => {
         ],
       }),
     )
-    expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(true)
+  })
+
+  it('keeps the log action absent without an owning surface', () => {
+    render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="Answer"
+        isError={false}
+        messageId="msg-1"
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /operation\.log/ })).not.toBeInTheDocument()
+    expect(mockFetchTextGenerationMessage).not.toHaveBeenCalled()
+  })
+
+  it('opens a more-like-this child log through the same owner using the child message', async () => {
+    const user = userEvent.setup()
+    mockFetchMoreLikeThis.mockResolvedValue({ answer: 'Child answer', id: 'child-message' })
+    mockFetchTextGenerationMessage.mockResolvedValue({
+      id: 'child-message',
+      answer: 'Child answer',
+      message: [{ role: 'user', text: 'Child prompt' }],
+    })
+    render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="Parent answer"
+        isError={false}
+        messageId="parent-message"
+        moreLikeThis
+        onOpenLog={mockOnOpenLog}
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /feature\.moreLikeThis\.title/ }))
+    expect(await screen.findByText('markdown:Child answer')).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: /operation\.log/ })[1]!)
+
+    await waitFor(() =>
+      expect(mockOnOpenLog).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          id: 'child-message',
+          log: [
+            { role: 'user', text: 'Child prompt' },
+            { role: 'assistant', text: 'Child answer', files: [] },
+          ],
+        }),
+      ),
+    )
+    expect(mockFetchTextGenerationMessage).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      messageId: 'child-message',
+    })
   })
 
   it('should route human input submissions to the workflow service for installed apps', async () => {

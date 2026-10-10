@@ -56,8 +56,8 @@ export function NewKnowledgeList({
   view: 'legacy' | 'new'
   onViewChange: (value: 'legacy' | 'new') => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

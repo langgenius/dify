@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 
+from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     DatasourceListApi,
     RagPipelineDatasourceListResponse,
@@ -14,7 +15,6 @@ from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.plugin.impl.datasource import PluginDatasourceManager
-from services.datasource_provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 
 
@@ -89,7 +89,9 @@ def test_catalog_serializes_real_plugin_and_local_file_providers(
             PluginDatasourceManager, "_request_with_plugin_daemon_response", return_value=[provider]
         ) as request,
         patch.object(
-            DatasourceProviderService, "get_datasource_credentials", return_value=credentials
+            workflow_module.application_services().data_sources.providers,
+            "get_datasource_credentials",
+            return_value=credentials,
         ) as get_credentials,
     ):
         result = unwrap(api.get)(api, "tenant-1")
@@ -138,7 +140,11 @@ def test_catalog_keeps_oauth_only_provider_unauthorized_without_credentials(app:
     with (
         app.test_request_context("/rag/pipelines/datasource-plugins"),
         patch.object(PluginDatasourceManager, "fetch_datasource_providers", return_value=[provider]),
-        patch.object(DatasourceProviderService, "get_datasource_credentials", return_value=None) as get_credentials,
+        patch.object(
+            workflow_module.application_services().data_sources.providers,
+            "get_datasource_credentials",
+            return_value=None,
+        ) as get_credentials,
     ):
         result = unwrap(api.get)(api, "tenant-1")
 
@@ -154,7 +160,11 @@ def test_catalog_keeps_provider_visible_after_credential_failure(app: Flask) -> 
     with (
         app.test_request_context("/rag/pipelines/datasource-plugins"),
         patch.object(PluginDatasourceManager, "fetch_datasource_providers", return_value=[provider]),
-        patch.object(DatasourceProviderService, "get_datasource_credentials", side_effect=ValueError("decrypt failed")),
+        patch.object(
+            workflow_module.application_services().data_sources.providers,
+            "get_datasource_credentials",
+            side_effect=ValueError("decrypt failed"),
+        ),
     ):
         result = unwrap(api.get)(api, "tenant-1")
 

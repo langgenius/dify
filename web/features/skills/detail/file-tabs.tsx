@@ -21,7 +21,7 @@ export function FileTabs({
   previewPath: string | undefined
   selectedPath: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <div className="flex h-11 shrink-0 items-stretch overflow-hidden rounded-t-lg border-b-[0.5px] border-divider-subtle bg-components-panel-bg-alt">

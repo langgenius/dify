@@ -23,7 +23,7 @@ type AppDetailTopProps = {
 }
 
 export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'navigation'])
 
   if (!expand) {
     return (
@@ -43,12 +43,12 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
-      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'common' })} className="flex-1">
+      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'navigation' })} className="flex-1">
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -63,7 +63,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
                   render={<Link href="/apps" />}
                   className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
                 >
-                  {t(($) => $['menus.apps'], { ns: 'common' })}
+                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </>
@@ -80,7 +80,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
                   <button
                     type="button"
                     aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                   >
                     <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                   </button>
@@ -91,8 +91,8 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
           <TooltipContent placement="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
-              {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+              {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                <Kbd key={key}>{key}</Kbd>
               ))}
             </KbdGroup>
           </TooltipContent>

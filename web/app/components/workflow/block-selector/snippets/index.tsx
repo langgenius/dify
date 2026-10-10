@@ -34,7 +34,7 @@ type SnippetsProps = {
 }
 
 const LoadingSkeleton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -63,7 +63,7 @@ const LoadingSkeleton = () => {
 }
 
 const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }: SnippetsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)

@@ -363,7 +363,11 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
             "format_retrieval_documents",
             return_value=records,
         ),
-        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+        patch.object(
+            single_retriever_module,
+            "sign_segment_content",
+            lambda segment, **_kwargs: segment.content.replace("raw", "signed"),
+        ),
     ):
         result = tool.run(session=sqlite_session, query="hello")
 
@@ -560,7 +564,11 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     fake_current_app = _FakeCurrentApp()
 
     with (
-        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+        patch.object(
+            multi_retriever_module,
+            "sign_segment_content",
+            lambda segment, **_kwargs: segment.content.replace("raw", "signed"),
+        ),
         patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock,
         patch.object(multi_retriever_module, "current_app", fake_current_app),
         patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread),

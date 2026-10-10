@@ -7,10 +7,10 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Caller, Context, RouteContractError
+from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
-from services.account_service import TenantService
 from services.app_service import AppService
 
 
@@ -106,7 +106,7 @@ def _fetch_workspace(ctx: Context) -> Tenant:
 
 def _workspace_from_app(ctx: Context) -> Tenant:
     app = load_app(ctx)
-    tenant = TenantService.get_tenant_by_id(str(app.tenant_id), session=ctx.session)
+    tenant = application_services().workspaces.identity.get_workspace(str(app.tenant_id))
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     return tenant
@@ -120,7 +120,7 @@ def _workspace_from_request(ctx: Context) -> Tenant:
         uuid.UUID(workspace_id)
     except ValueError:
         raise NotFound("workspace not found")
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=ctx.session)
+    tenant = application_services().workspaces.identity.get_workspace(workspace_id)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")
     return tenant
@@ -131,7 +131,7 @@ def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
     caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
         raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), str(workspace.id), session=ctx.session)
+    role = application_services().workspaces.members.get_role(str(workspace.id), str(ctx.subject.account_id))
     if role is None:
         raise NotFound("workspace not found")
     return role

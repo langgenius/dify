@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 from urllib.parse import quote
 from uuid import UUID
 
@@ -35,6 +36,7 @@ from controllers.console.wraps import (
 )
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.snippet_fields import (
     SnippetListItemResponse,
@@ -115,7 +117,9 @@ register_response_schema_models(
 class CustomizedSnippetsApi(Resource):
     @console_ns.doc("list_customized_snippets")
     @console_ns.doc(params=query_params_from_model(SnippetListQuery))
-    @console_ns.response(200, "Snippets retrieved successfully", console_ns.models[SnippetPaginationResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Snippets retrieved successfully", console_ns.models[SnippetPaginationResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -135,6 +139,7 @@ class CustomizedSnippetsApi(Resource):
             is_published=query.is_published,
             creators=query.creators,
             tag_ids=query.tag_ids,
+            tags=application_services().tags,
         )
 
         return dump_response(
@@ -146,7 +151,7 @@ class CustomizedSnippetsApi(Resource):
                 "total": total,
                 "has_more": has_more,
             },
-        ), 200
+        ), HTTPStatus.OK
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))

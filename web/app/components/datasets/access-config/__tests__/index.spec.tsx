@@ -184,7 +184,7 @@ describe('DatasetAccessConfigPage', () => {
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'common.settings.resourceAccess' }),
+      screen.getByRole('heading', { name: 'navigation.settings.resourceAccess' }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
     expect(useDatasetUserAccessSettings).toHaveBeenCalledWith(

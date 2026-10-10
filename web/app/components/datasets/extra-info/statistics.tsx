@@ -13,7 +13,7 @@ type StatisticsProps = {
 }
 
 const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const relatedAppsTotal = relatedApps?.total
   const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0
@@ -42,7 +42,7 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
             render={
               <button
                 type="button"
-                className="flex max-w-full cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                className="flex max-w-full cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary hover:text-text-secondary"
               >
                 <span className="truncate">
                   {t(($) => $['datasetMenus.relatedApp'], { ns: 'common' })}

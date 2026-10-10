@@ -2,7 +2,7 @@ preset = "strict"
 project-includes = ["."]
 search-path = ["../.."]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.13.0"
 infer-with-first-use = true
 min-severity = "warn"
 
@@ -49,11 +49,9 @@ project-excludes = [
   "services/dataset_collection_binding.py",
   "services/dataset_service_update_delete.py",
   "services/document_service_status.py",
-  "services/test_account_service.py",
   "services/test_advanced_prompt_template_service.py",
   "services/test_agent_service.py",
   "services/test_annotation_service.py",
-  "services/test_api_based_extension_service.py",
   "services/test_app_dsl_service.py",
   "services/test_app_generate_service.py",
   "services/test_app_service.py",
@@ -97,7 +95,6 @@ project-excludes = [
   "services/test_workflow_draft_variable_service.py",
   "services/test_workflow_run_service.py",
   "services/test_workflow_service.py",
-  "services/test_workspace_service.py",
   "services/tools/test_mcp_tools_manage_service.py",
   "services/tools/test_tools_transform_service.py",
   "services/tools/test_workflow_tools_manage_service.py",

@@ -73,6 +73,7 @@
   "studio.noCredentialsYetDescription": "اعتبارنامه‌ها را در بخش یکپارچه‌سازی‌ها یا تنظیمات گره اضافه کنید",
   "studio.precheck.description": "این نسخه شامل انواع گره‌ای است که هنوز پشتیبانی نمی‌شوند:",
   "studio.precheck.from": "از",
+  "studio.precheck.nodeCount_one": "{{count}} گره",
   "studio.precheck.nodeCount_other": "{{count}} گره",
   "studio.precheck.supportMessage": "پشتیبانی از این انواع گره در نسخه‌ای آینده ارائه خواهد شد.",
   "studio.precheck.title": "این نسخه را نمی‌توان در این محیط مستقر کرد",

@@ -91,7 +91,7 @@ function EnvEditorScope({
   scope: EnvScope
   onChange?: (scope: EnvScope) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!editable) {
     return (
@@ -172,7 +172,7 @@ function EnvEditorInput({
     <Input
       ref={inputRef}
       aria-label={ariaLabel}
-      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none hover:bg-state-base-hover focus-visible:bg-state-base-hover"
+      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none ring-inset hover:bg-state-base-hover focus-visible:bg-state-base-hover"
       placeholder={placeholder}
       value={value}
       onValueChange={onValueChange}
@@ -201,7 +201,7 @@ function EnvEditorRow({
   onValueChange?: (value: string) => void
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [isValueRevealed, setIsValueRevealed] = useState(false)
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
@@ -307,7 +307,7 @@ function EnvEditorDraftRow({
   onAdd?: (options?: { focusField?: 'key' | 'value'; scope?: EnvScope }) => void
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const keyPlaceholder = t(
     ($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
   )
@@ -374,7 +374,7 @@ export function EnvVariablesTable({
   showDraftRow?: boolean
   showScope?: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const tableLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.label'])
   const checkEnvVariableKey = (key: string) => {
     const { isValid, errorMessageKey } = checkKeys([key], false)
@@ -471,7 +471,7 @@ export function EnvVariablesTable({
 }
 
 export function AgentEnvEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const envVariables = useAtomValue(agentComposerEnvVariablesAtom)
   const addEnvVariable = useSetAtom(addEnvVariableAtom)
@@ -544,8 +544,7 @@ export function AgentEnvEditor() {
       headingLevel="h4"
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
-      rootClassName="gap-1 py-3"
-      headerClassName="mb-0 gap-1 px-3"
+      headerClassName="gap-1 px-3"
       panelContentClassName="px-3"
       actions={
         !readOnly ? (

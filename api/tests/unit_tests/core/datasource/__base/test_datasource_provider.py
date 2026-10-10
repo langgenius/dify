@@ -1,15 +1,16 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.entities.datasource_entities import (
-    DatasourceProviderEntityWithPlugin,
     DatasourceProviderType,
 )
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderCredentialValidationError
+from tests.unit_tests.core.datasource.factories import provider_entity
 
 
 class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderController):
@@ -18,52 +19,50 @@ class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderControl
     """
 
     def get_datasource(self, datasource_name: str) -> DatasourcePlugin:
-        return MagicMock(spec=DatasourcePlugin)
+        raise AssertionError("Credential validation must not fetch a datasource")
 
 
 class TestDatasourcePluginProviderController:
     def test_init(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         tenant_id = "test-tenant-id"
 
         # Act
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id=tenant_id)
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id=tenant_id)
 
         # Assert
-        assert controller.entity == mock_entity
+        assert controller.entity == entity
         assert controller.tenant_id == tenant_id
 
     def test_need_credentials(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         tenant_id = "test-tenant-id"
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id=tenant_id)
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id=tenant_id)
 
         # Case 1: credentials_schema is None
-        mock_entity.credentials_schema = None
+        entity.credentials_schema = None
         assert controller.need_credentials is False
 
         # Case 2: credentials_schema is empty
-        mock_entity.credentials_schema = []
+        entity.credentials_schema = []
         assert controller.need_credentials is False
 
         # Case 3: credentials_schema has items
-        mock_entity.credentials_schema = [MagicMock()]
+        entity.credentials_schema = [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)]
         assert controller.need_credentials is True
 
     @patch("core.datasource.__base.datasource_provider.PluginToolManager")
     def test_validate_credentials(self, mock_manager_class):
         # Arrange
         mock_manager = mock_manager_class.return_value
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.identity = MagicMock()
-        mock_entity.identity.name = "test-provider"
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         tenant_id = "test-tenant-id"
         user_id = "test-user-id"
         credentials = {"api_key": "secret"}
 
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id=tenant_id)
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id=tenant_id)
 
         # Act: Successful validation
         mock_manager.validate_datasource_credentials.return_value = True
@@ -83,17 +82,17 @@ class TestDatasourcePluginProviderController:
 
     def test_provider_type(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act & Assert
         assert controller.provider_type == DatasourceProviderType.LOCAL_FILE
 
     def test_validate_credentials_format_empty_schema(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = []
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = []
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
         credentials = {}
 
         # Act & Assert (Should not raise anything)
@@ -101,11 +100,9 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_unknown_credential(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.identity = MagicMock()
-        mock_entity.identity.name = "test-provider"
-        mock_entity.credentials_schema = []
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = []
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
         credentials = {"unknown": "value"}
 
         # Act & Assert
@@ -116,13 +113,15 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_required_missing(self):
         # Arrange
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "api_key"
-        mock_config.required = True
+        config = ProviderConfig(
+            name="api_key",
+            required=True,
+            type=ProviderConfigType.TEXT_INPUT,
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act & Assert
         with pytest.raises(ToolProviderCredentialValidationError, match="credential api_key is required"):
@@ -130,14 +129,16 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_not_required_null(self):
         # Arrange
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "optional"
-        mock_config.required = False
-        mock_config.default = None
+        config = ProviderConfig(
+            name="optional",
+            required=False,
+            default=None,
+            type=ProviderConfigType.TEXT_INPUT,
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act & Assert
         credentials = {"optional": None}
@@ -146,14 +147,15 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_type_mismatch_text(self):
         # Arrange
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "text_field"
-        mock_config.required = True
-        mock_config.type = ProviderConfigType.TEXT_INPUT
+        config = ProviderConfig(
+            name="text_field",
+            required=True,
+            type=ProviderConfigType.TEXT_INPUT,
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act & Assert
         with pytest.raises(ToolProviderCredentialValidationError, match="credential text_field should be string"):
@@ -161,39 +163,39 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_select_validation(self):
         # Arrange
-        mock_option = MagicMock()
-        mock_option.value = "opt1"
+        option = ProviderConfig.Option(value="opt1", label=I18nObject(en_US="Option 1"))
 
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "select_field"
-        mock_config.required = True
-        mock_config.type = ProviderConfigType.SELECT
-        mock_config.options = [mock_option]
+        config = ProviderConfig(
+            name="select_field",
+            required=True,
+            type=ProviderConfigType.SELECT,
+            options=[option],
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Case 1: Value not string
         with pytest.raises(ToolProviderCredentialValidationError, match="credential select_field should be string"):
             controller.validate_credentials_format({"select_field": 123})
 
         # Case 2: Options not list
-        mock_config.options = "invalid"
+        config.options = "invalid"
         with pytest.raises(
             ToolProviderCredentialValidationError, match="credential select_field options should be list"
         ):
             controller.validate_credentials_format({"select_field": "opt1"})
 
         # Case 3: Value not in options
-        mock_config.options = [mock_option]
+        config.options = [option]
         with pytest.raises(ToolProviderCredentialValidationError, match="credential select_field should be one of"):
             controller.validate_credentials_format({"select_field": "invalid_opt"})
 
     def test_get_datasource_base(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
         result = DatasourcePluginProviderController.get_datasource(controller, "test")
@@ -203,14 +205,15 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_hits_pop(self):
         # Arrange
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "valid_field"
-        mock_config.required = True
-        mock_config.type = ProviderConfigType.TEXT_INPUT
+        config = ProviderConfig(
+            name="valid_field",
+            required=True,
+            type=ProviderConfigType.TEXT_INPUT,
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
         credentials = {"valid_field": "valid_value"}
@@ -222,14 +225,16 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_hits_continue(self):
         # Arrange
-        mock_config = MagicMock(spec=ProviderConfig)
-        mock_config.name = "optional_field"
-        mock_config.required = False
-        mock_config.default = None
+        config = ProviderConfig(
+            name="optional_field",
+            required=False,
+            default=None,
+            type=ProviderConfigType.TEXT_INPUT,
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
         credentials = {"optional_field": None}
@@ -240,21 +245,23 @@ class TestDatasourcePluginProviderController:
 
     def test_validate_credentials_format_default_values(self):
         # Arrange
-        mock_config_text = MagicMock(spec=ProviderConfig)
-        mock_config_text.name = "text_def"
-        mock_config_text.required = False
-        mock_config_text.type = ProviderConfigType.TEXT_INPUT
-        mock_config_text.default = 123  # Int default, should be converted to str
+        config_text = ProviderConfig(
+            name="text_def",
+            required=False,
+            type=ProviderConfigType.TEXT_INPUT,
+            default=123,  # Int default, should be converted to str
+        )
 
-        mock_config_other = MagicMock(spec=ProviderConfig)
-        mock_config_other.name = "other_def"
-        mock_config_other.required = False
-        mock_config_other.type = "OTHER"
-        mock_config_other.default = "fallback"
+        config_other = ProviderConfig.model_construct(
+            name="other_def",
+            required=False,
+            type="OTHER",
+            default="fallback",
+        )
 
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = [mock_config_text, mock_config_other]
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
+        entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
+        entity.credentials_schema = [config_text, config_other]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
         credentials = {}

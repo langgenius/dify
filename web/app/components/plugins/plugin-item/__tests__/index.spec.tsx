@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource } from '../../types'
@@ -584,20 +585,42 @@ describe('PluginItem', () => {
 
   // ==================== User Interactions Tests ====================
   describe('User Interactions', () => {
-    it('should select the plugin when its card is clicked', () => {
+    it('should select the plugin with the named card button using Enter or Space', async () => {
       // Arrange
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
+      const user = userEvent.setup()
 
       // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-      const pluginContainer = container.firstChild as HTMLElement
-      fireEvent.click(pluginContainer)
+      render(<PluginItem plugin={plugin} />)
+      const cardButton = screen.getByRole('button', { name: 'Test Plugin' })
+      await user.tab()
+      expect(cardButton).toHaveFocus()
+      await user.keyboard('{Enter}')
+      await user.keyboard(' ')
 
       // Assert
-      expect(mockSetSelectedItem).toHaveBeenCalledWith({
+      expect(mockSetSelectedItem).toHaveBeenNthCalledWith(1, {
         type: 'plugin',
         id: 'test-plugin-id',
       })
+      expect(mockSetSelectedItem).toHaveBeenNthCalledWith(2, {
+        type: 'plugin',
+        id: 'test-plugin-id',
+      })
+    })
+
+    it('should keep source links and actions separate from the card button', async () => {
+      const user = userEvent.setup()
+      render(<PluginItem plugin={createPluginDetail()} />)
+
+      const cardButton = screen.getByRole('button', { name: 'Test Plugin' })
+      const marketplaceLink = screen.getByRole('link')
+      const deleteButton = screen.getByTestId('delete-button')
+      expect(cardButton).not.toContainElement(marketplaceLink)
+      expect(cardButton).not.toContainElement(deleteButton)
+
+      await user.click(deleteButton)
+      expect(mockSetSelectedItem).not.toHaveBeenCalled()
     })
 
     it('should highlight selected plugin', () => {

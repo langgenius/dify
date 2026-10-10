@@ -5,23 +5,24 @@ to attribute the created app; workspace/membership validation is done by the
 Go admin-api caller.
 """
 
+from http import HTTPStatus
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_schema_model
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
+from core.logging.context import get_request_id, get_trace_id
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from models import Account, App
-from models.account import AccountStatus
+from libs.helper import dump_response
+from models import App
 from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import ImportMode, ImportStatus
+from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 
 
@@ -55,40 +56,36 @@ class EnterpriseAppDSLImport(Resource):
     @inner_api_ns.expect(inner_api_ns.models[InnerAppDSLImportPayload.__name__])
     @inner_api_ns.doc(
         responses={
-            200: "Import completed",
-            202: "Import pending (DSL version mismatch requires confirmation)",
-            400: "Import failed (business error)",
-            404: "Creator account not found or inactive",
+            HTTPStatus.OK: "Import completed",
+            HTTPStatus.ACCEPTED: "Import pending (DSL version mismatch requires confirmation)",
+            HTTPStatus.BAD_REQUEST: "Import failed (business error)",
+            HTTPStatus.NOT_FOUND: "Creator account not found or inactive",
         }
     )
     @model_validate(InnerAppDSLImportPayload)
     def post(self, args: InnerAppDSLImportPayload, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
 
-        account = _get_active_account(args.creator_email)
-        if account is None:
-            return {"message": f"account '{args.creator_email}' not found or inactive"}, 404
-
-        with Session(db.engine, expire_on_commit=False) as session:
-            account.set_tenant_id_with_session(workspace_id, session=session)
-            dsl_service = AppDslService(session)
-            result = dsl_service.import_app(
-                account=account,
-                import_mode=ImportMode.YAML_CONTENT,
+        result = application_services().apps.imports.import_as_creator(
+            workspace_id=workspace_id,
+            creator_email=args.creator_email,
+            params=AppImportParams(
+                mode=ImportMode.YAML_CONTENT,
                 yaml_content=args.yaml_content,
                 name=args.name,
                 description=args.description,
-            )
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
+            ),
+            request_id=get_request_id(),
+            trace_id=get_trace_id(),
+        )
+        if result is None:
+            return {"message": f"account '{args.creator_email}' not found or inactive"}, HTTPStatus.NOT_FOUND
 
         if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
+            return dump_response(Import, result), HTTPStatus.BAD_REQUEST
         if result.status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+            return dump_response(Import, result), HTTPStatus.ACCEPTED
+        return dump_response(Import, result), HTTPStatus.OK
 
 
 @inner_api_ns.route("/enterprise/apps/<string:app_id>/dsl")
@@ -141,14 +138,3 @@ class EnterpriseAppDSLExport(Resource):
                 return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
 
         return {"data": data}, 200
-
-
-def _get_active_account(email: str) -> Account | None:
-    """Look up an active account by email.
-
-    Workspace membership is already validated by the Go admin-api caller.
-    """
-    account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
-    if account is None or account.status != AccountStatus.ACTIVE:
-        return None
-    return account

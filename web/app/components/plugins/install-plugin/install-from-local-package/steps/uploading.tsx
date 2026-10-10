@@ -57,7 +57,7 @@ const Uploading: FC<Props> = ({
   onBundleUploaded,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const fileName = file.name
   const handleUploadedResponse = React.useCallback(
     (response: unknown) => {

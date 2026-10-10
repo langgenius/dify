@@ -4,7 +4,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { EffectColor } from './types'
 
 export const useChunkStructureConfig = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const GeneralOption: Option = {
     icon: <span aria-hidden className="i-custom-vender-knowledge-general-chunk size-4" />,

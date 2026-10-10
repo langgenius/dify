@@ -257,6 +257,7 @@
   "segment.searchResults_one": "WYNIK",
   "segment.searchResults_other": "WYNIKI",
   "segment.searchResults_zero": "WYNIK",
+  "segment.statusFilterLabel": "Filtruj segmenty według statusu",
   "segment.summary": "PODSUMOWANIE",
   "segment.summaryPlaceholder": "Napisz krótkie podsumowanie dla lepszego wyszukiwania…"
 }

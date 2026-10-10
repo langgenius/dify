@@ -19,7 +19,7 @@ export function ApiKeyTable({
   showScope = false,
   onDeleteRequest,
 }: ApiKeyTableProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common', 'time'])
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
 

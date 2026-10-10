@@ -38,7 +38,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   useSearchParams: () => search.params,
 }))
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComponent = React.lazy(loader)
     return function Dynamic(props: Record<string, unknown>) {
@@ -268,16 +268,24 @@ it('keeps the pending import confirmation and tracks only after successful confi
   })
 })
 
-it('reports import failure without tracking or navigating', async () => {
-  const user = userEvent.setup()
-  importResponse = { id: 'import-1', status: 'failed' }
-  setup({ cloud: true })
-  await openCreate(user, true)
-  await submit(user)
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
-  expect(redirect).not.toHaveBeenCalled()
-  expect(trackCreateApp).not.toHaveBeenCalled()
-})
+it.each([undefined, 'Missing app data in YAML content'])(
+  'reports import failure (%s) once without tracking or navigating',
+  async (error) => {
+    const user = userEvent.setup()
+    importResponse = { id: 'import-1', status: 'failed', error }
+    setup({ cloud: true })
+    await openCreate(user, true)
+    await submit(user)
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed', {
+        description: error,
+      }),
+    )
+    expect(toast.error).toHaveBeenCalledOnce()
+    expect(redirect).not.toHaveBeenCalled()
+    expect(trackCreateApp).not.toHaveBeenCalled()
+  },
+)
 
 it('keeps nullable template metadata editable through the actual modal', async () => {
   const user = userEvent.setup()

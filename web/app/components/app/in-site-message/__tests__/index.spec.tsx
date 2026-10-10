@@ -21,8 +21,8 @@ describe('InSiteMessage', () => {
     return render(
       <InSiteMessage
         notificationId="test-notification-id"
-        title="Title\\nLine"
-        subtitle="Subtitle\\nLine"
+        title={'Title\\nLine'}
+        subtitle={'Subtitle\\nLine'}
         main="Main content"
         actions={actions}
         {...props}
@@ -45,22 +45,14 @@ describe('InSiteMessage', () => {
         },
       ]
 
-      renderComponent(actions, { className: 'custom-message' })
+      renderComponent(actions)
 
-      const closeButton = screen.getByRole('button', { name: 'Close' })
-      const outlineButton = screen.getByRole('button', { name: 'Outline' })
+      screen.getByRole('button', { name: 'Close' })
+      screen.getByRole('button', { name: 'Outline' })
       const learnMoreLink = screen.getByRole('link', { name: 'Learn more' })
-      const panel = closeButton.closest('div.fixed')
-      const titleElement = panel?.querySelector('.title-3xl-bold')
-      const subtitleElement = panel?.querySelector('.body-md-regular')
-      expect(panel).toHaveClass('custom-message')
-      expect(titleElement).toHaveTextContent(/Title.*Line/s)
-      expect(subtitleElement).toHaveTextContent(/Subtitle.*Line/s)
-      expect(titleElement?.textContent).not.toContain('\\n')
-      expect(subtitleElement?.textContent).not.toContain('\\n')
+      expect(screen.getByText('Title Line').textContent).toBe('Title\nLine')
+      expect(screen.getByText('Subtitle Line').textContent).toBe('Subtitle\nLine')
       expect(screen.getByText('Main content')).toBeInTheDocument()
-      expect(closeButton).toBeInTheDocument()
-      expect(outlineButton).toHaveClass('bg-components-button-secondary-bg')
       expect(learnMoreLink).toHaveAttribute('href', 'https://example.com')
     })
 

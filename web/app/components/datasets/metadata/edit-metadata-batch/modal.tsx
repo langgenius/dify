@@ -42,7 +42,7 @@ const EditMetadataBatchModal: FC<Props> = ({
 }) => {
   const applyToAllLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback(
     (payload: MetadataItemWithEdit) => {

@@ -1,5 +1,6 @@
 {
   "desc": "Hier können Sie die Eigenschaften und Arbeitsweisen des Wissens anpassen.",
+  "form.changeIcon": "Wissenssymbol ändern",
   "form.chunkStructure.description": "über Chunk Structure.",
   "form.chunkStructure.learnMore": "Weitere Informationen",
   "form.chunkStructure.title": "Chunk-Struktur",
@@ -43,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Wenn das Embedding-Modell multimodal unterstützt, wählen Sie bitte ein multimodales Reranking-Modell für eine bessere Leistung.",
   "form.retrievalSetting.title": "Abrufeinstellung",
   "form.save": "Speichern",
-  "form.searchModel": "Modell suchen",
   "form.summaryAutoGen": "Automatische Zusammenfassungserstellung",
   "form.summaryAutoGenEnableTip": "Nach der Aktivierung werden Zusammenfassungen automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",
   "form.summaryAutoGenTip": "Zusammenfassungen werden automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",

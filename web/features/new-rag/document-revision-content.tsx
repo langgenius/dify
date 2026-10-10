@@ -35,8 +35,8 @@ export function DocumentRevisionContent({
   revisionHistoryPending: boolean
   retryRevisionHistory: () => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
 
   if (effectiveRevision === undefined && revisionHistoryPending)
     return (

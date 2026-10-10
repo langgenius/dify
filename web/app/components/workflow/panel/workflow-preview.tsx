@@ -23,7 +23,7 @@ import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
 const WorkflowPreview = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)

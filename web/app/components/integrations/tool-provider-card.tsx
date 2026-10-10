@@ -40,7 +40,7 @@ function IntegrationsToolProviderCard({
   variant = 'default',
 }: IntegrationsToolProviderCardProps) {
   const language = useGetLanguage()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'tools'])
   const title = renderI18nObject(collection.label, language)
   const description = renderI18nObject(collection.description, language)
   const { org, name } = getCollectionPluginIdentity(collection)

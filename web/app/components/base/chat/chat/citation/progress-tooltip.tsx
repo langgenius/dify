@@ -7,7 +7,7 @@ type ProgressTooltipProps = {
 }
 
 const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Tooltip>

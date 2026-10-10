@@ -17,53 +17,30 @@ import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { usePathname } from '@/next/navigation'
 import {
   fetchTracingConfig as doFetchTracingConfig,
   fetchTracingStatus,
   updateTracingStatus,
 } from '@/service/apps'
-import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
-const Panel: FC = () => {
-  const { t } = useTranslation()
-  const pathname = usePathname()
-  const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appACLCapabilities = React.useMemo(
-    () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
-        workspacePermissionKeys,
-      }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
-  const canConfigTracing = appACLCapabilities.canConfigureTracing
-  const readOnly = !canConfigTracing
+type PanelProps = {
+  appId: string
+  readOnly: boolean
+}
 
+const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
+  const { t } = useTranslation(['app', 'common'])
   const [isLoaded, { setTrue: setLoaded }] = useBoolean(false)
 
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)

@@ -74,7 +74,7 @@ const hasStatus = (error: unknown): error is { status: number } => {
 }
 
 const OneMoreStep = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -141,7 +141,7 @@ const OneMoreStep = () => {
                   render={
                     <button
                       type="button"
-                      className="cursor-pointer rounded-sm text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="cursor-pointer rounded-sm text-text-accent-secondary"
                     >
                       {t(($) => $.dontHave, { ns: 'login' })}
                     </button>

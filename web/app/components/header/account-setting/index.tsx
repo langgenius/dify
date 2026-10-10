@@ -21,7 +21,9 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
+  isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
+import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
@@ -30,6 +32,7 @@ import AccessRulesPage from './access-rules-page'
 import MembersPage from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
+import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
@@ -56,7 +59,7 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'billing', 'custom', 'navigation', 'accountSettings'])
   const { data: enableReplaceWebAppLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.can_replace_logo,
@@ -65,8 +68,10 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
+  const canViewAccessTokens = env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN && isCurrentWorkspaceOwner
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling =
@@ -84,6 +89,8 @@ export default function AccountSetting({
       !canManageWorkspaceRoles
     )
       return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !canViewAccessTokens)
+      return ACCOUNT_SETTING_TAB.MEMBERS
     return activeTab
   })()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -91,26 +98,33 @@ export default function AccountSetting({
   const settingItems: GroupItem[] = [
     {
       key: ACCOUNT_SETTING_TAB.MEMBERS,
-      name: t(($) => $['settings.members'], { ns: 'common' }),
+      name: t(($) => $['settings.members'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
-      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'common' }),
+      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
-      name: t(($) => $['settings.permissionSet'], { ns: 'common' }),
-      description: t(($) => $['settings.permissionSetDescription'], { ns: 'common' }),
+      name: t(($) => $['settings.permissionSet'], { ns: 'navigation' }),
+      description: t(($) => $['settings.permissionSetDescription'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.ACCESS_TOKEN,
+      name: t(($) => $['settings.accessToken'], { ns: 'navigation' }),
+      description: t(($) => $['settings.accessTokenDescription'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-key-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-key-2-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.BILLING,
-      name: t(($) => $['settings.billing'], { ns: 'common' }),
+      name: t(($) => $['settings.billing'], { ns: 'navigation' }),
       description: t(($) => $['plansCommon.receiptInfo'], { ns: 'billing' }),
       icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
@@ -130,8 +144,8 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
-      name: t(($) => $['settings.preferences'], { ns: 'common' }),
-      title: t(($) => $['account.general'], { ns: 'common' }),
+      name: t(($) => $['settings.preferences'], { ns: 'navigation' }),
+      title: t(($) => $['account.general'], { ns: 'accountSettings' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
@@ -147,6 +161,8 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
       visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
+
+    if (canViewAccessTokens) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
@@ -167,7 +183,7 @@ export default function AccountSetting({
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t(($) => $['settings.workspace'], { ns: 'common' }),
+      name: t(($) => $['settings.workspace'], { ns: 'navigation' }),
       items: visibleSettingItems,
     },
     {
@@ -177,11 +193,14 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
+    <MenuDialog
+      title={t(($) => $['settings.settings'], { ns: 'navigation' })}
+      onClose={onCancelAction}
+    >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
-            {t(($) => $['settings.settings'], { ns: 'common' })}
+            {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
             {menuItems.map((menuItem) => (
@@ -255,6 +274,7 @@ export default function AccountSetting({
                     <PermissionsPage containerRef={scrollContainerRef} />
                   )}
                   {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                     <WorkflowLogArchivesPage />

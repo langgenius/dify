@@ -51,7 +51,7 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: QuestionClassifierNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: QuestionClassifierNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     if (
       !errorMessages &&

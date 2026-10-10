@@ -44,7 +44,6 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }

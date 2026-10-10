@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -24,8 +24,8 @@ export function AddSourceExitDialog({
   onConfirm: () => void
   open: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog
@@ -51,14 +51,14 @@ export function AddSourceExitDialog({
             </p>
           )}
         </div>
-        <AlertDialogActions className="gap-2 p-6">
+        <AlertDialogFooter className="gap-2 p-6">
           <AlertDialogCancelButton variant="secondary" disabled={discarding}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton loading={discarding} onClick={onConfirm}>
             {t(($) => $['newKnowledge.discardDraftConfirm'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

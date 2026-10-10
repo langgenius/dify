@@ -133,7 +133,9 @@ describe('DataSourcePluginActions', () => {
       systemFeatures: { enable_marketplace: true },
     })
     fireEvent.click(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      screen.getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Data Source Plugin"}',
+      }),
     )
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
 
@@ -143,5 +145,17 @@ describe('DataSourcePluginActions', () => {
         triggerId: expect.any(String),
       }),
     )
+  })
+
+  it('identifies the plugin and current version in the version action', () => {
+    renderWithConsoleQuery(<DataSourcePluginActions detail={createPluginDetail()} />, {
+      systemFeatures: { enable_marketplace: true },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'plugin.detailPanel.switchVersion Data Source Plugin 1.0.0',
+      }),
+    ).toBeInTheDocument()
   })
 })

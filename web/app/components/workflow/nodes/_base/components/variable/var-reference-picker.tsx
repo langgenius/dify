@@ -122,7 +122,7 @@ const VarReferencePicker: FC<Props> = ({
   currentProvider,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()

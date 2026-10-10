@@ -31,7 +31,7 @@ function AnnotationTableRow({
   onView,
   onRemoveClick,
 }: AnnotationTableRowProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const questionId = React.useId()
 
   return (
@@ -80,7 +80,7 @@ export function List({
   onSelectedIdsChange,
   onBatchDelete,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
   const [currId, setCurrId] = React.useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)

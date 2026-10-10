@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -14,6 +14,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -63,7 +64,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
   const queryLabelId = useId()
   const headerLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const apiKeyHeaderInputId = useId()
   const apiKeyHeaderValueInputId = useId()
   const apiKeyQueryInputId = useId()
@@ -119,9 +120,15 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
               </div>

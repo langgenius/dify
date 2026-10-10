@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -29,7 +29,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDelete,
   onSelectedIdsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
   const [isDeleting, { setTrue: setIsDeleting, setFalse: setIsNotDeleting }] = useBoolean(false)
@@ -69,14 +69,14 @@ const BatchAction: FC<IBatchActionProps> = ({
               {t(($) => $['list.delete.title'], { ns: 'appAnnotation' })}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleBatchDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

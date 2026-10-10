@@ -33,7 +33,7 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

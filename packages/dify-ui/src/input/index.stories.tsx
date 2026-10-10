@@ -81,6 +81,16 @@ export const States: Story = {
           <FieldError match>Enter a full URL including https://.</FieldError>
         </Field>
       </div>
+      <Field name="readonlyRepositoryUrl" invalid>
+        <FieldLabel>Read-only invalid</FieldLabel>
+        <Input readOnly defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
+      <Field name="disabledRepositoryUrl" invalid>
+        <FieldLabel>Disabled invalid</FieldLabel>
+        <Input disabled defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
       <div className="grid gap-1">
         <label className="system-sm-medium text-text-secondary" htmlFor="disabled-state">
           Disabled

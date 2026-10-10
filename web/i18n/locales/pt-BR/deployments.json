@@ -73,6 +73,8 @@
   "studio.noCredentialsYetDescription": "Adicione credenciais em Integrações ou nas configurações do nó",
   "studio.precheck.description": "Ela contém tipos de nós que ainda não são compatíveis:",
   "studio.precheck.from": "De",
+  "studio.precheck.nodeCount_many": "{{count}} nós",
+  "studio.precheck.nodeCount_one": "{{count}} nó",
   "studio.precheck.nodeCount_other": "{{count}} nós",
   "studio.precheck.supportMessage": "O suporte a esses tipos de nós estará disponível em uma versão futura.",
   "studio.precheck.title": "Esta versão não pode ser implantada neste ambiente",
@@ -84,6 +86,7 @@
   "studio.undeployConfirmTitle": "Desimplantar {{versionName}} de {{envName}}",
   "studio.updatedAtBy": "Atualizado em {{time}} por {{name}}",
   "studio.versionValue": "Valor da versão",
+  "studio.versionsBehind_many": "{{count}} versões atrás",
   "studio.versionsBehind_one": "{{count}} versão atrás",
   "studio.versionsBehind_other": "{{count}} versões atrás",
   "versions.deployTo": "Implantar em {{name}}"

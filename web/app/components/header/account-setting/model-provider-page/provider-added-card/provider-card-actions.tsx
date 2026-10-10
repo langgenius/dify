@@ -3,11 +3,11 @@ import type { ModelProviderPluginSummary } from '../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -98,7 +98,7 @@ const ProviderCardActions: FC<Props> = (props) => {
 type SummaryProps = Extract<Props, { summary: ModelProviderPluginSummary }>
 
 function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: SummaryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'plugin'])
   const queryClient = useQueryClient()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const [detail, setDetail] = useState<PluginDetail>()
@@ -265,14 +265,14 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
               {t(($) => $['action.deleteContentRight'], { ns: 'plugin' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
@@ -292,7 +292,7 @@ function LoadedProviderCardActions({
   onInitialActionHandled,
   onUpdate,
 }: LoadedProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'plugin'])
   const { theme } = useTheme()
   const locale = useLocale()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()

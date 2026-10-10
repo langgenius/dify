@@ -18,7 +18,7 @@ type UploadMethodFieldProps = {
 const UploadMethodField = ({ label, labelOptions, className }: UploadMethodFieldProps) => {
   const labelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const field = useFieldContext<TransferMethod[]>()
 
   const { value } = field.state

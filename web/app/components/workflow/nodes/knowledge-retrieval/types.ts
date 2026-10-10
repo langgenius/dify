@@ -98,7 +98,7 @@ export type MetadataFilteringCondition = {
   name: string
   metadata_id?: string
   comparison_operator: ComparisonOperator
-  value?: string | number
+  value?: string | number | string[] | null
 }
 
 export type MetadataFilteringConditions = {

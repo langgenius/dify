@@ -34,7 +34,7 @@ type Props = Readonly<{
 }>
 
 const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const items = useMemo<TimePeriodOption[]>(() => {
     return ranges.map((range) => ({
       ...range,

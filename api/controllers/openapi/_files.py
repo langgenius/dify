@@ -67,7 +67,7 @@ def _mapping(part: FileStorage, caller: Any) -> FileMapping:
     uploaded = upload(part, caller)
     return {
         "transfer_method": FileTransferMethod.LOCAL_FILE,
-        "upload_file_id": str(uploaded.id),
+        "upload_file_id": uploaded.id,
         "type": standardize_file_type(extension="." + uploaded.extension, mime_type=uploaded.mime_type),
     }
 

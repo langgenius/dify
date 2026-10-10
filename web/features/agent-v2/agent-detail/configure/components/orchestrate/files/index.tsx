@@ -13,10 +13,10 @@ import {
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -72,6 +72,7 @@ function AgentFileItem({
   file,
   files,
   apiContext,
+  canDownload,
   onRemove,
   selected,
 }: {
@@ -80,10 +81,11 @@ function AgentFileItem({
   file: AgentFileNode
   files: AgentFileNode[]
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -108,7 +110,12 @@ function AgentFileItem({
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !apiContext.workflow,
+    enabled:
+      isPreviewOpen &&
+      !!previewFileId &&
+      !isVirtualPreviewFile &&
+      !apiContext.workflow &&
+      !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.files.byName.preview.get.queryOptions({
@@ -126,7 +133,24 @@ function AgentFileItem({
     }),
     enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !!apiContext.workflow,
   })
-  const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
+  const trialPreviewQuery = useQuery(
+    apiContext.trialAppId
+      ? {
+          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
+            input: {
+              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+              query: { version_id: apiContext.versionId },
+            },
+          }),
+          enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
+        }
+      : { queryKey: ['agent-v2', 'trial-file-preview-disabled'], queryFn: skipToken },
+  )
+  const previewQuery = apiContext.trialAppId
+    ? trialPreviewQuery
+    : apiContext.workflow
+      ? workflowPreviewQuery
+      : agentPreviewQuery
   const isImagePreviewFile = selectedPreviewFile.icon === 'image'
   const shouldDownloadPreviewFile =
     isPreviewOpen &&
@@ -147,7 +171,7 @@ function AgentFileItem({
       },
     }),
     staleTime: 0,
-    enabled: shouldDownloadPreviewFile && !apiContext.workflow,
+    enabled: shouldDownloadPreviewFile && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
@@ -166,7 +190,25 @@ function AgentFileItem({
     staleTime: 0,
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
-  const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
+  const trialDownloadQuery = useQuery(
+    apiContext.trialAppId
+      ? {
+          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
+            input: {
+              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+              query: { version_id: apiContext.versionId },
+            },
+          }),
+          staleTime: 0,
+          enabled: shouldDownloadPreviewFile,
+        }
+      : { queryKey: ['agent-v2', 'trial-file-download-disabled'], queryFn: skipToken },
+  )
+  const downloadQuery = apiContext.trialAppId
+    ? trialDownloadQuery
+    : apiContext.workflow
+      ? workflowDownloadQuery
+      : agentDownloadQuery
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
@@ -181,6 +223,19 @@ function AgentFileItem({
       }
 
       const fileName = getAgentFilePreviewKey(targetFile)
+      if (apiContext.trialAppId) {
+        const result = await queryClient.query({
+          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
+            input: {
+              params: { app_id: apiContext.trialAppId, name: fileName },
+              query: { version_id: apiContext.versionId },
+            },
+          }),
+          staleTime: 0,
+        })
+        downloadUrl({ url: result.url, fileName: targetFile.name })
+        return
+      }
       if (apiContext.workflow) {
         const result = await queryClient.query({
           ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
@@ -227,6 +282,7 @@ function AgentFileItem({
     },
     [downloadFile],
   )
+  const onDownloadFile = canDownload ? downloadFileAction : undefined
   const handleDownload = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       if (file.isMissing) return
@@ -260,7 +316,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               disabled={file.isMissing}
               className={cn(
-                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left select-none focus-visible:ring-inset',
                 file.isMissing && 'cursor-default pr-6',
               )}
             />
@@ -287,7 +343,7 @@ function AgentFileItem({
               isImage: isImagePreviewFile,
               isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
-            onDownloadFile: () => downloadFileAction(selectedPreviewFile),
+            onDownloadFile: onDownloadFile ? () => onDownloadFile(selectedPreviewFile) : undefined,
             onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
             sections: [],
@@ -306,7 +362,7 @@ function AgentFileItem({
           file.isMissing ? 'right-7' : 'right-1',
         )}
       >
-        {!file.isMissing && (
+        {!file.isMissing && onDownloadFile && (
           <button
             type="button"
             aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
@@ -348,7 +404,7 @@ function AgentBuildNoteFileRow() {
 }
 
 function AgentBuildNoteBadge() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <FileTreeBadge className="ms-0 gap-0.5 px-1 py-0.5">
@@ -363,12 +419,8 @@ function AgentBuildNoteInfotip() {
 
   return (
     <Infotip>
-      <InfotipTrigger
-        aria-label={BUILD_NOTE_FILE_NAME}
-        className="size-5 hover:text-text-quaternary"
-        iconSize="large"
-      />
-      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME} className="w-57.5">
+      <InfotipTrigger aria-label={BUILD_NOTE_FILE_NAME} iconSize="large" />
+      <InfotipContent aria-label={BUILD_NOTE_FILE_NAME}>
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
@@ -382,7 +434,7 @@ function AgentBuildNoteInfotip() {
 }
 
 export function AgentFiles() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   const filesTreeId = 'agent-configure-files-tree'
   const readOnly = useAgentOrchestrateReadOnly()
@@ -484,8 +536,6 @@ export function AgentFiles() {
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="pb-4"
         actions={
           !readOnly ? (
             <ConfigureSectionAddButton
@@ -516,6 +566,7 @@ export function AgentFiles() {
                   file={file}
                   files={previewFiles}
                   apiContext={apiContext}
+                  canDownload
                   selected={selected}
                   onRemove={removeFile}
                 >
@@ -533,5 +584,51 @@ export function AgentFiles() {
         onUploaded={handleUploaded}
       />
     </>
+  )
+}
+
+export function AgentTemplateFiles() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const apiContext = useAgentConfigApiContext()
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const files = useAtomValue(agentComposerFilesAtom)
+  const buildNote = getBuildNoteFile(draft.configNote)
+  const visibleFiles = buildNote ? [buildNote, ...files] : files
+  const previewFiles = visibleFiles.filter((file) => !file.isMissing)
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.files.label'])}
+      labelId={labelId}
+      tip={<AgentConfigureTipContent type="files" />}
+    >
+      {visibleFiles.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.files.empty.title'])}
+          description={t(($) => $['agentDetail.configure.files.empty.description'])}
+        />
+      ) : (
+        <AgentFileTree
+          files={visibleFiles}
+          treeLabelledBy={labelId}
+          className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+          scrollAreaClassName="max-h-[250px] flex-none"
+          renderFile={({ depth, file, selected, children }) => (
+            <AgentFileItem
+              depth={depth}
+              file={file}
+              files={previewFiles}
+              apiContext={apiContext}
+              canDownload={false}
+              selected={selected}
+              onRemove={noop}
+            >
+              {file.id === BUILD_NOTE_FILE_ID ? <AgentBuildNoteFileRow /> : children}
+            </AgentFileItem>
+          )}
+        />
+      )}
+    </ConfigureSection>
   )
 }

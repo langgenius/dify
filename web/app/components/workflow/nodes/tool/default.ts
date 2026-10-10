@@ -24,7 +24,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     tool_configurations: {},
     tool_node_version: '2',
   },
-  checkValid(payload: ToolNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: any) {
+  checkValid(payload: ToolNodeType, t: TFunction<['workflow']>, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed) errorMessages = t(($) => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })

@@ -1,8 +1,9 @@
 import type { ChatConfig, ChatItem } from '../../../types'
 import type { ChatContextValue } from '../../context'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
 const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(() => {
@@ -107,14 +108,6 @@ vi.mock('@/app/components/base/new-audio-button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/chat/chat/log', () => ({
-  default: () => (
-    <button data-testid="log-btn">
-      <div className="i-ri-file-list-3-line" />
-    </button>
-  ),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ appId: 'test-app' })),
   usePathname: vi.fn(() => '/apps/test-app'),
@@ -159,10 +152,6 @@ const mockContextValue: ChatContextValue = {
   readonly: false,
 }
 
-vi.mock('../../context', () => ({
-  useChatContext: () => mockContextValue,
-}))
-
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
@@ -177,7 +166,6 @@ type OperationProps = {
   item: ChatItem
   question: string
   index: number
-  showPromptLog?: boolean
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
@@ -228,6 +216,11 @@ describe('Operation', () => {
       <div className="group">
         <Operation {...props} />
       </div>,
+      {
+        wrapper: ({ children }) => (
+          <ChatContextProvider {...mockContextValue}>{children}</ChatContextProvider>
+        ),
+      },
     )
   }
 
@@ -241,8 +234,73 @@ describe('Operation', () => {
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
     mockContextValue.showRegenerate = false
+    mockContextValue.onOpenLog = undefined
 
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
+  })
+
+  describe('feedback submission sessions', () => {
+    it.each([{ admin: false }, { admin: true }])(
+      'preserves the draft after a failed submission and retries successfully (admin: $admin)',
+      async ({ admin }) => {
+        mockContextValue.config = makeChatConfig({
+          supportFeedback: true,
+          supportAnnotation: admin,
+        })
+        const onFeedback = vi.fn<NonNullable<ChatContextValue['onFeedback']>>()
+        onFeedback.mockRejectedValueOnce(new Error('Feedback failed')).mockResolvedValueOnce()
+        mockContextValue.onFeedback = onFeedback
+        const user = userEvent.setup()
+        renderOperation()
+        const name = `${admin ? 'table.header.adminRate' : 'table.header.userRate'}: detail.operation.dislike`
+        await user.click(screen.getByRole('button', { name }))
+        const input = screen.getByRole('textbox', { name: 'feedback.content' })
+        await user.type(input, 'Needs more detail')
+        await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+        await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(input).toHaveValue('Needs more detail')
+        await user.type(input, ' please')
+        await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(onFeedback).toHaveBeenLastCalledWith('msg-1', {
+          rating: 'dislike',
+          content: 'Needs more detail please',
+        })
+        expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
+      },
+    )
+
+    it('keeps one pending submission open and prevents edits or duplicate submissions', async () => {
+      let resolve!: () => void
+      const pending = new Promise<void>((done) => {
+        resolve = done
+      })
+      const onFeedback = vi.fn().mockReturnValue(pending)
+      mockContextValue.onFeedback = onFeedback
+      const user = userEvent.setup()
+      renderOperation()
+      await user.click(
+        screen.getByRole('button', { name: 'table.header.userRate: detail.operation.dislike' }),
+      )
+      const input = screen.getByRole('textbox', { name: 'feedback.content' })
+      await user.type(input, 'Original draft')
+      const submit = screen.getByRole('button', { name: 'operation.submit' })
+      await user.click(submit)
+      expect(submit).toHaveAttribute('aria-disabled', 'true')
+      expect(input).toHaveAttribute('readonly')
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('button', { name: 'operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: 'operation.close' }))
+      await user.click(submit)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(onFeedback).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        resolve()
+        await pending
+      })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 
   describe('Rendering', () => {
@@ -343,26 +401,29 @@ describe('Operation', () => {
       expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
 
-    it('should show prompt log when showPromptLog is true', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
-      expect(screen.getByTestId('log-btn'))!.toBeInTheDocument()
+    it('should show the log action when the owner provides it', () => {
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
+      expect(screen.getByRole('button', { name: 'operation.log' }))!.toBeInTheDocument()
     })
 
     it('should keep hover-only controls visible when a descendant popup is open', () => {
-      renderOperation({ ...baseProps, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation()
 
       expect(screen.getByTestId('operation-actions')).toHaveClass(
         'group-has-[[data-popup-open]]:flex',
       )
-      expect(screen.getByTestId('log-btn').parentElement).toHaveClass(
-        'group-has-[[data-popup-open]]:block',
-      )
+      expect(
+        screen.getByRole('button', { name: 'operation.log' }).parentElement?.parentElement,
+      ).toHaveClass('group-has-[[data-popup-open]]:block')
     })
 
     it('should not show prompt log for opening statements', () => {
       const item = { ...baseItem, isOpeningStatement: true }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
-      expect(screen.queryByTestId('log-btn')).not.toBeInTheDocument()
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
+      expect(screen.queryByRole('button', { name: 'operation.log' })).not.toBeInTheDocument()
     })
   })
 
@@ -897,7 +958,8 @@ describe('Operation', () => {
         feedback: { rating: 'like' as const },
         adminFeedback: { rating: 'dislike' as const },
       }
-      renderOperation({ ...baseProps, item, showPromptLog: true })
+      mockContextValue.onOpenLog = vi.fn()
+      renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
       expect(bar)!.toBeInTheDocument()
     })

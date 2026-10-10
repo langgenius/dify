@@ -27,6 +27,18 @@ class AgentAppRepository:
             except AgentNotFoundError as exc:
                 raise AgentAppNotFoundError from exc
 
+    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Read persisted runtime state without creating a hidden app during a GET."""
+        with self._session_factory() as session:
+            try:
+                return (
+                    AgentRosterService(session)
+                    .get_existing_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+                    .id
+                )
+            except AgentNotFoundError as exc:
+                raise AgentAppNotFoundError from exc
+
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]:
         with self._session_factory() as session:
             roster = AgentRosterService(session)

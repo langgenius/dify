@@ -5,6 +5,7 @@ import typing
 
 import click
 from celery import shared_task
+from pydantic import TypeAdapter
 
 from core.helper.marketplace import batch_fetch_plugin_manifests, get_plugin_pkg_url
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
@@ -24,6 +25,9 @@ PluginCategory = TenantPluginAutoUpgradeCategory
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
+
+# A cached miss is stored as JSON null, so None has to stay a valid payload.
+_CACHED_MANIFEST_ADAPTER = TypeAdapter(typing.Union[MarketplacePluginSnapshot, None])
 
 
 def _get_redis_cache_key(plugin_id: str) -> str:
@@ -45,11 +49,7 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapsh
         if cached_data is None:
             return False
 
-        cached_json = json.loads(cached_data)
-        if cached_json is None:
-            return None
-
-        return MarketplacePluginSnapshot.model_validate(cached_json)
+        return _CACHED_MANIFEST_ADAPTER.validate_json(cached_data)
     except Exception:
         logger.exception("Failed to get cached manifest for plugin %s", plugin_id)
         return False

@@ -77,7 +77,7 @@ const NodePanel: FC<Props> = ({
     },
     [hideProcessDetail],
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'workflowHumanInput'])
   const docLink = useDocLink()
   const detailsId = useId()
   const Header = hideProcessDetail ? 'div' : 'button'
@@ -115,16 +115,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t(($) => $['common.input'], { ns: 'workflow' })
+    let text: string = t(($) => $['common.input'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t(($) => $['nodes.loop.initialLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.initialLoopVariables'], { ns: 'workflowLogic' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
   const processDataTitle = t(($) => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t(($) => $['common.output'], { ns: 'workflow' })
+    let text: string = t(($) => $['common.output'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t(($) => $['nodes.loop.finalLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.finalLoopVariables'], { ns: 'workflowLogic' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -291,7 +291,9 @@ const NodePanel: FC<Props> = ({
                   {nodeInfo.status === 'paused' && (
                     <StatusContainer status="paused">
                       <div className="system-xs-regular text-text-warning">
-                        {t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' })}
+                        {t(($) => $['nodes.humanInput.log.reasonContent'], {
+                          ns: 'workflowHumanInput',
+                        })}
                       </div>
                     </StatusContainer>
                   )}

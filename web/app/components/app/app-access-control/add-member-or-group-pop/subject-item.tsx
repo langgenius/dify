@@ -55,7 +55,7 @@ function GroupItem({
   onToggle: () => void
   onExpand: (group: AccessControlGroup) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <li className="flex min-w-0 items-center gap-2 rounded-lg hover:bg-state-base-hover">
@@ -102,7 +102,7 @@ function MemberItem({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <li>

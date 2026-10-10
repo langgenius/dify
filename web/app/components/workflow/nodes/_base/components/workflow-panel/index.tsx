@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, ReactNode } from 'react'
+import type { CSSProperties, FC, KeyboardEvent, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -12,7 +12,6 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
@@ -94,7 +93,7 @@ type BasePanelProps = {
 }
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const panelId = useId()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
@@ -104,11 +103,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   })
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
-  const { showMessageLogModal } = useAppStore(
-    useShallow((state) => ({
-      showMessageLogModal: state.showMessageLogModal,
-    })),
-  )
+  const messageLogItem = useStore((state) => state.messageLogItem)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
   const currentUserPresence = useMemo(() => {
@@ -159,6 +154,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const setNodePanelWidth = useStore((s) => s.setNodePanelWidth)
   const pendingSingleRun = useStore((s) => s.pendingSingleRun)
   const setPendingSingleRun = useStore((s) => s.setPendingSingleRun)
+  const pendingNodePanelFocusId = useStore((s) => s.pendingNodePanelFocusId)
+  const setPendingNodePanelFocusId = useStore((s) => s.setPendingNodePanelFocusId)
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
   const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
@@ -209,6 +207,30 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, debounceUpdate])
 
   const { handleNodeSelect } = useNodesInteractions()
+  const handlePanelKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.nativeEvent.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        !event.currentTarget.contains(event.target as globalThis.Node)
+      )
+        return
+
+      event.preventDefault()
+      event.stopPropagation()
+      const workflow = event.currentTarget.closest('#workflow-container')
+      const node = Array.from(
+        workflow?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [],
+      ).find((element) => element.dataset.id === id)
+      node?.focus({ preventScroll: true })
+      handleNodeSelect(id, true)
+    },
+    [handleNodeSelect, id],
+  )
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(
     getNodeCatalogType(data),
@@ -309,6 +331,14 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   useEffect(() => {
     setIsPaused(false)
   }, [tabType])
+
+  useEffect(() => {
+    if (pendingNodePanelFocusId !== id || !containerRef.current) return
+
+    setTabType(TabType.settings)
+    ;(descriptionInputRef.current ?? containerRef.current).focus({ preventScroll: true })
+    setPendingNodePanelFocusId(undefined)
+  }, [containerRef, id, pendingNodePanelFocusId, setPendingNodePanelFocusId, setTabType])
 
   useEffect(() => {
     if (!pendingSingleRun || pendingSingleRun.nodeId !== id) return
@@ -445,10 +475,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
+          role="region"
+          aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+          tabIndex={-1}
           className={cn(
-            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
           )}
           style={{
@@ -499,10 +534,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
+          role="region"
+          aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+          tabIndex={-1}
           className={cn(
-            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
           )}
           style={{
@@ -517,9 +557,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   const runThisStepLabel = t(($) => $['panel.runThisStep'], { ns: 'workflow' })
   const singleRunActionLabel = isSingleRunning
-    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
     : runThisStepLabel
-  const nodePanelRightOffset = !showMessageLogModal ? '4px' : `${otherPanelWidth + 8}px`
+  const nodePanelRightOffset = !messageLogItem ? '4px' : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
   const panelChildren = cloneElement(children as any, {
     id,
@@ -537,10 +577,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const panelTabs = (
     <TabsList>
       <TabsTab value={TabType.settings}>
-        {t(($) => $['debug.settingsTab'], { ns: 'workflow' }).toLocaleUpperCase()}
+        {t(($) => $['debug.settingsTab'], { ns: 'workflowDebug' }).toLocaleUpperCase()}
       </TabsTab>
       <TabsTab value={TabType.lastRun}>
-        {t(($) => $['debug.lastRunTab'], { ns: 'workflow' }).toLocaleUpperCase()}
+        {t(($) => $['debug.lastRunTab'], { ns: 'workflowDebug' }).toLocaleUpperCase()}
       </TabsTab>
     </TabsList>
   )
@@ -549,12 +589,12 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     <div
       className={cn(
         'relative mr-1 h-full',
-        showMessageLogModal &&
+        messageLogItem &&
           'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {
-          right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+          right: !messageLogItem ? '0' : `${otherPanelWidth}px`,
           '--workflow-node-panel-right': nodePanelRightOffset,
         } as CSSProperties
       }
@@ -575,9 +615,13 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       <Tabs
         id={panelId}
         ref={containerRef}
+        onKeyDown={handlePanelKeyDown}
+        role="region"
+        aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+        tabIndex={-1}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear"
+        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -642,7 +686,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             <StartPlaceholderPanelDescription />
           ) : (
             <div className="p-2">
-              <DescriptionInput value={data.desc || ''} onChange={handleDescriptionChange} />
+              <DescriptionInput
+                inputRef={descriptionInputRef}
+                value={data.desc || ''}
+                onChange={handleDescriptionChange}
+              />
             </div>
           )}
           {!isStartPlaceholderPanel && (

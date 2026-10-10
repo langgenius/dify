@@ -12,7 +12,7 @@ type DataSourceOptionsProps = {
 
 const DataSourceOptions = ({ dataSourceNodeId, onSelect }: DataSourceOptionsProps) => {
   const options = useDatasourceOptions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   const handelSelect = useCallback(
     (value: string) => {

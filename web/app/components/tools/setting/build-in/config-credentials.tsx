@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -14,6 +14,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -44,7 +45,7 @@ const ConfigCredential: FC<Props> = ({
   isSaving,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
@@ -101,9 +102,15 @@ const ConfigCredential: FC<Props> = ({
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['auth.setupModalTitle'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
                 <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">

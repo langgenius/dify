@@ -7,7 +7,7 @@
       "~@/*": ["./*"]
     },
     "resolveJsonModule": true,
-    "types": ["vite-plus/test/globals", "node"],
+    "types": ["vite-plus/test/globals", "vite-plus/test/matchers", "node"],
     "allowImportingTsExtensions": true,
     "allowJs": true
   },

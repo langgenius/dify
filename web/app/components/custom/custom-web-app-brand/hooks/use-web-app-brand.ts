@@ -14,7 +14,7 @@ import { hasPermission } from '@/utils/permission'
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: canReplaceLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => data.can_replace_logo,

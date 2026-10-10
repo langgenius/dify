@@ -107,11 +107,12 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
-- Call `vi.clearAllMocks()` in `beforeEach` when a suite relies on mock call history. Do not use `afterEach` to prepare the next test.
+- Vitest 5 clears mock call history before each test. This does not reset mock implementations or external state; set those up explicitly for each case. Do not use `afterEach` to prepare the next test.
 
 ## Dify Test Setup
 
-- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `app/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
@@ -168,13 +169,13 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Testing Library user-event convenience APIs]: https://testing-library.com/docs/user-event/convenience
 [Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
 [Vite+ testing configuration]: https://viteplus.dev/guide/test
-[Vitest Browser Mode documentation]: https://v4.vitest.dev/guide/browser
-[Vitest Browser Mode locators]: https://v4.vitest.dev/api/browser/locators
-[Vitest Browser Mode traces]: https://v4.vitest.dev/guide/browser/trace-view
-[Vitest Interactivity API]: https://v4.vitest.dev/api/browser/interactivity
-[Vitest component testing]: https://v4.vitest.dev/guide/browser/component-testing
-[Vitest documentation]: https://v4.vitest.dev/guide
-[Vitest test projects]: https://v4.vitest.dev/guide/projects
-[Vitest visual regression testing]: https://v4.vitest.dev/guide/browser/visual-regression-testing
-[Why Browser Mode]: https://v4.vitest.dev/guide/browser/why
+[Vitest Browser Mode documentation]: https://vitest.dev/guide/browser
+[Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
+[Vitest Browser Mode traces]: https://vitest.dev/guide/browser/trace-view
+[Vitest Interactivity API]: https://vitest.dev/api/browser/interactivity
+[Vitest component testing]: https://vitest.dev/guide/browser/component-testing
+[Vitest documentation]: https://vitest.dev/guide
+[Vitest test projects]: https://vitest.dev/guide/projects
+[Vitest visual regression testing]: https://vitest.dev/guide/browser/visual-regression-testing
+[Why Browser Mode]: https://vitest.dev/guide/browser/why
 [static checks]: lint.md

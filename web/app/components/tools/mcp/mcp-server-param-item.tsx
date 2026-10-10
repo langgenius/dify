@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const MCPServerParamItem = ({ data, value, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
 
   return (
     <div className="min-w-0 space-y-0.5">

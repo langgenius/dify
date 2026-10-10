@@ -54,7 +54,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   supportFile,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
     normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
   )

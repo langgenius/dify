@@ -29,7 +29,7 @@ type KeyWordNumberProps = {
 }
 
 const KeyWordNumber = ({ disabled, keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
   const handleInputChange = useCallback(

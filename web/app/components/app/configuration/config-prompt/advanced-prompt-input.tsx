@@ -56,7 +56,7 @@ const AdvancedPromptInput: FC<Props> = ({
 }) => {
   const promptLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const {
@@ -194,7 +194,7 @@ const AdvancedPromptInput: FC<Props> = ({
                 <Infotip>
                   <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
                   <InfotipContent aria-labelledby={promptLabelId} className="w-45">
-                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               </div>

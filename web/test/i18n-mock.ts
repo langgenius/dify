@@ -203,6 +203,13 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
  */
 function createTransMock(translations: TranslationMap = {}) {
   return {
+    Translation: ({
+      ns,
+      children,
+    }: {
+      ns?: TranslationNamespace
+      children: (t: ReturnType<typeof createTFunction>) => React.ReactNode
+    }) => children(createTFunction(translations, ns)),
     Trans: <Ns extends TranslationNamespace>({
       i18nKey,
       ns,
@@ -249,17 +256,6 @@ export function createI18nextMock(translations: TranslationMap = {}) {
       includeDefaultNamespace: false,
       includeOptionNamespace: false,
       includeInterpolationOptions: false,
-    }),
-  }
-}
-
-export function createReactI18nextLanguageMock(language: string) {
-  const mock = createReactI18nextMock()
-  return {
-    ...mock,
-    getI18n: () => ({
-      ...mock.getI18n(),
-      language,
     }),
   }
 }

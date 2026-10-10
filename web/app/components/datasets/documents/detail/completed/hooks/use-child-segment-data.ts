@@ -63,7 +63,7 @@ export const useChildSegmentData = (
     refreshChunkListDataWithDetailChanged,
     updateSegmentInCache,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
   const datasetId = useDocumentContext((s) => s.datasetId) || ''

@@ -236,7 +236,7 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
-    expect(screen.getByText(/workflow\.nodes\.loop\.currentLoopCount/)).toBeInTheDocument()
+    expect(screen.getByText(/workflowLogic\.nodes\.loop\.currentLoopCount/)).toBeInTheDocument()
     expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
   })
 

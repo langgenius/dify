@@ -40,7 +40,7 @@ const OpeningSettingModal = ({
 }: OpeningSettingModalProps) => {
   const questionsLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect
@@ -121,7 +121,10 @@ const OpeningSettingModal = ({
     <span className="block wrap-break-word whitespace-pre-wrap">
       {t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t(($) => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
+      {t(($) => $['openingStatement.placeholderLine2'], {
+        ns: 'appDebug',
+        variable: '{{variable}}',
+      })}
     </span>
   )
 

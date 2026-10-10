@@ -77,7 +77,7 @@ describe('AgentLogTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.nodes.agent.strategy.label')).toBeInTheDocument()
+      expect(screen.getByText('workflowAgent.nodes.agent.strategy.label')).toBeInTheDocument()
       expect(screen.getByText('Plan and execute')).toBeInTheDocument()
       expect(screen.getByText('runLog.detail')).toBeInTheDocument()
 

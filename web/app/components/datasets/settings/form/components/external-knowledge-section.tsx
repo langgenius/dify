@@ -4,8 +4,8 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
 
-const rowClass = 'flex gap-x-1'
-const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
+const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
+const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type ExternalKnowledgeSectionProps = {
   currentDataset: DataSet
@@ -28,7 +28,7 @@ const ExternalKnowledgeSection = ({
   handleSettingsChange,
   readonly = false,
 }: ExternalKnowledgeSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   return (
     <>
@@ -60,17 +60,17 @@ const ExternalKnowledgeSection = ({
             {t(($) => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}
           </div>
         </div>
-        <div className="w-full">
-          <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
+        <div className="w-full min-w-0">
+          <div className="flex h-full flex-wrap items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
             <span
               aria-hidden
-              className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+              className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary"
             />
-            <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+            <div className="min-w-0 system-sm-medium wrap-anywhere text-text-secondary">
               {currentDataset.external_knowledge_info.external_knowledge_api_name}
             </div>
             <div className="system-xs-regular text-text-tertiary">·</div>
-            <div className="system-xs-regular text-text-tertiary">
+            <div className="min-w-0 system-xs-regular wrap-anywhere text-text-tertiary">
               {currentDataset.external_knowledge_info.external_knowledge_api_endpoint}
             </div>
           </div>

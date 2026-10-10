@@ -263,7 +263,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})

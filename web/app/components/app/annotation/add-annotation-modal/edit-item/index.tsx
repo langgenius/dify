@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const EditItem: FC<Props> = ({ type, content, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const avatar =
     type === EditItemType.Query ? (
       <span aria-hidden className="i-custom-public-avatar-user size-6" />

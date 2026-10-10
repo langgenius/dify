@@ -26,7 +26,7 @@ function DebugInfo({
   triggerContent,
   triggerVariant = 'secondary',
 }: DebugInfoProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })

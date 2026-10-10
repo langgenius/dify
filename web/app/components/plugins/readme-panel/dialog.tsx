@@ -13,7 +13,7 @@ type ReadmeDialogProps = {
 }
 
 export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>

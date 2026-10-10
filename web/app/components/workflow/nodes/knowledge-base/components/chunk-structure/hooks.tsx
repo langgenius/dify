@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ChunkStructureEnum } from '../../types'
 
 export const useChunkStructure = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const GeneralOption: Option = {
     id: ChunkStructureEnum.general,
     icon: (isActive: boolean) => (

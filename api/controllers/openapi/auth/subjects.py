@@ -1,4 +1,4 @@
-"""`TokenType` in `libs/oauth_bearer` owns the mint-time facts (prefix, subject,
+"""`TokenType` in `constants/oauth_bearer` owns the mint-time facts (prefix, subject,
 scopes); a `Subject` owns the request-time behaviour, so `libs/` never has to
 import the auth layer.
 """
@@ -12,15 +12,15 @@ from typing import ClassVar, override
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
+from constants.oauth_bearer import Scope, SubjectType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import ExternalIdentity
 from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
 from extensions.ext_application_services import application_services
-from libs.oauth_bearer import AuthContext, Scope, SubjectType
+from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
-from services.account_service import AccountService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 _SUBJECT_CLASSES: dict[SubjectType, type[Subject]] = {}
@@ -86,7 +86,7 @@ class AccountSubject(Subject):
 
     @override
     def resolve_caller(self, ctx: Context, session: Session) -> Account:
-        account = AccountService.get_account_by_id(str(self.account_id), session=session)
+        account = application_services().accounts.identity.get_account_by_id(str(self.account_id))
         if account is None:
             raise Unauthorized("account not found")
         if ctx._workspace is not None:
@@ -125,8 +125,8 @@ class ExternalSsoSubject(Subject):
             raise Unauthorized("missing context for external user resolution")
         return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
             EndUserType.OPENAPI,
-            tenant_id=str(load_workspace(ctx).id),
-            app_id=str(load_app(ctx).id),
+            tenant_id=load_workspace(ctx).id,
+            app_id=load_app(ctx).id,
             user_id=identity.email,
         )
 
@@ -142,8 +142,31 @@ class ExternalSsoSubject(Subject):
         identity = self.external_identity
         if identity is None:
             return None
-        account = AccountService.get_account_by_email(identity.email, session=session)
-        return str(account.id) if account is not None else None
+        account = application_services().accounts.identity.get_account_by_email(identity.email)
+        return account.id if account is not None else None
+
+
+class ResourceAccessSubject(Subject):
+    subject_type = SubjectType.RESOURCE_ACCESS
+    caller_role = CreatorUserRole.END_USER
+    webapp_modes = frozenset[WebAppAccessMode]()
+
+    @override
+    def resolve_caller(self, ctx: Context, session: Session) -> EndUser:
+        return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
+            EndUserType.OPENAPI,
+            tenant_id=ctx.workspace.id,
+            app_id=ctx.app.id,
+            user_id=f"resource-token:{self.token_id}",
+        )
+
+    @override
+    def mounts_caller(self, ctx: Context) -> bool:
+        return route_has_app(ctx)
+
+    @override
+    def webapp_user_id(self, session: Session) -> str | None:
+        return None
 
 
 def subject_from_auth(auth: AuthContext) -> Subject:

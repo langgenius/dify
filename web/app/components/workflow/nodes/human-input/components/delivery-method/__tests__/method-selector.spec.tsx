@@ -45,8 +45,12 @@ describe('human-input/delivery-method/method-selector', () => {
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).toHaveBeenNthCalledWith(1, {
       id: 'generated-id',
@@ -60,10 +64,10 @@ describe('human-input/delivery-method/method-selector', () => {
     })
     expect(handleShowUpgradeTip).not.toHaveBeenCalled()
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.contactTip1'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip1'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.contactTip2'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip2'),
     ).toBeInTheDocument()
   })
 
@@ -90,10 +94,16 @@ describe('human-input/delivery-method/method-selector', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    expect(screen.getAllByText('workflow.nodes.humanInput.deliveryMethod.added')).toHaveLength(2)
+    expect(
+      screen.getAllByText('workflowHumanInput.nodes.humanInput.deliveryMethod.added'),
+    ).toHaveLength(2)
 
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).not.toHaveBeenCalled()
   })
@@ -115,11 +125,17 @@ describe('human-input/delivery-method/method-selector', () => {
     fireEvent.click(screen.getByRole('button'))
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.notAvailableInTriggerMode'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.notAvailableInTriggerMode',
+      ),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'))
-    fireEvent.click(screen.getByText('workflow.nodes.humanInput.deliveryMethod.types.email.title'))
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
+    )
+    fireEvent.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
+    )
 
     expect(handleAdd).not.toHaveBeenCalled()
     expect(handleShowUpgradeTip).toHaveBeenCalledTimes(1)

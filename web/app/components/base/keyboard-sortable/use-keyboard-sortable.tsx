@@ -27,7 +27,7 @@ export function useKeyboardSortable<T>({
   minIndex = 0,
   getItemLabel,
 }: Options<T>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const descriptionId = useId()
   const [session, setSession] = useState<SortSession<T> | null>(null)
   const [message, setMessage] = useState('')

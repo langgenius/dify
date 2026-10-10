@@ -8,7 +8,7 @@ import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
 const Form = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const {
     // Context values
     currentDataset,
@@ -25,9 +25,6 @@ const Form = () => {
 
     // Icon
     iconInfo,
-    showAppIconPicker,
-    setShowAppIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
 
     // Permission
@@ -69,7 +66,7 @@ const Form = () => {
   const readonly = !canEditSettings
 
   return (
-    <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-240">
+    <div className="flex w-full max-w-240 flex-col gap-y-4 px-4 py-8 @3xl/settings:px-20">
       <BasicInfoSection
         currentDataset={currentDataset}
         name={name}
@@ -77,9 +74,6 @@ const Form = () => {
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
-        showAppIconPicker={showAppIconPicker}
-        setShowAppIconPicker={setShowAppIconPicker}
-        handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
         permission={permission}
         setPermission={setPermission}
@@ -121,7 +115,7 @@ const Form = () => {
 
       {/* Save Button */}
       <div className="flex gap-x-1">
-        <div className="flex h-7 w-45 shrink-0 items-center pt-1" />
+        <div className="hidden h-7 w-45 shrink-0 items-center pt-1 @3xl/settings:flex" />
         <div className="grow">
           <Button
             className="min-w-24"

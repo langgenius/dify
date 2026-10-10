@@ -49,7 +49,7 @@ const UsageInfo: FC<Props> = ({
 }) => {
   const labelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold

@@ -10,7 +10,7 @@ type HelpLinkProps = {
   nodeType: BlockEnum
 }
 const HelpLink = ({ nodeType }: HelpLinkProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const link = useNodeHelpLink(nodeType)
 
   if (!link) return null

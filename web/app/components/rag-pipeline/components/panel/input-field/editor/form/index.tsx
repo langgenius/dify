@@ -21,7 +21,7 @@ const InputFieldForm = ({
   onSubmit,
   isEditMode = true,
 }: InputFieldFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
   const inputFieldForm = useAppForm({

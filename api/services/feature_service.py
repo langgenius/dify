@@ -8,6 +8,13 @@ from services.entities import feature_entities
 
 class FeatureService:
     @classmethod
+    def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
+        """Keep Cloud-only Web app customization out of free workspace imports."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return True
+        return cls.get_workspace_plan(tenant_id).is_paid
+
+    @classmethod
     def get_workspace_plan(cls, tenant_id: str) -> CloudPlan:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return CloudPlan.SANDBOX

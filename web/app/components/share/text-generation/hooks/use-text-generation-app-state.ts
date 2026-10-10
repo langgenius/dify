@@ -78,7 +78,7 @@ export const useTextGenerationAppState = ({
   isInstalledApp,
   isWorkflow,
 }: UseTextGenerationAppStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appData = useWebAppStore((s) => s.appInfo)
@@ -152,7 +152,7 @@ export const useTextGenerationAppState = ({
         ...file_upload,
         transfer_methods:
           file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       } as VisionSettings)
       setPromptConfig({

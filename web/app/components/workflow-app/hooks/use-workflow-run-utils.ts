@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
@@ -24,7 +25,7 @@ type DebuggableTriggerType = Exclude<TriggerType, typeof TriggerType.UserInput>
 
 type AppDetailLike = {
   id?: string
-  mode?: AppModeEnum
+  mode?: AppMode
 }
 
 type TTSParamsLike = {

@@ -69,7 +69,7 @@ class WorkflowEventsApi(WebApiResource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events

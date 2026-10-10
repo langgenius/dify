@@ -9,7 +9,7 @@ import useTheme from '@/hooks/use-theme'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const showEnvPanel = useStore((s) => s.showEnvPanel)
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)

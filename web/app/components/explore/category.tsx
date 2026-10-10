@@ -16,12 +16,15 @@ type ICategoryProps = {
 }
 
 function Category({ className, list, value, onChange, allCategoriesEn }: ICategoryProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const isAllCategories = !list.includes(value) || value === allCategoriesEn
   const selectedCategory = isAllCategories ? allCategoriesEn : value
 
   const renderCategoryName = (name: string) => {
-    const categoryKey = `category.${name}` as keyof typeof exploreI18n
+    const categoryKey = `category.${name}` as Extract<
+      keyof typeof exploreI18n,
+      `category.${string}`
+    >
     return categoryKey in exploreI18n ? t(($) => $[categoryKey], { ns: 'explore' }) : name
   }
 

@@ -59,7 +59,7 @@
   "externalAPIPanelDescription": "外部ナレッジベース連携 API は、Dify 外のナレッジベースと連携し、そこからナレッジベースを取得するために使用します。",
   "externalAPIPanelDocumentation": "外部ナレッジベース連携 API の作成方法",
   "externalAPIPanelTitle": "外部ナレッジベース連携 API",
-  "externalKnowledgeBase": "外部知識ベース",
+  "externalKnowledgeBase": "外部ナレッジベース",
   "externalKnowledgeDescription": "ナレッジベースの説明",
   "externalKnowledgeDescriptionPlaceholder": "このナレッジベースの説明（任意）",
   "externalKnowledgeForm.cancel": "キャンセル",

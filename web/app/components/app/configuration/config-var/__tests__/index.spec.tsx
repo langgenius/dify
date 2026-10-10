@@ -127,7 +127,7 @@ describe('ConfigVar', () => {
     it('should show empty state when no variables exist', () => {
       renderConfigVar({ promptVariables: [] })
 
-      expect(screen.getByText('appDebug.notSetVar'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.notSetVar:{"input":"{{input}}"}'))!.toBeInTheDocument()
     })
 
     it('should render variable items and allow reordering via sortable list', () => {

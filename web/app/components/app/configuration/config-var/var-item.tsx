@@ -36,7 +36,7 @@ const VarItem: FC<ItemProps> = ({
   canDrag,
   dragHandleProps,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (

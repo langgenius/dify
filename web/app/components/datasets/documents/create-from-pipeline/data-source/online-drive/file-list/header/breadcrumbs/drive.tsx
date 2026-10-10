@@ -7,7 +7,7 @@ type DriveProps = {
 }
 
 export default function Drive({ breadcrumbs, handleBackToRoot }: DriveProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <BreadcrumbItem

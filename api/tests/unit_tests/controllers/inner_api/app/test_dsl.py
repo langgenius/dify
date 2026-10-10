@@ -1,13 +1,12 @@
 """Unit tests for inner_api app DSL import/export endpoints.
 
-Tests Pydantic model validation, endpoint handler logic, and the
-_get_active_account helper. Auth/setup decorators are tested separately
+Tests Pydantic model validation and endpoint handler logic. Auth/setup decorators are tested separately
 in test_auth_wraps.py; handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -23,12 +22,12 @@ from controllers.inner_api.app.dsl import (
     EnterpriseAppDSLExport,
     EnterpriseAppDSLImport,
     InnerAppDSLImportPayload,
-    _get_active_account,
 )
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
-from services.app_dsl_service import Import, ImportStatus
+from services.app_dsl_service import AppDslService
+from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -104,151 +103,104 @@ class TestInnerAppDSLImportPayload:
         assert "creator_email" in str(exc_info.value)
 
 
-class TestGetActiveAccount:
-    """Test the _get_active_account helper function."""
-
-    def test_returns_active_account(self, sqlite_session: Session):
-        account = Account(name="Active", email="user@example.com", status=AccountStatus.ACTIVE)
-        sqlite_session.add(account)
-        sqlite_session.commit()
-
-        with patch.object(dsl_module.db, "session", sqlite_session):
-            result = _get_active_account("user@example.com")
-
-        assert result is account
-
-    def test_returns_none_for_inactive_account(self, sqlite_session: Session):
-        account = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
-        sqlite_session.add(account)
-        sqlite_session.commit()
-
-        with patch.object(dsl_module.db, "session", sqlite_session):
-            result = _get_active_account("banned@example.com")
-
-        assert result is None
-
-    def test_returns_none_for_nonexistent_email(self, sqlite_session: Session):
-        with patch.object(dsl_module.db, "session", sqlite_session):
-            result = _get_active_account("missing@example.com")
-
-        assert result is None
-
-
+@pytest.mark.usefixtures("app_query_services")
 class TestEnterpriseAppDSLImport:
-    """Test EnterpriseAppDSLImport endpoint handler logic.
+    """Exercise the composed import path with real account and membership reads."""
 
-    Uses inspect.unwrap() to bypass auth/setup decorators.
-    """
-
-    @pytest.fixture
-    def api_instance(self):
-        return EnterpriseAppDSLImport()
-
-    @pytest.fixture
-    def _mock_import_deps(self, sqlite_engine: Engine):
-        """Bind the handler Session to SQLite and isolate the DSL service boundary."""
-        self._transaction_events: list[str] = []
-
-        def on_commit(session: Session) -> None:
-            if session.get_bind() is sqlite_engine:
-                self._transaction_events.append("commit")
-
-        def on_rollback(session: Session) -> None:
-            if session.get_bind() is sqlite_engine:
-                self._transaction_events.append("rollback")
-
-        event.listen(Session, "after_commit", on_commit)
-        event.listen(Session, "after_rollback", on_rollback)
-        with (
-            patch.object(dsl_module, "db", SimpleNamespace(engine=sqlite_engine)),
-            patch("controllers.inner_api.app.dsl.AppDslService") as mock_dsl_cls,
-        ):
-            self._mock_dsl = MagicMock()
-            mock_dsl_cls.return_value = self._mock_dsl
-            yield
-        event.remove(Session, "after_commit", on_commit)
-        event.remove(Session, "after_rollback", on_rollback)
-
-    def _make_import_result(self, status: ImportStatus, **kwargs) -> Import:
-        result = Import(
-            id="import-id",
-            status=status,
-            app_id=kwargs.get("app_id", "app-123"),
-            app_mode=kwargs.get("app_mode", "workflow"),
-        )
-        return result
-
-    @pytest.mark.usefixtures("_mock_import_deps")
-    @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+    @pytest.mark.parametrize(
+        ("import_status", "http_status", "transaction"),
+        [
+            (ImportStatus.COMPLETED, 200, "commit"),
+            (ImportStatus.PENDING, 202, "commit"),
+            (ImportStatus.FAILED, 400, "rollback"),
+        ],
+    )
+    def test_import_releases_lookup_connections_and_finishes_transaction(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+        import_status: ImportStatus,
+        http_status: int,
+        transaction: str,
+    ):
         account = _persist_account(sqlite_session)
-        self._transaction_events.clear()
-        mock_get_account.return_value = account
-        self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
+        account_id = account.id
+        sqlite_session.close()
+        connections: set[object] = set()
+        transactions: list[str] = []
 
-        unwrapped = inspect.unwrap(api_instance.post)
-        payload = {
-            "yaml_content": "version: 0.6.0\n",
-            "creator_email": "user@example.com",
-        }
-        with app.test_request_context(json=payload):
-            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
+        def checkout(connection: object, *_args: object) -> None:
+            connections.add(connection)
 
-        body, status_code = result
-        assert status_code == 200
-        assert body["status"] == "completed"
-        assert account.current_tenant_id == "ws-123"
-        assert self._mock_dsl.import_app.call_args.kwargs["account"] is account
-        assert self._transaction_events == ["commit"]
+        def checkin(connection: object, *_args: object) -> None:
+            connections.discard(connection)
 
-    @pytest.mark.usefixtures("_mock_import_deps")
-    @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
-        mock_get_account.return_value = _persist_account(sqlite_session)
-        self._transaction_events.clear()
-        self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
+        def committed(session: Session) -> None:
+            if session.get_bind() is sqlite_engine:
+                transactions.append("commit")
 
-        unwrapped = inspect.unwrap(api_instance.post)
-        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-        with app.test_request_context(json=payload):
-            body, status_code = unwrapped(
-                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+        def rolled_back(session: Session) -> None:
+            if session.get_bind() is sqlite_engine:
+                transactions.append("rollback")
+
+        def import_app(service: AppDslService, *, account: Account, **kwargs: object) -> Import:
+            assert not connections
+            assert account.id == account_id
+            assert account.current_tenant_id == "ws-123"
+            assert kwargs["yaml_content"] == "version: 0.6.0\n"
+            # Open a real write transaction to verify the adapter's completion policy.
+            service._session.add(
+                App(tenant_id="ws-123", name="imported", mode=AppMode.WORKFLOW, enable_site=False, enable_api=False)
             )
+            service._session.flush()
+            return Import(id="import-id", status=import_status, app_id="app-123", app_mode="workflow")
 
-        assert status_code == 202
-        assert body["status"] == "pending"
-        assert self._transaction_events == ["commit"]
+        monkeypatch.setattr(AppDslService, "import_app", import_app)
+        listeners = [
+            (sqlite_engine, "checkout", checkout),
+            (sqlite_engine, "checkin", checkin),
+            (Session, "after_commit", committed),
+            (Session, "after_rollback", rolled_back),
+        ]
+        for target, name, callback in listeners:
+            event.listen(target, name, callback)
+        try:
+            payload = InnerAppDSLImportPayload(yaml_content="version: 0.6.0\n", creator_email="user@example.com")
+            with app.test_request_context():
+                body, status = inspect.unwrap(EnterpriseAppDSLImport.post)(
+                    EnterpriseAppDSLImport(), payload, workspace_id="ws-123"
+                )
+            assert status == http_status
+            assert body["status"] == import_status
+            assert transactions == [transaction]
+            assert not connections
+        finally:
+            for target, name, callback in listeners:
+                event.remove(target, name, callback)
 
-    @pytest.mark.usefixtures("_mock_import_deps")
-    @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
-        mock_get_account.return_value = _persist_account(sqlite_session)
-        self._transaction_events.clear()
-        self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
-
-        unwrapped = inspect.unwrap(api_instance.post)
-        payload = {"yaml_content": "test", "creator_email": "u@e.com"}
-        with app.test_request_context(json=payload):
-            body, status_code = unwrapped(
-                api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123"
+    @pytest.mark.parametrize("creator_email", ["missing@example.com", "banned@example.com", "USER@example.com"])
+    def test_missing_or_inactive_creator_returns_404(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        creator_email: str,
+    ):
+        sqlite_session.add_all(
+            [
+                Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED),
+                Account(name="Active", email="user@example.com", status=AccountStatus.ACTIVE),
+            ]
+        )
+        sqlite_session.commit()
+        payload = InnerAppDSLImportPayload(yaml_content="test", creator_email=creator_email)
+        with app.test_request_context():
+            body, status = inspect.unwrap(EnterpriseAppDSLImport.post)(
+                EnterpriseAppDSLImport(), payload, workspace_id="ws-123"
             )
-
-        assert status_code == 400
-        assert body["status"] == "failed"
-        assert self._transaction_events == ["rollback"]
-
-    @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_account_not_found_returns_404(self, mock_get_account, api_instance, app: Flask):
-        mock_get_account.return_value = None
-
-        unwrapped = inspect.unwrap(api_instance.post)
-        payload = {"yaml_content": "test", "creator_email": "missing@e.com"}
-        with app.test_request_context(json=payload):
-            result = unwrapped(api_instance, InnerAppDSLImportPayload.model_validate(payload), workspace_id="ws-123")
-
-        body, status_code = result
-        assert status_code == 404
-        assert "missing@e.com" in body["message"]
+        assert status == 404
+        assert creator_email in body["message"]
 
 
 class TestEnterpriseAppDSLExport:

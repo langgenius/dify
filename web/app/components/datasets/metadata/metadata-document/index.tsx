@@ -26,7 +26,7 @@ const MetadataDocument: FC<Props> = ({
   docDetail,
   canEdit = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const {
     embeddingAvailable,

@@ -9,7 +9,7 @@ type ProcessDocumentsProps = {
 }
 
 const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const pipelineId = useStore((state) => state.pipelineId)
   const { data: paramsConfig } = useDraftPipelineProcessingParams(
     {

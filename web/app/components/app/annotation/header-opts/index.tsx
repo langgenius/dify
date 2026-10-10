@@ -68,7 +68,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   onClearAll,
   onExportJsonl,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const locale = useLocale()
   const annotationUnavailable = list.length === 0
 
@@ -132,7 +132,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 }
 
 const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
 

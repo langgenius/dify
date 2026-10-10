@@ -3,7 +3,6 @@ import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
@@ -23,18 +22,22 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
-const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
   return {
     ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 2
-      return {
-        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
-      }
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) => {
+      const key = JSON.stringify(options.mutationKey)
+      return actual.useMutation({
+        ...options,
+        ...(key.includes('convertToWorkflow')
+          ? { mutationFn: (input: unknown) => mockConvertToWorkflow(input) }
+          : key.includes('delete')
+            ? { mutationFn: (input: unknown) => mockDeleteOriginalApp(input) }
+            : {}),
+      })
     },
   }
 })
@@ -71,12 +74,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-icon-picker</button>
-  ),
-}))
-
 const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'app-123',
   name: 'Demo App',
@@ -91,7 +88,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
-  access_mode: 'public_access',
+  access_mode: 'public',
   ...overrides,
 })
 
@@ -123,7 +120,7 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal show appDetail={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppModal show sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
@@ -133,8 +130,6 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
     appDetail,
   }
 }
-
-const setAppDetailSpy = vi.fn()
 
 function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
@@ -146,15 +141,8 @@ function render(ui: ReactElement) {
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockMutationState.hookIndex = 0
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
     deploymentEdition = 'COMMUNITY'
     mockPlan = {
       type: 'sandbox',
@@ -294,12 +282,12 @@ describe('SwitchAppModal', () => {
         permission_keys: ['app.acl.view_layout'],
       })
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
@@ -324,7 +312,7 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -356,7 +344,7 @@ describe('SwitchAppModal', () => {
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail } = renderComponent({ inAppDetail: true })
+      const { appDetail } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
@@ -376,7 +364,6 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {

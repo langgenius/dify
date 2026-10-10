@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const Moderation = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { setShowModerationSettingModal } = useModalContext()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()

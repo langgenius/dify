@@ -3,11 +3,11 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -50,8 +50,8 @@ function SkillDetailDeleteDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -77,13 +77,7 @@ function SkillDetailDeleteDialog({
   const isDeleteDisabled = deleteMutation.isPending || isDeleteUnavailable
   const description =
     referenceCount > 0
-      ? t(
-          ($) =>
-            referenceCount === 1
-              ? $['skillManagement.deleteDialog.referencedDescription_one']
-              : $['skillManagement.deleteDialog.referencedDescription_other'],
-          { count: referenceCount },
-        )
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -179,7 +173,7 @@ function SkillDetailDeleteDialog({
             </Field>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -191,7 +185,7 @@ function SkillDetailDeleteDialog({
           >
             {tCommon(($) => (referenceCount > 0 ? $['operation.confirm'] : $['operation.delete']))}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -208,8 +202,8 @@ export function SkillDetailSidebarActions({
   detail: SkillDetailResponse
   onRename: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
@@ -255,7 +249,7 @@ export function SkillDetailSidebarActions({
           aria-label={t(($) => $['skillManagement.moreActions'], {
             name: detail.display_name,
           })}
-          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>

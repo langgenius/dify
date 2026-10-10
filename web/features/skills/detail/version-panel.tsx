@@ -3,11 +3,11 @@
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -54,8 +54,8 @@ export function RestoreVersionDialog({
   open: boolean
   versionTitle: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -68,14 +68,14 @@ export function RestoreVersionDialog({
             version: versionTitle,
           })}
         </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
+        <AlertDialogFooter className="p-0 pt-6">
           <AlertDialogCancelButton disabled={loading}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
             {t(($) => $['skillManagement.detail.restoreVersion'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -114,7 +114,7 @@ function CurrentDraftItem({
   isLast: boolean
   onSelect: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <button
@@ -146,8 +146,8 @@ function VersionFilter({
   value: VersionFilterValue
   onChange: (value: VersionFilterValue) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
   const isFiltering = value !== 'all'
 
@@ -160,11 +160,13 @@ function VersionFilter({
             type="button"
             aria-label={`${t(($) => $['skillManagement.detail.versions'])}: ${
               value === 'all'
-                ? tWorkflow(($) => $['versionHistory.filter.all'])
-                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])
+                ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                    ns: 'workflowHistory',
+                  })
             }`}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
               isFiltering
                 ? 'bg-state-accent-active-alt text-text-accent'
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -193,8 +195,10 @@ function VersionFilter({
             >
               <span className="min-w-0 flex-1 truncate system-md-regular text-text-primary">
                 {filterValue === 'all'
-                  ? tWorkflow(($) => $['versionHistory.filter.all'])
-                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])}
+                  ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                      ns: 'workflowHistory',
+                    })}
               </span>
               {value === filterValue && (
                 <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-text-accent" />
@@ -222,8 +226,8 @@ function VersionRow({
   skillId: string
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
@@ -373,7 +377,7 @@ function VersionRow({
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
-              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs outline-hidden group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100"
+              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
@@ -472,7 +476,7 @@ function VersionRow({
           <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
             {versionTitle}
           </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogFooter className="p-0 pt-6">
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -483,7 +487,7 @@ function VersionRow({
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
@@ -503,8 +507,8 @@ export function VersionPanel({
   skillId: string
   versions: SkillVersionResponse[]
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['skill'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
   const titleId = useId()
   const filteredVersions = versions.filter((version) => {
@@ -546,14 +550,14 @@ export function VersionPanel({
             {versions.length > 0 && filteredVersions.length === 0 && (
               <div className="rounded-lg px-3 py-6 text-center">
                 <p className="system-sm-regular text-text-tertiary">
-                  {tWorkflow(($) => $['versionHistory.filter.empty'])}
+                  {tWorkflow(($) => $['versionHistory.filter.empty'], { ns: 'workflowHistory' })}
                 </p>
                 <button
                   type="button"
                   className="mt-2 rounded-md px-2 py-1 system-xs-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => setFilterValue('all')}
                 >
-                  {tWorkflow(($) => $['versionHistory.filter.reset'])}
+                  {tWorkflow(($) => $['versionHistory.filter.reset'], { ns: 'workflowHistory' })}
                 </button>
               </div>
             )}

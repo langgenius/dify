@@ -1081,7 +1081,7 @@ describe('useAgentConfigureSync', () => {
       await expect(result.current.publishDraft()).resolves.toBe(false)
     })
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+    expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
   })
 
   it('should save the effective model before run when the form draft is unchanged', async () => {
@@ -1203,7 +1203,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
     expect(trackEventMock).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+    expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
   })
 
   it('should toast and skip publish when a configured tool is not installed', async () => {

@@ -5,11 +5,11 @@ import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -39,7 +39,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
   onUpdatedFromMarketplace,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const locale = useGetLanguage()
 
   const { source, version, meta } = detail
@@ -84,14 +84,14 @@ const HeaderModals: FC<HeaderModalsProps> = ({
               {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={onDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

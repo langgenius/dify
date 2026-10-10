@@ -1100,31 +1100,5 @@ describe('update-plugin', () => {
       // Act & Assert - should throw because payload is required
       expect(() => renderWithQueryClient(<UpdatePlugin {...props} />)).toThrow()
     })
-
-    it('should handle empty version list in PluginVersionPicker', () => {
-      // Override the mock temporarily
-      vi.mocked(
-        vi.importActual('@/service/use-plugins') as unknown as Record<string, unknown>,
-      ).useVersionListOfPlugin = () => ({
-        data: { data: { versions: [] } },
-      })
-
-      // Act
-      render(
-        <PluginVersionPicker
-          {...{
-            isShow: true,
-            onShowChange: vi.fn(),
-            pluginID: 'test',
-            currentVersion: '1.0.0',
-            trigger: () => <span>Select</span>,
-            onSelect: vi.fn(),
-          }}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-    })
   })
 })

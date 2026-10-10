@@ -2,10 +2,12 @@ import type {
   BlockDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
-import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
@@ -16,9 +18,9 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import dynamic from '@/next/dynamic'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
+import { useIsChatMode } from '../hooks/use-is-chat-mode'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
 
@@ -28,12 +30,9 @@ const Features = dynamic(() => import('@/app/components/workflow/features'), {
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(
-  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
-  {
-    ssr: false,
-  },
-)
+const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
+  ssr: false,
+})
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
@@ -64,8 +63,10 @@ const getTriggerPluginNodeData = (
 }
 
 const WorkflowChildren = () => {
+  const appId = useStore((s) => s.appId)
+  const isChatMode = useIsChatMode()
   const { eventEmitter } = useEventEmitterContextContext()
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
   const showImportDSLModal = useStore((s) => s.showImportDSLModal)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -80,10 +81,10 @@ const WorkflowChildren = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const { exportCheck, handleExportDSL } = useDSL()
+  const { exportCheck, handleExportDSL, isExporting } = useDSL()
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === DSL_EXPORT_CHECK) setSecretEnvList(v.payload.data as EnvironmentVariable[])
+  eventEmitter?.useSubscription((event) => {
+    if (isExportSecretEnvironmentEvent(event)) setSecretEnvList(event.payload.data)
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -172,17 +173,20 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {canImportExportDSL && showImportDSLModal && (
+      {appId && canImportExportDSL && showImportDSLModal && (
         <UpdateDSLModal
+          appId={appId}
+          appMode={isChatMode ? 'advanced-chat' : 'workflow'}
           onCancel={() => setShowImportDSLModal(false)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}
         />
       )}
       {canImportExportDSL && secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <AppExportConfirmModal
           envList={secretEnvList}
           onConfirm={handleExportDSL!}
+          isExporting={isExporting}
           onClose={() => setSecretEnvList([])}
         />
       )}

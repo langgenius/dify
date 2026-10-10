@@ -1,11 +1,12 @@
 'use client'
 import type { BuiltInMetadataItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import OptionCard from '../../../workflow/nodes/_base/components/option-card'
 import { DataType } from '../types'
 import Field from './field'
 
@@ -19,15 +20,9 @@ export type Props = Readonly<{
 }>
 
 export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const [type, setType] = useState<DataType>(DataType.string)
 
-  const handleTypeChange = useCallback(
-    (newType: DataType) => {
-      return () => setType(newType)
-    },
-    [setType],
-  )
   const [name, setName] = useState('')
 
   const handleSave = useCallback(() => {
@@ -68,25 +63,31 @@ export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props
       </div>
       <div className="mt-2">
         <div className="space-y-3">
-          <Field label={t(($) => $[`${i18nPrefix}.type`], { ns: 'dataset' })}>
-            <div className="grid grid-cols-3 gap-2">
-              <OptionCard
-                title="String"
-                selected={type === DataType.string}
-                onSelect={handleTypeChange(DataType.string)}
-              />
-              <OptionCard
-                title="Number"
-                selected={type === DataType.number}
-                onSelect={handleTypeChange(DataType.number)}
-              />
-              <OptionCard
-                title="Time"
-                selected={type === DataType.time}
-                onSelect={handleTypeChange(DataType.time)}
-              />
+          <Fieldset
+            render={<RadioGroup<DataType> value={type} onValueChange={setType} />}
+            className="block"
+          >
+            <FieldsetLegend className="py-1 system-sm-semibold text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.type`], { ns: 'dataset' })}
+            </FieldsetLegend>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {[
+                { value: DataType.string, label: 'String' },
+                { value: DataType.number, label: 'Number' },
+                { value: DataType.time, label: 'Time' },
+              ].map((option) => (
+                <RadioItem<DataType>
+                  key={option.value}
+                  value={option.value}
+                  nativeButton
+                  render={<button type="button" />}
+                  className="flex h-8 cursor-pointer items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium"
+                >
+                  {option.label}
+                </RadioItem>
+              ))}
             </div>
-          </Field>
+          </Fieldset>
           <Field label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}>
             <Input
               aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}

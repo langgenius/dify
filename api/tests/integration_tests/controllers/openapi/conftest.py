@@ -10,11 +10,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from flask import Flask
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.oauth_bearer import TokenType
 from models import Account, App, OAuthAccessToken, Tenant, TenantAccountJoin
 from models.account import AccountStatus
 
@@ -33,7 +33,7 @@ def disable_enterprise(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, TenantAccountJoin], None, None]:
+def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, TenantAccountJoin]]:
     with flask_app.app_context():
         tenant = Tenant(name="t1", status="normal")
         account = Account(email="u@example.com", name="u")
@@ -51,7 +51,7 @@ def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, Tena
 
 
 @pytest.fixture
-def app_in_workspace(flask_app: Flask, workspace_account) -> Generator[App, None, None]:
+def app_in_workspace(flask_app: Flask, workspace_account) -> Generator[App]:
     _, tenant, _ = workspace_account
     with flask_app.app_context():
         app = App(tenant_id=tenant.id, name="a", mode="chat", status="normal", enable_site=True, enable_api=True)
@@ -121,7 +121,7 @@ def auth_headers(flask_app: Flask, account_token: str) -> dict[str, str]:
 
 
 @pytest.fixture(autouse=True)
-def _flush_auth_redis(flask_app: Flask) -> Generator[None, None, None]:
+def _flush_auth_redis(flask_app: Flask) -> Generator[None]:
     def _flush():
         with flask_app.app_context():
             for k in redis_client.keys("auth:*"):

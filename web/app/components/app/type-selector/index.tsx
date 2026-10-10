@@ -24,7 +24,7 @@ const allTypes: AppModeEnum[] = [
 ]
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const triggerLabel =
     value.length === 0
       ? t(($) => $['typeSelector.all'], { ns: 'app' })
@@ -105,7 +105,7 @@ export const AppTypeIcon = React.memo(
         </div>
       )
     }
-    if (type === AppModeEnum.AGENT_CHAT) {
+    if (type === AppModeEnum.AGENT_CHAT || type === AppModeEnum.AGENT) {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
           <span
@@ -156,7 +156,7 @@ export const AppTypeIcon = React.memo(
 )
 
 function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['value'] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   if (!values || values.length === 0) {
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
@@ -231,7 +231,8 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
 
 function getAppTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
   if (type === AppModeEnum.CHAT) return t(($) => $['typeSelector.chatbot'], { ns: 'app' })
-  if (type === AppModeEnum.AGENT_CHAT) return t(($) => $['typeSelector.agent'], { ns: 'app' })
+  if (type === AppModeEnum.AGENT_CHAT || type === AppModeEnum.AGENT)
+    return t(($) => $['typeSelector.agent'], { ns: 'app' })
   if (type === AppModeEnum.COMPLETION) return t(($) => $['typeSelector.completion'], { ns: 'app' })
   if (type === AppModeEnum.ADVANCED_CHAT) return t(($) => $['typeSelector.advanced'], { ns: 'app' })
   if (type === AppModeEnum.WORKFLOW) return t(($) => $['typeSelector.workflow'], { ns: 'app' })
@@ -244,7 +245,7 @@ type AppTypeLabelProps = {
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return <span className={className}>{getAppTypeLabel(type, t)}</span>
 }

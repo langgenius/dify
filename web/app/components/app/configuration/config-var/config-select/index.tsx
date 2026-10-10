@@ -19,7 +19,7 @@ type IConfigSelectProps = {
 }
 
 const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage, errorId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
 

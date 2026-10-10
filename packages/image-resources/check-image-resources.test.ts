@@ -1,4 +1,4 @@
-import type { TestContext } from 'vitest'
+import type { TestContext } from 'vite-plus/test'
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
@@ -10,7 +10,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
 import sharp from 'sharp'
-import { it, vi } from 'vitest'
+import { it, vi } from 'vite-plus/test'
 import {
   escapeAnnotation,
   exceedsThreshold,

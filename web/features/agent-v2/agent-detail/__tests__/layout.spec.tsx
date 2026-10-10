@@ -95,7 +95,7 @@ describe('AgentDetailLayout', () => {
       })
     vi.mocked(fetch).mockResolvedValueOnce(Response.json(createAgentFixture()))
     render(content, { wrapper })
-    expect(await screen.findByRole('alert')).toHaveTextContent('agentV2.roster.loadingError')
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findByText('Agent detail content')).toBeVisible()

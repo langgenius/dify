@@ -34,6 +34,7 @@ from models.account import Account
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.credentials.query import CredentialQuery, ToolCredentialRecord
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -310,7 +311,7 @@ class BuiltinToolManageService:
     @staticmethod
     def create_tool_encrypter(
         tenant_id: str,
-        db_provider: BuiltinToolProvider,
+        db_provider: BuiltinToolProvider | ToolCredentialRecord,
         provider: str,
         provider_controller: BuiltinToolProviderController,
     ):
@@ -346,9 +347,10 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
-        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
+        *,
+        credential_query: CredentialQuery,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials, filtered by visibility.
@@ -364,84 +366,45 @@ class BuiltinToolManageService:
         rows are marked with ``from_other_member=True`` so the UI can render them as
         borrowed-from-teammate (selectable but not editable).
         """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        with session.no_autoflush:
-            base_filter = (
-                BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider_name,
+        providers = credential_query.list_tools(
+            workspace_id=tenant_id,
+            provider=provider_name,
+            actor_id=user.id if user else None,
+            include_credential_ids=include_credential_ids or (),
+        )
+        if not providers:
+            return []
+        provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
+        credentials: list[ToolProviderCredentialApiEntity] = []
+        for provider in providers:
+            encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
+                tenant_id, provider, provider.provider, provider_controller
             )
-            order = (BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-            visible_query = select(BuiltinToolProvider).where(*base_filter).order_by(*order)
-            if user is not None:
-                visible_query = CredentialPermissionService.apply_visibility_filter(
-                    visible_query,
-                    model_id_column=BuiltinToolProvider.id,
-                    model_user_id_column=BuiltinToolProvider.user_id,
-                    model_visibility_column=BuiltinToolProvider.visibility,
-                    credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                    user=user,
+            decrypted = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
+            credentials.append(
+                ToolProviderCredentialApiEntity(
+                    id=provider.id,
+                    name=provider.name,
+                    provider=provider.provider,
+                    credential_type=provider.credential_type,
+                    is_default=provider.is_default,
+                    credentials=dict(decrypted),
+                    visibility=provider.visibility,
+                    created_by=provider.created_by,
+                    partial_member_list=list(provider.partial_member_ids),
+                    from_other_member=provider.from_other_member,
                 )
-            visible_providers = list(session.scalars(visible_query).all())
-
-            # Fetch any explicitly-included IDs that the visibility filter excluded.
-            borrowed_ids: set[str] = set()
-            borrowed_providers: list[BuiltinToolProvider] = []
-            if include_credential_ids:
-                visible_id_set = {p.id for p in visible_providers}
-                wanted_ids = [cid for cid in include_credential_ids if cid and cid not in visible_id_set]
-                if wanted_ids:
-                    borrowed_query = (
-                        select(BuiltinToolProvider)
-                        .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
-                        .order_by(*order)
-                    )
-                    borrowed_providers = list(session.scalars(borrowed_query).all())
-                    borrowed_ids = {p.id for p in borrowed_providers}
-
-            providers = visible_providers + borrowed_providers
-            if not providers:
-                return []
-
-            # Only the first visible row should be flagged is_default in the response.
-            if visible_providers:
-                visible_providers[0].is_default = True
-            provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
-
-            credentials: list[ToolProviderCredentialApiEntity] = []
-            for provider in providers:
-                encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
-                    tenant_id, provider, provider.provider, provider_controller
-                )
-                decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
-                credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
-                    provider=provider,
-                    credentials=dict(decrypt_credential),
-                )
-                # Attach visibility, creator, and partial member list to the response entity
-                vis = getattr(provider, "visibility", "all_team_members")
-                vis_str = vis.value if hasattr(vis, "value") else str(vis)
-                credential_entity.visibility = vis_str
-                credential_entity.created_by = getattr(provider, "user_id", "") or ""
-                if vis_str == "partial_members":
-                    credential_entity.partial_member_list = list(
-                        CredentialPermissionService.get_partial_member_list(
-                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER, session=session
-                        )
-                    )
-                if provider.id in borrowed_ids:
-                    credential_entity.from_other_member = True
-                credentials.append(credential_entity)
-            return credentials
+            )
+        return credentials
 
     @staticmethod
     def get_builtin_tool_provider_credential_info(
         tenant_id: str,
         provider: str,
-        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
+        *,
+        credential_query: CredentialQuery,
     ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
@@ -451,9 +414,9 @@ class BuiltinToolManageService:
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
             provider,
-            session=session,
             user=user,
             include_credential_ids=include_credential_ids,
+            credential_query=credential_query,
         )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,

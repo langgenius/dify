@@ -81,7 +81,9 @@ describe('ModelSelectorTrigger', () => {
       <ModelSelectorTrigger loading defaultModel={{ provider: 'openai', model: 'legacy-model' }} />,
     )
     expect(screen.getByRole('button', { name: 'legacy-model' })).toBeDisabled()
-    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.selector.incompatible'),
+    ).not.toBeInTheDocument()
     rerender(
       <Popover>
         <ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />
@@ -89,7 +91,7 @@ describe('ModelSelectorTrigger', () => {
     )
     expect(
       screen.getByRole('button', {
-        name: 'legacy-model common.modelProvider.selector.incompatible',
+        name: 'legacy-model modelProvider.modelProvider.selector.incompatible',
       }),
     ).toBeEnabled()
   })
@@ -100,7 +102,9 @@ describe('ModelSelectorTrigger', () => {
       <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
     )
     expect(screen.getByRole('button', { name: 'GPT-4' })).toBeEnabled()
-    expect(screen.queryByText('common.modelProvider.selector.incompatible')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.selector.incompatible'),
+    ).not.toBeInTheDocument()
   })
 
   describe('Rendering', () => {
@@ -126,10 +130,12 @@ describe('ModelSelectorTrigger', () => {
       render(<ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />)
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
-          name: 'legacy-model common.modelProvider.selector.incompatible',
+          name: 'legacy-model modelProvider.modelProvider.selector.incompatible',
         }),
       ).toBeEnabled()
     })
@@ -218,7 +224,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(
-        screen.getByText('common.modelProvider.selector.configureRequired'),
+        screen.getByText('modelProvider.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
       expect(getTrigger()).toHaveAttribute('data-model-status', 'configure-required')
       expect(getTrigger()).toHaveClass(
@@ -242,7 +248,9 @@ describe('ModelSelectorTrigger', () => {
         <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.creditsExhausted'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
@@ -263,7 +271,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(
-        screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
+        screen.getByText('modelProvider.modelProvider.selector.apiKeyUnavailable'),
       ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
       expect(getTrigger()).toHaveClass(
@@ -279,7 +287,7 @@ describe('ModelSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.selector.disabled')).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
@@ -293,7 +301,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(
-        screen.queryByText('common.modelProvider.selector.configureRequired'),
+        screen.queryByText('modelProvider.modelProvider.selector.configureRequired'),
       ).not.toBeInTheDocument()
     })
 
@@ -310,10 +318,10 @@ describe('ModelSelectorTrigger', () => {
       expect(getTrigger()).toHaveClass(
         'data-[model-status=incompatible]:bg-components-input-bg-disabled',
       )
-      await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
+      await user.hover(screen.getByText('modelProvider.modelProvider.selector.incompatible'))
 
       expect(
-        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+        await screen.findByText('modelProvider.modelProvider.selector.incompatibleTip'),
       ).toBeInTheDocument()
     })
 
@@ -326,7 +334,9 @@ describe('ModelSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
   })
@@ -336,11 +346,13 @@ describe('ModelSelectorTrigger', () => {
       const user = userEvent.setup()
       render(<ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />)
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
-      await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
+      await user.hover(screen.getByText('modelProvider.modelProvider.selector.incompatible'))
 
       expect(
-        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+        await screen.findByText('modelProvider.modelProvider.selector.incompatibleTip'),
       ).toBeInTheDocument()
     })
 
@@ -362,11 +374,13 @@ describe('ModelSelectorTrigger', () => {
       expect(mockUseCredentialPanelState).toHaveBeenCalledWith(
         expect.objectContaining({ provider: 'openai' }),
       )
-      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
-      await user.hover(screen.getByText('common.modelProvider.selector.creditsExhausted'))
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.creditsExhausted'),
+      ).toBeInTheDocument()
+      await user.hover(screen.getByText('modelProvider.modelProvider.selector.creditsExhausted'))
 
       expect(
-        await screen.findByText('common.modelProvider.selector.creditsExhaustedTip'),
+        await screen.findByText('modelProvider.modelProvider.selector.creditsExhaustedTip'),
       ).toBeInTheDocument()
     })
   })

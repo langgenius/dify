@@ -206,6 +206,48 @@ describe('AgentAccessConfigPage', () => {
     ])
   })
 
+  it('shows and protects a workspace admin in resource access', async () => {
+    const admin = zResourceUserAccessPolicies.parse({
+      ...createUser('admin', 'Workspace Admin'),
+      roles: [
+        {
+          id: 'admin-role',
+          type: 'workspace',
+          category: 'global_system_default',
+          name: 'Admin',
+          is_builtin: true,
+          role_tag: 'admin',
+        },
+      ],
+    })
+    setup({ users: [admin, createUser('mia', 'Mia')] })
+
+    const adminRow = screen.getByRole('row', { name: /Workspace Admin/ })
+    expect(within(adminRow).getByText('permission.accessRule.workspaceAdmin')).toBeInTheDocument()
+    expect(within(adminRow).getByRole('checkbox', { name: 'Workspace Admin' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(adminRow).getByRole('combobox')).toBeDisabled()
+    expect(within(adminRow).getByRole('button', { name: 'common.operation.remove' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(within(adminRow).getByRole('checkbox', { name: 'Workspace Admin' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Mia' })).toBeChecked()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.sure',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('row', { name: /Mia/ })).not.toBeInTheDocument())
+    expect(screen.getByRole('row', { name: /Workspace Admin/ })).toBeInTheDocument()
+    const removals = sent.filter((req) => req.method === 'DELETE')
+    expect(removals).toHaveLength(1)
+    expect(await removals[0]!.json()).toEqual({ account_ids: ['mia'] })
+  })
+
   it('returns to the previous page after removing its last member', async () => {
     const users = Array.from({ length: RESOURCE_ACCESS_SETTINGS_PAGE_SIZE + 1 }, (_, i) =>
       createUser(`user-${i}`, `Member ${i}`),

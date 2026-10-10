@@ -11,10 +11,12 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, TokenType
+from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
@@ -121,3 +123,19 @@ def admitted_bearer(
         member_id=str(uuid.uuid4()),
         headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    from controllers.openapi import apps, apps_permitted_external, workspaces
+    from controllers.openapi.auth import loaders, requirements, subjects
+
+    for module in (
+        apps,
+        apps_permitted_external,
+        workspaces,
+        loaders,
+        requirements,
+        subjects,
+    ):
+        monkeypatch.setattr(module, "application_services", lambda: account_application_services)

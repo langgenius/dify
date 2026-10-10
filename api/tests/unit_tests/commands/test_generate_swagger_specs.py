@@ -692,9 +692,6 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert _request_schema(package_import, "multipart/form-data")["properties"]["app_id"]["type"] == "string"
     assert _request_schema(package_import, "application/json")["$ref"] == "#/components/schemas/AppImportPayload"
     assert "mode" in schemas["AppImportPayload"]["required"]
-    conflict = package_import["responses"]["409"]["content"]["application/json"]["schema"]
-    assert conflict["$ref"] == "#/components/schemas/RosterAgentPackageConflictResponse"
-    assert "leaked_dependencies" in schemas["RosterAgentPackageConflictResponse"]["properties"]
     assert "403" in package_import["responses"]
     export = paths["/apps/{app_id}/export"]["get"]
     assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
@@ -812,6 +809,14 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
     assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
+    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)

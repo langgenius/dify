@@ -24,7 +24,7 @@ type Props = Readonly<{
 }>
 
 function OperationDropdown({ open, onOpenChange, author, name, version }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme } = useTheme()
 
   const downloadMutation = useMutation(

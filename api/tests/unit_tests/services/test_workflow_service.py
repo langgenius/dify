@@ -18,6 +18,7 @@ from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
@@ -363,11 +364,15 @@ class TestWorkflowService:
 
         assert result is workflow
 
-    def test_get_published_workflow_by_id_can_lock_restore_source(self, workflow_service: WorkflowService):
+    def test_get_published_workflow_by_id_can_lock_restore_source(
+        self, workflow_service: WorkflowService, sqlite_session: Session, mocker: MockerFixture
+    ):
         app = TestWorkflowAssociatedDataFactory.create_app()
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
-        session = MagicMock(spec=Session)
-        session.scalar.return_value = workflow
+        session = sqlite_session
+        session.add(workflow)
+        session.commit()
+        lookup = mocker.spy(session, "scalar")
 
         result = workflow_service.get_published_workflow_by_id(
             app,
@@ -376,7 +381,7 @@ class TestWorkflowService:
             for_update=True,
         )
 
-        stmt = session.scalar.call_args.args[0]
+        stmt = lookup.call_args.args[0]
         sql = str(stmt.compile(dialect=postgresql.dialect()))
         assert result is workflow
         assert "FOR UPDATE" in sql
@@ -1759,24 +1764,30 @@ class TestWorkflowService:
         for binding in non_target_bindings:
             assert sqlite_session.get(WorkflowAgentNodeBinding, binding.id) is binding
 
-    def test_delete_workflow_locks_source_until_caller_commits(self, workflow_service: WorkflowService):
+    def test_delete_workflow_locks_source_until_caller_commits(
+        self, workflow_service: WorkflowService, sqlite_session: Session, mocker: MockerFixture
+    ):
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
         workflow_ref = WorkflowRef(
             tenant_id=workflow.tenant_id,
             owner_id=workflow.app_id,
             workflow_id=workflow.id,
         )
-        session = MagicMock(spec=Session)
-        session.scalar.side_effect = [workflow, None, None]
-        session.scalars.return_value.all.return_value = []
+        session = sqlite_session
+        session.add(workflow)
+        session.commit()
+        lookup = mocker.spy(session, "scalar")
 
         result = workflow_service.delete_workflow(session=session, workflow_ref=workflow_ref)
 
-        stmt = session.scalar.call_args_list[0].args[0]
+        stmt = lookup.call_args_list[0].args[0]
         sql = str(stmt.compile(dialect=postgresql.dialect()))
         assert result == []
         assert "FOR UPDATE" in sql
-        session.delete.assert_called_once_with(workflow)
+        assert session.in_transaction()
+        assert workflow in session.deleted
+        session.commit()
+        assert session.get(Workflow, workflow.id) is None
 
     def test_delete_workflow_with_ref_scopes_lookup_to_app(
         self, workflow_service: WorkflowService, sqlite_session: Session

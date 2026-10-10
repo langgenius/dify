@@ -3,25 +3,19 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
-import { toast } from '@/app/notifications'
-import { validPassword } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { updateUserProfile } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
+import { ChangePasswordDialog } from './change-password-dialog'
+import { EditAccountNameDialog } from './edit-account-name-dialog'
 import EmailChangeModal from './email-change-modal'
 
 const titleClassName = `
@@ -33,8 +27,7 @@ const descriptionClassName = `
 type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
-  const { t } = useTranslation()
-  const editNameInputId = useId()
+  const { t } = useTranslation(['common', 'accountSettings'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(
     consoleQuery.apps.get.queryOptions({
@@ -48,12 +41,9 @@ export default function AccountPage() {
     }),
   )
   const apps = appList?.data || []
-  const queryClient = useQueryClient()
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
-  const mutateUserProfile = () =>
-    queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
   const { data: enableEducationPlan } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.education.enabled,
@@ -65,86 +55,10 @@ export default function AccountPage() {
       select: ({ is_student }) => is_student ?? false,
     }),
   )
-  const [editNameModalVisible, setEditNameModalVisible] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editing, setEditing] = useState(false)
-  const [editPasswordModalVisible, setEditPasswordModalVisible] = useState(false)
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showUpdateEmail, setShowUpdateEmail] = useState(false)
 
   if (!userProfile) return null
-
-  const handleEditName = () => {
-    setEditNameModalVisible(true)
-    setEditName(userProfile.name)
-  }
-  const handleSaveName = async () => {
-    try {
-      setEditing(true)
-      await updateUserProfile({ url: 'account/name', body: { name: editName } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      mutateUserProfile()
-      setEditNameModalVisible(false)
-      setEditing(false)
-    } catch (e) {
-      toast.error((e as Error).message)
-      setEditing(false)
-    }
-  }
-
-  const showErrorMessage = (message: string) => {
-    toast.error(message)
-  }
-  const valid = () => {
-    if (!password.trim()) {
-      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
-      return false
-    }
-
-    return true
-  }
-  const resetPasswordForm = () => {
-    setCurrentPassword('')
-    setPassword('')
-    setConfirmPassword('')
-  }
-  const handleSavePassword = async () => {
-    if (!valid()) return
-    try {
-      setEditing(true)
-      await updateUserProfile({
-        url: 'account/password',
-        body: {
-          password: currentPassword,
-          new_password: password,
-          repeat_new_password: confirmPassword,
-        },
-      })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      mutateUserProfile()
-      setEditPasswordModalVisible(false)
-      resetPasswordForm()
-      setEditing(false)
-    } catch (e) {
-      toast.error((e as Error).message)
-      setEditPasswordModalVisible(false)
-      setEditing(false)
-    }
-  }
 
   const renderAppItem = (item: AccountAppItem) => {
     const appIconType = zIconType.safeParse(item.icon_type).data ?? null
@@ -168,16 +82,11 @@ export default function AccountPage() {
     <>
       <div className="pt-2 pb-3">
         <h4 className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['account.myAccount'], { ns: 'common' })}
+          {t(($) => $['account.myAccount'], { ns: 'accountSettings' })}
         </h4>
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
-        <AvatarWithEdit
-          avatar={userProfile.avatar_url}
-          name={userProfile.name}
-          onSave={mutateUserProfile}
-          size="3xl"
-        />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}
@@ -192,22 +101,20 @@ export default function AccountPage() {
         </div>
       </div>
       <div className="mb-8">
-        <div className={titleClassName}>{t(($) => $['account.name'], { ns: 'common' })}</div>
+        <div className={titleClassName}>
+          {t(($) => $['account.name'], { ns: 'accountSettings' })}
+        </div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
             <span className="pl-1">{userProfile.name}</span>
           </div>
-          <button
-            type="button"
-            className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
-            onClick={handleEditName}
-          >
-            {t(($) => $['operation.edit'], { ns: 'common' })}
-          </button>
+          <EditAccountNameDialog name={userProfile.name} />
         </div>
       </div>
       <div className="mb-8">
-        <div className={titleClassName}>{t(($) => $['account.email'], { ns: 'common' })}</div>
+        <div className={titleClassName}>
+          {t(($) => $['account.email'], { ns: 'accountSettings' })}
+        </div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
             <span className="pl-1">{userProfile.email}</span>
@@ -227,30 +134,26 @@ export default function AccountPage() {
         <div className="mb-8 flex justify-between gap-2">
           <div>
             <div className="mb-1 system-sm-semibold text-text-secondary">
-              {t(($) => $['account.password'], { ns: 'common' })}
+              {t(($) => $['account.password'], { ns: 'accountSettings' })}
             </div>
             <div className="mb-2 body-xs-regular text-text-tertiary">
-              {t(($) => $['account.passwordTip'], { ns: 'common' })}
+              {t(($) => $['account.passwordTip'], { ns: 'accountSettings' })}
             </div>
           </div>
-          <Button onClick={() => setEditPasswordModalVisible(true)}>
-            {userProfile.is_password_set
-              ? t(($) => $['account.resetPassword'], { ns: 'common' })
-              : t(($) => $['account.setPassword'], { ns: 'common' })}
-          </Button>
+          <ChangePasswordDialog isPasswordSet={userProfile.is_password_set} />
         </div>
       )}
       <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>
-          {t(($) => $['account.langGeniusAccount'], { ns: 'common' })}
+          {t(($) => $['account.langGeniusAccount'], { ns: 'accountSettings' })}
         </div>
         <div className={descriptionClassName}>
-          {t(($) => $['account.langGeniusAccountTip'], { ns: 'common' })}
+          {t(($) => $['account.langGeniusAccountTip'], { ns: 'accountSettings' })}
         </div>
         {!!apps.length && (
           <Collapse
-            title={`${t(($) => $['account.showAppLength'], { ns: 'common', length: apps.length })}`}
+            title={`${t(($) => $['account.showAppLength'], { ns: 'accountSettings', length: apps.length })}`}
             items={apps.map((app) => ({ ...app, key: app.id, name: app.name }))}
             renderItem={renderAppItem}
             wrapperClassName="mt-2"
@@ -261,144 +164,10 @@ export default function AccountPage() {
             className="mt-2 text-components-button-destructive-secondary-text"
             onClick={() => setShowDeleteAccountModal(true)}
           >
-            {t(($) => $['account.delete'], { ns: 'common' })}
+            {t(($) => $['account.delete'], { ns: 'accountSettings' })}
           </Button>
         )}
       </div>
-      <Dialog
-        open={editNameModalVisible}
-        onOpenChange={(open) => !open && setEditNameModalVisible(false)}
-      >
-        <DialogContent className="w-105 p-6">
-          <div className="mb-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $['account.editName'], { ns: 'common' })}
-          </div>
-          <label htmlFor={editNameInputId} className={`block ${titleClassName}`}>
-            {t(($) => $['account.name'], { ns: 'common' })}
-          </label>
-          <Input
-            id={editNameInputId}
-            className="mt-2"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <div className="mt-10 flex justify-end">
-            <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button disabled={editing || !editName} variant="primary" onClick={handleSaveName}>
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={editPasswordModalVisible}
-        onOpenChange={(open) => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}
-      >
-        <DialogContent className="w-105! p-6!">
-          <div className="mb-6 title-2xl-semi-bold text-text-primary">
-            {userProfile.is_password_set
-              ? t(($) => $['account.resetPassword'], { ns: 'common' })
-              : t(($) => $['account.setPassword'], { ns: 'common' })}
-          </div>
-          {userProfile.is_password_set && (
-            <Field name="current-password">
-              <FieldLabel className="system-sm-semibold">
-                {t(($) => $['account.currentPassword'], { ns: 'common' })}
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onValueChange={setCurrentPassword}
-                  autoComplete="current-password"
-                  spellCheck={false}
-                />
-                <InputGroupAddon align="inline-end">
-                  <IconButton
-                    size="lg"
-                    aria-label={t(($) => $[showCurrentPassword ? 'hidePassword' : 'showPassword'], {
-                      ns: 'login',
-                    })}
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  >
-                    <span aria-hidden="true">{showCurrentPassword ? '👀' : '😝'}</span>
-                  </IconButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-          )}
-          <Field name="new-password" className="mt-8">
-            <FieldLabel className="system-sm-semibold">
-              {userProfile.is_password_set
-                ? t(($) => $['account.newPassword'], { ns: 'common' })
-                : t(($) => $['account.password'], { ns: 'common' })}
-            </FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onValueChange={setPassword}
-                autoComplete="new-password"
-                spellCheck={false}
-              />
-              <InputGroupAddon align="inline-end">
-                <IconButton
-                  size="lg"
-                  aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                    ns: 'login',
-                  })}
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
-                </IconButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-          <Field name="confirm-password" className="mt-8">
-            <FieldLabel className="system-sm-semibold">
-              {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-            </FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onValueChange={setConfirmPassword}
-                autoComplete="new-password"
-                spellCheck={false}
-              />
-              <InputGroupAddon align="inline-end">
-                <IconButton
-                  size="lg"
-                  aria-label={t(($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'], {
-                    ns: 'login',
-                  })}
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <span aria-hidden="true">{showConfirmPassword ? '👀' : '😝'}</span>
-                </IconButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-          <div className="mt-10 flex justify-end">
-            <Button
-              className="mr-2"
-              onClick={() => {
-                setEditPasswordModalVisible(false)
-                resetPasswordForm()
-              }}
-            >
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button disabled={editing} variant="primary" onClick={handleSavePassword}>
-              {userProfile.is_password_set
-                ? t(($) => $['operation.reset'], { ns: 'common' })
-                : t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
       {showDeleteAccountModal && (
         <DeleteAccount
           onCancel={() => setShowDeleteAccountModal(false)}

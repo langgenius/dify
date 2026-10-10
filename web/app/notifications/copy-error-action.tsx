@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function CopyErrorAction({ text }: { text: string }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { copy, copied, error, reset } = useClipboard({ timeout: 2000 })
   useEffect(() => reset, [reset])
   const [feedbackText, setFeedbackText] = useState<string | null>(null)

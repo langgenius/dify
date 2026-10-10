@@ -624,20 +624,43 @@ class SnippetDslService:
             node_data = node.get("data", {})
             if not node_data:
                 continue
+            dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
             data_type = node_data.get("type", "")
             if data_type == BuiltinNodeTypes.TOOL:
-                tool_config = node_data.get("tool_configurations", {})
-                provider_type = tool_config.get("provider_type")
-                provider_name = tool_config.get("provider")
-                if provider_type and provider_name:
-                    dependencies.append(f"{provider_name}/{provider_name}")
-            elif data_type == BuiltinNodeTypes.AGENT:
-                agent_parameters = node_data.get("agent_parameters", {})
-                tools = agent_parameters.get("tools", {}).get("value", [])
-                for tool in tools:
-                    provider_type = tool.get("provider_type")
-                    provider_name = tool.get("provider")
-                    if provider_type and provider_name:
-                        dependencies.append(f"{provider_name}/{provider_name}")
+                tool_config = node_data.get("tool_configurations") or {}
+                provider_type = node_data.get("provider_type") or tool_config.get("provider_type")
+                if provider_type in ("builtin", "plugin"):
+                    provider_id = (
+                        node_data.get("plugin_id") or node_data.get("provider_id") or tool_config.get("provider")
+                    )
+                    if isinstance(provider_id, str) and provider_id:
+                        dependencies.append(DependenciesAnalysisService.analyze_tool_provider_reference(provider_id))
+            elif data_type in (
+                BuiltinNodeTypes.LLM,
+                BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+            ):
+                model = node_data.get("model")
+                if isinstance(model, Mapping) and isinstance(model.get("provider"), str) and model["provider"]:
+                    dependencies.append(
+                        DependenciesAnalysisService.analyze_model_provider_dependency(model["provider"])
+                    )
+            elif data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                if node_data.get("retrieval_mode") == "single":
+                    model_config = node_data.get("single_retrieval_config") or {}
+                    model = model_config.get("model") or {}
+                    provider = model.get("provider")
+                else:
+                    multiple_config = node_data.get("multiple_retrieval_config") or {}
+                    if multiple_config.get("reranking_mode") == "reranking_model":
+                        provider = (multiple_config.get("reranking_model") or {}).get("provider")
+                    elif multiple_config.get("reranking_mode") == "weighted_score":
+                        provider = ((multiple_config.get("weights") or {}).get("vector_setting") or {}).get(
+                            "embedding_provider_name"
+                        )
+                    else:
+                        provider = None
+                if isinstance(provider, str) and provider:
+                    dependencies.append(DependenciesAnalysisService.analyze_model_provider_dependency(provider))
 
         return dependencies

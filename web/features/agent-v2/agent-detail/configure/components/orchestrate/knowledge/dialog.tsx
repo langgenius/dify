@@ -328,7 +328,7 @@ function AgentKnowledgeRetrievalDialogContent({
   onItemCreate,
   onItemChange,
 }: Omit<AgentKnowledgeRetrievalDialogProps, 'open' | 'onOpenChange'>) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common', 'datasetSettings'])
   const docLink = useDocLink()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const getValidationMessage = useKnowledgeValidationMessage()

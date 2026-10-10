@@ -67,6 +67,7 @@ class EndpointSpec:
     requirements: tuple[Requirement, ...]
     catalog: CatalogMeta
     edition: frozenset[DeploymentEdition] | None = None
+    account_context: bool = False
 
     def allows(self, edition: DeploymentEdition) -> bool:
         """Whether this deployment exposes the route at all. `edition is None`

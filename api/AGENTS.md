@@ -15,7 +15,8 @@ Run direct Python commands through `uv run --project api`. Docker-backed integra
 
 ## Architecture And Boundaries
 
-- Keep transport parsing and serialization in controllers, orchestration in services, and domain policy in `core/` or its domain owner. Keep `libs/` business-agnostic and reuse existing owners before adding abstractions.
+- Treat `api/core/` as a migration-only area: do not add files or move implementations into it. Move responsibilities out; limit changes to existing callers to the adaptations needed for that migration.
+- Keep transport parsing and serialization in controllers, orchestration in services, and domain policy in its domain owner. New or extracted implementations must stay outside `core/`. Keep `libs/` business-agnostic and reuse existing owners before adding abstractions.
 - Before changing controller schemas, generated API contracts, or `SystemFeatureModel`, read `controllers/API_SCHEMA_GUIDE.md`. Treat `/system-features` as a minimal unauthenticated bootstrap allowlist, not a general configuration registry.
 - Scope tenant-owned reads and writes by the complete owner chain, and propagate `tenant_id` across every affected layer. Reconstruct trusted internal references from validated database state after payload or async boundaries.
 - Keep write transactions explicit and bounded. Do not perform external I/O inside an open transaction unless a documented consistency contract requires it.

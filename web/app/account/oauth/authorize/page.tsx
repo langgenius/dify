@@ -25,7 +25,7 @@ import { useLogout } from '@/service/use-common'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -90,7 +90,9 @@ export default function OAuthAuthorize() {
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
-  const { mutateAsync: logout } = useLogout()
+  const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
+  const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`
+  const { mutateAsync: logout } = useLogout({ redirectTo: signInUrl })
   const { isAutoAuthorizing } = useSilentAuthorize({
     authAppInfo,
     authorize,
@@ -117,11 +119,10 @@ export default function OAuthAuthorize() {
 
   const onLoginSwitchClick = async () => {
     try {
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
       if (isLoggedIn) await logout()
-      router.push(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
+      else router.push(signInUrl)
     } catch {
-      router.push('/signin')
+      // The request layer reports logout failures; keep the current session on this page.
     }
   }
 

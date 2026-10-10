@@ -24,7 +24,7 @@ const ImageList: FC<ImageListProps> = ({
   onImageLinkLoadSuccess,
   onImageLinkLoadError,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   const handleImageLinkLoadSuccess = (item: ImageFile) => {

@@ -13,7 +13,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 

@@ -27,7 +27,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
   footer,
   hideResize,
 }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const editorId = useId()
   const resizeDescriptionId = useId()
   const didDragRef = useRef(false)

@@ -11,7 +11,6 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from models.enums import AppMCPServerStatus
 from models.model import AppMCPServer
 
 
@@ -22,7 +21,7 @@ def _persist_server(session: Session, *, server_code: str) -> AppMCPServer:
         name="Test MCP Server",
         description="Test server",
         server_code=server_code,
-        status=AppMCPServerStatus.ACTIVE,
+        status="active",
         parameters="{}",
     )
     session.add(server)

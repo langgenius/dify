@@ -60,7 +60,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   isPending,
   onPickerChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
 
   return (
     <FloatRightContainer

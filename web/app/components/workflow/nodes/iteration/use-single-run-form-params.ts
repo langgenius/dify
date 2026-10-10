@@ -35,7 +35,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   iterationRunResult,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { isNodeInIteration } = useIsNodeInIteration(id)
 
   const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()

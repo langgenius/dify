@@ -6,7 +6,7 @@ type TitleProps = {
 }
 
 const Title = ({ name }: TitleProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="px-1.25 py-1 system-sm-medium text-text-secondary">

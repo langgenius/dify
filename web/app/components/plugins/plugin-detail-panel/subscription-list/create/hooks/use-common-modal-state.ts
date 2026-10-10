@@ -1,7 +1,6 @@
 'use client'
 import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
-import type { PluginTriggerTranslate } from './use-common-modal-state.helpers'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type {
   TriggerLogEntity,
@@ -107,11 +106,7 @@ export const useCommonModalState = ({
   builder,
   onClose,
 }: UseCommonModalStateParams): UseCommonModalStateReturn => {
-  const { t } = useTranslation()
-  const translatePluginTriggerKey = useCallback<PluginTriggerTranslate>(
-    (selector, options) => t(selector, options),
-    [t],
-  )
+  const { t } = useTranslation(['pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
@@ -187,7 +182,7 @@ export const useCommonModalState = ({
     provider: detail?.provider,
     subscriptionBuilder,
     setSubscriptionBuilder,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Cleanup debounced function
@@ -201,7 +196,7 @@ export const useCommonModalState = ({
     endpoint: subscriptionBuilder?.endpoint,
     isConfigurationStep: currentStep === ApiKeyStep.Configuration,
     subscriptionFormRef,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Handle manual properties change
@@ -334,9 +329,9 @@ export const useCommonModalState = ({
       isVerifyStep: currentStep === ApiKeyStep.Verify,
       isVerifyingCredentials,
       isBuilding,
-      t: translatePluginTriggerKey,
+      t,
     })
-  }, [currentStep, isVerifyingCredentials, isBuilding, translatePluginTriggerKey])
+  }, [currentStep, isVerifyingCredentials, isBuilding, t])
 
   return {
     currentStep,

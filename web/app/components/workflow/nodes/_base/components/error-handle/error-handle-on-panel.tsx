@@ -24,7 +24,7 @@ type ErrorHandleProps = Pick<Node, 'id' | 'data'>
 const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
   const titleId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { error_strategy, default_value } = data
   const { collapsed, setCollapsed, handleErrorHandleTypeChange } = useErrorHandle(id, data)
   const { handleFormChange } = useDefaultValue(id)

@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const {
     appSourceType,
     isMobile,

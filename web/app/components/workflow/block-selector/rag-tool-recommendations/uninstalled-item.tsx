@@ -16,7 +16,7 @@ type UninstalledItemProps = {
 }
 
 function UninstalledItem({ payload }: UninstalledItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>

@@ -55,8 +55,8 @@ export function DocumentChunkDetail({
   revision?: Exclude<LogicalDocumentRevision, null>
   selectedChunkId?: string
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const selectedChunk = useMemo(
     () => chunks.find((chunk) => chunk.id === selectedChunkId) ?? chunks[0],
     [chunks, selectedChunkId],

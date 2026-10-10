@@ -1,16 +1,14 @@
 'use client'
 
-import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
 import { resolveClassName } from '../internals/resolve-class-name'
+import { triggerFocusClassName } from '../overlay-shared'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
 const DrawerIndent = BaseDrawer.Indent
 const DrawerIndentBackground = BaseDrawer.IndentBackground
-const DrawerTrigger = BaseDrawer.Trigger
 const DrawerSwipeArea = BaseDrawer.SwipeArea
 const DrawerPortal = BaseDrawer.Portal
 const DrawerTitle = BaseDrawer.Title
@@ -18,12 +16,23 @@ const DrawerDescription = BaseDrawer.Description
 const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
+type DrawerActions = BaseDrawer.Root.Actions
+
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
 type DrawerProviderProps = BaseDrawer.Provider.Props
 type DrawerIndentProps = BaseDrawer.Indent.Props
 type DrawerIndentBackgroundProps = BaseDrawer.IndentBackground.Props
 type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
+
+function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
+  return (
+    <BaseDrawer.Trigger
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type DrawerSwipeAreaProps = BaseDrawer.SwipeArea.Props
 type DrawerPortalProps = BaseDrawer.Portal.Props
 type DrawerTitleProps = BaseDrawer.Title.Props
@@ -104,41 +113,11 @@ function DrawerContent({ className, ...props }: DrawerContentProps) {
   )
 }
 
-type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children'> & {
-  children?: React.ReactNode
-}
-
-function DrawerCloseButton({
-  className,
-  children,
-  type = 'button',
-  'aria-label': ariaLabel = 'Close drawer',
-  ...props
-}: DrawerCloseButtonProps) {
-  return (
-    <BaseDrawer.Close
-      type={type}
-      aria-label={ariaLabel}
-      className={(state) =>
-        cn(
-          iconButtonVariants({ size: 'lg' }),
-          'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50 data-disabled:text-text-tertiary',
-          resolveClassName(className, state),
-        )
-      }
-      {...props}
-    >
-      {children ?? <span aria-hidden="true" className="i-ri-close-line size-4" />}
-    </BaseDrawer.Close>
-  )
-}
-
 export {
   createDrawerHandle,
   Drawer,
   DrawerBackdrop,
   DrawerClose,
-  DrawerCloseButton,
   DrawerContent,
   DrawerDescription,
   DrawerIndent,
@@ -153,8 +132,8 @@ export {
 }
 
 export type {
+  DrawerActions,
   DrawerBackdropProps,
-  DrawerCloseButtonProps,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,

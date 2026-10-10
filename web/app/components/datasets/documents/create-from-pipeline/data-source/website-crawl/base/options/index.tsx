@@ -25,7 +25,7 @@ type OptionsProps = {
 }
 
 const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const runButtonLabelId = useId()
   const initialData = useInitialData(variables)
   const configurations = useConfigurations(variables)

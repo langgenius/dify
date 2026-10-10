@@ -1,4 +1,5 @@
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import MagicMock, Mock, call, patch
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
@@ -20,15 +21,6 @@ class DuplicateDocumentIndexingTaskProxyTestDataFactory:
         features.billing.subscription = Mock()
         features.billing.subscription.plan = plan
         return features
-
-    @staticmethod
-    def create_mock_tenant_queue(has_task_key: bool = False) -> Mock:
-        """Create mock TenantIsolatedTaskQueue."""
-        queue = Mock(spec=TenantIsolatedTaskQueue)
-        queue.get_task_key.return_value = "task_key" if has_task_key else None
-        queue.push_tasks = Mock()
-        queue.set_task_waiting_time = Mock()
-        return queue
 
     @staticmethod
     def create_duplicate_document_task_proxy(
@@ -116,21 +108,21 @@ class TestDuplicateDocumentIndexingTaskProxy:
     @patch(
         "services.document_indexing_proxy.duplicate_document_indexing_task_proxy.normal_duplicate_document_indexing_task"
     )
-    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task):
+    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()
-        proxy._tenant_isolated_task_queue = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=True
-        )
+        tenant_queue_commands.return_value = "task_key"
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once()
-        pushed_tasks = proxy._tenant_isolated_task_queue.push_tasks.call_args[0][0]
+        assert [entry.args[0] for entry in tenant_queue_commands.call_args_list] == ["GET", "LPUSH"]
+        push = tenant_queue_commands.call_args_list[1]
+        assert push.args[1] == "tenant_self_duplicate_document_indexing_task_queue:tenant-123"
+        pushed_tasks = [json.loads(push.args[2])["data"]]
         assert len(pushed_tasks) == 1
         assert isinstance(DocumentTask(**pushed_tasks[0]), DocumentTask)
         assert pushed_tasks[0]["tenant_id"] == "tenant-123"
@@ -141,24 +133,31 @@ class TestDuplicateDocumentIndexingTaskProxy:
     @patch(
         "services.document_indexing_proxy.duplicate_document_indexing_task_proxy.normal_duplicate_document_indexing_task"
     )
-    def test_send_to_tenant_queue_without_task_key(self, mock_task):
+    def test_send_to_tenant_queue_without_task_key(self, mock_task, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()
-        proxy._tenant_isolated_task_queue = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=False
-        )
+        tenant_queue_commands.return_value = None
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        tenant_queue_commands.assert_has_calls(
+            [
+                call(
+                    "GET",
+                    "tenant_duplicate_document_indexing_task:tenant-123",
+                    keys=["tenant_duplicate_document_indexing_task:tenant-123"],
+                ),
+                call("SETEX", "tenant_duplicate_document_indexing_task:tenant-123", 3600, 1),
+            ]
+        )
         mock_task.delay.assert_called_once_with(
             tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1", "doc-2", "doc-3"]
         )
-        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
+        assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
     def test_send_to_default_tenant_queue(self):
         """Test _send_to_default_tenant_queue method."""

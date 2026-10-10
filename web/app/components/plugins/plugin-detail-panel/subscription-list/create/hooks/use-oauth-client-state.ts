@@ -77,7 +77,7 @@ export const useOAuthClientState = ({
   onOpenChange,
   showOAuthCreateModal,
 }: UseOAuthClientStateParams): UseOAuthClientStateReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'pluginTrigger'])
 
   // State management
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<

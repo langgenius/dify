@@ -12,7 +12,7 @@ const Placeholder = ({
   value?: ReactNode
   className?: string
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div

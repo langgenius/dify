@@ -7,7 +7,7 @@ type TabsProps = {
 }
 
 const Tabs = ({ workflowRunningData }: TabsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline', 'runLog'])
   const tabs = [
     { value: 'RESULT', label: t(($) => $.result, { ns: 'runLog' }) },
     { value: 'DETAIL', label: t(($) => $.detail, { ns: 'runLog' }) },

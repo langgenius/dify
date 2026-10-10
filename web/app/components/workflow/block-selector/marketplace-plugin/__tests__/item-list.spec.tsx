@@ -66,7 +66,7 @@ describe('Marketplace plugin selector components', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    i18n = renderHook(() => useTranslation()).result.current.i18n
+    i18n = renderHook(() => useTranslation(['plugin'])).result.current.i18n
     i18n.language = 'en-US'
     vi.mocked(useStickyScroll).mockReturnValue({
       handleScroll: vi.fn(),

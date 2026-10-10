@@ -7,7 +7,7 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
 
 export function useEducationDiscount() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
 

@@ -4,9 +4,10 @@ import {
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ErrorHandleTypeEnum } from './types'
 
@@ -20,7 +21,7 @@ const ErrorHandleTypeSelector = ({
   onSelected,
   allowDefaultValue = true,
 }: ErrorHandleTypeSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const options = [
     {
       value: ErrorHandleTypeEnum.none,
@@ -58,24 +59,20 @@ const ErrorHandleTypeSelector = ({
         {selectedOption?.label}
         <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-70 p-1">
         <DropdownMenuRadioGroup value={value} onValueChange={onSelected}>
           {availableOptions.map((option) => (
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
               closeOnClick
-              className="h-auto items-start rounded-lg p-2 pr-3"
+              className="h-auto items-start p-2 pr-3"
               onClick={(e) => {
                 e.stopPropagation()
               }}
             >
               <div className="mr-1 w-4 shrink-0">
-                {value === option.value && <RiCheckLine className="size-4 text-text-accent" />}
+                <DropdownMenuRadioItemIndicator />
               </div>
               <div className="grow">
                 <div className="mb-0.5 system-sm-semibold text-text-secondary">{option.label}</div>

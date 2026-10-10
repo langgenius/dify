@@ -99,7 +99,7 @@ const StepOne = ({
   onCrawlOptionsChange,
   authedDataSourceList,
 }: IStepOneProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const sourceLabelId = useId()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)

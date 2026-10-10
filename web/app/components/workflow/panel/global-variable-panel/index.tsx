@@ -9,7 +9,7 @@ import { useIsChatMode } from '../../hooks/use-workflow'
 import Item from './item'
 
 const Panel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
   const setShowPanel = useStore((s) => s.setShowGlobalVariablePanel)
   const isWorkflowPage = isInWorkflowPage()

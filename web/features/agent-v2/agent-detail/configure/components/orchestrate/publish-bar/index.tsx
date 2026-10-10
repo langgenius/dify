@@ -74,9 +74,9 @@ function getPublishState({
 function PublishShortcut() {
   return (
     <KbdGroup aria-hidden>
-      {PUBLISH_AGENT_HOTKEY.split('+').map((key) => (
+      {formatForDisplay(PUBLISH_AGENT_HOTKEY, { parts: true }).map((key) => (
         <Kbd key={key} color="white">
-          {formatForDisplay(key)}
+          {key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -93,8 +93,8 @@ export function AgentConfigurePublishBar({
   onOpenVersions,
   onVersionRestored,
 }: AgentConfigurePublishBarProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const draft = useAtomValue(agentComposerDraftAtom)
@@ -200,11 +200,16 @@ export function AgentConfigurePublishBar({
   useHotkey(
     PUBLISH_AGENT_HOTKEY,
     (event) => {
+      if (event.defaultPrevented) return
       event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       requestPublish()
     },
     {
       enabled: canPublish && !selectedVersionSnapshot,
+      preventDefault: false,
+      stopPropagation: false,
       ignoreInputs: false,
     },
   )
@@ -381,15 +386,15 @@ function PublishBarActions({
   onOpenVersions: () => void
   onPublishRequest: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const publishButtonLabelId = useId()
 
   return (
-    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
+    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4 max-sm:flex-wrap max-sm:justify-end">
       <div
         role="status"
         aria-label={`${statusLabel}. ${metaLabel}`}
-        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden max-sm:basis-full"
       >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
@@ -459,7 +464,7 @@ function AgentVersionRestoreBar({
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const versionLabel =
     version.version_note ||
@@ -469,7 +474,7 @@ function AgentVersionRestoreBar({
       ? null
       : formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (

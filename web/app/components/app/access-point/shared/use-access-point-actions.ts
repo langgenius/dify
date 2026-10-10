@@ -1,71 +1,51 @@
 'use client'
 
-import type { ConfigParams } from '@/app/components/app/overview/settings'
-import type { App } from '@/types/app'
-import type { I18nKeysByPrefix } from '@/types/i18n'
-import { useQueryClient } from '@tanstack/react-query'
+import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
-import { fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 
 export function useAccessPointActions(appId: string, canManageAccessPoint: boolean) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const refreshAppDetail = useCallback(async () => {
-    try {
-      const appDetail = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...appDetail })
-    } catch (error) {
-      console.error('Failed to refresh app detail:', error)
-    }
-  }, [appId, setAppDetail])
-
-  const handleResult = useCallback(
-    (error: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
-      const type = error ? 'error' : 'success'
-      const resolvedMessage = message ?? (error ? 'modifiedUnsuccessfully' : 'modifiedSuccessfully')
-
-      if (!error) {
-        void refreshAppDetail()
-      }
-
-      toast(t(($) => $[`actionMsg.${resolvedMessage}`], { ns: 'common' }) as string, {
-        type,
-      })
-    },
-    [refreshAppDetail, t],
+  const { mutateAsync: updateSiteConfig } = useMutation(
+    consoleQuery.apps.byAppId.site.post.mutationOptions(),
   )
+  const refreshAppDetail = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: appId } },
+        }),
+      }),
+    [appId, queryClient],
+  )
+
   const saveSiteConfig = useCallback(
-    async (params: ConfigParams) => {
+    async (params: AppSiteUpdatePayload) => {
       if (!canManageAccessPoint) return
-      const [error] = await asyncRunSafe<App>(
-        updateAppSiteConfig({
-          url: `/apps/${appId}/site`,
+      const [error] = await asyncRunSafe(
+        updateSiteConfig({
+          params: { app_id: appId },
           body: params,
-        }) as Promise<App>,
+        }),
       )
-      if (!error) {
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: appId } },
-          }),
-        })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-      }
-      handleResult(error)
+      toast(
+        t(($) => $[`actionMsg.${error ? 'modifiedUnsuccessfully' : 'modifiedSuccessfully'}`], {
+          ns: 'common',
+        }) as string,
+        {
+          type: error ? 'error' : 'success',
+        },
+      )
     },
-    [appId, canManageAccessPoint, handleResult, queryClient],
+    [appId, canManageAccessPoint, t, updateSiteConfig],
   )
 
   return {
-    handleResult,
     refreshAppDetail,
     saveSiteConfig,
   }

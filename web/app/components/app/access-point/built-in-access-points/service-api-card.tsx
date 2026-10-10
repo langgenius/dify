@@ -1,10 +1,9 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -12,7 +11,7 @@ import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 
 type ServiceApiAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   availability: AccessPointAvailability
   canManage: boolean
   highlighted?: boolean
@@ -24,22 +23,11 @@ export function ServiceApiAccessPointCard({
   canManage,
   highlighted,
 }: ServiceApiAccessPointCardProps) {
-  const { t } = useTranslation()
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
+  const { t } = useTranslation(['common'])
   const toggleApiMutation = useMutation(
     consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
       scope: {
         id: `app-service-api-toggle:${appInfo.id}`,
-      },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_api: updatedApp.enable_api,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

@@ -26,7 +26,7 @@ const normalizePlugin = (plugin: Plugin): Plugin => ({
 })
 
 export default function EmbeddedMarketplaceSearch() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const router = useRouter()
   const navigation = useMarketplaceDetailNavigation()

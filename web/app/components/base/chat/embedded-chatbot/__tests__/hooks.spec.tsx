@@ -1,3 +1,4 @@
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppToastHost } from '@/app/notifications/host'
+import { consoleQuery } from '@/service/console'
 import {
   AppSourceType,
   fetchChatList,
@@ -90,8 +92,15 @@ vi.mock('@/service/share', async (importOriginal) => {
 })
 
 const STABLE_MOCK_DATA = { data: {} }
+const createTryAppDetail = (id: string, title: string): TrialAppDetailResponse => ({
+  id,
+  name: title,
+  mode: 'chat',
+  enable_api: false,
+  enable_site: true,
+  site: { title, default_language: 'en-US' },
+})
 vi.mock('@/service/use-try-app', () => ({
-  useGetTryAppInfo: vi.fn(() => STABLE_MOCK_DATA),
   useGetTryAppParams: vi.fn(() => STABLE_MOCK_DATA),
 }))
 
@@ -117,8 +126,9 @@ const createWrapper = (queryClient: QueryClient) => {
   )
 }
 
-const renderWithClient = async <T,>(hook: () => T) => {
+const renderWithClient = async <T,>(hook: () => T, setup?: (client: QueryClient) => void) => {
   const queryClient = createQueryClient()
+  setup?.(queryClient)
   const wrapper = createWrapper(queryClient)
   let result: ReturnType<typeof renderHook<T, unknown>> | undefined
   act(() => {
@@ -407,17 +417,20 @@ describe('useEmbeddedChatbot', () => {
   describe('TryApp mode', () => {
     it('should use tryApp source type and skip URL overrides and user fetch', async () => {
       // Arrange
-      const { useGetTryAppInfo } = await import('@/service/use-try-app')
-      const mockTryAppInfo = { app_id: 'try-app-1', site: { title: 'Try App' } }
-      ;(useGetTryAppInfo as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        data: mockTryAppInfo,
-      })
+      const mockTryAppInfo = createTryAppDetail('try-app-1', 'Try App')
 
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
       // Act
-      const { result } = await renderWithClient(() =>
-        useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'),
+      const { result } = await renderWithClient(
+        () => useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'),
+        (client) => {
+          const key = consoleQuery.trialApps.byAppId.get.queryKey({
+            input: { params: { app_id: 'try-app-1' } },
+          })
+          client.setQueryDefaults(key, { staleTime: Infinity })
+          client.setQueryData(key, mockTryAppInfo)
+        },
       )
 
       // Assert
@@ -592,8 +605,15 @@ describe('useEmbeddedChatbot', () => {
     })
 
     it('handleNewConversation sets clearChatList to true for tryApp without complex parsing', async () => {
-      const { result } = await renderWithClient(() =>
-        useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
+      const { result } = await renderWithClient(
+        () => useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
+        (client) => {
+          const key = consoleQuery.trialApps.byAppId.get.queryKey({
+            input: { params: { app_id: 'app-try-1' } },
+          })
+          client.setQueryDefaults(key, { staleTime: Infinity })
+          client.setQueryData(key, createTryAppDetail('app-try-1', 'Try App'))
+        },
       )
 
       await act(async () => {

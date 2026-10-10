@@ -38,7 +38,7 @@ const FileUploadSetting: FC<Props> = ({
   validationError,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const errorId = useId()
   const typeErrorId = validationError?.field === 'allowed_file_types' ? errorId : undefined
   const customFileTypesErrorId =

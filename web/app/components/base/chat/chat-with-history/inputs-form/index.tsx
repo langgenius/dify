@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const { isMobile, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
     useChatWithHistoryContext()
 

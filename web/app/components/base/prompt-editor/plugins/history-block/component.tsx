@@ -21,7 +21,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   roleName = { user: '', assistant: '' },
   onEditRole,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
   const { eventEmitter } = useEventEmitterContextContext()

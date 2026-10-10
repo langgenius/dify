@@ -14,7 +14,7 @@ type HeaderProps = {
 } & CredentialSelectorProps
 
 const Header = ({ docTitle, docLink, onClickConfiguration, pluginName, ...rest }: HeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const configurationTip = t(($) => $.configurationTip, { ns: 'datasetPipeline', pluginName })
 
   return (

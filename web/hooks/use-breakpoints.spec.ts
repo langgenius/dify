@@ -13,6 +13,9 @@
  * event listeners on unmount to prevent memory leaks.
  */
 import { act, renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import useBreakpoints, { MediaType } from './use-breakpoints'
 
 describe('useBreakpoints', () => {
@@ -35,6 +38,36 @@ describe('useBreakpoints', () => {
    */
   afterAll(() => {
     window.innerWidth = originalInnerWidth
+  })
+
+  it('should hydrate server markup on mobile without rebuilding it', async () => {
+    const ResponsiveContent = () => {
+      const media = useBreakpoints()
+      return createElement(media === MediaType.mobile ? 'nav' : 'aside', null, media)
+    }
+    const container = document.createElement('div')
+    const onRecoverableError = vi.fn()
+
+    // The server has no viewport. Its markup must also be the first client render.
+    vi.stubGlobal('innerWidth', undefined)
+    try {
+      container.innerHTML = renderToString(createElement(ResponsiveContent))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    window.innerWidth = 390
+
+    const root = hydrateRoot(container, createElement(ResponsiveContent), { onRecoverableError })
+    try {
+      await act(async () => {})
+      expect(onRecoverableError).not.toHaveBeenCalled()
+      expect(container).toHaveTextContent(MediaType.mobile)
+
+      fireResize(1024)
+      expect(container).toHaveTextContent(MediaType.pc)
+    } finally {
+      act(() => root.unmount())
+    }
   })
 
   /**

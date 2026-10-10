@@ -31,7 +31,7 @@ export const TextEditorSection = ({
   isTruncated,
   onTextChange,
 }: TextEditorSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <>

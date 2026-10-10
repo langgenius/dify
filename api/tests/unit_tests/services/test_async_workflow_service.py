@@ -350,6 +350,54 @@ class TestAsyncWorkflowService:
         mocks["team_task"].delay.assert_not_called()
         mocks["sandbox_task"].delay.assert_not_called()
 
+    def test_should_mark_log_failed_and_reraise_when_celery_dispatch_raises(
+        self,
+        async_workflow_trigger_mocks,
+        caplog: pytest.LogCaptureFixture,
+        sqlite_session: Session,
+    ):
+        """Test dispatch failure path marks trigger log FAILED, refunds quota, and re-raises."""
+        # Arrange
+        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
+        sqlite_session.commit()
+        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
+
+        mocks = async_workflow_trigger_mocks
+        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.SANDBOX
+        mocks["get_workflow"].return_value = workflow
+
+        quota_charge_mock = MagicMock()
+        mocks["quota_service"].reserve.return_value = quota_charge_mock
+
+        dispatch_error = RuntimeError("broker unavailable")
+        mocks["sandbox_task"].delay.side_effect = dispatch_error
+        caplog.set_level(logging.ERROR, logger=async_workflow_service_module.__name__)
+
+        # Act / Assert
+        with pytest.raises(RuntimeError) as exc_info:
+            AsyncWorkflowService.trigger_workflow_async(
+                session=sqlite_session,
+                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
+                trigger_data=trigger_data,
+            )
+
+        assert exc_info.value is dispatch_error
+        quota_charge_mock.commit.assert_not_called()
+        quota_charge_mock.refund.assert_called_once()
+        assert not sqlite_session.in_transaction()
+
+        updated_log = sqlite_session.scalar(select(WorkflowTriggerLog))
+        assert updated_log is not None
+        assert updated_log.status == WorkflowTriggerStatus.FAILED
+        assert updated_log.error is not None
+        assert "Failed to dispatch workflow task" in updated_log.error
+        assert "broker unavailable" in updated_log.error
+        assert (
+            "Failed to dispatch workflow task for tenant tenant-123, app app-123, workflow workflow-123, "
+            f"trigger log {updated_log.id}"
+        ) in caplog.text
+
     def test_should_raise_when_reinvoke_target_log_does_not_exist(self, sqlite_session: Session):
         """Test reinvoke_trigger error path when original trigger log is missing."""
         # Arrange

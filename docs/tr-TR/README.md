@@ -89,7 +89,7 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
 ## Dify'ı Kullanma
 
 - **Cloud </br>**
-  Herkesin sıfır kurulumla denemesi için bir [Dify Cloud](https://dify.ai) hizmeti sunuyoruz. Bu hizmet, kendi kendine dağıtılan versiyonun tüm yeteneklerini sağlar ve sandbox planında 200 ücretsiz GPT-4 çağrısı içerir.
+  Sunucu yönetmeden [Dify Cloud](https://cloud.dify.ai) ile Dify’ı deneyebilirsiniz. Güncel planlar ve kullanım kotaları için [fiyatlandırma sayfasına](https://dify.ai/pricing) bakın.
 
 - **Dify Topluluk Sürümünü Kendi Sunucunuzda Barındırma</br>**
   Bu [başlangıç kılavuzu](#hızlı-başlangıç) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
@@ -157,7 +157,7 @@ Sorunuza en uygun kanalı seçin:
 
 ## Güvenlik açıklaması
 
-Gizliliğinizi korumak için, lütfen güvenlik sorunlarını GitHub'da paylaşmaktan kaçının. Bunun yerine, sorularınızı security@dify.ai adresine gönderin ve size daha detaylı bir cevap vereceğiz.
+Güvenlik açıklarını [güvenlik politikamıza](../../SECURITY.md) göre GitHub Security Advisories üzerinden özel olarak bildirin. Herkese açık issue, tartışma veya pull request içinde paylaşmayın.
 
 ## Lisans
 

@@ -56,7 +56,7 @@ const StatusItem = ({
 }: StatusItemProps) => {
   const statusLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
@@ -128,6 +128,7 @@ const StatusItem = ({
               render={
                 <span className="flex">
                   <Switch
+                    aria-labelledby={statusLabelId}
                     checked={archived ? false : enabled}
                     onCheckedChange={(v) =>
                       !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')

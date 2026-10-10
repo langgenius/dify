@@ -7,7 +7,7 @@ describe('getAppModeLabel', () => {
   const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
     const ns = (options?.ns as string | undefined) ?? ''
     return ns ? `${ns}.${key}` : key
-  }, 'app') as unknown as TFunction
+  }, 'app') as unknown as TFunction<['app']>
 
   it('should return advanced chat label', () => {
     expect(getAppModeLabel(AppModeEnum.ADVANCED_CHAT, t)).toBe('app.types.advanced')

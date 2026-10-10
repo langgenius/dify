@@ -27,6 +27,31 @@ describe('Operator Component', () => {
     vi.clearAllMocks()
   })
 
+  it('identifies the credential in each action button name', () => {
+    render(
+      <>
+        <Operator
+          credentialItem={createMockCredential(CredentialTypeEnum.API_KEY)}
+          onAction={mockOnAction}
+        />
+        <Operator
+          credentialItem={{
+            ...createMockCredential(CredentialTypeEnum.OAUTH2),
+            name: 'Work Account',
+          }}
+          onAction={mockOnAction}
+        />
+      </>,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'common.operation.more Test Credential' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.operation.more Work Account' }),
+    ).toBeInTheDocument()
+  })
+
   describe('Conditional Action Rendering', () => {
     it('should render correct actions for API_KEY type', async () => {
       // Arrange

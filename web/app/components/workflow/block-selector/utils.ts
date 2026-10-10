@@ -1,9 +1,9 @@
-import { pinyin } from 'pinyin-pro'
+import { providerInitials } from './provider-initials.generated'
 
 export function getProviderLetter(firstChar: string) {
-  const pinyinInitial = /[\u4E00-\u9FA5]/.test(firstChar)
-    ? pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0]
-    : firstChar
+  const code = firstChar.charCodeAt(0)
+  const pinyinInitial =
+    code >= 0x4e00 && code <= 0x9fa5 ? providerInitials[code - 0x4e00] : firstChar
   const letter = (pinyinInitial || firstChar).toUpperCase()
 
   return /[A-Z]/.test(letter) ? letter : '#'

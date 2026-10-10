@@ -1,4 +1,4 @@
-"""Package App DSLs and their node-bound Agent resources."""
+"""Package App DSLs with Site icons and node-bound Agent resources."""
 
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ from services.agent.roster_package_entities import (
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import DslImportWarning
+from services.entities.site_dsl import SiteDsl
 
 
 class AppPackageManifest(BaseModel):
@@ -73,12 +74,18 @@ class PreparedAppPackage(PreparedPackageArchive):
     agent_resources: dict[str, AgentPackageResources]
     icons: list[PackageIcon] = field(default_factory=list)
 
+    @property
+    def has_resources(self) -> bool:
+        return bool(self.agent_resources or self.icons)
+
     def materialize_icons(self, *, data: dict[str, Any], tenant_id: str, account_id: str) -> None:
         importer = AgentPackageResourceImporter()
         for ref, resources in self.agent_resources.items():
             importer.validate(resources=resources, agent_package=self.agents[ref])
         mapping = importer.materialize_icons(archive=self, icons=self.icons, tenant_id=tenant_id, account_id=account_id)
         metadata = [data["app"], *(agent.metadata for agent in self.agents.values())]
+        if isinstance(data.get("site"), dict):
+            metadata.append(data["site"])
         for item in metadata:
             if isinstance(item, dict):
                 if item.get("icon_type") == "image" and item.get("icon") in mapping:
@@ -139,9 +146,20 @@ class AppPackageService(RosterAgentPackageReader):
                 ):
                     raise InvalidRosterAgentPackageError("App package DSL is invalid")
                 agents = self._validate_agents(app_data, manifest)
+                site_data = app_data.get("site")
+                if site_data is not None:
+                    try:
+                        SiteDsl.model_validate(site_data)
+                    except ValidationError as exc:
+                        raise InvalidRosterAgentPackageError("App package Site DSL is invalid") from exc
                 try:
                     validate_icon_references(
-                        manifest.icons, [app_data["app"], *(agent.metadata.model_dump() for agent in agents.values())]
+                        manifest.icons,
+                        [
+                            app_data["app"],
+                            *(agent.metadata.model_dump() for agent in agents.values()),
+                            *([site_data] if site_data else []),
+                        ],
                     )
                 except ValueError as exc:
                     raise InvalidRosterAgentPackageError("App package icon references are invalid") from exc
@@ -211,20 +229,22 @@ class AppPackageService(RosterAgentPackageReader):
 
         resources = AgentPackageResourceExporter()
         with session_factory.create_session() as session:
-            data = AppDslService.export_data(
+            prepared = AppDslService.load_export_data(
                 app_model=app_model,
                 session=session,
                 include_secret=include_secret,
                 workflow_id=workflow_id,
                 resource_exporter=resources,
             )
-            resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=data["app"])
+            resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
+            if isinstance(prepared.data.get("site"), dict):
+                resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["site"])
         resources.collect_workspace_skills()
         if resources.packages:
-            data["agent_packages"] = {
+            prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
             }
-        return self.export(dsl=yaml.dump(data, allow_unicode=True), name=app_model.name, resources=resources)
+        return self.export(dsl=AppDslService.serialize_export_data(prepared), name=app_model.name, resources=resources)
 
     def export(
         self, *, dsl: str, name: str, resources: AgentPackageResourceExporter | None = None

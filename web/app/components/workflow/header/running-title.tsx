@@ -5,7 +5,7 @@ import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const RunningTitle = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isChatMode = useIsChatMode()
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
 

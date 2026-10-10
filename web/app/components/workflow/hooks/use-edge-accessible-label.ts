@@ -12,7 +12,7 @@ export const useEdgeAccessibleLabel = (
   target: string,
   sourceHandleId?: string | null,
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const edgeRef = useRef<SVGGElement>(null)
   const label = useStore((state) => {
     // React Flow's node map keeps this subscription local to the two endpoints.

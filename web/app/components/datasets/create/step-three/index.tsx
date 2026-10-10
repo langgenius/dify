@@ -24,7 +24,7 @@ const StepThree = ({
   creationCache,
   retrievalMethod,
 }: StepThreeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
 
   const iconInfo = creationCache?.dataset?.icon_info || {

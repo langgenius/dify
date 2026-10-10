@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
-from models.dataset import Dataset
+from models.dataset import Dataset, Document
 from models.model import App
 
 if TYPE_CHECKING:
@@ -33,8 +33,17 @@ class RBACResourceService:
         )
 
     @staticmethod
+    def get_dataset_id_by_document(session: Session | scoped_session, tenant_id: str, document_id: str) -> str | None:
+        dataset_id = session.scalar(
+            select(Dataset.id)
+            .join(Document, Document.dataset_id == Dataset.id)
+            .where(Dataset.tenant_id == tenant_id, Document.tenant_id == tenant_id, Document.id == document_id)
+        )
+        return None if dataset_id is None else str(dataset_id)
+
+    @staticmethod
     def get_dataset_id_by_pipeline(session: Session | scoped_session, tenant_id: str, pipeline_id: str) -> str | None:
         dataset_id = session.scalar(
             select(Dataset.id).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == tenant_id)
         )
-        return None if dataset_id is None else str(dataset_id)
+        return dataset_id

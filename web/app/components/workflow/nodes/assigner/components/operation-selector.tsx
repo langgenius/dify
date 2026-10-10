@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { WriteMode } from '../types'
 import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
@@ -7,8 +6,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuGroupLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -28,7 +29,7 @@ type OperationSelectorProps = {
   writeModeTypesNum?: WriteMode[]
 }
 
-const OperationSelector: FC<OperationSelectorProps> = ({
+function OperationSelector({
   value,
   onSelect,
   disabled = false,
@@ -38,8 +39,8 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   writeModeTypes,
   writeModeTypesArr,
   writeModeTypesNum,
-}) => {
-  const { t } = useTranslation()
+}: OperationSelectorProps) {
+  const { t } = useTranslation(['workflowLogic'])
 
   const items = getOperationItems(
     assignedVarType,
@@ -65,8 +66,10 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             className={`truncate overflow-hidden system-sm-regular text-ellipsis ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
           >
             {selectedItem && isOperationItem(selectedItem)
-              ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], { ns: 'workflow' })
-              : t(($) => $['nodes.assigner.operations.title'], { ns: 'workflow' })}
+              ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], {
+                  ns: 'workflowLogic',
+                })
+              : t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
           </span>
         </div>
         <span
@@ -84,31 +87,38 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         className={cn('w-35', popupClassName)}
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel>
-            {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflow' })}
-          </DropdownMenuLabel>
-          {items.map((item) =>
-            !isOperationItem(item) ? (
-              <DropdownMenuSeparator key="divider" />
-            ) : (
-              <DropdownMenuItem
-                key={item.value}
-                className="gap-1 px-2 py-1"
-                onClick={() => onSelect(item)}
-              >
-                <div className="flex min-h-5 grow items-center gap-1 px-1">
-                  <span className="flex grow system-sm-medium text-text-secondary">
-                    {t(($) => $[`nodes.assigner.operations.${item.name}`], { ns: 'workflow' })}
-                  </span>
-                </div>
-                {item.value === value && (
-                  <div className="flex items-center justify-center">
-                    <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
+          <DropdownMenuGroupLabel>
+            {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
+          </DropdownMenuGroupLabel>
+          <DropdownMenuRadioGroup
+            value={value}
+            onValueChange={(nextValue) => {
+              const item = items.find((item) => isOperationItem(item) && item.value === nextValue)
+              if (item && isOperationItem(item)) onSelect(item)
+            }}
+          >
+            {items.map((item) =>
+              !isOperationItem(item) ? (
+                <DropdownMenuSeparator key="divider" />
+              ) : (
+                <DropdownMenuRadioItem
+                  key={item.value}
+                  className="py-1"
+                  value={item.value}
+                  closeOnClick
+                >
+                  <div className="flex min-h-5 grow items-center gap-1 px-1">
+                    <span className="flex grow system-sm-medium text-text-secondary">
+                      {t(($) => $[`nodes.assigner.operations.${item.name}`], {
+                        ns: 'workflowLogic',
+                      })}
+                    </span>
                   </div>
-                )}
-              </DropdownMenuItem>
-            ),
-          )}
+                  <DropdownMenuRadioItemIndicator />
+                </DropdownMenuRadioItem>
+              ),
+            )}
+          </DropdownMenuRadioGroup>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

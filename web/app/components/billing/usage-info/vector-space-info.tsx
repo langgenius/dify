@@ -15,7 +15,7 @@ type Props = Readonly<{
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB('sandbox')
 
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const [{ data: plan }, { data: vectorSpace }] = useSuspenseQueries({
     queries: [
       consoleQuery.features.get.queryOptions({

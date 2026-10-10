@@ -23,7 +23,7 @@ type ChangeItemProps = {
   sourceHandle: string
 }
 const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { handleNodeChange } = useNodesInteractions()
   const nodeCatalogType = getNodeCatalogType(data)
@@ -78,7 +78,7 @@ type OperatorProps = {
   sourceHandle: string
 }
 const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
 
   return (

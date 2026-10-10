@@ -28,7 +28,7 @@ type AppSelectorProps = {
 }
 
 export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const [searchText, setSearchText] = useState('')
 
@@ -122,7 +122,7 @@ export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelect
             {...props}
             type="button"
             className={cn(
-              'block w-full rounded-lg border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'block w-full rounded-lg border-0 bg-transparent p-0 text-left',
               props.className,
             )}
           >

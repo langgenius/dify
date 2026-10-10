@@ -43,7 +43,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
   onSuccess,
 }) => {
   const repoUrlInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { getIconUrl } = useGetIcon()
   const { refreshPluginList } = useRefreshPluginList()
 

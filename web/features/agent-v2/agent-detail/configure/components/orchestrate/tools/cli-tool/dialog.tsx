@@ -52,8 +52,8 @@ export function CliToolDialog({
   onOpenChange: (open: boolean) => void
   tool?: AgentCliTool | null
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const [installCommand, setInstallCommand] = useState(tool?.installCommand ?? '')
   const [toolName, setToolName] = useState(tool?.name ?? '')

@@ -29,7 +29,7 @@ const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatu
 })
 
 const PlanComp: FC<Props> = ({ loc }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'education'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

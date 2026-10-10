@@ -1233,20 +1233,19 @@ export const useMutationPluginAutoUpgradeSettings = ({
         queryClient.getQueryData<PluginAutoUpgradeSettingsResponse>(queryKey)
       const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
 
-      queryClient.setQueryData(pluginAutoUpgradeSettingsQueryKey(category), {
+      queryClient.setQueryData(queryKey, {
         category,
         auto_upgrade: payload,
       } satisfies PluginAutoUpgradeSettingsResponse)
 
-      return { previousAutoUpgrade, hadPreviousAutoUpgrade }
+      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
     },
     onError: (_error, _payload, context) => {
-      if (context?.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
+      // Roll back the category this save started for; the caller may have moved to another one.
+      if (!context) return
+      if (context.hadPreviousAutoUpgrade)
+        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
+      else queryClient.removeQueries({ queryKey: context.queryKey })
     },
     onSuccess: () => {
       onSuccess?.()
@@ -1496,14 +1495,6 @@ export const usePluginManifestInfo = (pluginUID: string) => {
         `/plugins/${pluginUID}`,
       ),
     retry: 0,
-  })
-}
-
-export const useMutationCheckDependencies = () => {
-  return useMutation({
-    mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
-    },
   })
 }
 

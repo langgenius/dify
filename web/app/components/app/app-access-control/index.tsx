@@ -32,7 +32,7 @@ export default function AccessControl(props: AccessControlProps) {
 }
 
 function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [accessMode, setAccessMode] = useState(
     () =>

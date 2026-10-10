@@ -27,7 +27,7 @@ const ConversationOpener = ({
   workflowVariables,
   onAutoAddPromptVariable,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { setShowOpeningModal } = useModalContext()
   const opening = useFeatures((s) => s.features.opening)
   const featuresStore = useFeaturesStore()

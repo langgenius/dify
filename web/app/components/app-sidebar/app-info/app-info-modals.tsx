@@ -1,25 +1,27 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App, AppSSO } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
-import dynamic from '@/next/dynamic'
+import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -35,14 +37,14 @@ const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-ds
 })
 
 type AppInfoModalsProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: AppDetailWithSite
   activeModal: AppInfoModalType
   closeModal: () => void
   secretEnvList: EnvironmentVariableItemResponse[]
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
-  onExport: (include?: boolean) => Promise<void>
+  onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
@@ -63,9 +65,8 @@ const AppInfoModals = ({
   handleConfirmExport,
   onConfirmDelete,
 }: AppInfoModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const [isSecretExporting, setIsSecretExporting] = useState(false)
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -88,17 +89,17 @@ const AppInfoModals = ({
 
   const handleExportDialogOpenChange = useCallback(
     (open: boolean) => {
-      if (open || isExporting || isSecretExporting) return
+      if (open || isExporting) return
 
       handleExportDialogClose()
     },
-    [handleExportDialogClose, isExporting, isSecretExporting],
+    [handleExportDialogClose, isExporting],
   )
 
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
+        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -184,27 +185,32 @@ const AppInfoModals = ({
                 </InputGroup>
               </Field>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton type="button">
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>
       {activeModal === 'importDSL' && (
-        <UpdateDSLModal onCancel={closeModal} onBackup={exportCheck} />
+        <UpdateDSLModal
+          appId={appDetail.id}
+          appMode={appDetail.mode}
+          onCancel={closeModal}
+          onBackup={exportCheck}
+        />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
-          <DSLExportConfirmContent
+          <AppExportConfirmContent
             envList={secretEnvList}
             onConfirm={onExport}
             onClose={() => setSecretEnvList([])}
-            onExportingChange={setIsSecretExporting}
+            isExporting={isExporting}
           />
         ) : (
           exportDialogMode === 'warning' && (
@@ -217,7 +223,7 @@ const AppInfoModals = ({
                   {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
                 </AlertDialogDescription>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
@@ -233,7 +239,7 @@ const AppInfoModals = ({
                       : t(($) => $['operation.confirm'], { ns: 'common' })}
                   </span>
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           )
         )}

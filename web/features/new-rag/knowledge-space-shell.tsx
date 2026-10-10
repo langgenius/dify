@@ -56,8 +56,8 @@ export function KnowledgeSpaceShell({
   children: ReactNode
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({

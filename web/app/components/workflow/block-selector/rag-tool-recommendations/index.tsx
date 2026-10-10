@@ -24,7 +24,7 @@ export function RAGToolRecommendations({
   onSelect,
   onLoadMore,
 }: RAGToolRecommendationsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline'])
   const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
 
   const {

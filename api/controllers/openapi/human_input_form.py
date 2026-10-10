@@ -10,6 +10,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from constants.oauth_bearer import Scope
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -40,7 +41,6 @@ from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.helper import to_timestamp
-from libs.oauth_bearer import Scope
 from models.enums import CreatorUserRole
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
@@ -92,7 +92,7 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
-        op="run.form.get",
+        op="describe.run.form",
         kind=Kind.OBJECT,
         summary="Read a human-input form",
         examples=(
@@ -126,7 +126,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
-        op="run.form.submit",
+        op="submit.run.form",
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         examples=(
@@ -219,7 +219,7 @@ def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) ->
     ]
 
 
-def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
+def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str]:
     """A run stream whose `human_input_required` events carry hints that target the submit route above."""
 
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)

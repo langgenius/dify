@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const HistoryPanel: FC<Props> = ({ showWarning, onShowEditModal }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   return (
     <Panel
       className="mt-2"

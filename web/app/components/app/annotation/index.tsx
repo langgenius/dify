@@ -1,9 +1,10 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { QueryParam } from './filter'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -45,12 +46,12 @@ import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
 type Props = Readonly<{
-  appDetail: App
+  appDetail: AppDetailWithSite
 }>
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)

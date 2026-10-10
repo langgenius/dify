@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 export default function CommonLayoutError({ error, retry }: Props) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const { reset: resetQueries } = useQueryErrorResetBoundary()
 
   console.error(error)

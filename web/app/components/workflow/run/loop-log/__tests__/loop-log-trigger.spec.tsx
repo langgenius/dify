@@ -77,8 +77,8 @@ describe('LoopLogTrigger', () => {
         </div>,
       )
 
-      expect(screen.getByText(/workflow\.nodes\.loop\.loop/))!.toBeInTheDocument()
-      expect(screen.getByText(/workflow\.nodes\.loop\.error/))!.toBeInTheDocument()
+      expect(screen.getByText(/workflowLogic\.nodes\.loop\.loop/))!.toBeInTheDocument()
+      expect(screen.getByText(/workflowLogic\.nodes\.loop\.error/))!.toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))
 

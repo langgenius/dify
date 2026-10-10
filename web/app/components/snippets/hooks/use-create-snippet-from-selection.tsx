@@ -282,7 +282,7 @@ export const useCreateSnippetFromSelection = ({
   selectedNodes,
   onClose,
 }: UseCreateSnippetFromSelectionParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [selectedSnippetGraph, setSelectedSnippetGraph] = useState<SnippetCanvasData>()
   const [selectedSnippetInputFields, setSelectedSnippetInputFields] = useState<SnippetInputField[]>(
     [],

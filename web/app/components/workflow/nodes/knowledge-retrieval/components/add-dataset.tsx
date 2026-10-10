@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const AddDataset: FC<Props> = ({ selectedIds, modal, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [isShowModal, setIsShowModal] = useState(false)
 
   const handleSelect = useCallback(

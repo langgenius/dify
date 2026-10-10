@@ -21,7 +21,7 @@ type UseDatasetCardStateOptions = {
 }
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'dataset'])
   const { push } = useRouter()
   const queryClient = useQueryClient()
 

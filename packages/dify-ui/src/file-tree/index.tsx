@@ -13,10 +13,6 @@ function useFileTreeLevel() {
   return React.useContext(FileTreeLevelContext)
 }
 
-function getLabelText(children: React.ReactNode) {
-  return typeof children === 'string' || typeof children === 'number' ? String(children) : undefined
-}
-
 function renderGuides(level: number) {
   return Array.from({ length: Math.max(level - 1, 0) }, (_, index) => <FileTreeGuide key={index} />)
 }
@@ -33,7 +29,6 @@ function fileTreeRowClassName({ className }: { className?: string }) {
     'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'data-selected:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
-    'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     className,
   )
 }
@@ -258,23 +253,16 @@ function FileTreeIcon({ type = 'file', render, className, children, ...props }: 
 }
 
 type FileTreeLabelProps = useRender.ComponentProps<'span'>
-type FileTreeLabelElementProps = useRender.ElementProps<'span'> & {
-  'data-label'?: string
-}
 
 function FileTreeLabel({ render, className, children, ...props }: FileTreeLabelProps) {
-  const labelText = getLabelText(children)
   const defaultProps = {
-    'data-label': labelText,
     className: cn(
       'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
-      labelText &&
-        'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
       'system-sm-regular text-text-secondary group-data-selected/file-tree-row:system-sm-medium group-data-selected/file-tree-row:text-text-primary',
       className,
     ),
     children,
-  } satisfies FileTreeLabelElementProps
+  } satisfies useRender.ElementProps<'span'>
 
   return useRender({
     defaultTagName: 'span',

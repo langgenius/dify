@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from dify_trace_tencent.entities.semconv import (
     GEN_AI_IS_ENTRY,
@@ -20,13 +20,15 @@ from opentelemetry.trace import StatusCode
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
-    MessageTraceInfo,
-    ToolTraceInfo,
-    WorkflowTraceInfo,
 )
 from core.rag.models.document import Document
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from tests.unit_tests.core.ops.trace_fixtures import (
+    message_trace_info,
+    tool_trace_info,
+    workflow_node_execution,
+    workflow_trace_info,
+)
 
 
 class TestTencentSpanBuilder:
@@ -39,7 +41,7 @@ class TestTencentSpanBuilder:
             mock_convert.assert_called_once_with(dt)
 
     def test_build_workflow_spans(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.workflow_run_id = "run_id"
         trace_info.error = None
         trace_info.start_time = datetime.now()
@@ -61,7 +63,7 @@ class TestTencentSpanBuilder:
                 assert spans[1].parent_span_id == 2
 
     def test_build_workflow_spans_no_message(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.workflow_run_id = "run_id"
         trace_info.error = "some error"
         trace_info.start_time = datetime.now()
@@ -82,10 +84,10 @@ class TestTencentSpanBuilder:
                 assert spans[0].attributes[GEN_AI_IS_ENTRY] == "true"
 
     def test_build_workflow_llm_span(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.metadata = {"conversation_id": "conv_id"}
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.created_at = datetime.now()
         node_execution.finished_at = datetime.now()
@@ -109,10 +111,10 @@ class TestTencentSpanBuilder:
                 assert span.attributes[GEN_AI_USAGE_INPUT_TOKENS] == "10"
 
     def test_build_workflow_llm_span_usage_in_outputs(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.metadata = {}
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.created_at = datetime.now()
         node_execution.finished_at = datetime.now()
@@ -132,7 +134,7 @@ class TestTencentSpanBuilder:
                 assert GEN_AI_IS_STREAMING_REQUEST not in span.attributes
 
     def test_build_message_span_standalone(self):
-        trace_info = MagicMock(spec=MessageTraceInfo)
+        trace_info = message_trace_info()
         trace_info.message_id = "msg_id"
         trace_info.error = None
         trace_info.start_time = datetime.now()
@@ -152,7 +154,7 @@ class TestTencentSpanBuilder:
                 assert span.attributes[INPUT_VALUE] == str(trace_info.inputs)
 
     def test_build_message_span_standalone_with_error(self):
-        trace_info = MagicMock(spec=MessageTraceInfo)
+        trace_info = message_trace_info()
         trace_info.message_id = "msg_id"
         trace_info.error = "some error"
         trace_info.start_time = datetime.now()
@@ -172,7 +174,7 @@ class TestTencentSpanBuilder:
                 assert span.attributes[INPUT_VALUE] == ""
 
     def test_build_tool_span(self):
-        trace_info = MagicMock(spec=ToolTraceInfo)
+        trace_info = tool_trace_info()
         trace_info.message_id = "msg_id"
         trace_info.tool_name = "search"
         trace_info.error = "tool error"
@@ -192,7 +194,7 @@ class TestTencentSpanBuilder:
                 assert span.attributes[TOOL_NAME] == "search"
 
     def test_build_retrieval_span(self):
-        trace_info = MagicMock(spec=DatasetRetrievalTraceInfo)
+        trace_info = DatasetRetrievalTraceInfo(metadata={})
         trace_info.message_id = "msg_id"
         trace_info.inputs = "query"
         trace_info.error = None
@@ -214,7 +216,7 @@ class TestTencentSpanBuilder:
                 assert "content" in span.attributes[RETRIEVAL_DOCUMENT]
 
     def test_build_retrieval_span_with_error(self):
-        trace_info = MagicMock(spec=DatasetRetrievalTraceInfo)
+        trace_info = DatasetRetrievalTraceInfo(metadata={})
         trace_info.message_id = "msg_id"
         trace_info.inputs = ""
         trace_info.error = "retrieval failed"
@@ -231,7 +233,7 @@ class TestTencentSpanBuilder:
                 assert span.status.description == "retrieval failed"
 
     def test_get_workflow_node_status(self):
-        node = MagicMock(spec=WorkflowNodeExecution)
+        node = workflow_node_execution()
 
         node.status = WorkflowNodeExecutionStatus.SUCCEEDED
         assert TencentSpanBuilder._get_workflow_node_status(node).status_code == StatusCode.OK
@@ -252,10 +254,10 @@ class TestTencentSpanBuilder:
         assert TencentSpanBuilder._get_workflow_node_status(node).status_code == StatusCode.UNSET
 
     def test_build_workflow_retrieval_span(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.metadata = {"conversation_id": "conv_id"}
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.title = "my retrieval"
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -274,10 +276,10 @@ class TestTencentSpanBuilder:
                 assert "c1" in span.attributes[RETRIEVAL_DOCUMENT]
 
     def test_build_workflow_retrieval_span_empty(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.metadata = {}
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.title = "my retrieval"
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -295,9 +297,9 @@ class TestTencentSpanBuilder:
                 assert span.attributes[RETRIEVAL_DOCUMENT] == ""
 
     def test_build_workflow_tool_span(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.title = "my tool"
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -317,9 +319,9 @@ class TestTencentSpanBuilder:
                 assert "some" in span.attributes[TOOL_DESCRIPTION]
 
     def test_build_workflow_tool_span_no_metadata(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.title = "my tool"
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -338,10 +340,10 @@ class TestTencentSpanBuilder:
                 assert span.attributes[TOOL_PARAMETERS] == "{}"
 
     def test_build_workflow_task_span(self):
-        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info = workflow_trace_info()
         trace_info.metadata = {"conversation_id": "conv_id"}
 
-        node_execution = MagicMock(spec=WorkflowNodeExecution)
+        node_execution = workflow_node_execution()
         node_execution.id = "node_id"
         node_execution.title = "my task"
         node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED

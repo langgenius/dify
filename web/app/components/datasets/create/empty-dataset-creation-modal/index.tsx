@@ -22,7 +22,7 @@ type IProps = {
 const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const router = useRouter()
   const invalidDatasetList = useInvalidDatasetList()
   const submit = async () => {

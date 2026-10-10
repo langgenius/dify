@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import dayjs from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import MarkdownForm from '../form'
 
 const UNSUPPORTED_TAG_ARTICLE_RE = /Unsupported tag:\s*article/
@@ -25,11 +24,8 @@ type RootNode = {
   children: Array<ElementNode | TextNode>
 }
 
-const { mockOnSend, mockFormatDateForOutput } = vi.hoisted(() => ({
+const { mockOnSend } = vi.hoisted(() => ({
   mockOnSend: vi.fn(),
-  mockFormatDateForOutput: vi.fn((_date: unknown, includeTime?: boolean) => {
-    return includeTime ? 'formatted-datetime' : 'formatted-date'
-  }),
 }))
 
 vi.mock('@/app/components/base/chat/chat/context', () => ({
@@ -37,16 +33,6 @@ vi.mock('@/app/components/base/chat/chat/context', () => ({
     onSend: mockOnSend,
   }),
 }))
-
-vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/app/components/base/date-and-time-picker/utils/dayjs')
-  >('@/app/components/base/date-and-time-picker/utils/dayjs')
-  return {
-    ...actual,
-    formatDateForOutput: mockFormatDateForOutput,
-  }
-})
 
 vi.mock('@/config', async () => {
   const actual = await vi.importActual<typeof import('@/config')>('@/config')
@@ -267,7 +253,7 @@ describe('MarkdownForm', () => {
     })
   })
 
-  // Date and datetime values should be formatted through shared utility before submission.
+  // Date-only values stay civil; datetime values serialize as instants.
   describe('Date formatting', () => {
     it('should format date and datetime values before sending', async () => {
       const user = userEvent.setup()
@@ -276,12 +262,12 @@ describe('MarkdownForm', () => {
           createElementNode('input', {
             type: 'date',
             name: 'startDate',
-            value: dayjs('2026-01-10'),
+            value: '2026-01-10',
           }),
           createElementNode('input', {
             type: 'datetime',
             name: 'runAt',
-            value: dayjs('2026-01-10T08:30:00'),
+            value: '2026-01-10T08:30:00.000Z',
           }),
           createElementNode('button', {}, [createTextNode('Submit')]),
         ],
@@ -293,11 +279,8 @@ describe('MarkdownForm', () => {
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
-        expect(mockFormatDateForOutput).toHaveBeenCalledTimes(2)
-        expect(mockFormatDateForOutput).toHaveBeenNthCalledWith(1, expect.anything(), false)
-        expect(mockFormatDateForOutput).toHaveBeenNthCalledWith(2, expect.anything(), true)
         expect(mockOnSend).toHaveBeenCalledWith(
-          '{"startDate":"formatted-date","runAt":"formatted-datetime"}',
+          '{"startDate":"2026-01-10","runAt":"2026-01-10T08:30:00.000Z"}',
         )
       })
     })
@@ -389,13 +372,35 @@ describe('MarkdownForm', () => {
     })
   })
 
+  it.each(['date', 'time', 'datetime'])(
+    'focuses a %s picker from its visible label without opening it',
+    async (type) => {
+      const user = userEvent.setup()
+      render(
+        <MarkdownForm
+          node={createRootNode([
+            createElementNode('label', { htmlFor: 'departure' }, [createTextNode('Departure')]),
+            createElementNode('input', { id: 'departure', name: 'departure', type }),
+          ])}
+        />,
+      )
+      await user.click(screen.getByText('Departure', { exact: true }))
+      const trigger = screen.getByRole('button', { name: 'Departure' })
+      expect(trigger).toHaveFocus()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await user.keyboard('{Enter}')
+      expect(await screen.findByRole('dialog', { name: 'Departure' })).toBeInTheDocument()
+    },
+  )
+
   // DatePicker onChange and onClear callbacks should update form state.
   describe('DatePicker interaction', () => {
     it('should update form value when date is picked via onChange', async () => {
       const user = userEvent.setup()
       const node = createRootNode(
         [
-          createElementNode('input', { type: 'date', name: 'startDate', value: '' }),
+          createElementNode('input', { type: 'date', name: 'startDate', value: '2026-01-10' }),
           createElementNode('button', {}, [createTextNode('Submit')]),
         ],
         { dataFormat: 'json' },
@@ -404,19 +409,17 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Click the DatePicker trigger to open the popup
-      const trigger = screen.getByTestId('date-picker-trigger')
+      const trigger = screen.getByRole('button', { name: /^startDate/ })
       await user.click(trigger)
 
-      // Click the "Now" button in the footer to select current date (calls onChange)
-      const nowButton = await screen.findByText('time.operation.now')
+      // Select a different calendar day.
+      const nowButton = await screen.findByRole('button', { name: /January 11/ })
       await user.click(nowButton)
 
       // Submit the form
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
-        // onChange was called with a Dayjs object that has .format, so formatDateForOutput is called
-        expect(mockFormatDateForOutput).toHaveBeenCalledWith(expect.anything(), false)
         expect(mockOnSend).toHaveBeenCalled()
       })
     })
@@ -428,7 +431,7 @@ describe('MarkdownForm', () => {
           createElementNode('input', {
             type: 'date',
             name: 'startDate',
-            value: dayjs('2026-01-10'),
+            value: '2026-01-10',
           }),
           createElementNode('button', {}, [createTextNode('Submit')]),
         ],
@@ -458,12 +461,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      // The real TimePicker renders a trigger with a readonly input showing the formatted time
-      const timeInput = screen
-        .getByTestId('time-picker-trigger')
-        .querySelector('input[readonly]') as HTMLInputElement
-      expect(timeInput).not.toBeNull()
-      expect(timeInput.value).toBe('09:00 AM')
+      expect(screen.getByRole('button', { name: 'meetingTime 9:00 AM' })).toBeInTheDocument()
     })
 
     it('should update form value when time is picked via onChange', async () => {
@@ -476,12 +474,13 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Click the TimePicker trigger to open the popup
-      const trigger = screen.getByTestId('time-picker-trigger')
+      const trigger = screen.getByRole('button', { name: /^meetingTime/ })
       await user.click(trigger)
 
       // Click the "Now" button in the footer to select current time (calls onChange)
       const nowButtons = await screen.findAllByText('time.operation.now')
       await user.click(nowButtons[0]!)
+      await user.click(screen.getByRole('button', { name: 'time.operation.ok' }))
 
       // Submit the form
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -663,14 +662,14 @@ describe('MarkdownForm', () => {
           createElementNode('label', { for: '内容' }, [createTextNode('Content:')]),
           createElementNode('textarea', { name: '内容', value: 'Hello' }),
           createElementNode('label', { for: '日期' }, [createTextNode('Date:')]),
-          createElementNode('input', { type: 'date', name: '日期', value: dayjs('2026-01-10') }),
+          createElementNode('input', { type: 'date', name: '日期', value: '2026-01-10' }),
           createElementNode('label', { for: '时间' }, [createTextNode('Time:')]),
           createElementNode('input', { type: 'time', name: '时间', value: '09:00' }),
           createElementNode('label', { for: '日期时间' }, [createTextNode('Datetime:')]),
           createElementNode('input', {
             type: 'datetime',
             name: '日期时间',
-            value: dayjs('2026-01-10T08:30:00'),
+            value: '2026-01-10T08:30:00.000Z',
           }),
           createElementNode('label', { for: 'café' }, [createTextNode('Select:')]),
           createElementNode('input', {
@@ -705,8 +704,8 @@ describe('MarkdownForm', () => {
         用户名: 'Alice',
         密码: 'secret',
         内容: 'Hello',
-        日期: 'formatted-date',
-        日期时间: 'formatted-datetime',
+        日期: '2026-01-10',
+        日期时间: '2026-01-10T08:30:00.000Z',
         café: 'hello',
         同意条款: true,
       })

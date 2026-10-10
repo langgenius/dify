@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const name = value?.name || ''
   const extension = value?.extension
 

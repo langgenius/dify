@@ -27,7 +27,7 @@ const CreateFromDSLModal = ({
   activeTab = CreateFromDSLModalTab.FROM_FILE,
   dslUrl = '',
 }: CreateFromDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   const {
     currentFile,

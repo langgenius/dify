@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const [fold, { toggle: foldToggle, setTrue: foldHide }] = useBoolean(false)
 

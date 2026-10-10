@@ -42,7 +42,7 @@ function EnvironmentAccessControlContainer({
   onClose,
   onConfirm,
 }: EnvironmentAccessControlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [accessMode, setAccessMode] = useState<AccessMode>(initialAccessMode)

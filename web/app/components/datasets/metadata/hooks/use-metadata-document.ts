@@ -21,7 +21,7 @@ type Props = Readonly<{
   docDetail: FullDocumentDetail
 }>
 const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
   const { mutateAsync } = useBatchUpdateDocMetadata()

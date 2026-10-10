@@ -29,6 +29,7 @@ from core.ops.entities.trace_entity import (
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 from models.enums import EndUserType
+from tests.unit_tests.core.ops.trace_fixtures import message_trace_info, tool_trace_info, workflow_trace_info
 
 
 def _dt() -> datetime:
@@ -88,37 +89,37 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(trace_instance, method, m)
 
     # WorkflowTraceInfo
-    info = MagicMock(spec=WorkflowTraceInfo)
+    info = workflow_trace_info()
     trace_instance.trace(info)
     mocks["workflow_trace"].assert_called_once_with(info)
 
     # MessageTraceInfo
-    info = MagicMock(spec=MessageTraceInfo)
+    info = message_trace_info()
     trace_instance.trace(info)
     mocks["message_trace"].assert_called_once_with(info)
 
     # ModerationTraceInfo
-    info = MagicMock(spec=ModerationTraceInfo)
+    info = ModerationTraceInfo(metadata={}, flagged=False, action="allow", preset_response="", query="hello")
     trace_instance.trace(info)
     mocks["moderation_trace"].assert_called_once_with(info)
 
     # SuggestedQuestionTraceInfo
-    info = MagicMock(spec=SuggestedQuestionTraceInfo)
+    info = SuggestedQuestionTraceInfo(metadata={}, total_tokens=0, suggested_question=[], level="info")
     trace_instance.trace(info)
     mocks["suggested_question_trace"].assert_called_once_with(info)
 
     # DatasetRetrievalTraceInfo
-    info = MagicMock(spec=DatasetRetrievalTraceInfo)
+    info = DatasetRetrievalTraceInfo(metadata={})
     trace_instance.trace(info)
     mocks["dataset_retrieval_trace"].assert_called_once_with(info)
 
     # ToolTraceInfo
-    info = MagicMock(spec=ToolTraceInfo)
+    info = tool_trace_info()
     trace_instance.trace(info)
     mocks["tool_trace"].assert_called_once_with(info)
 
     # GenerateNameTraceInfo
-    info = MagicMock(spec=GenerateNameTraceInfo)
+    info = GenerateNameTraceInfo(tenant_id="tenant-1", metadata={})
     trace_instance.trace(info)
     mocks["generate_name_trace"].assert_called_once_with(info)
 
@@ -295,7 +296,7 @@ def test_workflow_trace_no_start_time(
 def test_workflow_trace_missing_app_id(
     trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
 ) -> None:
-    trace_info = MagicMock(spec=WorkflowTraceInfo)
+    trace_info = workflow_trace_info()
     trace_info.trace_id = "trace-1"
     trace_info.message_id = None
     trace_info.workflow_run_id = "run-1"
@@ -376,7 +377,7 @@ def test_message_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_
 
 
 def test_message_trace_no_data(trace_instance):
-    trace_info = MagicMock(spec=MessageTraceInfo)
+    trace_info = message_trace_info()
     trace_info.message_data = None
     trace_info.file_list = []
     trace_info.message_file_data = None
@@ -387,7 +388,7 @@ def test_message_trace_no_data(trace_instance):
 
 
 def test_moderation_trace_no_data(trace_instance):
-    trace_info = MagicMock(spec=ModerationTraceInfo)
+    trace_info = ModerationTraceInfo(metadata={}, flagged=False, action="allow", preset_response="", query="hello")
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
     trace_instance.moderation_trace(trace_info)
@@ -395,7 +396,7 @@ def test_moderation_trace_no_data(trace_instance):
 
 
 def test_suggested_question_trace_no_data(trace_instance):
-    trace_info = MagicMock(spec=SuggestedQuestionTraceInfo)
+    trace_info = SuggestedQuestionTraceInfo(metadata={}, total_tokens=0, suggested_question=[], level="info")
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
     trace_instance.suggested_question_trace(trace_info)
@@ -403,7 +404,7 @@ def test_suggested_question_trace_no_data(trace_instance):
 
 
 def test_dataset_retrieval_trace_no_data(trace_instance):
-    trace_info = MagicMock(spec=DatasetRetrievalTraceInfo)
+    trace_info = DatasetRetrievalTraceInfo(metadata={})
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
     trace_instance.dataset_retrieval_trace(trace_info)

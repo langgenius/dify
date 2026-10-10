@@ -23,7 +23,7 @@ type EndpointListContentProps = Readonly<{
 }>
 
 const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool
@@ -58,7 +58,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
               render={
                 <button
                   type="button"
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                  className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px hover:bg-state-base-hover"
                 >
                   <span
                     aria-hidden

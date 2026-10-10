@@ -129,6 +129,7 @@ abstract class FileBasedStore implements Store {
       if (code !== 'ENOENT') {
         throw err
       }
+      this.rawContent = undefined
     }
   }
 

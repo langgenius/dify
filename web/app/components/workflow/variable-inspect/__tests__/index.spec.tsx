@@ -16,7 +16,9 @@ describe('variable inspect index', () => {
       },
     })
     await user.tab()
-    const handle = screen.getByRole('separator', { name: 'workflow.debug.variableInspect.title' })
+    const handle = screen.getByRole('separator', {
+      name: 'workflowDebug.debug.variableInspect.title',
+    })
     expect(handle).toHaveFocus()
     await user.keyboard('{ArrowUp}{Shift>}{ArrowUp}{/Shift}')
     expect(handle).toHaveAttribute('aria-valuenow', '240')
@@ -39,7 +41,9 @@ describe('variable inspect index', () => {
       },
     })
     await user.tab()
-    const handle = screen.getByRole('separator', { name: 'workflow.debug.variableInspect.title' })
+    const handle = screen.getByRole('separator', {
+      name: 'workflowDebug.debug.variableInspect.title',
+    })
     await user.keyboard('{End}')
     expect(handle).toHaveAttribute('aria-valuenow', '440')
     await waitFor(() =>

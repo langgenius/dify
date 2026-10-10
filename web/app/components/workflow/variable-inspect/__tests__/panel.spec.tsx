@@ -138,10 +138,14 @@ describe('VariableInspect Panel', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+      screen.getByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.listening.stopButton',
+      }),
     )
 
-    expect(screen.getByText('workflow.debug.variableInspect.listening.title'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('workflowDebug.debug.variableInspect.listening.title'),
+    )!.toBeInTheDocument()
     expect(mockEmit).toHaveBeenCalledWith({
       type: EVENT_WORKFLOW_STOP,
     })
@@ -157,7 +161,7 @@ describe('VariableInspect Panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(screen.getByText('workflow.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.emptyTip'))!.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
 
@@ -171,7 +175,7 @@ describe('VariableInspect Panel', () => {
 
     await waitFor(() => expect(screen.getAllByText('API_KEY').length).toBeGreaterThan(1))
 
-    expect(screen.getByText('workflow.debug.variableInspect.envNode'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.envNode'))!.toBeInTheDocument()
     expect(screen.getAllByText('string').length).toBeGreaterThan(0)
     expect(screen.getByText('env-value'))!.toBeInTheDocument()
   })

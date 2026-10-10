@@ -84,14 +84,16 @@ describe('assigner/node', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.assigner.varNotSet')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.varNotSet')).toBeInTheDocument()
   })
 
   it('renders both version 2 and legacy previews with resolved node labels', () => {
     const { container, rerender } = render(<Node id="assigner-node" data={createData()} />)
 
     expect(screen.getByText('Answer:answer:node-1.count')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.over-write')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowLogic.nodes.assigner.operations.over-write'),
+    ).toBeInTheDocument()
 
     rerender(
       <Node
@@ -109,7 +111,7 @@ describe('assigner/node', () => {
     )
 
     expect(screen.getByText('Start:start:sys.query')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.append')).toBeInTheDocument()
 
     rerender(
       <Node

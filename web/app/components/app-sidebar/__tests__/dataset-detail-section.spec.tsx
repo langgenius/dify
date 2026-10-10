@@ -113,17 +113,16 @@ describe('DatasetDetailSection', () => {
 
     render(<DatasetDetailSection expand />)
 
-    expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute(
-      'href',
-      '/datasets/dataset-1/access-config',
-    )
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
+    ).toHaveAttribute('href', '/datasets/dataset-1/access-config')
   })
 
   it('should hide resource access navigation when dataset access config permission is missing', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 
@@ -136,7 +135,7 @@ describe('DatasetDetailSection', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 

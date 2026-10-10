@@ -12,7 +12,7 @@ type ConfirmModalProps = {
 }
 
 const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   return (
     <Dialog open={show} disablePointerDismissal>

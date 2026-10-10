@@ -8,8 +8,6 @@ import Panel from '../panel'
 import { AuthorizationType, BodyPayloadValueType, BodyType, Method } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockAuthorizationModal = vi.hoisted(() => vi.fn())
-const mockCurlPanel = vi.hoisted(() => vi.fn())
 const mockApiInput = vi.hoisted(() => vi.fn())
 const mockKeyValue = vi.hoisted(() => vi.fn())
 const mockEditBody = vi.hoisted(() => vi.fn())
@@ -44,29 +42,8 @@ vi.mock('../use-config', () => ({
   default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('../components/authorization', () => ({
-  __esModule: true,
-  default: (props: {
-    nodeId: string
-    payload: HttpNodeType['authorization']
-    onChange: (value: HttpNodeType['authorization']) => void
-    onHide: () => void
-  }) => {
-    mockAuthorizationModal(props)
-    return <div data-testid="authorization-modal">{props.nodeId}</div>
-  },
-}))
-
-vi.mock('../components/curl-panel', () => ({
-  __esModule: true,
-  default: (props: {
-    nodeId: string
-    onHide: () => void
-    handleCurlImport: (node: HttpNodeType) => void
-  }) => {
-    mockCurlPanel(props)
-    return <div data-testid="curl-panel">{props.nodeId}</div>
-  },
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))
 
 vi.mock('../components/api-input', () => ({
@@ -169,12 +146,8 @@ describe('http/panel', () => {
   const setParams = vi.fn()
   const addParam = vi.fn()
   const setBody = vi.fn()
-  const showAuthorization = vi.fn()
-  const hideAuthorization = vi.fn()
   const setAuthorization = vi.fn()
   const setTimeout = vi.fn()
-  const showCurlPanel = vi.fn()
-  const hideCurlPanel = vi.fn()
   const handleCurlImport = vi.fn()
 
   const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
@@ -192,14 +165,8 @@ describe('http/panel', () => {
     setParams,
     addParam,
     setBody,
-    isShowAuthorization: false,
-    showAuthorization,
-    hideAuthorization,
     setAuthorization,
     setTimeout,
-    isShowCurlPanel: false,
-    showCurlPanel,
-    hideCurlPanel,
     handleCurlImport,
     handleSSLVerifyChange: vi.fn(),
     ...overrides,
@@ -229,8 +196,12 @@ describe('http/panel', () => {
     await user.click(screen.getAllByRole('button', { name: 'emit-key-value-add' })[1]!)
     await user.click(screen.getByRole('button', { name: 'emit-body-change' }))
     await user.click(screen.getByRole('button', { name: 'emit-timeout-change' }))
-    await user.click(screen.getByText('workflow.nodes.http.authorization.authorization'))
-    await user.click(screen.getByText('workflow.nodes.http.curl.title'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).toBeInTheDocument()
 
     expect(handleMethodChange).toHaveBeenCalledWith(Method.post)
     expect(handleUrlChange).toHaveBeenCalledWith('https://changed.example.com')
@@ -243,8 +214,6 @@ describe('http/panel', () => {
       data: [{ type: 'text', value: '{"hello":"world"}' }],
     })
     expect(setTimeout).toHaveBeenCalledWith(expect.objectContaining({ connect: 9 }))
-    expect(showAuthorization).toHaveBeenCalledTimes(1)
-    expect(showCurlPanel).toHaveBeenCalledTimes(1)
     expect(mockApiInput).toHaveBeenCalledWith(
       expect.objectContaining({
         method: Method.get,
@@ -263,33 +232,33 @@ describe('http/panel', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('renders auth and curl panels only when writable and toggled on', () => {
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        isShowAuthorization: true,
-        isShowCurlPanel: true,
-      }),
-    )
-
+  it('disables authorization and hides the curl panel when read-only', () => {
     const { rerender } = render(
       <Panel id="http-node" data={createData()} panelProps={panelProps} />,
     )
 
-    expect(screen.getByTestId('authorization-modal')).toHaveTextContent('http-node')
-    expect(screen.getByTestId('curl-panel')).toHaveTextContent('http-node')
+    expect(screen.getByRole('button', { name: /authorization.authorization/ })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).toBeEnabled()
 
     mockUseConfig.mockReturnValueOnce(
       createConfigResult({
         readOnly: true,
-        isShowAuthorization: true,
-        isShowCurlPanel: true,
       }),
     )
 
     rerender(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
 
-    expect(screen.queryByTestId('authorization-modal')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('curl-panel')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /authorization.authorization/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('workflowIntegrations.nodes.http.authorization.authorization'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
 })

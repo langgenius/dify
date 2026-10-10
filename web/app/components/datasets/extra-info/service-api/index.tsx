@@ -14,7 +14,7 @@ type ServiceApiProps = {
 }
 
 export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')

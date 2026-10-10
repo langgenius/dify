@@ -1,13 +1,11 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from graphon.entities import GraphInitParams
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
 
 
@@ -31,12 +29,9 @@ class TestListOperatorNode:
         }
 
     @pytest.fixture
-    def mock_graph_runtime_state(self):
-        """Create mock GraphRuntimeState."""
-        mock_state = MagicMock(spec=GraphRuntimeState)
-        mock_variable_pool = MagicMock()
-        mock_state.variable_pool = mock_variable_pool
-        return mock_state
+    def graph_runtime_state(self):
+        """Create graph state backed by the real variable pool."""
+        return GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
 
     @pytest.fixture
     def graph_init_params(self):
@@ -57,41 +52,18 @@ class TestListOperatorNode:
         )
 
     @pytest.fixture
-    def list_operator_node_factory(self, graph_init_params, mock_graph_runtime_state):
+    def list_operator_node_factory(self, graph_init_params, graph_runtime_state):
         """Factory fixture for creating ListOperatorNode instances."""
 
-        def _create_node(config, mock_variable):
-            mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
+        def _create_node(config, variable):
+            graph_runtime_state.variable_pool.add(config["variable"], variable)
             return self._build_node(
                 data=config,
                 graph_init_params=graph_init_params,
-                graph_runtime_state=mock_graph_runtime_state,
+                graph_runtime_state=graph_runtime_state,
             )
 
         return _create_node
-
-    def test_node_initialization(self, mock_graph_runtime_state, graph_init_params):
-        """Test node initializes correctly."""
-        config = {
-            "title": "List Operator",
-            "variable": ["sys", "list"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
-
-        node = self._build_node(
-            data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        assert node.node_type == BuiltinNodeTypes.LIST_OPERATOR
-        assert node._node_data.title == "List Operator"
-
-    def test_version(self):
-        """Test version returns correct value."""
-        assert ListOperatorNode.version() == "1"
 
     def test_run_with_string_array(self, list_operator_node_factory):
         """Test with string array."""
@@ -103,15 +75,15 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "banana", "cherry"])
-        node = list_operator_node_factory(config, mock_var)
+        variable = ArrayStringSegment(value=["apple", "banana", "cherry"])
+        node = list_operator_node_factory(config, variable)
 
         result = node._run()
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "banana", "cherry"]
 
-    def test_run_with_empty_array(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_empty_array(self, graph_runtime_state, graph_init_params):
         """Test with empty array."""
         config = {
             "title": "Test",
@@ -121,13 +93,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=[])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=[])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -137,7 +109,7 @@ class TestListOperatorNode:
         assert result.outputs["first_record"] is None
         assert result.outputs["last_record"] is None
 
-    def test_run_with_filter_contains(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_filter_contains(self, graph_runtime_state, graph_init_params):
         """Test filter with contains condition."""
         config = {
             "title": "Test",
@@ -147,13 +119,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -161,7 +133,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "pineapple"]
 
-    def test_run_with_filter_not_contains(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_filter_not_contains(self, graph_runtime_state, graph_init_params):
         """Test filter with not contains condition."""
         config = {
             "title": "Test",
@@ -171,13 +143,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -185,7 +157,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["banana", "cherry"]
 
-    def test_run_with_number_filter_greater_than(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_number_filter_greater_than(self, graph_runtime_state, graph_init_params):
         """Test filter with greater than condition on numbers."""
         config = {
             "title": "Test",
@@ -195,13 +167,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayNumberSegment(value=[1, 3, 5, 7, 9, 11])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayNumberSegment(value=[1, 3, 5, 7, 9, 11])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -209,7 +181,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [7, 9, 11]
 
-    def test_run_with_order_ascending(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_order_ascending(self, graph_runtime_state, graph_init_params):
         """Test ordering in ascending order."""
         config = {
             "title": "Test",
@@ -222,13 +194,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["cherry", "apple", "banana"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["cherry", "apple", "banana"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -236,7 +208,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "banana", "cherry"]
 
-    def test_run_with_order_descending(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_order_descending(self, graph_runtime_state, graph_init_params):
         """Test ordering in descending order."""
         config = {
             "title": "Test",
@@ -249,13 +221,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["cherry", "apple", "banana"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["cherry", "apple", "banana"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -263,7 +235,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["cherry", "banana", "apple"]
 
-    def test_run_with_limit(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_limit(self, graph_runtime_state, graph_init_params):
         """Test with limit enabled."""
         config = {
             "title": "Test",
@@ -276,13 +248,13 @@ class TestListOperatorNode:
             },
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "banana", "cherry", "date"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["apple", "banana", "cherry", "date"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -290,7 +262,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "banana"]
 
-    def test_run_with_filter_order_and_limit(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_filter_order_and_limit(self, graph_runtime_state, graph_init_params):
         """Test with filter, order, and limit combined."""
         config = {
             "title": "Test",
@@ -306,13 +278,13 @@ class TestListOperatorNode:
             },
         }
 
-        mock_var = ArrayNumberSegment(value=[1, 2, 3, 4, 5, 6, 7, 8, 9])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayNumberSegment(value=[1, 2, 3, 4, 5, 6, 7, 8, 9])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -320,7 +292,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [9, 8, 7]
 
-    def test_run_with_variable_not_found(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_variable_not_found(self, graph_runtime_state, graph_init_params):
         """Test when variable is not found."""
         config = {
             "title": "Test",
@@ -330,12 +302,10 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_graph_runtime_state.variable_pool.get.return_value = None
-
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -343,7 +313,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Variable not found" in result.error
 
-    def test_run_with_first_and_last_record(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_first_and_last_record(self, graph_runtime_state, graph_init_params):
         """Test first_record and last_record outputs."""
         config = {
             "title": "Test",
@@ -353,13 +323,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["first", "middle", "last"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["first", "middle", "last"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -368,7 +338,7 @@ class TestListOperatorNode:
         assert result.outputs["first_record"] == "first"
         assert result.outputs["last_record"] == "last"
 
-    def test_run_with_filter_startswith(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_filter_startswith(self, graph_runtime_state, graph_init_params):
         """Test filter with startswith condition."""
         config = {
             "title": "Test",
@@ -378,13 +348,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "application", "banana", "apricot"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["apple", "application", "banana", "apricot"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -392,7 +362,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "application"]
 
-    def test_run_with_filter_endswith(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_filter_endswith(self, graph_runtime_state, graph_init_params):
         """Test filter with endswith condition."""
         config = {
             "title": "Test",
@@ -402,13 +372,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayStringSegment(value=["apple", "banana", "pineapple", "table"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "table"])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -416,7 +386,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == ["apple", "pineapple", "table"]
 
-    def test_run_with_number_filter_equals(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_number_filter_equals(self, graph_runtime_state, graph_init_params):
         """Test number filter with equals condition."""
         config = {
             "title": "Test",
@@ -426,13 +396,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayNumberSegment(value=[1, 3, 5, 5, 7, 9])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayNumberSegment(value=[1, 3, 5, 5, 7, 9])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -440,7 +410,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [5, 5]
 
-    def test_run_with_number_filter_not_equals(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_number_filter_not_equals(self, graph_runtime_state, graph_init_params):
         """Test number filter with not equals condition."""
         config = {
             "title": "Test",
@@ -450,13 +420,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayNumberSegment(value=[1, 3, 5, 7, 9])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayNumberSegment(value=[1, 3, 5, 7, 9])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -464,7 +434,7 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [1, 3, 7, 9]
 
-    def test_run_with_number_order_ascending(self, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_number_order_ascending(self, graph_runtime_state, graph_init_params):
         """Test number ordering in ascending order."""
         config = {
             "title": "Test",
@@ -477,13 +447,13 @@ class TestListOperatorNode:
             "limit": {"enabled": False},
         }
 
-        mock_var = ArrayNumberSegment(value=[9, 3, 7, 1, 5])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
+        variable = ArrayNumberSegment(value=[9, 3, 7, 1, 5])
+        graph_runtime_state.variable_pool.add(config["variable"], variable)
 
         node = self._build_node(
             data=config,
             graph_init_params=graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
 
         result = node._run()

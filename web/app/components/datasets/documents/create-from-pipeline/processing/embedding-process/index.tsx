@@ -48,7 +48,7 @@ const EmbeddingProcess = ({
   indexingType,
   retrievalMethod,
 }: EmbeddingProcessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({

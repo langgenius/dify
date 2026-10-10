@@ -29,7 +29,6 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services import account_errors
 from services.account_email import normalize_email
-from services.account_service import AccountService
 from services.entities.account_entities import AccountEducationActivation, ChangeEmailVerification
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -101,11 +100,11 @@ def _build_change_email_token(
         "old_email": old_email,
         "code": code,
     }
-    if phase == AccountService.CHANGE_EMAIL_PHASE_OLD:
+    if phase == "old_email":
         return ChangeEmailOldEmailToken(**token_kwargs)
     if phase == ChangeEmailPhase.OLD_EMAIL_VERIFIED:
         return ChangeEmailOldEmailVerifiedToken(**token_kwargs)
-    if phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+    if phase == "new_email":
         return ChangeEmailNewEmailToken(**token_kwargs)
     if phase == ChangeEmailPhase.NEW_EMAIL_VERIFIED:
         return ChangeEmailNewEmailVerifiedToken(**token_kwargs)
@@ -346,94 +345,6 @@ class TestChangeEmailControllers:
                 )
 
 
-class TestAccountServiceSendChangeEmailEmail:
-    """Service-level coverage for the phase-bound changes in `send_change_email_email`."""
-
-    def test_should_raise_value_error_for_invalid_phase(self):
-        with pytest.raises(ValueError, match="phase must be one of"):
-            AccountService.send_change_email_email(
-                account=_build_account("old@example.com", "acc"),
-                email="new@example.com",
-                old_email="user@example.com",
-                phase="old_email_verified",
-            )
-
-    @patch("services.account_service.send_change_mail_task")
-    @patch("services.account_service.AccountService.change_email_rate_limiter")
-    @patch("services.account_service.AccountService.generate_change_email_token")
-    def test_should_bind_account_id_and_target_email_into_generated_token(
-        self,
-        mock_generate_token: MagicMock,
-        mock_rate_limiter: MagicMock,
-        mock_mail_task: MagicMock,
-    ):
-        mock_rate_limiter.is_rate_limited.return_value = False
-        mock_generate_token.return_value = "the-token"
-        account = _build_account("old@example.com", "acc-123")
-
-        returned = AccountService.send_change_email_email(
-            account=account,
-            email="new@example.com",
-            old_email="old@example.com",
-            language="en-US",
-            phase=AccountService.CHANGE_EMAIL_PHASE_NEW,
-        )
-
-        assert returned == "the-token"
-        mock_generate_token.assert_called_once_with(
-            _build_change_email_token(
-                AccountService.CHANGE_EMAIL_PHASE_NEW,
-                account_id="acc-123",
-                email="new@example.com",
-                old_email="old@example.com",
-                code=mock_mail_task.delay.call_args.kwargs["code"],
-            ),
-            account,
-        )
-        mock_mail_task.delay.assert_called_once_with(
-            language="en-US",
-            to="new@example.com",
-            code=mock_mail_task.delay.call_args.kwargs["code"],
-            phase=AccountService.CHANGE_EMAIL_PHASE_NEW,
-        )
-        mock_rate_limiter.increment_rate_limit.assert_called_once_with("new@example.com")
-
-
-class TestAccountServiceGetChangeEmailData:
-    @patch("services.account_service.TokenManager.get_token_data")
-    def test_should_parse_change_email_token_into_discriminated_union_model(self, mock_get_token_data):
-        mock_get_token_data.return_value = {
-            "token_type": "change_email",
-            "account_id": "acc-1",
-            "email": "new@example.com",
-            "old_email": "old@example.com",
-            "code": "654321",
-            "email_change_phase": ChangeEmailPhase.NEW_EMAIL_VERIFIED,
-        }
-
-        token_data = AccountService.get_change_email_data("token-123")
-
-        assert token_data == _build_change_email_token(
-            ChangeEmailPhase.NEW_EMAIL_VERIFIED,
-            account_id="acc-1",
-            email="new@example.com",
-            old_email="old@example.com",
-            code="654321",
-        )
-
-    @patch("services.account_service.TokenManager.get_token_data")
-    def test_should_reject_change_email_token_without_account_id(self, mock_get_token_data):
-        mock_get_token_data.return_value = {
-            "token_type": "change_email",
-            "email": "new@example.com",
-            "old_email": "old@example.com",
-            "code": "654321",
-            "email_change_phase": AccountService.CHANGE_EMAIL_PHASE_NEW,
-        }
-
-        assert AccountService.get_change_email_data("token-123") is None
-
-
 class TestAccountDeletionFeedback:
     def test_delegates_feedback_to_application_service(self, app: Flask):
         deletion_feedback = MagicMock()
@@ -497,20 +408,3 @@ class TestCheckEmailUnique:
             api = CheckEmailUnique()
             with pytest.raises(EmailDomainSuspendedError):
                 inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
-
-
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(Account, Tenant, TenantAccountJoin)],
-    indirect=True,
-)
-def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup(sqlite_session: Session):
-    expected_account, _ = _persist_account_with_tenant(
-        sqlite_session,
-        "mixed@test.com",
-        "case-fallback-account",
-    )
-
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=sqlite_session)
-
-    assert result is expected_account

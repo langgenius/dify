@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const ChunkingModeLabel: FC<Props> = ({ isGeneralMode, isQAMode }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const iconClassName = isGeneralMode
     ? 'i-custom-vender-knowledge-general-chunk'
     : 'i-custom-vender-knowledge-parent-child-chunk'

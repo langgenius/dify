@@ -1,13 +1,15 @@
-import type { App } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
+const mockAppResponse = vi.fn()
 let mockPathname = '/app/app-1/workflow'
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
@@ -31,8 +33,12 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 
 vi.mock('@/next/navigation', () => mockNavigation)
 
-vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: vi.fn(),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string) => {
+    const response = await mockAppResponse(url)
+    return response instanceof Response ? response : Response.json(response)
+  },
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -46,20 +52,15 @@ vi.mock('@/context/permission-state', async () => {
 
 const mockUsePathname = mockNavigation.usePathname
 const mockUseRouter = mockNavigation.useRouter
-const mockFetchAppDetailDirect = vi.mocked(fetchAppDetailDirect)
 
-type AppDetailFixture = App & {
-  bound_agent_id?: string | null
-}
-
-const createAppDetail = (overrides: Partial<AppDetailFixture> = {}) =>
-  ({
+const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
     id: 'app-1',
     name: 'Demo App',
     mode: AppModeEnum.WORKFLOW,
     permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.Monitor],
     ...overrides,
-  }) as AppDetailFixture
+  })
 
 const waitForAppContent = async () => {
   await waitFor(() => {
@@ -82,7 +83,7 @@ describe('AppDetailLayout', () => {
     mockUseRouter.mockReturnValue({
       replace: mockReplace,
     })
-    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail())
+    mockAppResponse.mockResolvedValue(createAppDetail())
     useStore.getState().setAppDetail()
   })
 
@@ -95,10 +96,10 @@ describe('AppDetailLayout', () => {
       ['/app/app-1/logs', 'common.appMenus.logs', AppModeEnum.WORKFLOW],
       ['/app/app-1/annotations', 'common.appMenus.annotations', AppModeEnum.CHAT],
       ['/app/app-1/overview', 'common.appMenus.overview', AppModeEnum.WORKFLOW],
-      ['/app/app-1/access-config', 'common.settings.resourceAccess', AppModeEnum.WORKFLOW],
+      ['/app/app-1/access-config', 'navigation.settings.resourceAccess', AppModeEnum.WORKFLOW],
     ])('identifies the current detail page for %s', async (pathname, pageTitle, mode) => {
       mockPathname = pathname
-      mockFetchAppDetailDirect.mockResolvedValue(
+      mockAppResponse.mockResolvedValue(
         createAppDetail({
           mode,
           permission_keys: Object.values(AppACLPermission),
@@ -116,8 +117,8 @@ describe('AppDetailLayout', () => {
       })
     })
 
-    it('updates after a directly loaded app is renamed in the store', async () => {
-      render(
+    it('updates after a directly loaded app is renamed in the query cache', async () => {
+      const { queryClient } = render(
         <AppDetailLayout appId="app-1">
           <div>App page content</div>
         </AppDetailLayout>,
@@ -128,14 +129,33 @@ describe('AppDetailLayout', () => {
       })
 
       act(() => {
-        useStore.getState().setAppDetail(createAppDetail({ name: 'Renamed App' }))
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+          createAppDetail({ name: 'Renamed App' }),
+        )
       })
 
       await waitFor(() => {
         expect(document.title).toBe('common.appMenus.promptEng · Renamed App - Dify')
       })
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+      expect(mockAppResponse).toHaveBeenCalled()
     })
+  })
+
+  it('redirects a deleted app after the generated transport returns not found', async () => {
+    mockAppResponse.mockImplementation(async () =>
+      Response.json({ message: 'App not found' }, { status: 404 }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/apps'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {
@@ -145,7 +165,8 @@ describe('AppDetailLayout', () => {
       </AppDetailLayout>,
     )
     await waitForAppContent()
-    expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalledWith(expect.stringMatching(/\/apps\/app-1$/))
+    expect(mockAppResponse).toHaveBeenCalled()
 
     mockPathname = '/app/app-1/logs'
     rerender(
@@ -155,7 +176,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitForAppContent()
-    expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
 
     unmount()
@@ -166,7 +187,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitForAppContent()
-    expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
@@ -184,7 +205,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect restricted app pages before exposing app detail content', async () => {
     mockPathname = '/app/app-1/logs'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
@@ -203,7 +224,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect logs pages when log and annotation access is missing', async () => {
     mockPathname = '/app/app-1/logs'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
     )
 
@@ -222,7 +243,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with log and annotation access to open logs directly', async () => {
     mockPathname = '/app/app-1/logs'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.LogAndAnnotation] }),
     )
 
@@ -240,7 +261,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with Access Point view permission to open the page directly', async () => {
     mockPathname = '/app/app-1/access-point'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.AccessPointView] }),
     )
 
@@ -258,7 +279,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect access point pages when view permission is missing', async () => {
     mockPathname = '/app/app-1/access-point'
-    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+    mockAppResponse.mockResolvedValue(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
@@ -287,12 +308,11 @@ describe('AppDetailLayout', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
-    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
   })
 
   it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
     mockPathname = '/app/app-1/deploy'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
@@ -311,7 +331,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with app deploy ACL permission to open deploy directly', async () => {
     mockPathname = '/app/app-1/deploy'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.Deploy] }),
     )
 
@@ -344,7 +364,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect workflow pages when layout access is missing', async () => {
     mockPathname = '/app/app-1/workflow'
-    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+    mockAppResponse.mockResolvedValue(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
@@ -361,7 +381,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect overview pages when monitor access is missing', async () => {
     mockPathname = '/app/app-1/overview'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
@@ -381,7 +401,7 @@ describe('AppDetailLayout', () => {
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
     mockConsoleState.isLoadingWorkspacePermissionKeys = true
     mockPathname = '/app/app-1/overview'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
@@ -392,7 +412,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+      expect(mockAppResponse).toHaveBeenCalled()
     })
     expect(mockReplace).not.toHaveBeenCalled()
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
@@ -411,7 +431,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with monitor access to open overview directly', async () => {
     mockPathname = '/app/app-1/overview'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
     )
 
@@ -429,7 +449,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect access config pages when access config access is missing', async () => {
     mockPathname = '/app/app-1/access-config'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
@@ -448,7 +468,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with access config access to open access config directly', async () => {
     mockPathname = '/app/app-1/access-config'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.AccessConfig] }),
     )
 
@@ -466,7 +486,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect Agent app access config URLs to the Agent configure page', async () => {
     mockPathname = '/app/app-1/access-config'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({
         mode: AppModeEnum.AGENT,
         bound_agent_id: 'agent-1',
@@ -507,13 +527,12 @@ describe('AppDetailLayout', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
     })
-    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
   })
 
   it('should redirect access config pages when RBAC is disabled', async () => {
     mockIsRbacEnabled = false
     mockPathname = '/app/app-1/access-config'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({
         permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
       }),
@@ -534,7 +553,7 @@ describe('AppDetailLayout', () => {
 
   it('should redirect annotation pages when log and annotation access is missing', async () => {
     mockPathname = '/app/app-1/annotations'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({
         mode: AppModeEnum.CHAT,
         permission_keys: [AppACLPermission.Monitor],
@@ -556,7 +575,7 @@ describe('AppDetailLayout', () => {
 
   it('should allow users with log and annotation access to open annotations directly', async () => {
     mockPathname = '/app/app-1/annotations'
-    mockFetchAppDetailDirect.mockResolvedValue(
+    mockAppResponse.mockResolvedValue(
       createAppDetail({
         mode: AppModeEnum.CHAT,
         permission_keys: [AppACLPermission.LogAndAnnotation],

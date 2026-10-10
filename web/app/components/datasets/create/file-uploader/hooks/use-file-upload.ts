@@ -69,7 +69,7 @@ export const useFileUpload = ({
   supportBatchUpload = false,
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -81,7 +81,7 @@ export const useFileUpload = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploaderRef = useRef<HTMLInputElement>(null)
-  const fileListRef = useRef<FileItem[]>([])
+  const fileListRef = useRef<FileItem[]>(fileList)
 
   const hideUpload = !supportBatchUpload && fileList.length > 0
 

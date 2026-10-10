@@ -16,7 +16,7 @@ describe('image-uploader utils', () => {
   describe('getImageUploadErrorMessage', () => {
     it('should return backend message when error code is forbidden', () => {
       const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction
+      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'forbidden', message: 'Forbidden by policy' } },
@@ -30,7 +30,7 @@ describe('image-uploader utils', () => {
 
     it('should return translated message when error code is file_extension_blocked', () => {
       const translate = vi.fn(() => 'common.fileUploader.fileExtensionBlocked')
-      const t = withSelectorKey(translate) as unknown as TFunction
+      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'file_extension_blocked' } },
@@ -44,7 +44,7 @@ describe('image-uploader utils', () => {
 
     it('should return default message when error code is unknown', () => {
       const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction
+      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
         { response: { code: 'unexpected_error' } },
@@ -58,7 +58,7 @@ describe('image-uploader utils', () => {
 
     it('should return default message when error is missing response code', () => {
       const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction
+      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(undefined, 'Default error', t)
 

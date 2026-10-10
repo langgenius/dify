@@ -93,7 +93,7 @@ Todas os recursos do Dify vêm com APIs correspondentes, permitindo que você in
 ## Usando o Dify
 
 - **Nuvem </br>**
-  Oferecemos o serviço [Dify Cloud](https://dify.ai) para qualquer pessoa experimentar sem nenhuma configuração. Ele fornece todas as funcionalidades da versão auto-hospedada, incluindo 200 chamadas GPT-4 gratuitas no plano sandbox.
+  Experimente o [Dify Cloud](https://cloud.dify.ai) sem gerenciar um servidor. Consulte os planos e limites de uso atuais na [página de preços](https://dify.ai/pricing).
 
 - **Auto-hospedagem do Dify Community Edition</br>**
   Configure rapidamente o Dify no seu ambiente com este [guia inicial](#início-rápido).
@@ -162,7 +162,7 @@ Escolha o canal mais adequado para a sua dúvida:
 
 ## Divulgação de segurança
 
-Para proteger sua privacidade, evite postar problemas de segurança no GitHub. Em vez disso, envie suas perguntas para security@dify.ai e forneceremos uma resposta mais detalhada.
+Relate vulnerabilidades em particular pelo GitHub Security Advisories, seguindo nossa [política de segurança](../../SECURITY.md). Não as divulgue em issues, discussões ou pull requests públicos.
 
 ## Licença
 

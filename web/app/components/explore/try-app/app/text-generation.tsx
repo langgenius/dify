@@ -33,7 +33,7 @@ type Props = Readonly<{
 }>
 
 const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'share'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -109,7 +109,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         transfer_methods:
           file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
         // oxlint-disable-next-line typescript/no-explicit-any
       } as any)

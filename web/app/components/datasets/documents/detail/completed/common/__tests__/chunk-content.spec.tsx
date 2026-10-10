@@ -77,6 +77,26 @@ describe('ChunkContent', () => {
     })
   })
 
+  it('names the editable content', () => {
+    render(<ChunkContent {...defaultProps} isEditMode={true} />)
+    expect(
+      screen.getByRole('textbox', { name: 'datasetDocuments.segment.contentPlaceholder' }),
+    ).toBeInTheDocument()
+  })
+
+  it('names the question and answer fields', () => {
+    render(
+      <ChunkContent
+        {...defaultProps}
+        docForm={ChunkingMode.qa}
+        answer="Test answer"
+        isEditMode={true}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: 'QUESTION' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'ANSWER' })).toBeInTheDocument()
+  })
+
   // QA mode tests
   describe('QA Mode', () => {
     it('should render QA layout when docForm is qa', () => {

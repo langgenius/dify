@@ -53,7 +53,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   onVisionFilesChange,
   runControl,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share', 'workflow'])
   const baseId = useId()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc

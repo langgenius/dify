@@ -33,7 +33,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
     ChunkStructureEnum.parent_child,
   ]
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

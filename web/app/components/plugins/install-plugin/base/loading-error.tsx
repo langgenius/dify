@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
 
 const LoadingError: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   return (
     <div className="flex items-center space-x-2">
       <CheckboxSkeleton className="shrink-0" />

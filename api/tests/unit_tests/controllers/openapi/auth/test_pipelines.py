@@ -6,11 +6,14 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import CatalogStale
+from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
@@ -31,12 +34,14 @@ from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
-from services.account_service import AccountService, TenantService
+from machinery.context import RequestContext
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 from ._world import (
+    ACCOUNT_ID,
     APP_ID,
+    TENANT_ID,
     account_subject,
     make_account,
     make_app,
@@ -194,8 +199,16 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     with (
         app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers=_current_catalog(app)),
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
-        patch.object(TenantService, "get_tenant_by_id", wraps=TenantService.get_tenant_by_id) as workspace_fetch,
-        patch.object(AccountService, "get_account_by_id", wraps=AccountService.get_account_by_id) as caller_fetch,
+        patch.object(
+            loaders.application_services().workspaces.identity,
+            "get_workspace",
+            wraps=loaders.application_services().workspaces.identity.get_workspace,
+        ) as workspace_fetch,
+        patch.object(
+            loaders.application_services().accounts.identity,
+            "get_account_by_id",
+            wraps=loaders.application_services().accounts.identity.get_account_by_id,
+        ) as caller_fetch,
     ):
         _run(
             AccountPipeline(),
@@ -249,6 +262,69 @@ def test_a_refused_sso_request_never_creates_an_end_user(
 
 def test_every_registrable_subject_has_a_pipeline() -> None:
     assert set(_SUBJECT_CLASSES.values()) == set(_PIPELINES)
+
+
+@pytest.mark.parametrize("handler_raises", [False, True])
+def test_account_context_releases_admission_connection_before_handler(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    handler_raises: bool,
+) -> None:
+    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    subject = account_subject()
+    connections: set[object] = set()
+    checkouts: list[object] = []
+
+    def checkout(connection: object, *_args: object) -> None:
+        connections.add(connection)
+        checkouts.append(connection)
+
+    def checkin(connection: object, *_args: object) -> None:
+        connections.discard(connection)
+
+    def call(*, ctx: RequestContext) -> str:
+        assert isinstance(ctx, RequestContext)
+        assert (ctx.account_id, ctx.active_workspace_id) == (ACCOUNT_ID, TENANT_ID)
+        assert checkouts
+        assert not connections
+        assert not sqlite_session.in_transaction()
+        assert try_get_auth_ctx() == subject.auth
+        if handler_raises:
+            raise RuntimeError("import failed")
+        return "imported"
+
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+
+    def run() -> str:
+        return AccountPipeline().run(
+            subject=subject,
+            auth=subject.auth,
+            spec=EndpointSpec(
+                account_context=True,
+                requirements=(CheckAppApiEnabled(), CheckWorkspaceMember()),
+                catalog=CatalogMeta(op="test.account_context", kind=Kind.OBJECT, summary="test"),
+            ),
+            ctx=make_ctx(sqlite_session, subject, app_id=APP_ID),
+            session=sqlite_session,
+            call=call,
+        )
+
+    try:
+        with app.test_request_context(headers=_current_catalog(app)):
+            if handler_raises:
+                with pytest.raises(RuntimeError, match="import failed"):
+                    run()
+            else:
+                assert run() == "imported"
+        assert not connections
+        assert try_get_auth_ctx() is None
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
 
 
 def test_every_pipeline_checks_the_catalog_before_anything_else() -> None:

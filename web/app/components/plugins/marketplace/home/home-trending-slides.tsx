@@ -207,7 +207,7 @@ function TrendingCopy({
   banner: BannerRecommend
   isMarketplacePlatform: boolean
 }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const heading = banner.content.heading || t(($) => $['marketplace.home.trendingTitle'])
   const description =
     banner.content.description ||
@@ -266,7 +266,7 @@ function trackRecommendCardClick(
 }
 
 function RecommendCardFace({ card }: { card: BannerRecommendCard }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const iconURL = getMarketplaceAssetURL(card.icon_url)
   const creator = getCardCreator(card)
   const isPartner = card.badges?.includes('partner')
@@ -603,7 +603,7 @@ function BlogBannerSlide({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const href = sanitizeMarketplaceHref(banner.content.link)
   if (!href) return null
   const opensInNewTab = /^https?:\/\//.test(href)

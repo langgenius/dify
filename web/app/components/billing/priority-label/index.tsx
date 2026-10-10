@@ -12,7 +12,7 @@ type PriorityLabelProps = {
 }
 
 const PriorityLabel = ({ className }: PriorityLabelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({

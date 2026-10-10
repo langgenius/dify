@@ -100,6 +100,7 @@ describe('FeaturesWrappedAppPublisher', () => {
   it('should pass current features through to onPublish', async () => {
     render(
       <FeaturesWrappedAppPublisher
+        appId="app-1"
         publishedConfig={publishedConfig as any}
         onPublish={mockOnPublish}
       />,
@@ -115,6 +116,7 @@ describe('FeaturesWrappedAppPublisher', () => {
   it('should pass publish notification options through to onPublish', async () => {
     render(
       <FeaturesWrappedAppPublisher
+        appId="app-1"
         publishedConfig={publishedConfig as any}
         onPublish={mockOnPublish}
       />,
@@ -132,6 +134,7 @@ describe('FeaturesWrappedAppPublisher', () => {
   it('should restore published features after confirmation', async () => {
     render(
       <FeaturesWrappedAppPublisher
+        appId="app-1"
         publishedConfig={publishedConfig as any}
         resetAppConfig={resetAppConfig}
       />,
@@ -164,6 +167,7 @@ describe('FeaturesWrappedAppPublisher', () => {
   it('should close restore confirmation without restoring when cancelled', async () => {
     render(
       <FeaturesWrappedAppPublisher
+        appId="app-1"
         publishedConfig={publishedConfig as any}
         resetAppConfig={resetAppConfig}
       />,

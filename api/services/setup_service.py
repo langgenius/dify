@@ -1,24 +1,10 @@
 """Application service for first-time Dify setup."""
 
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-
-@dataclass(frozen=True, slots=True)
-class SetupInput:
-    email: str
-    name: str
-    password: str
-    ip_address: str
-    language: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class SetupStatus:
-    completed: bool
-    setup_at: datetime | None = None
+from services.account.contracts import SetupInput, SetupStatus
 
 
 class SetupState(Protocol):

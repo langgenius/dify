@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} Berechtigungssatz",
   "accessRule.summary_other": "{{count}} Berechtigungssätze",
   "accessRule.updated": "Zugriffsregel erfolgreich aktualisiert",
+  "accessRule.workspaceAdmin": "Workspace-Administrator",
   "accessRule.workspaceOwner": "Workspace-Inhaber",
   "common.duplicateAction": "Duplizieren",
   "group.agent": "Agenten",

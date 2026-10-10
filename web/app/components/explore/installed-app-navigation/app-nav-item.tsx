@@ -10,20 +10,17 @@ type IAppNavItemProps = {
   app: InstalledAppResponse
   isSelected: boolean
   onTogglePin: (id: string, isPinned: boolean) => void
-  onDelete: (id: string) => void
 }
 
 export default function AppNavItem({
   app: installedApp,
   isSelected,
   onTogglePin,
-  onDelete,
 }: IAppNavItemProps) {
   const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const {
     id,
     is_pinned: isPinned,
-    uninstallable,
     app: { name, icon_type, icon, icon_background, icon_url },
   } = installedApp
   const url = buildInstalledAppPath(id)
@@ -59,8 +56,6 @@ export default function AppNavItem({
           itemName={name}
           isPinned={isPinned}
           togglePin={() => onTogglePin(id, !isPinned)}
-          isShowDelete={!uninstallable && !isSelected}
-          onDelete={() => onDelete(id)}
         />
       </div>
     </div>

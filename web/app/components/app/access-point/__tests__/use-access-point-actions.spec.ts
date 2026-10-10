@@ -1,45 +1,40 @@
-import type { ConfigParams } from '@/app/components/app/overview/settings'
+import type {
+  AppSiteResponse,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import { useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 
 const mocks = vi.hoisted(() => ({
-  fetchAppDetail: vi.fn().mockResolvedValue({ id: 'app-1' }),
-  setAppDetail: vi.fn(),
+  fetchAppDetail: vi.fn(),
   toast: vi.fn(),
-  updateAppSiteConfig: vi.fn().mockResolvedValue({}),
+  updateAppSiteConfig: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({ toast: mocks.toast }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppDetail: typeof mocks.setAppDetail }) => unknown) =>
-    selector({ setAppDetail: mocks.setAppDetail }),
-}))
-
-vi.mock('@/service/apps', () => ({
-  fetchAppDetail: mocks.fetchAppDetail,
-  updateAppSiteConfig: mocks.updateAppSiteConfig,
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      get: { key: () => ['apps'] },
-      recent: { get: { key: () => ['apps', 'recent'] } },
-      starred: { get: { key: () => ['apps', 'starred'] } },
-      byAppId: {
-        get: {
-          queryKey: ({ input }: { input: { params: { app_id: string } } }) => [
-            'app-detail',
-            input.params.app_id,
-          ],
-        },
-      },
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return {
+    ...actual,
+    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+      const appId = /\/apps\/([^/]+)/.exec(url)?.[1]
+      if (options.request.method === 'GET')
+        return Response.json(await mocks.fetchAppDetail({ params: { app_id: appId } }))
+      return Response.json(
+        await mocks.updateAppSiteConfig({
+          params: { app_id: appId },
+          body: await options.request.json(),
+        }),
+      )
     },
-  },
-}))
+  }
+})
 
 const siteConfig = {
   chat_color_theme: '#000000',
@@ -56,13 +51,23 @@ const siteConfig = {
   show_workflow_steps: false,
   title: 'App',
   use_icon_as_answer_icon: false,
-} satisfies ConfigParams
+} satisfies AppSiteUpdatePayload
 
 function renderActions(appId = 'app-1', canManageAccessPoint = true) {
   const queryClient = createTestQueryClient()
-  const rendered = renderHook(() => useAccessPointActions(appId, canManageAccessPoint), {
-    wrapper: createQueryClientWrapper(queryClient),
-  })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
+    createAppDetailFixture({ id: appId }),
+  )
+  const rendered = renderHook(
+    () => {
+      useQuery(consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }))
+      return useAccessPointActions(appId, canManageAccessPoint)
+    },
+    {
+      wrapper: createQueryClientWrapper(queryClient),
+    },
+  )
 
   return { ...rendered, queryClient }
 }
@@ -70,34 +75,44 @@ function renderActions(appId = 'app-1', canManageAccessPoint = true) {
 describe('useAccessPointActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.fetchAppDetail.mockResolvedValue(createAppDetailFixture())
+    mocks.updateAppSiteConfig.mockResolvedValue({
+      app_id: 'app-1',
+      customize_token_strategy: 'not_allow',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'Updated site',
+      use_icon_as_answer_icon: false,
+    } satisfies AppSiteResponse)
   })
 
-  it('refreshes after a successful access point result', async () => {
-    const { result } = renderActions()
+  it('refreshes access metadata through the app detail query', async () => {
+    const { result, queryClient } = renderActions()
 
-    act(() => result.current.handleResult(null))
+    await act(async () => result.current.refreshAppDetail())
 
     await waitFor(() => {
-      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mocks.setAppDetail).toHaveBeenCalledWith({ id: 'app-1' })
-    })
-    expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully', {
-      type: 'success',
+      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        ),
+      ).toEqual(createAppDetailFixture())
     })
   })
 
-  it('reports a failed result without refreshing stale state', () => {
+  it('reports a failed save without invalidating app details', async () => {
+    mocks.updateAppSiteConfig.mockRejectedValueOnce(new Error('request failed'))
     const { result } = renderActions()
-
-    act(() => result.current.handleResult(new Error('request failed')))
-
+    await act(async () => result.current.saveSiteConfig(siteConfig))
     expect(mocks.fetchAppDetail).not.toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully', {
       type: 'error',
     })
   })
 
-  it('invalidates app detail and lists after saving legacy site configuration', async () => {
+  it('invalidates app detail and lists after saving site configuration', async () => {
     const { queryClient, result } = renderActions()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -106,13 +121,24 @@ describe('useAccessPointActions', () => {
     })
 
     expect(mocks.updateAppSiteConfig).toHaveBeenCalledWith({
-      url: '/apps/app-1/site',
+      params: { app_id: 'app-1' },
       body: siteConfig,
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-detail', 'app-1'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'starred'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'recent'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.apps.get.key() })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.starred.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.apps.recent.get.key() })
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        ),
+      ).toEqual(createAppDetailFixture()),
+    )
   })
 
   it('keeps site configuration behind Access Point management permission', async () => {

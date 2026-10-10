@@ -43,7 +43,7 @@ const LearnDifyContent = ({
   stepByStepTourTarget,
   title,
 }: LearnDifyContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const [isClosing, setIsClosing] = useState(false)
   const [collapseTransform, setCollapseTransform] = useState<string>()

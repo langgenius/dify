@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +28,8 @@ export function UndeployConfirmDialog({
   onConfirm,
   onOpenChange,
 }: UndeployConfirmDialogProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog
@@ -52,14 +52,14 @@ export function UndeployConfirmDialog({
             </p>
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" className="min-w-20" disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton className="min-w-20" loading={isPending} onClick={onConfirm}>
             {t(($) => $['deployTab.confirmUndeploy'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

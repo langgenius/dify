@@ -2,7 +2,7 @@
 
 import json
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import httpx
 import pytest
@@ -16,6 +16,8 @@ from core.rag.extractor.watercrawl.exceptions import (
 )
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
+from services.data_source.provider_service import DatasourceProviderService
+from services.data_source.website_service import WebsiteService
 
 
 def _response(
@@ -454,7 +456,7 @@ class TestWaterCrawlWebExtractor:
     def test_extract_crawl_and_scrape_modes(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
-            lambda job_id, provider, url, tenant_id: {
+            lambda _self, job_id, provider, url, tenant_id: {
                 "markdown": "crawl",
                 "source_url": url,
                 "description": "d",
@@ -463,7 +465,7 @@ class TestWaterCrawlWebExtractor:
         )
         monkeypatch.setattr(
             "core.rag.extractor.watercrawl.extractor.WebsiteService.get_scrape_url_data",
-            lambda provider, url, tenant_id, only_main_content: {
+            lambda _self, provider, url, tenant_id, only_main_content: {
                 "markdown": "scrape",
                 "source_url": url,
                 "description": "d",
@@ -471,8 +473,20 @@ class TestWaterCrawlWebExtractor:
             },
         )
 
-        crawl_extractor = WaterCrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
-        scrape_extractor = WaterCrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="scrape")
+        crawl_extractor = WaterCrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
+        scrape_extractor = WaterCrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="scrape",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
 
         assert crawl_extractor.extract()[0].page_content == "crawl"
         assert scrape_extractor.extract()[0].page_content == "scrape"
@@ -480,14 +494,26 @@ class TestWaterCrawlWebExtractor:
     def test_extract_crawl_returns_empty_when_service_returns_none(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
-            lambda job_id, provider, url, tenant_id: None,
+            lambda _self, job_id, provider, url, tenant_id: None,
         )
 
-        extractor = WaterCrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
+        extractor = WaterCrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
 
         assert extractor.extract() == []
 
     def test_extract_unknown_mode_returns_empty(self):
-        extractor = WaterCrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="other")
+        extractor = WaterCrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="other",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
 
         assert extractor.extract() == []

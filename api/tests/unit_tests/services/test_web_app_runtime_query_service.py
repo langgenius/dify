@@ -1,11 +1,13 @@
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
+from models.model import UploadFile
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
-from services.errors.file import FileNotExistsError
 from services.file_service import FileService
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -14,8 +16,17 @@ from services.web_app_runtime_query_service import (
     WebAppRuntimeRecord,
     WebAppRuntimeUnavailableError,
 )
+from tests.unit_tests.model_factories import make_upload_file
 
 _FILES_URL = "https://files.example.com"
+
+
+@pytest.fixture
+def file_service(sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture) -> FileService:
+    with sqlite_session_factory.begin() as session:
+        session.add(make_upload_file(file_id="file-1", tenant_id="tenant-1"))
+    mocker.patch("services.file_service.file_helpers.get_signed_file_url", return_value="https://icon")
+    return FileService(sqlite_session_factory)
 
 
 @pytest.fixture
@@ -65,12 +76,9 @@ def _service(
     runtime: MagicMock,
     *,
     deployment_edition: DeploymentEdition = DeploymentEdition.COMMUNITY,
-    file_service: MagicMock | None = None,
+    file_service: FileService,
     workspace_features: MagicMock | None = None,
 ) -> WebAppRuntimeQueryService:
-    if file_service is None:
-        file_service = MagicMock(spec=FileService)
-        file_service.get_icon_url.return_value = None
     if workspace_features is None:
         workspace_features = MagicMock(return_value=FeatureModel())
     return WebAppRuntimeQueryService(
@@ -83,12 +91,14 @@ def _service(
 
 
 @pytest.mark.parametrize("record", [None, _runtime_record(tenant_status="archive")])
-def test_get_bootstrap_rejects_unavailable_runtime(record: WebAppRuntimeRecord | None) -> None:
+def test_get_bootstrap_rejects_unavailable_runtime(
+    record: WebAppRuntimeRecord | None, file_service: FileService
+) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     runtime.get_runtime_record.return_value = record
 
     with pytest.raises(WebAppRuntimeUnavailableError, match="Site not found"):
-        _service(runtime).get_bootstrap("app-1")
+        _service(runtime, file_service=file_service).get_bootstrap("app-1")
 
 
 @pytest.mark.parametrize(
@@ -102,10 +112,12 @@ def test_get_bootstrap_rejects_unavailable_runtime(record: WebAppRuntimeRecord |
 )
 def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     workspace_features: MagicMock,
+    file_service: FileService,
     deployment_edition: DeploymentEdition,
     copyright_enabled: bool,
     expected_copyright: str | None,
     expected_placeholder: str | None,
+    mocker: MockerFixture,
 ) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     record = _runtime_record()
@@ -113,8 +125,11 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     events: list[str] = []
     runtime.get_runtime_record.side_effect = lambda _app_id: events.append("record") or record
     workspace_features.side_effect = lambda _tenant_id, **_kwargs: events.append("features") or features
-    file_service = MagicMock(spec=FileService)
-    file_service.get_icon_url.side_effect = lambda *_args, **_kwargs: events.append("icon") or "https://icon"
+    icon = mocker.spy(file_service, "get_icon_url")
+    mocker.patch(
+        "services.file_service.file_helpers.get_signed_file_url",
+        side_effect=lambda **_kwargs: events.append("icon") or "https://icon",
+    )
 
     result = _service(
         runtime,
@@ -142,11 +157,12 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     )
     assert events == ["record", "features", "icon"]
     workspace_features.assert_called_once_with("tenant-1")
-    file_service.get_icon_url.assert_called_once_with("file-1", "tenant-1")
+    icon.assert_called_once_with("file-1", "tenant-1")
 
 
 def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
     workspace_features: MagicMock,
+    file_service: FileService,
 ) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     record = _runtime_record(tenant_custom_config_json="not-json")
@@ -154,18 +170,22 @@ def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
 
     workspace_features.return_value = FeatureModel(can_replace_logo=False)
 
-    result = _service(runtime, workspace_features=workspace_features).get_bootstrap("app-1")
+    result = _service(runtime, file_service=file_service, workspace_features=workspace_features).get_bootstrap("app-1")
 
-    assert result.site == {**record.site._asdict(), "icon_url": None}
+    assert result.site == {**record.site._asdict(), "icon_url": "https://icon"}
     assert result.can_replace_logo is False
     assert result.custom_config is None
 
 
-def test_get_bootstrap_falls_back_when_site_icon_is_unavailable() -> None:
+def test_get_bootstrap_falls_back_when_site_icon_is_unavailable(
+    file_service: FileService, sqlite_session: Session
+) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     runtime.get_runtime_record.return_value = _runtime_record()
-    file_service = MagicMock(spec=FileService)
-    file_service.get_icon_url.side_effect = FileNotExistsError("File reference not found")
+    file = sqlite_session.get(UploadFile, "file-1")
+    assert file is not None
+    sqlite_session.delete(file)
+    sqlite_session.commit()
 
     result = _service(runtime, file_service=file_service).get_bootstrap("app-1")
 

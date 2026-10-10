@@ -18,6 +18,17 @@ vp run -w check:fix
 
 CI and local development use the same root `vite.config.ts` configuration.
 
+The root `check` script delegates to the `check:cached` Vite Task. Formatting, linting,
+and type checking reuse successful results when their tracked inputs are unchanged.
+`CI`, `NODE_ENV`, and `TAILWIND_CANONICAL_CLASSES` are included in the cache key;
+check results never restore files into the working tree. Fix commands remain uncached.
+To force a fresh check, run `vp run -w --no-cache check`.
+
+The TS Common CI job restores the task cache after dependency installation and saves
+it after a successful check. This is separate from the package-manager cache in
+`setup-web`. When evaluating CI performance, compare cache transfer time with the
+time saved in the Vite Task summary.
+
 Reuse successful checks for the same final changes. Repeat or expand checks only when subsequent edits, failures, or unresolved concerns require it.
 
 To narrow formatting and linting, pass paths directly to Vite+. Type checking remains repository-wide:
@@ -44,7 +55,7 @@ vp run dify-web#lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layou
 This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
 owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
 
-Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
+Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, or Markdown:
 
 ```sh
 vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
@@ -57,7 +68,7 @@ The primary rule baseline lives in `lint.config.ts` and is connected through the
 
 Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
-The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
+The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
 ### Type-aware Linting
 
@@ -96,7 +107,7 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Code-only fallback rules | ESLint globally ignores all code files. Six core fallback rules, JS `dot-notation`, and other code-only ESLint checks are listed only in comments rather than executable configuration.                          |
 | Declaration files        | Oxlint excludes declaration files and ESLint no longer processes code. The former 223-rule declaration snapshot and CLI declaration import restriction are not enforced.                                         |
 | Generated contracts      | Both linters and Vite+ type checking ignore `packages/contracts/**`; Oxfmt remains the only staged quality step for the contracts package.                                                                       |
-| Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, TOML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                        |
+| Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                              |
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
 
@@ -121,6 +132,29 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 `dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
+
+### Translation Function Types
+
+`dify/require-i18n-namespace` requires translation hook calls to use non-empty
+inline namespace arrays, including single namespaces: `useTranslation(['common'])`.
+Strings and indirect arguments are rejected; only calls reading the `i18n`
+instance alone may omit namespaces. Both `react-i18next` and `#i18n` are checked.
+The shared client/server adapter accepts typed non-empty tuples and forwards them
+through one documented lint exception in its client implementation.
+
+`dify/require-t-function-namespace` requires i18next `TFunction` types to declare a
+non-empty inline tuple of namespace string literals. Use `TFunction<['common']>`
+or `TFunction<['common', 'workflow']>`; readonly tuples are also supported.
+Omitted arguments, single strings, broad namespace types, tuple aliases, and
+unions or rest elements inside the tuple are rejected. Named import aliases,
+namespace imports, and inline `import('i18next').TFunction` types are checked.
+
+Declare the namespaces the helper or component actually uses. TypeScript checks
+translation keys and compatibility with callers; the lint rule does not infer
+transitive dependencies or detect unused namespaces. Keep the first namespace
+compatible with the caller because it defines the default translation namespace.
+The rule has no automatic fix because choosing the dependencies requires reading
+the translation calls.
 
 ### Introducing New Plugins or Rules
 

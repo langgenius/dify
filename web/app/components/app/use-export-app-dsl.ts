@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getAppTransferErrorMessage } from './transfer-error'
 
 type ExportAppDslInput = {
   appId: string
@@ -85,7 +86,10 @@ export async function exportAppDslFile({
 }
 
 async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMessages) {
-  await toast.promise(exportAppDslFile(input), {
+  const exportPromise = exportAppDslFile(input).catch(async (error: unknown) => {
+    throw new Error(await getAppTransferErrorMessage(error), { cause: error })
+  })
+  await toast.promise(exportPromise, {
     loading: {
       title: messages.loading,
     },
@@ -93,17 +97,18 @@ async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMe
       title: format === 'ifpkg' ? messages.packageSuccess : messages.success,
       timeout: 3000,
     }),
-    error: {
-      title: input.format === 'ifpkg' ? messages.packageError : messages.error,
-    },
+    error: (error) => ({
+      title: input.format === 'yaml' ? messages.error : messages.packageError,
+      description: error instanceof Error ? error.message || undefined : undefined,
+    }),
   })
 
   return { status: 'downloaded' } as const
 }
 
 function useExportAppDslMessages() {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return {
     loading: tCommon(($) => $['operation.exporting']),
@@ -148,7 +153,7 @@ export function useExportWorkflowAppDsl() {
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {
-        toast.error(messages.error)
+        toast.error(messages.packageError, { description: await getAppTransferErrorMessage(error) })
         throw error
       }
 

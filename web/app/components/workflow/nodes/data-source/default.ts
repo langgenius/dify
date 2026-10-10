@@ -54,7 +54,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
   },
   checkValid(
     payload,
-    t: TFunction<'workflow'>,
+    t: TFunction<['workflow']>,
     moreDataForCheckValid: ReturnType<typeof getDataSourceCheckParams>,
   ) {
     const { dataSourceInputsSchema, notAuthed } = moreDataForCheckValid

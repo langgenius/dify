@@ -1,11 +1,12 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +32,7 @@ export function CreateAppDropdown({
   stepByStepTourTarget,
   stepByStepTourHighlightPart,
 }: CreateAppDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const menu = useStepByStepTourControlledDropdown({
     controlledOpen: stepByStepTourControlledOpen,
   })
@@ -63,10 +64,10 @@ export function CreateAppDropdown({
         })}
       >
         {(onCreateBlank || onCreateTemplate) && (
-          <div className="py-1">
+          <DropdownMenuGroup className="py-1">
             {onCreateBlank && (
               <DropdownMenuItem
-                className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+                className="py-1 system-md-regular text-text-secondary"
                 onClick={onCreateBlank}
               >
                 <span
@@ -80,7 +81,7 @@ export function CreateAppDropdown({
             )}
             {onCreateTemplate && (
               <DropdownMenuItem
-                className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+                className="py-1 system-md-regular text-text-secondary"
                 onClick={onCreateTemplate}
               >
                 <span
@@ -92,20 +93,14 @@ export function CreateAppDropdown({
                 </span>
               </DropdownMenuItem>
             )}
-          </div>
+          </DropdownMenuGroup>
         )}
         {onImportDSL && (onCreateBlank || onCreateTemplate) && (
-          <div className="h-px bg-divider-subtle" />
+          <DropdownMenuSeparator className="my-0" />
         )}
         {onImportDSL && (
-          <div className="py-1">
-            <DropdownMenuItem
-              className={cn(
-                'h-auto items-start gap-1 rounded-lg px-2 py-1.5',
-                'hover:bg-state-base-hover focus:bg-state-base-hover',
-              )}
-              onClick={onImportDSL}
-            >
+          <DropdownMenuGroup className="py-1">
+            <DropdownMenuItem className="h-auto items-start py-1.5" onClick={onImportDSL}>
               <span className="flex h-5 shrink-0 items-center py-0.5">
                 <span aria-hidden className="i-ri-file-upload-line size-4 text-text-secondary" />
               </span>
@@ -118,7 +113,7 @@ export function CreateAppDropdown({
                 </span>
               </span>
             </DropdownMenuItem>
-          </div>
+          </DropdownMenuGroup>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

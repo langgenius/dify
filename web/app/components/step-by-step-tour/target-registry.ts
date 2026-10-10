@@ -51,7 +51,7 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   integrationCustomEndpointEmpty: 'step-by-step-tour-integration-custom-endpoint-empty',
 } as const
 
-type StepByStepTourGuideCopyKey = I18nKeysWithPrefix<'common', 'stepByStepTour.'>
+type StepByStepTourGuideCopyKey = I18nKeysWithPrefix<'onboarding', 'stepByStepTour.'>
 
 export type StepByStepTourGuideKind = 'action' | 'walkthrough'
 

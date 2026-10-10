@@ -1,5 +1,6 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
@@ -121,13 +122,32 @@ describe('DatasetMetadataDrawer', () => {
     it('should render switch for built-in toggle', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        const switchBtn = screen.getByRole('switch')
+        const switchBtn = screen.getByRole('switch', {
+          name: 'dataset.metadata.datasetMetadata.builtIn',
+        })
         expect(switchBtn)!.toBeInTheDocument()
       })
     })
   })
 
   describe('User Interactions', () => {
+    it('exposes actions only for editable metadata and lets keyboard users rename it', async () => {
+      const user = userEvent.setup()
+      render(<DatasetMetadataDrawer {...defaultProps} />)
+      const addButton = await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      })
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })).toHaveLength(2)
+      expect(screen.getAllByRole('button', { name: 'common.operation.remove' })).toHaveLength(2)
+      addButton.focus()
+      await user.tab()
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('textbox', { name: 'dataset.metadata.datasetMetadata.name' }),
+      ).toHaveValue('field_one')
+    })
+
     it('should call onClose when drawer close button is clicked', async () => {
       const onClose = vi.fn()
       render(<DatasetMetadataDrawer {...defaultProps} onClose={onClose} />)
@@ -154,7 +174,9 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const switchBtn = screen.getByRole('switch')
+      const switchBtn = screen.getByRole('switch', {
+        name: 'dataset.metadata.datasetMetadata.builtIn',
+      })
       fireEvent.click(switchBtn)
 
       expect(onIsBuiltInEnabledChange).toHaveBeenCalled()

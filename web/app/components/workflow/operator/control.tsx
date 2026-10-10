@@ -10,15 +10,15 @@ import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import AddBlock from './add-block'
+import { ExportImage } from './export-image'
 import { useOperator } from './hooks'
-import MoreActions from './more-actions'
 import TipPopup from './tip-popup'
 
 const pressedModeClassName =
   'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
 
 const Control = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
@@ -138,7 +138,7 @@ const Control = () => {
           <span aria-hidden className="i-ri-function-add-line size-4" />
         </IconButton>
       </TipPopup>
-      <MoreActions />
+      <ExportImage />
     </div>
   )
 }

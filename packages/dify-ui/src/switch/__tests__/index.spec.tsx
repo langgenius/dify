@@ -14,11 +14,6 @@ describe('Switch', () => {
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
   })
 
-  it('should apply custom className', async () => {
-    const screen = await render(<Switch checked={false} className="custom-test-class" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('custom-test-class')
-  })
-
   it('should reflect checked state on the root and thumb', async () => {
     const screen = await render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch').element()

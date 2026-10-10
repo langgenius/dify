@@ -257,6 +257,7 @@
   "segment.searchResults_one": "HASIL",
   "segment.searchResults_other": "HASIL",
   "segment.searchResults_zero": "HASIL",
+  "segment.statusFilterLabel": "Filter segmen berdasarkan status",
   "segment.summary": "RINGKASAN",
   "segment.summaryPlaceholder": "Tulis ringkasan singkat untuk pencarian yang lebih baik…"
 }

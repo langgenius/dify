@@ -14,7 +14,7 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import UpdateSettingDialog from '../update-setting-dialog'
+import { UpdateSettingDialog } from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
@@ -54,7 +54,7 @@ const ModelProviderPage = ({
   hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
@@ -219,7 +219,7 @@ const ModelProviderPage = ({
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'common' })}
+        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'modelProvider' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
@@ -234,9 +234,9 @@ const ModelProviderPage = ({
               />
               <span
                 className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
-                title={t(($) => $[warningTextKey], { ns: 'common' })}
+                title={t(($) => $[warningTextKey], { ns: 'modelProvider' })}
               >
-                {t(($) => $[warningTextKey], { ns: 'common' })}
+                {t(($) => $[warningTextKey], { ns: 'modelProvider' })}
               </span>
             </div>
             <div className="relative shrink-0">

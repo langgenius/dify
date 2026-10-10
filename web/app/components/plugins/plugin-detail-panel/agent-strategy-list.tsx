@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const AgentStrategyList = ({ detail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const providerName = detail.declaration.agent_strategy?.identity.name
   const { data: strategyProviderDetail } = useQuery(
     consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryOptions({

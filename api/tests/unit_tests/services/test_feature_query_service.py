@@ -1,10 +1,13 @@
 from unittest.mock import create_autospec
 
+import pytest
+
 from enums import DeploymentEdition
 from machinery.context import RequestContext
 from services.entities.feature_entities import (
     FeatureModel,
     LicenseModel,
+    LicenseStatus,
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
@@ -66,3 +69,23 @@ def test_workspace_id_queries_delegate_without_request_context() -> None:
     assert service.get_workspace_vector_space("workspace_123") is vector_space
     gateway.get_workspace_features.assert_called_once_with("workspace_123")
     gateway.get_vector_space.assert_called_once_with("workspace_123")
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (LicenseStatus.ACTIVE, True),
+        (LicenseStatus.EXPIRING, True),
+        (LicenseStatus.INACTIVE, False),
+        (LicenseStatus.EXPIRED, False),
+    ],
+)
+def test_enterprise_license_admission(status: LicenseStatus, expected: bool) -> None:
+    gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
+    gateway.get_public_system_features.return_value = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        license={"status": status},
+    )
+    service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
+
+    assert service.has_valid_enterprise_license() is expected

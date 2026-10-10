@@ -26,7 +26,7 @@ function WorkflowLaunchForm({
   targetUrl,
   onClose,
 }: WorkflowLaunchFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common'])
   const [values, setValues] = useState<Record<string, WorkflowLaunchInputValue>>(() =>
     createWorkflowLaunchInitialValues(hiddenVariables),
   )
@@ -86,7 +86,7 @@ export function WorkflowLaunchDialog({
   targetUrl,
   onOpenChange,
 }: WorkflowLaunchDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const supportedVariables = hiddenVariables.filter(isWorkflowLaunchInputSupported)
 
   if (!hiddenVariables.length) return null

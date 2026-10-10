@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -17,6 +17,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -142,8 +143,8 @@ export function ProcessingTasksDrawer({
   onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const cancelTask = useMutation(
     consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
@@ -250,9 +251,7 @@ export function ProcessingTasksDrawer({
     if (!wasOpen || open) return
     openCycleRef.current += 1
     loadMoreRequestedRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close resets drawer-local pagination and errors.
     setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close starts a fresh action-error cycle.
     setActionErrors({})
   }, [open])
 
@@ -394,10 +393,13 @@ export function ProcessingTasksDrawer({
                   <DrawerTitle className="system-md-semibold text-text-primary">
                     {t(($) => $['newKnowledge.backgroundTasks'])}
                   </DrawerTitle>
-                  <DrawerCloseButton
+                  <DrawerClose
                     ref={drawerCloseButtonRef}
-                    aria-label={tCommon(($) => $['operation.close'])}
-                    className="size-6 rounded-md"
+                    render={
+                      <IconButton aria-label={tCommon(($) => $['operation.close'])} size="md">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">

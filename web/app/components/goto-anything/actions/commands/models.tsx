@@ -1,34 +1,25 @@
-import type { SlashCommandHandler } from './types'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
-
-type ModelsDeps = Record<string, never>
+import type { SlashCommand } from './types'
 
 export const SYSTEM_MODELS_PATH = '/integrations/model-provider?dialog=system-models'
 
-const openSystemModels = () => {
-  window.location.href = SYSTEM_MODELS_PATH
-}
-
-export const modelsCommand: SlashCommandHandler<ModelsDeps> = {
+export const modelsCommand: SlashCommand = {
   name: 'models',
   description: 'Configure default workspace models',
   mode: 'direct',
 
-  execute: openSystemModels,
+  execute: (_args, context) => context.navigate(SYSTEM_MODELS_PATH),
 
-  search(_args: string, locale: string = 'en') {
-    const i18n = getI18n()
+  search(args: string, context) {
     return [
       {
         id: 'models',
-        title: i18n.t(($) => $['modelProvider.systemModelSettings'], {
-          ns: 'common',
-          lng: locale,
+        title: context.t(($) => $['modelProvider.systemModelSettings'], {
+          ns: 'modelProvider',
+          lng: context.locale,
         }),
-        description: i18n.t(($) => $['modelProvider.systemModelSettingsDesc'], {
-          ns: 'common',
-          lng: locale,
+        description: context.t(($) => $['modelProvider.systemModelSettingsDesc'], {
+          ns: 'modelProvider',
+          lng: context.locale,
         }),
         type: 'command' as const,
         icon: (
@@ -36,18 +27,8 @@ export const modelsCommand: SlashCommandHandler<ModelsDeps> = {
             <span aria-hidden className="i-ri-brain-2-line size-4 text-text-tertiary" />
           </div>
         ),
-        data: { command: 'navigation.models' },
+        data: { command: 'models' },
       },
     ]
-  },
-
-  register(_deps: ModelsDeps) {
-    registerCommands({
-      'navigation.models': async () => openSystemModels(),
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['navigation.models'])
   },
 }

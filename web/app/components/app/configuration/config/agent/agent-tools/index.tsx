@@ -45,7 +45,7 @@ const AgentTools: FC = () => {
   const toolNameLabelId = React.useId()
   const toolsLabelId = React.useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -284,7 +284,7 @@ const AgentTools: FC = () => {
                         render={
                           <button
                             type="button"
-                            className="mr-1 cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5"
                           >
                             <span
                               aria-hidden

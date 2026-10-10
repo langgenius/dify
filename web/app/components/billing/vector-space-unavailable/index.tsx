@@ -9,7 +9,7 @@ type Props = {
 }
 
 const VectorSpaceUnavailable = ({ isRetrying, onRetry }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
 
   return (
     <div

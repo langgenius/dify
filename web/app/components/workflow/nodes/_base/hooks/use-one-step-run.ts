@@ -162,7 +162,7 @@ const useOneStepRun = <T>({
   isRunAfterSingleRun,
   isPaused,
 }: Params<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } =
     useWorkflow() as any
   const conversationVariables = useStore((s) => s.conversationVariables)

@@ -77,6 +77,42 @@ def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatc
             assert restore.call_args.kwargs["tenant_id"] == "destination"
 
 
+def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    app_icon_id, site_icon_id = str(uuid4()), str(uuid4())
+    backend = Mock()
+    backend.load_stream.side_effect = lambda key: iter([key.encode()])
+    exporter = AgentPackageResourceExporter(storage_backend=backend)
+    monkeypatch.setattr(
+        exporter,
+        "_upload_files",
+        Mock(
+            side_effect=lambda *, file_ids, **_kwargs: {
+                file_id: SimpleNamespace(key=f"source/{file_id}.png", extension="png") for file_id in file_ids
+            }
+        ),
+    )
+    app = {"mode": "chat", "icon_type": "image", "icon": app_icon_id}
+    site = {"title": "Site", "icon_type": "image", "icon": site_icon_id}
+    exporter.collect_icon(session=Mock(), tenant_id="source", metadata=app)
+    exporter.collect_icon(session=Mock(), tenant_id="source", metadata=site)
+    with AppPackageService().export(
+        dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}), name="App", resources=exporter
+    ) as exported:
+        prepared = AppPackageService().read_package(exported.archive)
+        assert prepared is not None
+        with prepared:
+            assert len(prepared.icons) == 2
+            monkeypatch.setattr(
+                AgentPackageResourceImporter,
+                "materialize_icons",
+                Mock(return_value={app["icon"]: "new-app-icon", site["icon"]: "new-site-icon"}),
+            )
+            data = yaml.safe_load(prepared.dsl)
+            prepared.materialize_icons(data=data, tenant_id="destination", account_id="account")
+            assert data["app"]["icon"] == "new-app-icon"
+            assert data["site"]["icon"] == "new-site-icon"
+
+
 def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch: pytest.MonkeyPatch) -> None:
     exporter = AgentPackageResourceExporter(storage_backend=Mock())
     monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={}))
@@ -136,6 +172,7 @@ def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> Non
     from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
     from services.agent.roster_package_exporter import RosterAgentPackageExporter
     from services.agent.roster_package_reader import RosterAgentPackageReader
+    from services.entities.site_dsl import SiteDsl
 
     backend = Mock()
     backend.load_stream.side_effect = lambda _: iter([b"icon"])
@@ -160,8 +197,11 @@ def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> Non
         },
         dependencies=[],
     )
+    app.site = SiteDsl(title="Agent Site", icon_type="image", icon="i_000001")
     with RosterAgentPackageExporter(storage_backend=backend)._build_archive(app=app, resources=resources) as exported:
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.apps["app.yaml"].package.metadata.icon == "i_000001"
+            assert prepared.apps["app.yaml"].site is not None
+            assert prepared.apps["app.yaml"].site.icon == "i_000001"
             assert prepared.manifest.icons[0].path == "i_000001.png"
             assert RosterAgentPackageReader().read_member_bytes(prepared, "i_000001.png", max_bytes=4) == b"icon"

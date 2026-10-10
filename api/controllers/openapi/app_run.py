@@ -20,6 +20,7 @@ from werkzeug.exceptions import (
 )
 
 import services
+from constants.oauth_bearer import Scope
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -45,7 +46,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -70,7 +71,6 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.oauth_bearer import Scope
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -91,7 +91,7 @@ _INVALID_RUN_INPUT: Final = "invalid run input"
 
 
 @contextmanager
-def _translate_service_errors() -> Generator[None, None, None]:
+def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
@@ -133,7 +133,7 @@ def _translate_service_errors() -> Generator[None, None, None]:
 
 
 _RUN_GUARDS: Final = (
-    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
@@ -191,7 +191,7 @@ class _ChatMessageEnd(MessageEndStreamResponse):
     conversation_id: str
 
 
-def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str, None, None]:
+def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
         end = _ChatMessageEnd.model_validate(event)
         return [
@@ -205,14 +205,14 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-HintLayer = Callable[[Iterable[str], str, str], Generator[str, None, None]]
+HintLayer = Callable[[Iterable[str], str, str], Generator[str]]
 
 
-def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_reply_hints(events, op=op, app_id=app_id)
 
 
-def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_form_hints(events, app_id=app_id)
 
 
@@ -237,7 +237,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="WorkflowRunApi",
         segment="workflow",
-        op="console_app.workflow.run",
+        op="run.console_app.workflow",
         summary="Run a workflow app; streams workflow events",
         payload=WorkflowRunPayload,
         modes=(AppMode.WORKFLOW,),
@@ -260,7 +260,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="ChatRunApi",
         segment="chat",
-        op="console_app.chat.run",
+        op="run.console_app.chat",
         summary="Run a chat or agent app; streams message events",
         payload=ChatRunPayload,
         modes=(AppMode.CHAT, AppMode.AGENT_CHAT),
@@ -293,7 +293,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="AdvancedChatRunApi",
         segment="advanced-chat",
-        op="console_app.advanced_chat.run",
+        op="run.console_app.advanced_chat",
         summary="Run an advanced-chat (chatflow) app; streams message and workflow events",
         payload=AdvancedChatRunPayload,
         modes=(AppMode.ADVANCED_CHAT,),
@@ -317,7 +317,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="CompletionRunApi",
         segment="completion",
-        op="console_app.completion.run",
+        op="run.console_app.completion",
         summary="Run a completion app; streams message events",
         payload=CompletionRunPayload,
         modes=(AppMode.COMPLETION,),
@@ -362,7 +362,7 @@ WorkflowRunApi, ChatRunApi, AdvancedChatRunApi, CompletionRunApi = (_run_api(rou
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @endpoint(
-        op="run.stop",
+        op="stop.run",
         kind=Kind.OBJECT,
         summary="Stop a running task",
         examples=(Example(title="Stop a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
@@ -370,6 +370,10 @@ class AppRunTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
+            if owner != f"end-user-{ctx.end_user.id}".encode():
+                raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return TaskStopResponse(result="success")

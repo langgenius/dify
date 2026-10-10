@@ -107,4 +107,16 @@ describe('IndexMethod', () => {
     expect(economy).not.toBeChecked()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
+
+  it('shows and associates the downgrade explanation without opening a popup', () => {
+    render(<Settings currentValue={IndexingType.QUALIFIED} />)
+    const economy = screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' })
+
+    expect(
+      screen.getByText(/datasetSettings.form.indexMethodChangeToEconomyDisabledTip/),
+    ).toBeVisible()
+    expect(economy).toHaveAccessibleDescription(
+      /datasetSettings.form.indexMethodChangeToEconomyDisabledTip/,
+    )
+  })
 })

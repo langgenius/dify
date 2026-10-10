@@ -46,7 +46,7 @@ export function AccessControlForm({
   const publicAccessLabelId = useId()
   const externalAccessLabelId = useId()
   const accessControlOptionsLabelId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const confirmDisabled =
     (accessMode === AccessModeValue.PUBLIC && publicAccessDisabled) ||
     (accessMode === AccessModeValue.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success')

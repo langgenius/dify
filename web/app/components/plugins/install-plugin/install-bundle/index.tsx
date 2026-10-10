@@ -41,7 +41,7 @@ const InstallBundle: FC<Props> = ({
   onClose,
   onInstallComplete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [step, setStep] = useState<InstallStep>(
     installType === InstallType.fromMarketplace
       ? InstallStep.readyToInstall

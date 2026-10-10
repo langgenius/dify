@@ -18,7 +18,7 @@ import { useWorkflowStore } from '../store'
 import { useIsChatMode } from './use-workflow'
 
 export const useWorkflowVariables = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 

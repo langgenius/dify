@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import EmailChangeModal from '../email-change-modal'
 
+const mockLogout = vi.fn()
+
 vi.mock('@/service/common', () => ({
   checkEmailExisted: vi.fn(),
   resetEmail: vi.fn(),
@@ -11,10 +13,8 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: vi.fn() }),
+  useLogout: () => ({ mutateAsync: mockLogout }),
 }))
-
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 describe('EmailChangeModal', () => {
   beforeEach(() => {
@@ -34,10 +34,10 @@ describe('EmailChangeModal', () => {
     render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
-      screen.getByRole('button', { name: 'common.account.changeEmail.sendVerifyCode' }),
+      screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
     )
     const originCode = await screen.findByRole('textbox', {
-      name: 'common.account.changeEmail.codeLabel',
+      name: 'accountSettings.account.changeEmail.codeLabel',
     })
     await user.type(originCode, '123456{Enter}')
     expect(verifyEmail).toHaveBeenCalledWith({
@@ -47,12 +47,12 @@ describe('EmailChangeModal', () => {
     })
 
     const email = await screen.findByRole('textbox', {
-      name: 'common.account.changeEmail.emailLabel',
+      name: 'accountSettings.account.changeEmail.emailLabel',
     })
     await user.type(email, 'new@example.com')
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'common.account.changeEmail.sendVerifyCode' }),
+        screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
       ).toBeEnabled(),
     )
     await user.type(email, '{Enter}')
@@ -63,7 +63,7 @@ describe('EmailChangeModal', () => {
     })
 
     const newCode = await screen.findByRole('textbox', {
-      name: 'common.account.changeEmail.codeLabel',
+      name: 'accountSettings.account.changeEmail.codeLabel',
     })
     expect(newCode).toHaveValue('')
     await user.type(newCode, '654321{Enter}')
@@ -73,6 +73,7 @@ describe('EmailChangeModal', () => {
         token: 'verified-token',
       }),
     )
+    expect(mockLogout).toHaveBeenCalledOnce()
   })
 
   it('associates an unavailable-email error and clears it when the user edits the address', async () => {
@@ -84,22 +85,24 @@ describe('EmailChangeModal', () => {
     render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
-      screen.getByRole('button', { name: 'common.account.changeEmail.sendVerifyCode' }),
+      screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
     )
     await user.type(
-      await screen.findByRole('textbox', { name: 'common.account.changeEmail.codeLabel' }),
+      await screen.findByRole('textbox', { name: 'accountSettings.account.changeEmail.codeLabel' }),
       '123456{Enter}',
     )
     const email = await screen.findByRole('textbox', {
-      name: 'common.account.changeEmail.emailLabel',
+      name: 'accountSettings.account.changeEmail.emailLabel',
     })
     await user.type(email, 'used@example.com')
 
-    await screen.findByText('common.account.changeEmail.existingEmail')
+    await screen.findByText('accountSettings.account.changeEmail.existingEmail')
     expect(email).toBeInvalid()
-    expect(email).toHaveAccessibleDescription('common.account.changeEmail.existingEmail')
+    expect(email).toHaveAccessibleDescription('accountSettings.account.changeEmail.existingEmail')
     await user.clear(email)
     expect(email).not.toBeInvalid()
-    expect(screen.queryByText('common.account.changeEmail.existingEmail')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('accountSettings.account.changeEmail.existingEmail'),
+    ).not.toBeInTheDocument()
   })
 })

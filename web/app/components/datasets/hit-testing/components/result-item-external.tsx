@@ -18,7 +18,7 @@ type Props = {
 }
 
 const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetHitTesting'])
   const { content, title, score } = payload
   const [isShowDetailModal, { setTrue: showDetailModal, setFalse: hideDetailModal }] =
     useBoolean(false)

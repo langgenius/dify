@@ -2,22 +2,23 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -53,7 +54,7 @@ const EditAnnotationModal: FC<Props> = ({
   onRemove,
   onlyEditResponse,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
@@ -101,9 +102,15 @@ const EditAnnotationModal: FC<Props> = ({
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {t(($) => $['editModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -135,7 +142,7 @@ const EditAnnotationModal: FC<Props> = ({
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </div>
-                        <AlertDialogActions>
+                        <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
@@ -149,7 +156,7 @@ const EditAnnotationModal: FC<Props> = ({
                           >
                             {t(($) => $['operation.confirm'], { ns: 'common' })}
                           </AlertDialogConfirmButton>
-                        </AlertDialogActions>
+                        </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>

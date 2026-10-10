@@ -39,7 +39,7 @@ const Empty = ({
   installContextCategory,
   onSwitchToMarketplace,
 }: EmptyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

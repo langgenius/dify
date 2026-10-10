@@ -65,7 +65,7 @@ describe('agent/model-bar', () => {
 
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
 })
 

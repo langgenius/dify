@@ -30,7 +30,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   multipleModelConfigs,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const language = useLanguage()
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

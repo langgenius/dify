@@ -30,7 +30,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const {
     appParams,
     appPrevChatTree,

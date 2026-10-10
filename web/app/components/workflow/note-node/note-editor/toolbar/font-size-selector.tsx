@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useFontSize } from './hooks'
 
 const FontSizeSelector = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const FONT_SIZE_LIST = [
     {
       key: '12px',

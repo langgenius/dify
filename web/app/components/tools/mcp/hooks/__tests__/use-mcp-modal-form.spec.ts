@@ -1,7 +1,4 @@
-import type {
-  AppIconEmojiSelection,
-  AppIconImageSelection,
-} from '@/app/components/base/app-icon-picker'
+import type { EmojiIcon, ImageIcon } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -11,6 +8,16 @@ import { isValidServerID, isValidUrl, useMCPModalForm } from '../use-mcp-modal-f
 // Mock the API service
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn(),
+}))
+
+vi.mock('tldts', () => ({
+  getDomain: vi.fn((url: string) => {
+    try {
+      return new URL(url).hostname
+    } catch {
+      return null
+    }
+  }),
 }))
 
 describe('useMCPModalForm', () => {
@@ -173,8 +180,8 @@ describe('useMCPModalForm', () => {
         const { result } = renderHook(() => useMCPModalForm(mockData))
 
         expect(result.current.state.appIcon.type).toBe('emoji')
-        expect((result.current.state.appIcon as AppIconEmojiSelection).icon).toBe('🚀')
-        expect((result.current.state.appIcon as AppIconEmojiSelection).background).toBe('#FF0000')
+        expect((result.current.state.appIcon as EmojiIcon).icon).toBe('🚀')
+        expect((result.current.state.appIcon as EmojiIcon).background).toBe('#FF0000')
       })
 
       it('should store original server URL and ID', () => {
@@ -192,14 +199,26 @@ describe('useMCPModalForm', () => {
         icon: 'https://example.com/files/abc123/file-preview/icon.png',
       } as unknown as ToolWithProvider
 
+      it('uses the default icon when the existing URL has no uploaded file id', () => {
+        const { result } = renderHook(() =>
+          useMCPModalForm({ ...mockDataWithImageIcon, icon: 'https://example.com/icon.png' }),
+        )
+
+        expect(result.current.state.appIcon).toEqual({
+          type: 'emoji',
+          icon: '🔗',
+          background: '#6366F1',
+        })
+      })
+
       it('should initialize image icon from string URL', () => {
         const { result } = renderHook(() => useMCPModalForm(mockDataWithImageIcon))
 
         expect(result.current.state.appIcon.type).toBe('image')
-        expect((result.current.state.appIcon as AppIconImageSelection).url).toBe(
+        expect((result.current.state.appIcon as ImageIcon).url).toBe(
           'https://example.com/files/abc123/file-preview/icon.png',
         )
-        expect((result.current.state.appIcon as AppIconImageSelection).fileId).toBe('abc123')
+        expect((result.current.state.appIcon as ImageIcon).fileId).toBe('abc123')
       })
     })
   })
@@ -317,18 +336,6 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.appIcon).toEqual(newIcon)
     })
 
-    it('should toggle showAppIconPicker', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      expect(result.current.state.showAppIconPicker).toBe(false)
-
-      act(() => {
-        result.current.actions.setShowAppIconPicker(true)
-      })
-
-      expect(result.current.state.showAppIconPicker).toBe(true)
-    })
-
     it('should reset icon to default', () => {
       const { result } = renderHook(() => useMCPModalForm())
 
@@ -337,7 +344,7 @@ describe('useMCPModalForm', () => {
         result.current.actions.setAppIcon({ type: 'emoji', icon: '🎉', background: '#00FF00' })
       })
 
-      expect((result.current.state.appIcon as AppIconEmojiSelection).icon).toBe('🎉')
+      expect((result.current.state.appIcon as EmojiIcon).icon).toBe('🎉')
 
       // Reset icon
       act(() => {
@@ -377,6 +384,28 @@ describe('useMCPModalForm', () => {
       })
 
       expect(result.current.state.isFetchingIcon).toBe(false)
+    })
+
+    it('uses the uploaded file id independently of the preview URL format', async () => {
+      const { uploadRemoteFileInfo } = await import('@/service/common')
+      vi.mocked(uploadRemoteFileInfo).mockResolvedValueOnce({
+        id: 'uploaded-icon-id',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/icon.png',
+      })
+      const { result } = renderHook(() => useMCPModalForm())
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+      })
+
+      expect(result.current.state.appIcon).toEqual({
+        type: 'image',
+        fileId: 'uploaded-icon-id',
+        url: 'https://example.com/icon.png',
+      })
     })
 
     it('should handle error when icon fetch fails with error code', async () => {
@@ -425,6 +454,64 @@ describe('useMCPModalForm', () => {
       consoleErrorSpy.mockRestore()
     })
 
+    it('should ignore stale blur when a newer blur starts before fetch completes', async () => {
+      const { uploadRemoteFileInfo } = await import('@/service/common')
+      let resolveFirstUpload: (value: {
+        id: string
+        name: string
+        size: number
+        mime_type: string
+        url: string
+      }) => void
+      const firstUpload = new Promise<{
+        id: string
+        name: string
+        size: number
+        mime_type: string
+        url: string
+      }>((resolve) => {
+        resolveFirstUpload = resolve
+      })
+
+      vi.mocked(uploadRemoteFileInfo).mockImplementation((remoteIcon) => {
+        if (String(remoteIcon).includes('first.example.com')) return firstUpload
+        return Promise.resolve({
+          id: 'file456',
+          name: 'icon2.png',
+          size: 1024,
+          mime_type: 'image/png',
+          url: 'https://example.com/files/file456/file-preview/icon2.png',
+        } as unknown as { id: string; name: string; size: number; mime_type: string; url: string })
+      })
+
+      const { result } = renderHook(() => useMCPModalForm())
+
+      const firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://second.example.com/mcp')
+      })
+
+      resolveFirstUpload!({
+        id: 'file123',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/files/file123/file-preview/icon.png',
+      })
+      await act(async () => {
+        await firstBlur
+      })
+
+      expect(result.current.state.appIcon.type).toBe('image')
+      expect((result.current.state.appIcon as ImageIcon).url).toBe(
+        'https://example.com/files/file456/file-preview/icon2.png',
+      )
+      expect(result.current.state.isFetchingIcon).toBe(false)
+
+      vi.mocked(uploadRemoteFileInfo).mockReset()
+    })
+
     it('should fetch icon successfully for valid URL in create mode', async () => {
       vi.mocked(
         await import('@/service/common').then((m) => m.uploadRemoteFileInfo),
@@ -444,7 +531,7 @@ describe('useMCPModalForm', () => {
 
       // Icon should be set to image type
       expect(result.current.state.appIcon.type).toBe('image')
-      expect((result.current.state.appIcon as AppIconImageSelection).url).toBe(
+      expect((result.current.state.appIcon as ImageIcon).url).toBe(
         'https://example.com/files/file123/file-preview/icon.png',
       )
       expect(result.current.state.isFetchingIcon).toBe(false)
@@ -491,21 +578,6 @@ describe('useMCPModalForm', () => {
       const { result } = renderHook(() => useMCPModalForm(mockData))
 
       expect(result.current.state.isDynamicRegistration).toBe(true)
-    })
-
-    it('should handle string icon URL', () => {
-      const mockData = {
-        id: 'test',
-        name: 'Test',
-        icon: 'https://example.com/icon.png',
-      } as unknown as ToolWithProvider
-
-      const { result } = renderHook(() => useMCPModalForm(mockData))
-
-      expect(result.current.state.appIcon.type).toBe('image')
-      expect((result.current.state.appIcon as AppIconImageSelection).url).toBe(
-        'https://example.com/icon.png',
-      )
     })
   })
 

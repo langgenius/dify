@@ -15,7 +15,7 @@ export type LabelProps = {
 const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }: LabelProps) => {
   const labelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="flex h-6 items-center">

@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const Usage: FC<Props> = ({ className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.annotation_quota_limit,

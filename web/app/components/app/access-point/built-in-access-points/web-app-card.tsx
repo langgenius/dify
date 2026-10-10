@@ -1,28 +1,31 @@
 'use client'
 
+import type {
+  AppDetailWithSite,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
-import type { ConfigParams } from '@/app/components/app/overview/settings'
+import type { PublishedWorkflow } from '../shared/utils'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
-import CustomizeModal from '@/app/components/app/overview/customize'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
+import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -57,14 +60,14 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
 }
 
 type WebAppAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   availability: AccessPointAvailability
   canDeploy: boolean
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
   onRefreshApp: () => Promise<void>
-  onSaveSiteConfig: (params: ConfigParams) => Promise<void>
+  onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<void>
   workflow: PublishedWorkflow
 }
 
@@ -79,11 +82,15 @@ export function WebAppAccessPointCard({
   showAccessControl,
   workflow,
 }: WebAppAccessPointCardProps) {
-  const { t } = useTranslation()
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const [showSettings, setShowSettings] = useState(false)
-  const [showEmbedded, setShowEmbedded] = useState(false)
-  const [showCustomize, setShowCustomize] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
@@ -92,16 +99,6 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_site: updatedApp.enable_site,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -109,29 +106,26 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      onSuccess: async () => {
-        await onRefreshApp()
-        setShowRegenerate(false)
-      },
+      onSuccess: () => setShowRegenerate(false),
       onError: () => {
         toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
         setShowRegenerate(false)
       },
     }),
   )
+  const site = appInfo.site
+  const siteAvailability = site ? availability : 'unavailable'
   const { webApp: webAppUrl } = getBuiltInAccessUrls(appInfo)
   const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
   const optimisticEnabled =
     toggleSiteMutation.isPending && pendingEnabled !== undefined
       ? pendingEnabled
       : appInfo.enable_site
-  const running = availability === 'available' && optimisticEnabled
-  const actionsAvailable = running && !toggleSiteMutation.isPending
+  const running = siteAvailability === 'available' && optimisticEnabled
+  const actionsAvailable = running && Boolean(webAppUrl) && !toggleSiteMutation.isPending
   const supportsEmbedded =
     appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
   const hiddenLaunchVariables = getHiddenStartInputs(workflow)
-  const accessIcon = ACCESS_MODE_ICON_MAP[appInfo.access_mode]
-  const accessLabel = ACCESS_MODE_LABEL_MAP[appInfo.access_mode]
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appInfo.id,
     showAccessControl &&
@@ -148,8 +142,8 @@ export function WebAppAccessPointCard({
   })
   const noAccessPermission =
     showAccessControl &&
-    appInfo.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
-    !userCanAccessApp?.result
+    (appInfo.access_mode === null ||
+      (appInfo.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result))
 
   const handleRegenerate = () => {
     if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
@@ -170,7 +164,7 @@ export function WebAppAccessPointCard({
     })
   }
 
-  const status = getAccessPointStatus(availability, running)
+  const status = getAccessPointStatus(siteAvailability, running)
   const statusLabel = useAccessPointStatusLabel(status)
 
   return (
@@ -184,7 +178,7 @@ export function WebAppAccessPointCard({
           <AppIcon
             size="large"
             iconType={appInfo.icon_type}
-            icon={appInfo.icon}
+            icon={appInfo.icon ?? undefined}
             background={appInfo.icon_background}
             imageUrl={appInfo.icon_url}
           />
@@ -194,7 +188,7 @@ export function WebAppAccessPointCard({
         highlighted={highlighted}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
-        onEnabledChange={availability === 'available' ? handleEnabledChange : undefined}
+        onEnabledChange={siteAvailability === 'available' ? handleEnabledChange : undefined}
         actions={
           <>
             {hiddenLaunchVariables.length > 0 && (
@@ -209,35 +203,38 @@ export function WebAppAccessPointCard({
               </Button>
             )}
             {supportsEmbedded && (
-              <Button
-                className="flex items-center gap-1 px-3"
-                variant="secondary"
-                disabled={!actionsAvailable || !canManageAccessPoint}
-                onClick={() => setShowEmbedded(true)}
-              >
-                <span aria-hidden className="i-ri-window-line size-4" />
-                {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
-              </Button>
+              <Dialog>
+                <DialogTrigger
+                  disabled={!actionsAvailable || !canManageAccessPoint || !site?.access_token}
+                  render={<Button variant="secondary" className="px-3" />}
+                >
+                  <span aria-hidden className="i-ri-window-line size-4" />
+                  {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
+                </DialogTrigger>
+                {site?.access_token && (
+                  <EmbeddedDialogContent
+                    siteInfo={site}
+                    appBaseUrl={site.app_base_url}
+                    accessToken={site.access_token}
+                    hiddenInputs={hiddenLaunchVariables}
+                  />
+                )}
+              </Dialog>
             )}
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
+            <CustomizeDialog
+              appId={appInfo.id}
+              api_base_url={appInfo.api_base_url}
+              mode={appInfo.mode}
               disabled={!actionsAvailable || !canManageAccessPoint}
-              onClick={() => setShowCustomize(true)}
-            >
-              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-              {t(($) => $['overview.appInfo.customize.entry'], {
-                ns: 'appOverview',
-              })}
-            </Button>
+            />
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={availability !== 'available' || !canManageAccessPoint}
+              disabled={siteAvailability !== 'available' || !canManageAccessPoint}
               onClick={() => setShowSettings(true)}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
+              {t(($) => $['settings.settings'], { ns: 'navigation' })}
             </Button>
           </>
         }
@@ -246,8 +243,8 @@ export function WebAppAccessPointCard({
           label={t(($) => $['agentDetail.access.webApp.accessUrl'], { ns: 'agentV2' })}
           value={webAppUrl}
           enabled={running}
-          loading={availability === 'loading'}
-          unavailable={availability === 'unavailable'}
+          loading={siteAvailability === 'loading'}
+          unavailable={siteAvailability === 'unavailable'}
           unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
             ns: 'deployments',
           })}
@@ -262,49 +259,34 @@ export function WebAppAccessPointCard({
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canManageAccessPoint}
+          regenerateDisabled={!site || !canManageAccessPoint}
           regenerating={resetSiteAccessToken.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
         {showAccessControl &&
-          (availability === 'available' ? (
+          (siteAvailability === 'available' && appInfo.access_mode !== null ? (
             <WebAppAccessControlEntry
               accessConfigured={accessConfigured}
-              accessIcon={accessIcon}
-              accessLabel={t(accessLabel, { ns: 'app' })}
+              accessIcon={ACCESS_MODE_ICON_MAP[appInfo.access_mode]}
+              accessLabel={t(ACCESS_MODE_LABEL_MAP[appInfo.access_mode], { ns: 'app' })}
               disabled={!canManageAccessPoint}
               onClick={() => setShowAccess(true)}
             />
           ) : (
-            <WebAppAccessControlEntrySkeleton loading={availability === 'loading'} />
+            <WebAppAccessControlEntrySkeleton loading={siteAvailability === 'loading'} />
           ))}
       </AccessPointCard>
 
-      <SettingsModal
-        isChat={appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW}
-        canDeploy={canDeploy}
-        appInfo={appInfo}
-        isShow={showSettings}
-        onClose={() => setShowSettings(false)}
-        onSave={onSaveSiteConfig}
-      />
-      {supportsEmbedded && (
-        <EmbeddedModal
-          siteInfo={appInfo.site}
-          isShow={showEmbedded}
-          onClose={() => setShowEmbedded(false)}
-          appBaseUrl={appInfo.site?.app_base_url}
-          accessToken={appInfo.site?.access_token}
-          hiddenInputs={hiddenLaunchVariables}
+      {site && (
+        <SettingsModal
+          isChat={appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW}
+          canDeploy={canDeploy}
+          appInfo={{ id: appInfo.id, mode: appInfo.mode, site }}
+          isShow={showSettings}
+          onClose={() => setShowSettings(false)}
+          onSave={onSaveSiteConfig}
         />
       )}
-      <CustomizeModal
-        isShow={showCustomize}
-        onClose={() => setShowCustomize(false)}
-        appId={appInfo.id}
-        api_base_url={appInfo.api_base_url}
-        mode={appInfo.mode}
-      />
       {showAccess && (
         <AccessControl
           app={appInfo}
@@ -332,7 +314,7 @@ export function WebAppAccessPointCard({
               {t(($) => $['overview.appInfo.regenerateNotice'], { ns: 'appOverview' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -342,7 +324,7 @@ export function WebAppAccessPointCard({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

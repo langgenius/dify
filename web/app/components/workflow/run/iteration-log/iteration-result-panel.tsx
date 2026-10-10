@@ -23,7 +23,7 @@ type Props = {
 }
 
 const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
   const toggleIteration = useCallback((index: number) => {

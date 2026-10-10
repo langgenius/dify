@@ -1,14 +1,20 @@
 'use client'
-import type { FC } from 'react'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { ReactElement } from 'react'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
 import type { Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { produce } from 'immer'
-import * as React from 'react'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputSupportSelectVar from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -18,15 +24,14 @@ import RadioGroup from './radio-group'
 
 const i18nPrefix = 'nodes.http.authorization'
 
-type Props = Readonly<{
+type AuthorizationDialogProps = Readonly<{
   nodeId: string
   payload: AuthorizationPayloadType
   onChange: (payload: AuthorizationPayloadType) => void
-  isShow: boolean
-  onHide: () => void
+  readOnly: boolean
 }>
 
-const Field = ({
+function Field({
   title,
   isRequired,
   children,
@@ -34,9 +39,9 @@ const Field = ({
 }: {
   title: string
   isRequired?: boolean
-  children: React.JSX.Element
+  children: ReactElement
   htmlFor?: string
-}) => {
+}) {
   return (
     <div>
       <div className="text-[13px] leading-8 font-medium text-text-secondary">
@@ -48,8 +53,13 @@ const Field = ({
   )
 }
 
-const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide }) => {
-  const { t } = useTranslation()
+function AuthorizationForm({
+  nodeId,
+  payload,
+  onChange,
+  onSaved,
+}: Omit<AuthorizationDialogProps, 'readOnly'> & { onSaved: () => void }) {
+  const { t } = useTranslation(['common', 'workflowIntegrations'])
   const headerId = useId()
 
   const [isFocus, setIsFocus] = useState(false)
@@ -62,7 +72,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
     },
   })
 
-  const [tempPayload, setTempPayload] = React.useState<AuthorizationPayloadType>(payload)
+  const [tempPayload, setTempPayload] = useState<AuthorizationPayloadType>(payload)
   const handleAuthTypeChange = useCallback(
     (type: string) => {
       const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
@@ -129,118 +139,153 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
     [tempPayload, setTempPayload],
   )
 
-  const handleConfirm = useCallback(() => {
-    onChange(tempPayload)
-    onHide()
-  }, [tempPayload, onChange, onHide])
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
-    >
-      <DialogContent className="border-none text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflow' })}
-        </DialogTitle>
+    <>
+      <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflowIntegrations' })}
+      </DialogTitle>
 
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            handleConfirm()
-          }}
-        >
-          <div className="space-y-2">
-            <Field title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflow' })}>
-              <RadioGroup
-                options={[
-                  {
-                    value: AuthorizationType.none,
-                    label: t(($) => $[`${i18nPrefix}.no-auth`], { ns: 'workflow' }),
-                  },
-                  {
-                    value: AuthorizationType.apiKey,
-                    label: t(($) => $[`${i18nPrefix}.api-key`], { ns: 'workflow' }),
-                  },
-                ]}
-                value={tempPayload.type}
-                onChange={handleAuthTypeChange}
-              />
-            </Field>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          onChange(tempPayload)
+          onSaved()
+        }}
+      >
+        <div className="space-y-2">
+          <Field
+            title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflowIntegrations' })}
+          >
+            <RadioGroup
+              options={[
+                {
+                  value: AuthorizationType.none,
+                  label: t(($) => $[`${i18nPrefix}.no-auth`], { ns: 'workflowIntegrations' }),
+                },
+                {
+                  value: AuthorizationType.apiKey,
+                  label: t(($) => $[`${i18nPrefix}.api-key`], { ns: 'workflowIntegrations' }),
+                },
+              ]}
+              value={tempPayload.type}
+              onChange={handleAuthTypeChange}
+            />
+          </Field>
 
-            {tempPayload.type === AuthorizationType.apiKey && (
-              <>
-                <Field title={t(($) => $[`${i18nPrefix}.auth-type`], { ns: 'workflow' })}>
-                  <RadioGroup
-                    options={[
-                      {
-                        value: APIType.basic,
-                        label: t(($) => $[`${i18nPrefix}.basic`], { ns: 'workflow' }),
-                      },
-                      {
-                        value: APIType.bearer,
-                        label: t(($) => $[`${i18nPrefix}.bearer`], { ns: 'workflow' }),
-                      },
-                      {
-                        value: APIType.custom,
-                        label: t(($) => $[`${i18nPrefix}.custom`], { ns: 'workflow' }),
-                      },
-                    ]}
-                    value={tempPayload.config?.type || APIType.basic}
-                    onChange={handleAuthAPITypeChange}
-                  />
-                </Field>
-                {tempPayload.config?.type === APIType.custom && (
-                  <Field
-                    htmlFor={headerId}
-                    title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflow' })}
-                    isRequired
-                  >
-                    <Input
-                      id={headerId}
-                      name="header"
-                      value={tempPayload.config?.header || ''}
-                      onValueChange={handleAPIKeyOrHeaderChange('header')}
-                    />
-                  </Field>
-                )}
-
+          {tempPayload.type === AuthorizationType.apiKey && (
+            <>
+              <Field title={t(($) => $[`${i18nPrefix}.auth-type`], { ns: 'workflowIntegrations' })}>
+                <RadioGroup
+                  options={[
+                    {
+                      value: APIType.basic,
+                      label: t(($) => $[`${i18nPrefix}.basic`], { ns: 'workflowIntegrations' }),
+                    },
+                    {
+                      value: APIType.bearer,
+                      label: t(($) => $[`${i18nPrefix}.bearer`], { ns: 'workflowIntegrations' }),
+                    },
+                    {
+                      value: APIType.custom,
+                      label: t(($) => $[`${i18nPrefix}.custom`], { ns: 'workflowIntegrations' }),
+                    },
+                  ]}
+                  value={tempPayload.config?.type || APIType.basic}
+                  onChange={handleAuthAPITypeChange}
+                />
+              </Field>
+              {tempPayload.config?.type === APIType.custom && (
                 <Field
-                  title={t(($) => $[`${i18nPrefix}.api-key-title`], { ns: 'workflow' })}
+                  htmlFor={headerId}
+                  title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflowIntegrations' })}
                   isRequired
                 >
-                  <div className="flex">
-                    <InputSupportSelectVar
-                      instanceId="http-api-key"
-                      className={cn(
-                        isFocus
-                          ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
-                          : 'border-components-input-border-hover bg-components-input-bg-normal',
-                        'w-0 grow rounded-lg border px-3 py-1.5',
-                      )}
-                      value={tempPayload.config?.api_key || ''}
-                      onChange={handleAPIKeyChange}
-                      nodesOutputVars={availableVars}
-                      availableNodes={availableNodesWithParent}
-                      onFocusChange={setIsFocus}
-                      placeholder={' '}
-                      placeholderClassName="leading-[21px]!"
-                    />
-                  </div>
+                  <Input
+                    id={headerId}
+                    name="header"
+                    value={tempPayload.config?.header || ''}
+                    onValueChange={handleAPIKeyOrHeaderChange('header')}
+                  />
                 </Field>
-              </>
-            )}
-          </div>
-          <div className="mt-6 flex justify-end space-x-2">
-            <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button variant="primary" type="submit">
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        </form>
+              )}
+
+              <Field
+                title={t(($) => $[`${i18nPrefix}.api-key-title`], { ns: 'workflowIntegrations' })}
+                isRequired
+              >
+                <div className="flex">
+                  <InputSupportSelectVar
+                    instanceId="http-api-key"
+                    className={cn(
+                      isFocus
+                        ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+                        : 'border-components-input-border-hover bg-components-input-bg-normal',
+                      'w-0 grow rounded-lg border px-3 py-1.5',
+                    )}
+                    value={tempPayload.config?.api_key || ''}
+                    onChange={handleAPIKeyChange}
+                    nodesOutputVars={availableVars}
+                    availableNodes={availableNodesWithParent}
+                    onFocusChange={setIsFocus}
+                    placeholder={' '}
+                    placeholderClassName="leading-[21px]!"
+                  />
+                </div>
+              </Field>
+            </>
+          )}
+        </div>
+        <div className="mt-6 flex justify-end space-x-2">
+          <DialogClose render={<Button />}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </DialogClose>
+          <Button variant="primary" type="submit">
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </div>
+      </form>
+    </>
+  )
+}
+
+export function AuthorizationDialog({
+  nodeId,
+  payload,
+  onChange,
+  readOnly,
+}: AuthorizationDialogProps) {
+  const { t } = useTranslation(['workflowIntegrations'])
+  const actionsRef = useRef<DialogActions>(null)
+  const label = (
+    <span className="text-xs font-medium text-text-tertiary">
+      {t(($) => $[`${i18nPrefix}.authorization`])}
+      <span className="ml-1 text-text-secondary">
+        {t(($) => $[`${i18nPrefix}.${payload.type}`])}
+      </span>
+    </span>
+  )
+
+  if (readOnly) {
+    return <div className="flex h-6 items-center rounded-md px-2">{label}</div>
+  }
+
+  return (
+    <Dialog actionsRef={actionsRef}>
+      <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover">
+        <span
+          aria-hidden
+          className="i-custom-vender-line-general-settings-01 size-3 text-text-tertiary"
+        />
+        {label}
+      </DialogTrigger>
+      <DialogContent className="border-none text-left align-middle">
+        <AuthorizationForm
+          nodeId={nodeId}
+          payload={payload}
+          onChange={onChange}
+          onSaved={() => actionsRef.current?.close()}
+        />
       </DialogContent>
     </Dialog>
   )
 }
-export default React.memo(Authorization)

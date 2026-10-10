@@ -102,7 +102,7 @@ function BlockSelectorPanels({
   hasTriggerNode = false,
   snippetInsertPayload,
 }: BlockSelectorPanelsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const [filters, setFilters] = useState(createTabFilterState)
   const fallbackDisabledTip = t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
 

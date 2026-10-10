@@ -29,38 +29,38 @@ describe('ParamConfig', () => {
     await user.click(screen.getByRole('button', { name: 'appDebug.voice.settings' }))
 
     const panel = await screen.findByRole('dialog', {
-      name: 'appDebug.vision.visionSettings.title',
+      name: 'fileUpload.vision.visionSettings.title',
     })
     const resolution = within(panel).getByRole('radiogroup', {
-      name: 'appDebug.vision.visionSettings.resolution',
+      name: 'fileUpload.vision.visionSettings.resolution',
     })
     const low = within(resolution).getByRole('radio', {
-      name: 'appDebug.vision.visionSettings.low',
+      name: 'fileUpload.vision.visionSettings.low',
     })
     expect(low).toBeChecked()
     await user.click(low)
     await user.keyboard('{ArrowLeft}')
     expect(
-      within(resolution).getByRole('radio', { name: 'appDebug.vision.visionSettings.high' }),
+      within(resolution).getByRole('radio', { name: 'fileUpload.vision.visionSettings.high' }),
     ).toBeChecked()
 
     const uploadMethods = within(panel).getByRole('radiogroup', {
-      name: 'appDebug.vision.visionSettings.uploadMethod',
+      name: 'fileUpload.vision.visionSettings.uploadMethod',
     })
     const both = within(uploadMethods).getByRole('radio', {
-      name: 'appDebug.vision.visionSettings.both',
+      name: 'fileUpload.vision.visionSettings.both',
     })
     expect(both).toBeChecked()
     await user.click(both)
     await user.keyboard('{ArrowRight}')
     expect(
       within(uploadMethods).getByRole('radio', {
-        name: 'appDebug.vision.visionSettings.localUpload',
+        name: 'fileUpload.vision.visionSettings.localUpload',
       }),
     ).toBeChecked()
     await user.keyboard('{ArrowRight}')
     expect(
-      within(uploadMethods).getByRole('radio', { name: 'appDebug.vision.visionSettings.url' }),
+      within(uploadMethods).getByRole('radio', { name: 'fileUpload.vision.visionSettings.url' }),
     ).toBeChecked()
   })
 })

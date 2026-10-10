@@ -50,7 +50,7 @@ const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
 }
 
 const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   const config = SOURCE_CONFIG_MAP[source]
   if (!config) return null

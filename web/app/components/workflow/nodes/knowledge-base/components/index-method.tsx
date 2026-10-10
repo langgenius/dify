@@ -38,7 +38,7 @@ const IndexMethod = ({
   onKeywordNumberChange,
   readonly = false,
 }: IndexMethodProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetSettings'])
   const keywordInputId = useId()
   const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED

@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Literal
 from unittest.mock import ANY, MagicMock, patch
@@ -38,7 +39,9 @@ class TestAppGenerateService:
             patch(
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
-            patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,
+            patch(
+                "services.account.login_adapters.SystemFeatureService", autospec=True
+            ) as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
             patch("services.quota_service.dify_config") as mock_quota_dify_config,
             patch("configs.dify_config") as mock_global_dify_config,
@@ -57,13 +60,20 @@ class TestAppGenerateService:
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_published_workflow = MagicMock(spec=Workflow)
-            mock_published_workflow.id = str(uuid.uuid4())
-            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
-            mock_draft_workflow = MagicMock(spec=Workflow)
-            mock_draft_workflow.id = str(uuid.uuid4())
-            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
+            graph = json.dumps(
+                {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                        {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+                    ],
+                    "edges": [{"source": "start", "target": "end"}],
+                }
+            )
+            published_workflow = Workflow(id=str(uuid.uuid4()), version="1", graph=graph)
+            mock_workflow_service_instance.get_published_workflow.return_value = published_workflow
+            draft_workflow = Workflow(id=str(uuid.uuid4()), version="draft", graph=graph)
+            mock_workflow_service_instance.get_draft_workflow.return_value = draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value
@@ -158,16 +168,16 @@ class TestAppGenerateService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        from services.account_service import AccountService, TenantService
+        from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         from services.app_service import AppService, CreateAppParams

@@ -1,5 +1,6 @@
 'use client'
-import type { AppIconType } from '@/types/app'
+import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -10,26 +11,25 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
   appName: string
-  icon_type: AppIconType | null
-  icon: string
+  icon_type: AppDetailWithSite['icon_type']
+  icon: AppDetailWithSite['icon']
   icon_background?: string | null
   icon_url?: string | null
   show: boolean
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string | null
-  }) => Promise<void>
+  onConfirm: (info: CopyAppPayload) => Promise<void>
   onHide: () => void
 }
 
@@ -43,16 +43,28 @@ const DuplicateAppModal = ({
   onConfirm,
   onHide,
 }: DuplicateAppModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
 
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [appIcon, setAppIcon] = useState(
-    icon_type === 'image'
-      ? { type: 'image' as const, url: icon_url, fileId: icon }
-      : { type: 'emoji' as const, icon, background: icon_background },
-  )
+  const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
+  const pickerValue: IconPickerInputValue | undefined =
+    selectedIcon ??
+    (icon_type === 'image' && icon
+      ? { type: 'image', url: icon_url ?? '', fileId: icon }
+      : icon_type === 'emoji' && icon
+        ? { type: 'emoji', icon, background: icon_background }
+        : icon_type === 'link' && icon
+          ? { type: 'link', url: icon }
+          : undefined)
+  const currentIcon = selectedIcon
+    ? {
+        icon_type: selectedIcon.type,
+        icon: selectedIcon.type === 'emoji' ? selectedIcon.icon : selectedIcon.fileId,
+        icon_background: selectedIcon.type === 'emoji' ? selectedIcon.background : undefined,
+        icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
+      }
+    : { icon_type, icon, icon_background, icon_url }
 
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: appQuota } = useQuery(
@@ -78,9 +90,9 @@ const DuplicateAppModal = ({
     }
     onConfirm({
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      icon_type: currentIcon.icon_type,
+      icon: currentIcon.icon,
+      icon_background: currentIcon.icon_background,
     })
     onHide()
   }
@@ -112,36 +124,29 @@ const DuplicateAppModal = ({
             }}
           >
             <div className="mb-9 system-sm-regular text-text-secondary">
-              <Field name="name">
-                <FieldLabel className="system-md-medium">
-                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                </FieldLabel>
-                <div className="flex items-center justify-between space-x-2">
-                  <button
-                    type="button"
-                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
-                    onClick={() => {
-                      setShowAppIconPicker(true)
-                    }}
-                    className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  >
-                    <AppIcon
-                      size="large"
-                      iconType={appIcon.type}
-                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                      background={appIcon.type === 'image' ? undefined : appIcon.background}
-                      imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+                <Field name="name">
+                  <FieldLabel className="system-md-medium">
+                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                  </FieldLabel>
+                  <div className="flex items-center justify-between space-x-2">
+                    <IconPickerTrigger
+                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      className="shrink-0 cursor-pointer rounded-[10px]"
+                    >
+                      <IconPickerIcon size="large" />
+                    </IconPickerTrigger>
+                    <Input
+                      autoComplete="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-10"
+                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
                     />
-                  </button>
-                  <Input
-                    autoComplete="off"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-10"
-                    placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
-                  />
-                </div>
-              </Field>
+                  </div>
+                </Field>
+                <IconPickerContent />
+              </IconPicker>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
             <div className="flex flex-row-reverse">
@@ -160,20 +165,6 @@ const DuplicateAppModal = ({
           </form>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
     </>
   )
 }

@@ -99,7 +99,7 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
     expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-text-accent!')
     expect(mockGetAvailableVars).toHaveBeenCalledWith(
       'assigner-node',

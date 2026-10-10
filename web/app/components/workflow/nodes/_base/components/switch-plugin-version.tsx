@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
+import { Badge as Badge2 } from '@/app/components/base/badge/index'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
@@ -63,7 +63,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       },
     )
   }
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent'])
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
   if (!uniqueIdentifier || !pluginId || !canUpdatePlugin) return null
@@ -82,13 +82,17 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           })}
           mutation={mutation}
           mutate={install}
-          confirmButtonText={t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflow' })}
-          cancelButtonText={t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflow' })}
-          modelTitle={t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })}
-          description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflow' })}
+          confirmButtonText={t(($) => $['nodes.agent.installPlugin.install'], {
+            ns: 'workflowAgent',
+          })}
+          cancelButtonText={t(($) => $['nodes.agent.installPlugin.cancel'], {
+            ns: 'workflowAgent',
+          })}
+          modelTitle={t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })}
+          description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflowAgent' })}
           cardTitleLeft={
             <>
-              <Badge2 className="mx-1" size="s" state={BadgeState.Warning}>
+              <Badge2 className="mx-1" size="s" variant="warning">
                 {`${pluginDetail.version} -> ${target!.version}`}
               </Badge2>
             </>
@@ -103,7 +107,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               rel="noopener noreferrer"
             >
               <span className="system-xs-regular text-xs text-text-accent">
-                {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
               </span>
               <span className="i-ri-external-link-line size-3 text-text-accent" />
             </Link>
@@ -151,7 +155,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         aria-label={
           typeof tooltip === 'string'
             ? tooltip
-            : t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflow' })
+            : t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })
         }
         render={content}
       />

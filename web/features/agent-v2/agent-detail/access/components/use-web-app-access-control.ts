@@ -28,7 +28,7 @@ export function useWebAppAccessControl(
   agent: AgentAppDetailWithSite | undefined,
   isLoading: boolean,
 ) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const appId = agent?.backing_app_id ?? undefined
   const accessMode = isAccessMode(agent?.access_mode) ? agent.access_mode : undefined
   const { data: webAppAuthEnabled } = useSuspenseQuery({

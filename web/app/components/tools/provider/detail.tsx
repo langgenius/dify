@@ -10,11 +10,11 @@ import type {
 import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -75,7 +75,7 @@ type Props = Readonly<{
 }>
 
 const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const locale = useLocale()
   const language = getPluginLanguage(locale)
 
@@ -559,14 +559,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
                     </div>
-                    <AlertDialogActions>
+                    <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
-                    </AlertDialogActions>
+                    </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>

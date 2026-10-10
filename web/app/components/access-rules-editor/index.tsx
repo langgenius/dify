@@ -16,6 +16,7 @@ import AddAccessSubjectPopover from './add-access-subject-popover'
 import AutomaticIncludeWorkspaceMembersSection from './automatic-include-workspace-members-section'
 import AccessRulesBatchAction from './batch-action'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
+import { isWorkspaceAdminRole } from './is-workspace-admin-role'
 import UserAccessPolicyRow from './user-access-policy-row'
 
 export type AccessPolicyMemberBindingRemoval = {
@@ -74,7 +75,7 @@ function AccessRulesEditor({
   onBatchRemoveAccessPolicyMemberBindings,
   onAddAccessSubject,
 }: AccessRulesEditorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(() => new Set())
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
   const shouldCenterTableBody = isLoading || userAccessSettings.length === 0
@@ -97,7 +98,9 @@ function AccessRulesEditor({
     for (const setting of userAccessSettings) {
       const accountId = setting.account.account_id
       const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
-      if (accountId === maintainerId || isWorkspaceOwner) accountIds.add(accountId)
+      const isWorkspaceAdmin = setting.roles?.some(isWorkspaceAdminRole)
+      if (accountId === maintainerId || isWorkspaceOwner || isWorkspaceAdmin)
+        accountIds.add(accountId)
     }
 
     return accountIds

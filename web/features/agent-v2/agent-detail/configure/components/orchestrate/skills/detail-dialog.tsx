@@ -58,7 +58,7 @@ export type AgentSkillDetail = {
     isLoading?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode; depth: number; open: boolean }) => void
-  onFolderDoubleClick?: (context: { file: AgentSkillFileNode; depth: number }) => void
+  onFolderEnter?: (context: { file: AgentSkillFileNode; depth: number }) => void
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode; depth: number }) => ReactNode
@@ -77,7 +77,7 @@ function AgentSkillFileList({
   files,
   folderOpenState,
   onFolderOpenChange,
-  onFolderDoubleClick,
+  onFolderEnter,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
@@ -90,12 +90,12 @@ function AgentSkillFileList({
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
-  onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
+  onFolderEnter?: AgentSkillDetail['onFolderEnter']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (fileListLoading) {
     return (
@@ -126,7 +126,7 @@ function AgentSkillFileList({
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
-      onFolderDoubleClick={onFolderDoubleClick}
+      onFolderEnter={onFolderEnter}
       renderFile={
         onSelectFile
           ? ({ depth, file, selected, children }) => (
@@ -226,8 +226,8 @@ function AgentFilePreviewContent({
   isLoading?: boolean
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const isPreviewDownloadLoading = downloadActionLoadingTarget === 'preview'
 
   if (isLoading || isDownloadLoading) {
@@ -267,38 +267,40 @@ function AgentFilePreviewContent({
         <span className="system-sm-regular text-text-tertiary">
           {t(($) => $['agentDetail.configure.files.preview.unsupported'])}
         </span>
-        <a
-          href={downloadUrl || '#'}
-          aria-disabled={isPreviewDownloadLoading}
-          onClick={(event) => {
-            if (isPreviewDownloadLoading) {
-              event.preventDefault()
-              return
-            }
-            if (!downloadUrl) {
-              event.preventDefault()
-              onDownloadFile?.('preview')
-            }
-          }}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        >
-          <span
-            aria-hidden
-            className={cn(
-              'size-4 shrink-0',
-              isPreviewDownloadLoading
-                ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                : 'i-ri-download-2-line',
-            )}
-          />
-          <span className="shrink-0">
-            {isPreviewDownloadLoading
-              ? tCommon(($) => $['operation.downloading'])
-              : tCommon(($) => $['operation.download'])}
-          </span>
-        </a>
+        {onDownloadFile && (
+          <a
+            href={downloadUrl || '#'}
+            aria-disabled={isPreviewDownloadLoading}
+            onClick={(event) => {
+              if (isPreviewDownloadLoading) {
+                event.preventDefault()
+                return
+              }
+              if (!downloadUrl) {
+                event.preventDefault()
+                onDownloadFile?.('preview')
+              }
+            }}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-4 shrink-0',
+                isPreviewDownloadLoading
+                  ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                  : 'i-ri-download-2-line',
+              )}
+            />
+            <span className="shrink-0">
+              {isPreviewDownloadLoading
+                ? tCommon(($) => $['operation.downloading'])
+                : tCommon(($) => $['operation.download'])}
+            </span>
+          </a>
+        )}
       </div>
     )
   }
@@ -343,7 +345,7 @@ export function AgentSkillDetailDialog({
   skillName: string
   detail: AgentSkillDetail
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
@@ -373,7 +375,7 @@ export function AgentSkillDetailDialog({
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
-            onFolderDoubleClick={detail.onFolderDoubleClick}
+            onFolderEnter={detail.onFolderEnter}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}

@@ -8,7 +8,7 @@ import NodeGroupItem from './components/node-group-item'
 const i18nPrefix = 'nodes.variableAssigner'
 
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const ref = useRef<HTMLDivElement>(null)
   const { id, data } = props
   const { advanced_settings } = data

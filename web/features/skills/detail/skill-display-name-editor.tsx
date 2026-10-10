@@ -31,8 +31,8 @@ export function SkillDisplayNameEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)

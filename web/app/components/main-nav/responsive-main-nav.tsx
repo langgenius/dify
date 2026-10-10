@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -13,6 +13,7 @@ import {
   DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MainNav } from '.'
@@ -27,7 +28,7 @@ const getSnapshot = () => window.matchMedia(compactNavigationQuery).matches
 const getServerSnapshot = () => false
 
 export function ResponsiveMainNav({ initialPlatform }: Pick<MainNavProps, 'initialPlatform'>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const isCompact = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
   if (!isCompact) return <MainNav initialPlatform={initialPlatform} />
@@ -47,7 +48,13 @@ export function ResponsiveMainNav({ initialPlatform }: Pick<MainNavProps, 'initi
                 <DrawerTitle className="system-md-semibold">
                   {t(($) => $['navigation.primary'])}
                 </DrawerTitle>
-                <DrawerCloseButton aria-label={t(($) => $['operation.close'])} />
+                <DrawerClose
+                  render={
+                    <IconButton aria-label={t(($) => $['operation.close'])} size="lg">
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <DrawerContent className="touch-auto p-0 pb-0">
                 <MainNav

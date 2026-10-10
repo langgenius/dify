@@ -8,7 +8,9 @@ import CustomNode from '../index'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({ 'workflow.nodes.agent.outputRoutes.route': 'Route {{index}}' })
+  return createReactI18nextMock({
+    'workflow.nodes.agent.outputRoutes.route': 'Route {{index}}',
+  })
 })
 
 describe('workflow preview custom node', () => {

@@ -189,6 +189,11 @@ describe('i18n build check', () => {
     expect(readFileSync(localeFile, 'utf8')).toBe(content)
   })
 
+  it('propagates analysis worker failures to the build', async () => {
+    writeFileSync(localeFile, '[]')
+    await expect(buildFixture()).rejects.toThrow('Invalid translation catalog: app.json')
+  })
+
   it('allows builds after unused translations are removed', async () => {
     writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
 
@@ -289,6 +294,66 @@ describe('i18n build check', () => {
       await expect(builder.buildApp()).rejects.toThrow('app:ssr')
     },
   )
+
+  it('does not resolve translation imports from discarded RSC reference scans', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
+    writeFileSync(
+      path.join(root, 'selector.ts'),
+      'export const selector = ($: Record<string, string>) => $.used',
+    )
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `import { selector } from './selector'
+       export function label(t: (selector: (source: Record<string, string>) => string) => string) {
+         return t(selector)
+       }`,
+    )
+    const manager = { isScanBuild: false }
+    let scanFinished = false
+    const reports: AnalysisReport[] = []
+    const builder = await createBuilder({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [
+        {
+          // Model the RSC plugin's public scan flag and build ordering.
+          name: 'rsc:minimal',
+          api: { manager },
+          enforce: 'pre',
+          buildStart() {
+            scanFinished = false
+          },
+          buildEnd() {
+            scanFinished = manager.isScanBuild
+          },
+          resolveId(id) {
+            if (id === './selector' && scanFinished)
+              throw new Error('Discarded scan imports must not be resolved again')
+          },
+        },
+        i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
+      ],
+      builder: {
+        async buildApp(builder) {
+          manager.isScanBuild = true
+          await builder.build(builder.environments.client!)
+          manager.isScanBuild = false
+          await builder.build(builder.environments.client!)
+        },
+      },
+      build: {
+        write: false,
+        lib: { entry: path.join(root, 'entry.ts'), formats: ['es'] },
+      },
+    })
+
+    await expect(builder.buildApp()).resolves.toBeUndefined()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.evidence).toContainEqual(
+      expect.objectContaining({ kind: 'usage', message: 'Static key: used' }),
+    )
+  })
 
   it('retains usages from environment-specific versions of the same module', async () => {
     writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR' }))

@@ -15,7 +15,7 @@ type ResultTextProps = {
 }
 
 const ResultPreview = ({ isRunning, outputs, error, onSwitchToDetail }: ResultTextProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pipeline'])
 
   const previewChunks = useMemo(() => {
     return formatPreviewChunks(outputs)

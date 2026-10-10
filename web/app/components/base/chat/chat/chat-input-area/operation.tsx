@@ -33,7 +33,7 @@ const Operation: FC<OperationProps> = ({
   disabled,
   theme,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('flex shrink-0 items-center justify-end')}>

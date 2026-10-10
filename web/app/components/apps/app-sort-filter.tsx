@@ -21,7 +21,7 @@ type AppSortFilterProps = {
 }
 
 export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const options = useMemo(
     () =>
@@ -44,7 +44,7 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg border-none bg-components-input-bg-normal py-1 pr-2.5 pl-2 text-left whitespace-nowrap outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover">
+      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg border-none bg-components-input-bg-normal py-1 pr-2.5 pl-2 text-left whitespace-nowrap hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <span className="flex items-center gap-1 p-1 text-[13px] leading-4 whitespace-nowrap">
           <span className="font-normal text-text-tertiary">{sortByLabel}</span>{' '}
           <span className="font-medium text-text-secondary">{activeOption.text}</span>

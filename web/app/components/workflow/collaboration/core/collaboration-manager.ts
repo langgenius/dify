@@ -899,6 +899,18 @@ export class CollaborationManager {
     return true
   }
 
+  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
+    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // A server-side import or restore replaces the whole draft. Its graph must also replace
+    // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
+    this.syncNodes(this.getNodes(), nodes)
+    this.syncEdges(this.getEdges(), edges)
+    this.doc.commit()
+    this.clearUndoStack()
+    return true
+  }
+
   retryGraphReload(request: GraphReloadRequest): void {
     if (!this.isGraphReloadCurrent(request)) return
 

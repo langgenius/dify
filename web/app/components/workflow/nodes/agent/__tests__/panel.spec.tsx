@@ -245,13 +245,13 @@ describe('agent/panel', () => {
 
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(
-      screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage'),
+      screen.getByText('usage:object:workflowAgent.nodes.agent.outputVars.usage'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title'),
+      screen.getByText('files:Array[File]:workflowAgent.nodes.agent.outputVars.files.title'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json'),
+      screen.getByText('json:Array[Object]:workflowAgent.nodes.agent.outputVars.json'),
     ).toBeInTheDocument()
     expect(screen.getByText('summary:String:summary output')).toBeInTheDocument()
     expect(mockAgentStrategy).toHaveBeenCalledWith(

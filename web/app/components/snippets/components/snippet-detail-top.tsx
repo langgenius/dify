@@ -25,7 +25,7 @@ type SnippetDetailTopProps = {
 }
 
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow', 'navigation'])
   const router = useRouter()
 
   if (!expand) {
@@ -58,7 +58,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             </IconButton>
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="size-4 justify-center"
             >
               <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -84,7 +84,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
                 <button
                   type="button"
                   aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                 </button>
@@ -95,8 +95,8 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
         <TooltipContent placement="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>

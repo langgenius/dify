@@ -2,11 +2,11 @@
 import type { ApiKeyItem } from '@dify/contracts/api/console/agent/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -35,8 +35,8 @@ export function AgentApiKeyModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('appApi')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['appApi', 'appLog', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const [newKey, setNewKey] = useState<ApiKeyItem | null>(null)
@@ -129,7 +129,7 @@ export function AgentApiKeyModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex w-full max-w-200! flex-col overflow-hidden px-8">
+        <DialogContent className="flex w-full max-w-200! flex-col px-8">
           <DialogClose
             render={
               <IconButton
@@ -148,79 +148,117 @@ export function AgentApiKeyModal({
             {t(($) => $['apiKeyModal.apiSecretKeyTips'])}
           </DialogDescription>
 
-          <div className="mt-4 min-h-20 overflow-hidden">
-            <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-              <div className="w-64 shrink-0 px-3">{t(($) => $['apiKeyModal.secretKey'])}</div>
-              <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.created'])}</div>
-              <div className="w-50 shrink-0 px-3">{t(($) => $['apiKeyModal.lastUsed'])}</div>
-              <div className="grow px-3" />
-            </div>
-            <div className="max-h-70 overflow-auto">
-              {apiKeysQuery.isPending && (
-                <div
-                  role="status"
-                  className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary"
-                >
-                  {t(($) => $.loading)}
-                </div>
-              )}
-              {apiKeysQuery.isError && (
-                <div className="flex h-20 items-center justify-center gap-2 system-sm-regular text-text-tertiary">
-                  <span>{tCommon(($) => $['api.actionFailed'])}</span>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => {
-                      void apiKeysQuery.refetch()
-                    }}
-                  >
-                    {tCommon(($) => $['operation.retry'])}
-                  </Button>
-                </div>
-              )}
-              {apiKeysQuery.isSuccess && apiKeys.length === 0 && (
-                <div className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
-                  {tCommon(($) => $.noData)}
-                </div>
-              )}
-              {apiKeysQuery.isSuccess &&
-                apiKeys.map((apiKey) => (
-                  <div
-                    className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary last:border-b-0"
-                    key={apiKey.id}
-                  >
-                    <div className="w-64 shrink-0 truncate px-3 font-mono" translate="no">
-                      {maskApiKey(apiKey.token)}
-                    </div>
-                    <div className="w-50 shrink-0 truncate px-3">
-                      {apiKey.created_at
-                        ? formatTime(
-                            apiKey.created_at,
-                            t(($) => $.dateTimeFormat, { ns: 'appLog' }),
-                          )
-                        : t(($) => $.never)}
-                    </div>
-                    <div className="w-50 shrink-0 truncate px-3">
-                      {apiKey.last_used_at
-                        ? formatTime(
-                            apiKey.last_used_at,
-                            t(($) => $.dateTimeFormat, { ns: 'appLog' }),
-                          )
-                        : t(($) => $.never)}
-                    </div>
-                    <div className="flex grow gap-2 px-3">
-                      <CopyFeedback content={apiKey.token} />
-                      <IconButton
-                        size="md"
-                        aria-label={tCommon(($) => $['operation.delete'])}
-                        disabled={isDeleting}
-                        onClick={() => setApiKeyToDelete(apiKey)}
+          <div className="mt-4 min-h-20 overflow-x-auto overflow-y-hidden">
+            <div className="max-h-70 min-w-184 overflow-x-hidden overflow-y-auto">
+              <table className="w-full table-fixed">
+                <caption className="sr-only">{t(($) => $['apiKeyModal.apiSecretKey'])}</caption>
+                <colgroup>
+                  <col className="w-64" />
+                  <col className="w-50" />
+                  <col className="w-50" />
+                  <col />
+                </colgroup>
+                <thead className="sticky top-0 bg-components-panel-bg text-xs font-semibold text-text-tertiary">
+                  <tr className="h-9 border-b border-divider-regular">
+                    <th scope="col" className="px-3 text-left">
+                      {t(($) => $['apiKeyModal.secretKey'])}
+                    </th>
+                    <th scope="col" className="px-3 text-left">
+                      {t(($) => $['apiKeyModal.created'])}
+                    </th>
+                    <th scope="col" className="px-3 text-left">
+                      {t(($) => $['apiKeyModal.lastUsed'])}
+                    </th>
+                    <th scope="col" className="px-3 text-left">
+                      <span className="sr-only">
+                        {tCommon(($) => $['operation.copy'])} /{' '}
+                        {tCommon(($) => $['operation.delete'])}
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm font-normal text-text-secondary">
+                  {apiKeysQuery.isPending && (
+                    <tr>
+                      <td colSpan={4}>
+                        <div
+                          role="status"
+                          className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary"
+                        >
+                          {t(($) => $.loading)}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {apiKeysQuery.isError && (
+                    <tr>
+                      <td colSpan={4}>
+                        <div className="flex h-20 items-center justify-center gap-2 system-sm-regular text-text-tertiary">
+                          <span>{tCommon(($) => $['api.actionFailed'])}</span>
+                          <Button
+                            variant="secondary"
+                            size="small"
+                            onClick={() => {
+                              void apiKeysQuery.refetch()
+                            }}
+                          >
+                            {tCommon(($) => $['operation.retry'])}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {apiKeysQuery.isSuccess && apiKeys.length === 0 && (
+                    <tr>
+                      <td colSpan={4}>
+                        <div className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
+                          {tCommon(($) => $.noData)}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {apiKeysQuery.isSuccess &&
+                    apiKeys.map((apiKey) => (
+                      <tr
+                        className="h-9 border-b border-divider-regular last:border-b-0"
+                        key={apiKey.id}
                       >
-                        <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      </IconButton>
-                    </div>
-                  </div>
-                ))}
+                        <td className="truncate px-3 font-mono" translate="no">
+                          {maskApiKey(apiKey.token)}
+                        </td>
+                        <td className="truncate px-3">
+                          {apiKey.created_at
+                            ? formatTime(
+                                apiKey.created_at,
+                                t(($) => $.dateTimeFormat, { ns: 'appLog' }),
+                              )
+                            : t(($) => $.never)}
+                        </td>
+                        <td className="truncate px-3">
+                          {apiKey.last_used_at
+                            ? formatTime(
+                                apiKey.last_used_at,
+                                t(($) => $.dateTimeFormat, { ns: 'appLog' }),
+                              )
+                            : t(($) => $.never)}
+                        </td>
+                        <td className="px-3">
+                          <div className="flex gap-2">
+                            <CopyFeedback content={apiKey.token} />
+                            <IconButton
+                              size="md"
+                              aria-label={tCommon(($) => $['operation.delete'])}
+                              disabled={isDeleting}
+                              onClick={() => setApiKeyToDelete(apiKey)}
+                            >
+                              <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                            </IconButton>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -250,14 +288,14 @@ export function AgentApiKeyModal({
               {t(($) => $['actionMsg.deleteConfirmTips'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteApiKey}>
               {tCommon(($) => $['operation.confirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
@@ -271,7 +309,7 @@ function AgentApiKeyGenerateModal({
   apiKey: ApiKeyItem | null
   onClose: () => void
 }) {
-  const { t } = useTranslation('appApi')
+  const { t } = useTranslation(['appApi', 'common'])
 
   return (
     <Dialog

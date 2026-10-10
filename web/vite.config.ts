@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-import { getDeclaredRouteNamespaces } from './i18n/route-namespaces.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
 import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
@@ -58,24 +57,12 @@ export default defineConfig(({ command, mode, isPreview }) => {
               selectorArgument: 1,
             },
           ],
-          getDeclaredNamespaces: getDeclaredRouteNamespaces,
-          // Runtime namespace providers remain unknown; validate detected usage only.
         }),
         Inspect(),
         inspector,
         tailwindcss(),
         react(),
         vinext({ react: false }),
-        {
-          name: 'dify-css-asset-alias',
-          enforce: 'post',
-          // Prepend after Vinext's tsconfig aliases, which skip CSS resolution.
-          config: () => ({
-            resolve: {
-              alias: [{ find: '~@', replacement: projectRoot }],
-            },
-          }),
-        },
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
@@ -86,16 +73,17 @@ export default defineConfig(({ command, mode, isPreview }) => {
     resolve: {
       tsconfigPaths: true,
       alias: [
+        { find: '~@', replacement: projectRoot },
         // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,
@@ -147,6 +135,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
+              expect: {
+                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
+              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],

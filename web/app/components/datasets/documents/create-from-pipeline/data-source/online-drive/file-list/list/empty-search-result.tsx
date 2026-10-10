@@ -11,7 +11,7 @@ const EmptySearchResult = ({
 }: EmptySearchResultProps & {
   className?: string
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex size-full flex-col items-center justify-center gap-y-2 rounded-[10px] bg-background-section p-6">

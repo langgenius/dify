@@ -29,7 +29,7 @@ const OAuthVisibilityDialog = ({
   onConfirm,
   loading = false,
 }: OAuthVisibilityDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const handleOpenChange = (nextOpen: boolean) => {
     if (loading && !nextOpen) return
     onOpenChange(nextOpen)

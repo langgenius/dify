@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, Self, TypedDict
+from typing import Any, Literal, NotRequired, Self, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource
@@ -21,7 +21,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from configs import dify_config
-from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -96,11 +95,16 @@ from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_variable_reference_validator import (
+    format_variable_reference_errors,
+    validate_variable_references,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +152,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    force: bool = Field(default=False, strict=True, description="Explicitly confirm saving an empty workflow graph.")
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
@@ -216,7 +221,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -401,6 +406,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    warning: str | None = Field(
+        default=None,
+        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -646,6 +655,12 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
+
+        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
+        # Require explicit confirmation for both regular saves and text/plain unload beacons.
+        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
+            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
+
         workflow_service = WorkflowService()
 
         try:
@@ -1266,6 +1281,21 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
+def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
+    try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
@@ -1330,11 +1360,16 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            graph_text = workflow.graph
 
-        return {
+        warning = _advisory_variable_reference_warning(graph_text)
+        payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
         }
+        if warning:
+            payload["warning"] = warning
+        return payload
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ReactFlowProvider } from 'reactflow'
 import { NoteTheme } from '../../../types'
 import Toolbar from '../index'
 
@@ -61,15 +62,17 @@ describe('NoteEditor Toolbar', () => {
     const onShowAuthorChange = vi.fn()
     const onThemeChange = vi.fn()
     const { container } = render(
-      <Toolbar
-        theme={NoteTheme.blue}
-        onThemeChange={onThemeChange}
-        onCopy={onCopy}
-        onDuplicate={onDuplicate}
-        onDelete={onDelete}
-        showAuthor={false}
-        onShowAuthorChange={onShowAuthorChange}
-      />,
+      <ReactFlowProvider>
+        <Toolbar
+          theme={NoteTheme.blue}
+          onThemeChange={onThemeChange}
+          onCopy={onCopy}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          showAuthor={false}
+          onShowAuthorChange={onShowAuthorChange}
+        />
+      </ReactFlowProvider>,
     )
 
     expect(screen.getByText('workflow.nodes.note.editor.medium')).toBeInTheDocument()

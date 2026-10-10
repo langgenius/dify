@@ -57,6 +57,7 @@ def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
         "kind: app\napp: {mode: agent}",
         "kind: app\napp: {mode: unknown}",
         "kind: app\napp: {mode: workflow, mode: chat}",
+        "kind: app\napp: {mode: workflow}\nsite: not-a-map",
     ],
 )
 def test_rejects_invalid_or_agent_dsl_in_ordinary_container(dsl: str) -> None:

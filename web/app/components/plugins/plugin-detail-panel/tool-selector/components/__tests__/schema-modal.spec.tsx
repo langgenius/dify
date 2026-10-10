@@ -41,7 +41,7 @@ describe('SchemaModal', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.agent.parameterSchema')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.parameterSchema')).toBeInTheDocument()
     expect(screen.getByTestId('visual-editor')).toHaveTextContent('response')
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))

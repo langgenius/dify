@@ -70,7 +70,7 @@ const CarouselControls = ({
   scrollSnaps,
   scrollTo,
 }: CarouselControlsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const paginationItems = scrollSnaps.map((snap, index) => ({
     id: `${snap}-${index}`,
     snap,

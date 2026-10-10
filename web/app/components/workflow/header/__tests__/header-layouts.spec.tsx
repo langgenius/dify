@@ -326,7 +326,7 @@ describe('Header layout components', () => {
         expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
-          message: 'workflow.versionHistory.action.restoreSuccess',
+          message: 'workflowHistory.versionHistory.action.restoreSuccess',
         })
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({

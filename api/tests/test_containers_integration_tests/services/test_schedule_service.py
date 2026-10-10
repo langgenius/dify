@@ -13,7 +13,7 @@ from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
 from events.event_handlers.sync_workflow_schedule_when_app_published import sync_schedule_from_workflow
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.trigger import WorkflowSchedulePlan
-from services.errors.account import AccountNotFoundError
+from services.account_errors import AccountNotFoundError
 from services.trigger.schedule_service import ScheduleService
 
 
@@ -42,7 +42,7 @@ class ScheduleServiceIntegrationFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod

@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Vui lòng nhập mật khẩu",
   "error.passwordInvalid": "Mật khẩu phải chứa cả chữ và số, và có độ dài ít nhất 8 ký tự",
   "error.registrationNotAllowed": "Không tìm thấy tài khoản. Vui lòng liên hệ với quản trị viên hệ thống để đăng ký.",
+  "error.ssoFailed": "Đăng nhập SSO không thành công. Vui lòng thử lại hoặc liên hệ với quản trị viên.",
   "explore": "Khám phá Dify",
   "forget": "Quên mật khẩu?",
   "forgotPassword": "Quên mật khẩu?",

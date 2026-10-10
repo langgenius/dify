@@ -403,7 +403,7 @@ const createBoundaryEdges = ({
 }
 
 export const useInsertSnippet = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

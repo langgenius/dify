@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from inspect import unwrap
 from unittest.mock import Mock
 
@@ -53,8 +52,6 @@ def _workflow(**overrides) -> Workflow:
         rag_pipeline_variables=[],
     )
     workflow.id = "workflow-1"
-    workflow.created_at = datetime(2024, 1, 1)
-    workflow.updated_at = datetime(2024, 1, 1)
     for name, value in overrides.items():
         setattr(workflow, name, value)
     return workflow
@@ -249,7 +246,7 @@ def test_published_workflow_post_returns_success(
     snippet = _snippet()
     sqlite_session.add(snippet)
     sqlite_session.commit()
-    workflow = _workflow(created_at=datetime(2026, 8, 17, 12, 0, 0))
+    workflow = _workflow()
     monkeypatch.setattr(snippet_workflow_module.SnippetService, "publish_workflow", Mock(return_value=workflow))
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()

@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} set izin",
   "accessRule.summary_other": "{{count}} set izin",
   "accessRule.updated": "Aturan akses berhasil diperbarui",
+  "accessRule.workspaceAdmin": "Admin Workspace",
   "accessRule.workspaceOwner": "Pemilik Workspace",
   "common.duplicateAction": "Duplikat",
   "group.agent": "Agen",

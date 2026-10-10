@@ -26,7 +26,7 @@ export function MainNavSearchButton({
 }: {
   initialPlatform?: ShortcutPlatform | null
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const displayPlatform = useDisplayPlatform(initialPlatform)
   const ariaKeyShortcuts =
     displayPlatform === null
@@ -41,7 +41,7 @@ export function MainNavSearchButton({
           type="button"
           aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
           aria-keyshortcuts={ariaKeyShortcuts}
-          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
         />
       }
     >
@@ -52,9 +52,10 @@ export function MainNavSearchButton({
         className="h-4.5 min-w-0 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary data-pending:invisible"
       >
         {displayPlatform !== null &&
-          GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-            <span key={key}>{formatForDisplay(key, { platform: displayPlatform })}</span>
-          ))}
+          formatForDisplay(GOTO_ANYTHING_HOTKEY, {
+            platform: displayPlatform,
+            parts: true,
+          }).map((key) => <span key={key}>{key}</span>)}
       </Kbd>
     </DialogTrigger>
   )

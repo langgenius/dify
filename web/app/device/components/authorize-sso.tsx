@@ -26,7 +26,7 @@ type Props = {
  * pre-SSO ?user_code=... query param.
  */
 const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow'])
   const [ctx, setCtx] = useState<ApprovalContext | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadErr, setLoadErr] = useState<string | null>(null)

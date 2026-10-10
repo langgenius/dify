@@ -1,11 +1,11 @@
-import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { Ref } from 'react'
+import type { IChatItem, InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -22,6 +22,8 @@ import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
+  onOpenLog: (item: IChatItem) => void
+  chatContainerRef: Ref<HTMLDivElement>
 }
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
@@ -29,6 +31,8 @@ export type DebugWithSingleModelRefType = {
 const DebugWithSingleModel = ({
   ref,
   checkCanSend,
+  onOpenLog,
+  chatContainerRef,
 }: DebugWithSingleModelProps & {
   ref: React.RefObject<DebugWithSingleModelRefType>
 }) => {
@@ -39,6 +43,7 @@ const DebugWithSingleModel = ({
   const {
     readonly,
     canTestAndRun = false,
+    onOpenFeatures,
     modelConfig,
     appId,
     inputs,
@@ -173,8 +178,6 @@ const DebugWithSingleModel = ({
     }
   }, [handleRestart])
 
-  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
-
   return (
     <Chat
       readonly={debugInputReadonly}
@@ -187,7 +190,7 @@ const DebugWithSingleModel = ({
       showFeatureBar
       featureBarReadonly={readonly}
       showFileUpload={false}
-      onFeatureBarClick={setShowAppConfigureFeaturesModal}
+      onFeatureBarClick={onOpenFeatures}
       inputDisabled={!canTestAndRun}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
@@ -196,7 +199,8 @@ const DebugWithSingleModel = ({
       onRegenerate={doRegenerate}
       switchSibling={(siblingMessageId) => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
-      showPromptLog
+      onOpenLog={onOpenLog}
+      chatContainerRef={chatContainerRef}
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       allToolIcons={allToolIcons}
       onAnnotationEdited={canManageAnnotation ? handleAnnotationEdited : undefined}

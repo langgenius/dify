@@ -344,7 +344,9 @@ describe('human-input/panel', () => {
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
     await user.click(
-      screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.formContent\.preview/,
+      }),
     )
     await user.click(screen.getByRole('button', { name: 'change-form-content' }))
     await user.click(screen.getByRole('button', { name: 'change-form-inputs' }))
@@ -404,9 +406,13 @@ describe('human-input/panel', () => {
 
     expect(screen.getByRole('button', { name: 'delivery-method:readonly' })).toBeInTheDocument()
     expect(screen.getByText('form-content:readonly')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.userActions.emptyTip')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+      screen.getByText('workflowHumanInput.nodes.humanInput.userActions.emptyTip'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.formContent\.preview/,
+      }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'timeout:readonly' })).toBeInTheDocument()

@@ -22,7 +22,7 @@ import { useRetryConfig } from './hooks'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
   const retryEnabledId = useId()

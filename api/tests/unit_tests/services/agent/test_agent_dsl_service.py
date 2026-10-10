@@ -26,7 +26,7 @@ from models.agent import (
 from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
 from models.dataset import Dataset
 from models.enums import AppStatus
-from models.model import App, AppMode
+from models.model import App, AppMode, IconType
 from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import (
@@ -433,6 +433,9 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     roster_service.create_backing_agent_for_app.side_effect = create_backing_agent
     monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
     app = _app()
+    app.icon_type = IconType.LINK
+    app.icon = "https://example.com/override.png"
+    app.icon_background = "#123456"
     sqlite_session.add(app)
     sqlite_session.commit()
 
@@ -443,6 +446,10 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
     )
 
     assert result.warnings == [warning]
+    creation = roster_service.create_backing_agent_for_app.call_args.kwargs
+    assert creation["icon_type"] == AgentIconType.LINK
+    assert creation["icon"] == app.icon
+    assert creation["icon_background"] == app.icon_background
     assert agent.active_config_is_published is False
     assert app.name == "Portable Agent"
     assert app.description == "description"

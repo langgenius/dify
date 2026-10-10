@@ -20,7 +20,7 @@ import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore((s) => s.setConversationVariables)

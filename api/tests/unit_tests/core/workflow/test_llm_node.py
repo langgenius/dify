@@ -11,7 +11,7 @@ from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 
 
 def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    def invoke(*args: object, **kwargs: object) -> Generator[object, None, None]:
+    def invoke(*args: object, **kwargs: object) -> Generator[object]:
         _ = args, kwargs
         yield sentinel.event
         yield sentinel.unconsumed
@@ -34,7 +34,7 @@ def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: p
 
 
 def test_dify_llm_node_finalizes_polling_when_polling_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    def invoke(*args: object, **kwargs: object) -> Generator[object, None, None]:
+    def invoke(*args: object, **kwargs: object) -> Generator[object]:
         _ = args, kwargs
         yield sentinel.event
         raise RuntimeError("polling failed")

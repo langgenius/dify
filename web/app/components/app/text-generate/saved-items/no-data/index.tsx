@@ -10,7 +10,7 @@ type INoDataProps = {
 }
 
 const NoData: FC<INoDataProps> = ({ onStartCreateContent }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   return (
     <div className="rounded-xl bg-background-section-burn p-6">

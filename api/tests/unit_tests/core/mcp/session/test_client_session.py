@@ -531,16 +531,26 @@ def test_received_notification_logging(streams):
     assert logging_cb.call_args[0][0].level == "info"
 
 
-def test_default_message_handler():
+def test_default_message_handler(streams):
     # Exception case
     with pytest.raises(ValueError, match="test error"):
         _default_message_handler(Exception("test error"))
 
     # Notification case - should do nothing
-    _default_message_handler(MagicMock(spec=types.ServerNotification))
+    _default_message_handler(types.ServerNotification(root=types.ToolListChangedNotification()))
 
     # RequestResponder case - should do nothing
-    _default_message_handler(MagicMock(spec=RequestResponder))
+    read_stream, write_stream = streams
+    session = ClientSession(read_stream, write_stream)
+    with RequestResponder(
+        request_id=1,
+        request_meta=None,
+        request=types.ServerRequest(root=types.PingRequest()),
+        session=session,
+        on_complete=lambda _responder: None,
+    ) as responder:
+        _default_message_handler(responder)
+        assert not responder.completed
 
 
 def test_default_sampling_callback():

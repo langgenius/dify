@@ -39,7 +39,7 @@ const getStringArray = (value: unknown) => {
 const getStringRecord = (value: unknown) => {
   if (!isRecord(value)) return undefined
 
-  const record: Record<string, string | undefined> = {}
+  const record: Record<string, string> = {}
   Object.entries(value).forEach(([key, item]) => {
     if (typeof item === 'string') record[key] = item
   })
@@ -285,10 +285,6 @@ const normalizeTryAppParams = (params: TryAppParameters): ChatConfig => {
   }
 }
 
-export const fetchTryAppInfo = (appId: string) => {
-  return consoleClient.trialApps.byAppId.get({ params: { app_id: appId } })
-}
-
 export const fetchTryAppDatasets = (appId: string, ids: string[]) => {
   return consoleClient.trialApps.byAppId.datasets.get({
     params: { app_id: appId },
@@ -296,14 +292,8 @@ export const fetchTryAppDatasets = (appId: string, ids: string[]) => {
   })
 }
 
-export const fetchTryAppFlowPreview = (appId: string) => {
-  return consoleClient.trialApps.byAppId.workflows.get({ params: { app_id: appId } })
-}
-
 export const fetchTryAppParams = (appId: string) => {
   return consoleClient.trialApps.byAppId.parameters
     .get({ params: { app_id: appId } })
     .then(normalizeTryAppParams)
 }
-
-export type TryAppInfo = Awaited<ReturnType<typeof fetchTryAppInfo>>

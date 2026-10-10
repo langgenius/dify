@@ -8,7 +8,7 @@ import { consoleQuery } from '@/service/console'
 import PremiumBadge from '../../base/premium-badge'
 
 function LicenseBadge() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { data: license } = useQuery(consoleQuery.systemFeatures.license.get.queryOptions())
   const isExpiring = license?.status === zLicenseStatus.enum.expiring
 

@@ -220,11 +220,13 @@ def test_instruction_generate_legacy_modify(
 ) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    monkeypatch.setattr(
-        generator_module.LLMGenerator,
-        "instruction_modify_legacy",
-        lambda **_kwargs: {"instruction": "ok"},
-    )
+    captured: dict = {}
+
+    def _capture(**kwargs):
+        captured.update(kwargs)
+        return {"instruction": "ok"}
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "instruction_modify_legacy", _capture)
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -240,6 +242,7 @@ def test_instruction_generate_legacy_modify(
         response = method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")
 
     assert response == {"instruction": "ok"}
+    assert captured["session"] is sqlite_session
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)

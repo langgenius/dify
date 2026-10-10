@@ -53,6 +53,11 @@ const mockConsoleState = vi.hoisted(() => ({
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
+const mockAgentPermissions = vi.hoisted(() => ({ canImport: false }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanImportAgents: () => mockAgentPermissions.canImport,
+}))
 
 let mockExploreData: { categories: string[]; allList: RecommendedAppResponse[] } | undefined = {
   categories: [],
@@ -620,6 +625,7 @@ describe('HomeContent', () => {
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
     mockBanners = []
+    mockAgentPermissions.canImport = false
     mockStepByStepTour.reset()
   })
 
@@ -693,6 +699,30 @@ describe('HomeContent', () => {
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
+    })
+
+    it('requires Agent import permission for an Agent template even with app creation permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp({ app: { ...createApp().app, mode: 'agent' } })],
+      }
+
+      renderHomeContent({ hasEditPermission: true })
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Alpha' })).not.toBeInTheDocument()
+    })
+
+    it('allows Agent template creation with Agent import permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp({ app: { ...createApp().app, mode: 'agent' } })],
+      }
+      mockAgentPermissions.canImport = true
+
+      renderHomeContent()
+
+      expect(screen.getByRole('button', { name: 'Alpha' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -923,7 +953,9 @@ describe('HomeContent', () => {
 
       renderHomeContent({ searchParams: { category: 'Writing' } })
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'alp')
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
@@ -945,11 +977,45 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'gam')
 
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.getByText('Gamma')).toBeInTheDocument()
+    })
+
+    it('should find templates by description and explain empty results', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [
+          createApp({ description: 'Summarize invoices' }),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Gamma' },
+            description: 'Translate documents',
+          }),
+        ],
+      }
+      renderHomeContent()
+
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
+      await user.type(input, 'INVOICE')
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByText('Gamma')).not.toBeInTheDocument()
+
+      await user.clear(input)
+      await user.type(input, 'unmatched')
+
+      expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noTemplateFoundTip')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.newApp.noTemplateFound')
     })
 
     it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
@@ -997,13 +1063,19 @@ describe('HomeContent', () => {
       })
     })
 
-    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+    it('should fetch the current template detail when creating an app', async () => {
       vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
+        export_data: 'latest-yaml',
+        mode: AppModeEnum.CHAT,
+      })
       mockHandleImportDSL.mockResolvedValue(undefined)
       const { queryClient } = renderHomeContent({ hasEditPermission: true })
       queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
@@ -1023,11 +1095,29 @@ describe('HomeContent', () => {
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
-      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       expect(mockHandleImportDSL).toHaveBeenCalledWith(
-        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.objectContaining({ yaml_content: 'latest-yaml' }),
         expect.any(Object),
       )
+    })
+
+    it('reports a template detail failure without starting an import', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('Unavailable'))
+      renderHomeContent({ hasEditPermission: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() =>
+        expect(toastMocks.api.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
+      )
+      expect(mockHandleImportDSL).not.toHaveBeenCalled()
     })
 
     it('should open create flow from learn dify item card click', async () => {
@@ -1388,7 +1478,9 @@ describe('HomeContent', () => {
       }
       renderHomeContent()
 
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.newAppFromTemplate.searchAllTemplate',
+      })
       await user.type(input, 'gam')
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 

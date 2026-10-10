@@ -16,7 +16,6 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +23,8 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { ToolDatePicker } from '@/app/components/tools/parameters/tool-date-picker'
+import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date-range-picker'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
@@ -31,9 +32,6 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
-import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,
   getFieldFlags,
@@ -68,12 +66,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const fieldLabelId = useId()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
   const language = useLanguage()
-  const { data: timezone } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone ?? 'UTC',
-  })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -207,7 +201,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                     <button
                       type="button"
                       aria-label={t(($) => $['nodes.agent.clickToViewParameterSchema'], {
-                        ns: 'workflow',
+                        ns: 'workflowAgent',
                       })}
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
@@ -217,7 +211,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   }
                 />
                 <TooltipContent>
-                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflowAgent' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -262,9 +256,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isDate && isConstant && (
               <div className="min-w-0 grow">
                 <ToolDatePicker
-                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  aria-label={fieldTitle || variable}
+                  value={varInput?.value}
                   onChange={handleValueChange(variable, type)}
-                  timezone={timezone}
                   placeholder={placeholder?.[language] || placeholder?.en_US}
                 />
               </div>
@@ -272,9 +266,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isDateRange && varInput?.type !== VarKindType.variable && (
               <div className="grow">
                 <ToolDateRangePicker
+                  label={fieldTitle || variable}
                   value={varInput?.value}
                   onChange={handleValueChange(variable, type)}
-                  timezone={timezone}
                 />
               </div>
             )}

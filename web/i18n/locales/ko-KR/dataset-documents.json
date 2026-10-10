@@ -257,6 +257,7 @@
   "segment.searchResults_one": "결과",
   "segment.searchResults_other": "결과",
   "segment.searchResults_zero": "결과",
+  "segment.statusFilterLabel": "상태별로 세그먼트 필터링",
   "segment.summary": "요약",
   "segment.summaryPlaceholder": "더 나은 검색을 위해 간단한 요약을 작성하세요…"
 }

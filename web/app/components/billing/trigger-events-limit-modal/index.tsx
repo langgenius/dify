@@ -18,7 +18,7 @@ export default function TriggerEventsLimitModal({
   total,
   resetInDays,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <PlanUpgradeModal

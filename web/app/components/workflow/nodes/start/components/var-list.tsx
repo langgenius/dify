@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const VarList: FC<Props> = ({ readonly, list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
 
   const handleVarChange = useCallback(
     (index: number) => {

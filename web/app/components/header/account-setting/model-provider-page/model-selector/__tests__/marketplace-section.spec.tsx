@@ -15,11 +15,11 @@ describe('MarketplaceSection', () => {
   it('keeps the install action named and focusable while it is pending', () => {
     const { rerender } = render(<MarketplaceSection {...defaultProps} />)
     const installButton = screen.getByRole('button', {
-      name: 'common.modelProvider.selector.install OpenAI',
+      name: 'modelProvider.modelProvider.selector.install OpenAI',
     })
     expect(
       screen.getByRole('button', {
-        name: 'common.modelProvider.selector.install Anthropic',
+        name: 'modelProvider.modelProvider.selector.install Anthropic',
       }),
     ).toBeInTheDocument()
     installButton.focus()

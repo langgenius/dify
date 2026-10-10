@@ -254,6 +254,8 @@ class TestProviderConfiguration:
 
         # Assert
         assert ConfigurateMethod.PREDEFINED_MODEL in config.provider.configurate_methods
+        assert config.provider is not mock_provider_entity
+        assert mock_provider_entity.configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]
 
     def test_get_current_credentials_with_restricted_models(self, provider_configuration):
         """Test getting credentials with model restrictions"""
@@ -291,6 +293,29 @@ class TestProviderConfiguration:
         result = provider_configuration._get_specific_provider_credential(credential_id)
 
         assert result == {"openai_api_key": "encrypted_key"}
+
+    @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
+    def test_get_specific_provider_credential_with_mixed_provider_names(
+        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
+    ):
+        provider_configuration.provider.provider = "langgenius/deepseek/deepseek"
+        credential = ProviderCredential(
+            tenant_id="test_tenant",
+            provider_name="langgenius/deepseek/deepseek",
+            credential_name="primary",
+            encrypted_config='{"api_key": "encrypted_key"}',
+        )
+        sqlite_session.add_all((Provider(tenant_id="test_tenant", provider_name="deepseek"), credential))
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            provider_configuration_module,
+            "db",
+            SimpleNamespace(engine=sqlite_session.get_bind()),
+        )
+
+        result = provider_configuration._get_specific_provider_credential(credential.id)
+
+        assert result == {"api_key": "encrypted_key"}
 
     @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
     def test_get_specific_provider_credential_not_found(

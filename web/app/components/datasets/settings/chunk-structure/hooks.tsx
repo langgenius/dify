@@ -4,7 +4,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { EffectColor } from './types'
 
 export const useChunkStructure = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const GeneralOption: Option = {
     id: ChunkingMode.text,

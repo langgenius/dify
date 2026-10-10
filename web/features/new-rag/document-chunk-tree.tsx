@@ -38,8 +38,8 @@ export function DocumentChunkTreePanel({
   selectedChunkId?: string
   tree: DocumentChunkTree
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const treeHeadingId = useId()
   const loadMoreLabelId = useId()
   const [collapsedChunkIds, setCollapsedChunkIds] = useState<Set<string>>(() => new Set())

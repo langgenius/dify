@@ -36,7 +36,7 @@ export default function MarketplaceDetailDialogFrame({
   onMessage,
   onOpenChange,
 }: MarketplaceDetailDialogFrameProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [isLoading, setIsLoading] = useState(true)
