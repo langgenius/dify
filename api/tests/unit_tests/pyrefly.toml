@@ -656,7 +656,6 @@ project-excludes = [
   "libs/test_oauth_base.py",
   "libs/test_oauth_bearer.py",
   "libs/test_oauth_bearer_rate_limit_ordering.py",
-  "libs/test_oauth_clients.py",
   "libs/test_orjson.py",
   "libs/test_pagination.py",
   "libs/test_pandas.py",
