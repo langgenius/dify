@@ -22,6 +22,7 @@ from dify_agent.protocol import (
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -58,7 +59,15 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentWorkspaceOwnerType,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -391,6 +400,7 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
@@ -403,6 +413,7 @@ def _node(
                 user_id="user-1",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                workflow_tool_invocation_id=workflow_tool_invocation_id,
             )
         },
         call_depth=0,
@@ -579,6 +590,42 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
+
+
+def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
+    binding_resolver = FakeBindingResolver()
+    binding_resolver.agent.scope = AgentScope.WORKFLOW_ONLY
+    binding_resolver.agent.source = AgentSource.WORKFLOW
+    binding_resolver.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+    binding_resolver.binding.workflow_version = "draft"
+    sqlite_session.add_all([binding_resolver.binding, binding_resolver.agent, binding_resolver.snapshot])
+    sqlite_session.commit()
+    store = FakeSessionStore()
+    node = _node(
+        binding_resolver=binding_resolver,
+        session_store=store,
+        workflow_tool_invocation_id="tool-call-1",
+    )
+    with (
+        patch.object(binding_resolver, "resolve", wraps=WorkflowAgentBindingResolver().resolve),
+        patch.object(
+            WorkflowAgentWorkspaceStore,
+            "load_active_participant",
+            side_effect=AssertionError("Workflow Tool must not select an outer Chatflow participant"),
+        ) as load_participant,
+    ):
+        events = list(node._run())
+
+    assert cast(StreamCompletedEvent, events[0]).node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    load_participant.assert_not_called()
+    assert store.existing_scope_lookups[0]["conversation_id"] == "conversation-1"
+    assert store.existing_scope_lookups[0]["workflow_tool_invocation_id"] == "tool-call-1"
+    scope = store.resolved_scopes[0]
+    assert scope.agent_config_snapshot_id == "snapshot-1"
+    assert scope.conversation_id == "conversation-1"
+    assert scope.workflow_tool_invocation_id == "tool-call-1"
+    assert scope.workspace_owner.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert scope.workspace_owner.owner_id == "workflow-run-1"
 
 
 def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:

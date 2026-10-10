@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
 from uuid import uuid4
@@ -48,6 +49,8 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFr
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
@@ -887,6 +890,71 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     assert handle.raw.tool is runtime_tool
     assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
     get_runtime.assert_called_once()
+
+
+def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.tools.__base.tool_runtime import ToolRuntime
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
+    from core.tools.workflow_as_tool.tool import WorkflowTool
+
+    tool = WorkflowTool(
+        workflow_app_id=str(uuid4()),
+        workflow_id=str(uuid4()),
+        workflow_as_tool_id="workflow-tool-id",
+        version="published-version",
+        workflow_call_depth=2,
+        entity=ToolEntity(
+            identity=ToolIdentity(
+                author="test",
+                name="workflow-tool",
+                label=I18nObject(en_US="Workflow Tool"),
+                provider="workflow-provider",
+            ),
+            parameters=[],
+            description=None,
+            has_runtime_parameters=False,
+        ),
+        runtime=ToolRuntime(tenant_id="tenant-id", invoke_from=InvokeFrom.DEBUGGER),
+    )
+    prepare_container_inputs = MagicMock(
+        return_value=(
+            {"amount": Decimal("1.25")},
+            [{"id": "file-id", "name": "input.txt"}],
+        )
+    )
+    monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
+    runtime = DifyToolNodeRuntime(_build_run_context())
+
+    payload = runtime.build_workflow_tool_container_payload(
+        tool_runtime=ToolRuntimeHandle(raw=tool),
+        tool_parameters={"amount": "1.25"},
+        inputs_for_log={"amount": Decimal("1.25")},
+        workflow_call_depth=2,
+    )
+
+    assert payload.model_dump() == {
+        "version": "1",
+        "source_app_id": str(tool.workflow_app_id),
+        "source_workflow_id": str(tool.workflow_id),
+        "source_workflow_version": "published-version",
+        "inputs": {"amount": 1.25},
+        "system_files": [{"id": "file-id", "name": "input.txt"}],
+        "inputs_for_log": {"amount": 1.25},
+        "call_depth": 3,
+    }
+    prepare_container_inputs.assert_called_once_with({"amount": "1.25"})
+
+
+def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
+    runtime = DifyToolNodeRuntime(_build_run_context())
+    with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
+        runtime.build_workflow_tool_container_payload(
+            tool_runtime=ToolRuntimeHandle(raw=object()),
+            tool_parameters={},
+            inputs_for_log={},
+            workflow_call_depth=0,
+        )
 
 
 def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.MonkeyPatch) -> None:
