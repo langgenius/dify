@@ -16,7 +16,7 @@ import {
 } from '@/app/components/app/access-point/shared/web-app-access-control'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
-import SettingsModal from '@/app/components/app/overview/settings'
+import { SettingsDialog } from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
@@ -74,7 +74,6 @@ export function WebAppAccessCard({
           appId,
         }
       : null
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const accessControl = useWebAppAccessControl(agent, isLoading)
   const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
@@ -183,8 +182,8 @@ export function WebAppAccessCard({
     })
   }
 
-  async function handleSaveSettings(params: AppSiteUpdatePayload) {
-    if (!appId || !canManageWebApp) return
+  async function handleSaveSettings(params: AppSiteUpdatePayload): Promise<boolean> {
+    if (!appId || !canManageWebApp) return false
 
     const sitePayload = params satisfies AppSiteUpdatePayload
 
@@ -195,10 +194,12 @@ export function WebAppAccessCard({
         },
         body: sitePayload,
       })
-      await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
+      void queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
+      return true
     } catch {
       toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      return false
     }
   }
 
@@ -263,15 +264,13 @@ export function WebAppAccessCard({
                 {t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
               </Button>
             )}
-            <Button
-              variant="secondary"
-              disabled={!canManageWebApp || !settingsAppInfo || updateSiteMutation.isPending}
-              onClick={() => setShowSettingsModal(true)}
-              className="flex items-center gap-1 px-3"
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['agentDetail.access.webApp.actions.settings'])}
-            </Button>
+            <SettingsDialog
+              key={appId}
+              isChat
+              appInfo={canManageWebApp && settingsAppInfo ? settingsAppInfo : undefined}
+              onSave={handleSaveSettings}
+              triggerLabel={t(($) => $['agentDetail.access.webApp.actions.settings'])}
+            />
           </>
         }
       >
@@ -316,15 +315,6 @@ export function WebAppAccessCard({
         )}
       </AccessPointCard>
 
-      {canManageWebApp && settingsAppInfo && (
-        <SettingsModal
-          isChat
-          appInfo={settingsAppInfo}
-          isShow={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          onSave={handleSaveSettings}
-        />
-      )}
       {canManageAccessPoint && showAccessControl && accessControl.state === 'ready' && (
         <AccessControl
           app={accessControl.app}
