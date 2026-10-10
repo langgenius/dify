@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from redis import Redis
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import Scope, SubjectType, TokenType
 from libs.oauth_bearer import OAuthAccessTokenResolver, ResolvedRow, _TokenTypeResolver
@@ -68,7 +68,7 @@ def test_token_cache_round_trip(account_id: uuid.UUID | None, encoding: str) -> 
         raw = bytearray(payload.encode())
     redis = MagicMock()
     redis.get.return_value = raw
-    resolver = OAuthAccessTokenResolver(MagicMock(), redis)
+    resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == row
 
@@ -79,7 +79,7 @@ def test_token_cache_accepts_legacy_entries_without_client_id() -> None:
     del payload["client_id"]
     redis = MagicMock()
     redis.get.return_value = json.dumps(payload)
-    resolver = OAuthAccessTokenResolver(MagicMock(), redis)
+    resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == row
 
@@ -88,7 +88,7 @@ def test_token_cache_accepts_legacy_entries_without_client_id() -> None:
 def test_token_cache_preserves_miss_and_negative_entries(raw: str | bytes | bytearray | None) -> None:
     redis = MagicMock()
     redis.get.return_value = raw
-    resolver = OAuthAccessTokenResolver(MagicMock(), redis)
+    resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == (None if raw is None else "invalid")
 
@@ -100,7 +100,7 @@ def test_token_cache_preserves_miss_and_negative_entries(raw: str | bytes | byte
 def test_token_cache_treats_malformed_payload_as_miss(raw: str | bytes) -> None:
     redis = MagicMock()
     redis.get.return_value = raw
-    resolver = OAuthAccessTokenResolver(MagicMock(), redis)
+    resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") is None
 
@@ -124,12 +124,12 @@ def test_token_cache_treats_invalid_fields_as_miss(field: str, value: object) ->
     payload[field] = value
     redis = MagicMock()
     redis.get.return_value = json.dumps(payload)
-    resolver = OAuthAccessTokenResolver(MagicMock(), redis)
+    resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") is None
 
 
-def test_token_resolver_recovers_from_malformed_cache() -> None:
+def test_token_resolver_recovers_from_malformed_cache(sqlite_session_factory: sessionmaker[Session]) -> None:
     account_id = uuid.uuid4()
     token = OAuthAccessToken(
         subject_email="who@example.com",
@@ -141,17 +141,19 @@ def test_token_resolver_recovers_from_malformed_cache() -> None:
         token_hash="token-hash",
         expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
-    session = MagicMock()
-    session.query.return_value.filter.return_value.one_or_none.return_value = token
     redis = MagicMock()
     redis.get.return_value = "[]"
-    resolver = OAuthAccessTokenResolver(lambda: session, redis).for_token_type(TokenType.OAUTH_ACCOUNT)
 
-    resolved = resolver.resolve("token-hash")
+    with sqlite_session_factory() as session:
+        session.add(token)
+        session.flush()
+        resolver = OAuthAccessTokenResolver(lambda: session, redis).for_token_type(TokenType.OAUTH_ACCOUNT)
 
-    assert resolved is not None
-    assert resolved.token_id == uuid.UUID(token.id)
-    assert resolved.subject_email == token.subject_email
-    assert resolved.account_id == account_id
+        resolved = resolver.resolve("token-hash")
+
+        assert resolved is not None
+        assert resolved.token_id == uuid.UUID(token.id)
+        assert resolved.subject_email == token.subject_email
+        assert resolved.account_id == account_id
     redis.setex.assert_called_once()
     assert json.loads(redis.setex.call_args.args[2]) == resolved.to_cache()
