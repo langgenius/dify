@@ -52,9 +52,11 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppChange,
+    AppColumnChanges,
     AppCreationSettings,
     AppDeletion,
     AppEvent,
+    AppFieldChanges,
     AppListBaseParams,
     AppListParams,
     AppListSortBy,
@@ -74,6 +76,8 @@ from services.errors.base import NoPermissionError
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 
 logger = logging.getLogger(__name__)
+
+_APP_COLUMN_CHANGES = AppColumnChanges.__optional_keys__
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
@@ -210,6 +214,13 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
                 "role": params.role,
             }
             app = self.update_app(app, changes, account_id=context.account_id, session=session)
+            return app_record(app, session=session, projection="detail-with-site")
+
+    @override
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            app = self.update_app_fields(app, changes, account_id=context.account_id, session=session)
             return app_record(app, session=session, projection="detail-with-site")
 
     @override
@@ -772,6 +783,29 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
         )
         cls._commit_app_identity_update(app, session=session)
 
+        return app
+
+    @classmethod
+    def update_app_fields(cls, app: App, changes: AppFieldChanges, *, account_id: str, session: Session) -> App:
+        """Write only the fields in `changes`; the others keep their stored values."""
+        for name, value in changes.items():
+            if name in _APP_COLUMN_CHANGES:
+                setattr(app, name, value)
+        app.updated_by = account_id
+        app.updated_at = naive_utc_now()
+        cls._sync_backing_agent_identity(
+            app,
+            name=changes.get("name"),
+            description=changes.get("description"),
+            role=changes.get("role"),
+            icon_type=changes.get("icon_type"),
+            icon=changes.get("icon"),
+            icon_background=changes.get("icon_background"),
+            account_id=account_id,
+            updated_at=app.updated_at,
+            session=session,
+        )
+        cls._commit_app_identity_update(app, session=session)
         return app
 
     @classmethod

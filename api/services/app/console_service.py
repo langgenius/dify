@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
@@ -17,6 +16,7 @@ from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppFieldChanges,
     AppListParams,
     AppPage,
     AppRecord,
@@ -98,6 +98,8 @@ class ConsoleApps(Protocol):
     def get(self, context: RequestContext, app_id: str) -> AppRecord: ...
 
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord: ...
+
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord: ...
 
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord: ...
 
@@ -358,19 +360,10 @@ class ConsoleAppService:
         self._lifecycle.updated(context, app)
         return self.get(context, app_id)
 
-    def update_fields(self, context: RequestContext, app_id: str, changes: Mapping[str, object]) -> AppRecord:
-        """`update` for only the `UpdateAppParams` fields in `changes`; the others keep their stored values."""
-        current = self.get(context, app_id)
-        stored = {
-            "name": current.name,
-            "description": current.description or "",
-            "icon_type": current.icon_type,
-            "icon": current.icon or "",
-            "icon_background": current.icon_background or "",
-            "use_icon_as_answer_icon": current.use_icon_as_answer_icon,
-            "max_active_requests": current.max_active_requests or 0,
-        }
-        return self.update(context, app_id, UpdateAppParams.model_validate({**stored, **changes}))
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        app = self._apps.update_fields(context, app_id, changes)
+        self._lifecycle.updated(context, app)
+        return self.get(context, app_id)
 
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord:
         app = self._apps.rename(context, app_id, name)

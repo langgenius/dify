@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from enum import StrEnum
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from flask import request
 from pydantic import BaseModel
@@ -28,7 +28,7 @@ from enums import WebAppAccessMode
 from extensions.ext_application_services import application_services
 from models import AppMode
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
-from services.entities.app_entities import AppRecord
+from services.entities.app_entities import AppFieldChanges, AppRecord
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
 REGULAR_MODES: Final = (
@@ -101,7 +101,9 @@ def update_agent_app_info(ctx: Context, patch: AgentAppInfoPatch) -> AgentAppInf
 
 
 def _update_app_info(ctx: Context, changes: dict[str, Any]) -> AppRecord:
-    return application_services().apps.console.update_fields(ctx.request_context, ctx.app.id, changes)
+    return application_services().apps.console.update_fields(
+        ctx.request_context, ctx.app.id, cast(AppFieldChanges, changes)
+    )
 
 
 def _access_ready(ctx: Context) -> bool:
