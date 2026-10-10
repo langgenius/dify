@@ -47,11 +47,13 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
+    PublicationDecision,
     Run,
     Session,
 )
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
+from core.dify_builder.verification import publication_decision
 from services.dify_builder.agent.model_resolver import validate_model_config
 
 __all__ = [
@@ -376,6 +378,7 @@ def _actions_for(
     *,
     interrupted: bool = False,
     app_revision_conflicted: bool = False,
+    publication: PublicationDecision | None = None,
 ) -> list[UiAction]:
     """Return only actions legal for the projected lifecycle condition."""
     if interrupted:
@@ -403,7 +406,21 @@ def _actions_for(
     if app_revision_conflicted:
         return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
 
-    return list(_ACTIONS_FOR.get(state, []))
+    actions = list(_ACTIONS_FOR.get(state, []))
+    retest = {
+        PcState.BUILD_REVIEW: ("run_test", "Run test"),
+        PcState.EDIT_REVIEW: ("run_affected_tests", "Run affected tests"),
+        PcState.FIX_AWAIT_DECISION: ("run_validation", "Run validation"),
+    }
+    if state in retest and (publication is None or not publication.allowed):
+        actions = [a for a in actions if a.id not in {"publish_workflow", "publish_fix"}]
+        action_id, label = retest[state]
+        actions.insert(0, UiAction(id=action_id, label=label, kind=ActionKind.PRIMARY))
+    if state in {PcState.FIX_AWAIT_APPROVAL, PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR} and (
+        fc is None or not fc.staged_repair
+    ):
+        return [action for action in actions if action.id != "approve_plan"]
+    return actions
 
 
 _ACTION_ID_TO_KIND: dict[str, str] = {
@@ -628,7 +645,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.FIX_AWAIT_APPROVAL: frozenset({"approve_repair", "reject_repair"}),
     PcState.FIX_AWAIT_VERIFY: frozenset({"run_verify", "undo"}),
     PcState.FIX_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
-    PcState.FIX_AWAIT_DECISION: frozenset({"publish", "keep_draft", "re_fix", "undo"}),
+    PcState.FIX_AWAIT_DECISION: frozenset({"run_verify", "publish", "keep_draft", "re_fix", "undo"}),
     PcState.CHECKLIST_AWAIT_RECHECK: frozenset({"recheck", "undo"}),
     PcState.BUILD_GOAL_ANALYSIS: frozenset({"submit_requirements"}),
     # BUILD_INITIAL_PLAN is a working/pass-through state now (state.py) -- it
@@ -639,7 +656,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.BUILD_EXECUTION: frozenset({"run_test", "undo"}),
     PcState.BUILD_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.BUILD_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),
-    PcState.BUILD_REVIEW: frozenset({"publish_workflow", "keep_draft", "re_fix", "undo"}),
+    PcState.BUILD_REVIEW: frozenset({"run_test", "publish_workflow", "keep_draft", "re_fix", "undo"}),
     PcState.BUILD_REVERTED: frozenset({"re_fix"}),
     PcState.EDIT_CAPABILITY_CHECK: frozenset({"send_edit_goal"}),
     PcState.EDIT_IMPACT_ANALYSIS: frozenset({"submit_edit_rules"}),
@@ -647,7 +664,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     PcState.EDIT_APPLY_CHANGES: frozenset({"run_affected_tests", "undo"}),
     PcState.EDIT_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.EDIT_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),
-    PcState.EDIT_REVIEW: frozenset({"publish_workflow", "keep_draft", "re_fix", "undo"}),
+    PcState.EDIT_REVIEW: frozenset({"run_affected_tests", "publish_workflow", "keep_draft", "re_fix", "undo"}),
     PcState.EDIT_REVERTED: frozenset({"re_fix"}),
 }
 
@@ -803,6 +820,7 @@ class DifyBuilderService:
         authorize_app_fn: Callable[[Actor, str, AppAccess], None] | None = None,
         get_app_revision_fn: Callable[[str, Actor], str] | None = None,
         get_app_name_fn: Callable[[str, Actor], str] | None = None,
+        get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
     ) -> None:
         self._repo = repo
         self._session_lock = session_lock
@@ -810,6 +828,7 @@ class DifyBuilderService:
         self._subscribe_fn = subscribe_fn or (lambda _sid: None)
         self._authorize_app_fn = authorize_app_fn or (lambda _actor, _app_id, _access: None)
         self._get_app_revision_fn = get_app_revision_fn or (lambda _app_id, _actor: "")
+        self._get_verification_identity_fn = get_verification_identity_fn or (lambda _app_id, _actor: ("", ""))
         self._get_app_name_fn = get_app_name_fn or (lambda _app_id, _actor: "")
 
     def _get_app_revision(self, app_id: str, actor: Actor) -> str:
@@ -1255,6 +1274,18 @@ class DifyBuilderService:
             return ActiveInteraction(action_id=action.id, card=card, valid_at_version=version)
         return None
 
+    def _publication_for_session(self, s: Session, fc: DifyBuilderContext, actor: Actor) -> PublicationDecision:
+        run = None
+        if fc.verify_run_id:
+            try:
+                run = self._repo.get_run(fc.verify_run_id)
+            except NotFoundError:
+                pass
+        revision, graph_revision = self._get_verification_identity_fn(s.app_id, actor)
+        return publication_decision(
+            run, session_id=s.id, current_revision=revision, current_graph_revision=graph_revision
+        )
+
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
         st = s.current_state
         lock_held = self._session_lock.exists(s.id)
@@ -1271,6 +1302,9 @@ class DifyBuilderService:
             fc,
             interrupted=interrupted,
             app_revision_conflicted=app_revision_conflicted,
+            publication=self._publication_for_session(
+                s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
+            ),
         )
         checkpoint = (
             CheckpointRef(checkpoint_id=fc.checkpoint_id, label="Restore point", created_at="")
@@ -1363,6 +1397,12 @@ class DifyBuilderService:
         ):
             raise BadRequestError(f"action {action.kind} is not allowed in state {s.current_state}")
 
+        if action.kind in _RELEASE_ACTIONS or (
+            action.kind == "recovery_continue" and s.current_state in _PUBLISH_WORKING_STATES
+        ):
+            publication = self._publication_for_session(s, fc, actor)
+            if not publication.allowed:
+                raise BadRequestError(f"publication verification denied: {publication.reason}; run validation again")
         access = _app_access_for_action(s.current_state, action.kind)
         if access != AppAccess.EDIT:
             self._authorize_app(s.app_id, actor, access)
@@ -1392,11 +1432,20 @@ class DifyBuilderService:
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
+        if (
+            action.kind == "approve_repair"
+            and s.current_state in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_APPROVAL}
+            and not fc.staged_repair
+        ):
+            raise BadRequestError("no repair is staged for approval")
         visible_actions = _actions_for(
             s.current_state,
             fc,
             interrupted=is_working(s.current_state) and not self._session_lock.exists(session_id),
             app_revision_conflicted=app_revision_conflicted,
+            publication=self._publication_for_session(
+                s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
+            ),
         )
         interaction_response = _interaction_response_for(self._repo, s, action, visible_actions)
         action.interaction_response = asdict(interaction_response) if interaction_response is not None else None

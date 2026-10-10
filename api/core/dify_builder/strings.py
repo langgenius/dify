@@ -36,17 +36,34 @@ PLAIN: frozenset[str] = frozenset(
         "Plan v1 ready for approval.",
         "Workflow built on the canvas.",
         "I filled in test inputs -- edit them if you like, then run the test.",
-        "Tests passed; ready for review.",
+        "Execution succeeded; output needs review.",
+        "Other paths and goal acceptance were not verified.",
+        "Other paths and goal acceptance were not verified. "
+        "Draft verification is stale or unavailable; run again before publishing.",
+        "Execution succeeded; output needs review. Other paths and goal acceptance were not verified.",
+        "Execution succeeded; output needs review. Other paths and goal acceptance were not verified. "
+        "Draft verification is stale or unavailable; run again before publishing.",
+        "A required output reference was unresolved or the executed branch produced no terminal output.",
+        "Execution failed.",
+        "Execution outcome is unknown; run again before publishing.",
         "The run failed on its inputs — provide test data and retry.",
         "Here's the impact of your change.",
         "Change plan ready for approval.",
         "Applied the changes to the canvas.",
+        "No changes were proposed",
+        "Nothing was applied.",
+        "Review the rules, continue adjusting, approve again, or discard the plan.",
+        "No changes were proposed: Nothing was applied.\n"
+        "Review the rules, continue adjusting, approve again, or discard the plan.",
+        "No effective changes were needed; the workflow configuration is unchanged.",
         "Provide test inputs (or use mock data) to run the affected-path test.",
         "Let's adjust the change.",
         "Re-approve to apply the change.",
         "Provide test inputs (or use mock data) to run validation.",
         "Restarting the plan.",
         "Revised plan.",
+        "Builder couldn't produce a usable workflow plan. Retry planning to continue.",
+        "I couldn't produce a usable workflow plan — see the notice. Retry planning to continue.",
         "I couldn't build a valid workflow graph -- see the error above. Adjust the plan and approve again.",
         "Test failed — here's a proposed fix to review.",
         "Test failed — no safe automatic fix; edit or keep draft.",
@@ -102,7 +119,7 @@ PLAIN: frozenset[str] = frozenset(
         "The test failed because the workflow's model isn't configured. Configure it "
         "(or change the model), then re-run — this isn't a workflow-logic issue.",
         # subtitles
-        "All checks passed",
+        "Execution succeeded; output needs review",
         "Failed",
         "checklist",
         # stat labels
@@ -135,6 +152,7 @@ PLAIN: frozenset[str] = frozenset(
         "Nodes",
         "Status",
         "Workflow",
+        "User message",
         "I filled in typical requirements; edit and submit to adjust.",
         # Why a requirements field arrived empty. Must stay in this catalog:
         # an unregistered string is value-matched to nothing and ships in
@@ -161,6 +179,21 @@ PLAIN: frozenset[str] = frozenset(
 
 
 TEMPLATES: list[Template] = [
+    Template(
+        pattern=re.compile(r"^Provide test inputs and retry: (?P<reason>.+)$", re.DOTALL),
+        template="Provide test inputs and retry: {reason}",
+        translate_fields=frozenset(),  # reason is a runtime input error, kept verbatim
+    ),
+    Template(
+        pattern=re.compile(
+            r"^Publication requires a successful run of the current draft \((?P<reason>.+)\)\. "
+            r"Run validation again, then review its outputs\.$",
+            re.DOTALL,
+        ),
+        template="Publication requires a successful run of the current draft ({reason}). "
+        "Run validation again, then review its outputs.",
+        translate_fields=frozenset(),  # reason is a verification denial, kept verbatim
+    ),
     Template(
         pattern=re.compile(r"^The generated workflow would fail before its first node: (?P<value>.+)$", re.DOTALL),
         template="The generated workflow would fail before its first node: {value}",

@@ -26,7 +26,10 @@ the P2 plan's Global Constraints):
   workflow) and ``streaming=True``, so ``on_event`` fires while the run is
   still going instead of replaying finished rows afterwards. It selects
   ``workflow_execution_mode="in_process"`` so the native generator runs inside
-  the existing Builder task. Enqueuing a child task and waiting for its stream
+  the existing Builder task. Persisted advanced-chat mode sends the reserved
+  ``sys.query`` as the separate top-level query; ordinary Start inputs remain
+  in ``args.inputs``. Invalid system messages are rejected before generation.
+  Enqueuing a child task and waiting for its stream
   deadlocks a worker that consumes both queues with only one execution slot.
   If the stream ends WITHOUT a terminal frame, the
   outcome is recovered from the workflow-run row rather than synthesised as a
@@ -41,7 +44,7 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -49,6 +52,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import CanvasEvent
+from core.dify_builder.handlers_fix import run_finished_without_output
+from core.dify_builder.input_schema import SYSTEM_QUERY, validate_query
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -73,8 +78,9 @@ from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
-from services.dify_builder.revision import execution_revision, merge_canvas_presentation
+from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
     error_from_stream_chunk,
     is_unfinished_run_status,
@@ -186,6 +192,11 @@ def _sync_graph_only(
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
 
+    def get_app_mode(self, app_id: str, actor: Actor) -> str:
+        """Read mode from the persisted app using the same tenant guard as graphs."""
+        with _session_factory()() as session:
+            return load_app(session, app_id, actor).mode
+
     def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
@@ -209,6 +220,8 @@ class WorkflowServiceDifyPort:
                 error=node_exec.error or "",
                 inputs=node_exec.inputs_dict or {},
                 outputs=node_exec.outputs_dict or {},
+                outputs_available=isinstance(node_exec.outputs_dict, Mapping)
+                and not getattr(node_exec, "outputs_truncated", False),
             )
             for node_exec in node_execs
         ]
@@ -384,6 +397,16 @@ class WorkflowServiceDifyPort:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
+            draft = _load_draft_workflow_or_raise(app, session=session)
+            before_revision = execution_revision(draft)
+            before_graph_revision = executable_graph_revision(dict(draft.graph_dict))
+            args: dict[str, Any] = {"inputs": inputs}
+            if app.mode == "advanced-chat":
+                validate_query(inputs)
+                args = {
+                    "query": inputs[SYSTEM_QUERY],
+                    "inputs": {key: value for key, value in inputs.items() if key != SYSTEM_QUERY},
+                }
 
             # Match the native workflow task's user context before the runtime
             # copies it into its execution thread/greenlet.
@@ -394,7 +417,7 @@ class WorkflowServiceDifyPort:
             response = AppGenerateService.generate(
                 app_model=app,
                 user=account,
-                args={"inputs": inputs},
+                args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 session=session,
                 streaming=True,
@@ -414,7 +437,13 @@ class WorkflowServiceDifyPort:
             final = dict(response.get("data") or {})
             if not final.get("id"):
                 final["id"] = str(response.get("workflow_run_id") or "")
-            return self._finish_run(tenant_id, app_id, final, stream_run_id="")
+            return self._bind_run(
+                self._finish_run(tenant_id, app_id, final, stream_run_id=""),
+                app_id,
+                actor,
+                before_revision,
+                before_graph_revision,
+            )
 
         try:
             for chunk in response:
@@ -445,7 +474,43 @@ class WorkflowServiceDifyPort:
             if callable(close):
                 close()
 
-        return self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
+        return self._bind_run(
+            self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame),
+            app_id,
+            actor,
+            before_revision,
+            before_graph_revision,
+        )
+
+    def graph_revision(self, graph: Graph) -> str:
+        return executable_graph_revision(graph)
+
+    def _bind_run(
+        self, result: tuple[Run, Any], app_id: str, actor: Actor, before_revision: str, before_graph_revision: str
+    ) -> Run:
+        """Bind only the actual persisted run graph and equal before/after full revisions.
+
+        Native persistence does not snapshot non-graph configuration: a transient
+        non-graph A→B→A change is outside this guarantee. No execution transaction
+        is held open across stream consumption or provider I/O.
+        """
+        run, row = result
+        native_graph = getattr(row, "graph_dict", None)
+        evidence = run.verification
+        if evidence is None or not isinstance(native_graph, dict) or not isinstance(native_graph.get("nodes"), list):
+            return run
+        native_revision = executable_graph_revision(native_graph)
+        evidence.executed_graph_revision = native_revision
+        evidence.output_findings = collect_output_findings(native_graph, run.per_node)
+        evidence.no_output_dead_branch = run_finished_without_output(native_graph, run.per_node)
+        graph, after_revision = self.read_graph(app_id, actor)
+        if (
+            before_revision
+            and before_revision == after_revision
+            and native_revision == before_graph_revision == executable_graph_revision(graph)
+        ):
+            evidence.execution_revision = before_revision
+        return run
 
     def _finish_run(
         self,
@@ -455,7 +520,7 @@ class WorkflowServiceDifyPort:
         stream_run_id: str,
         *,
         error_frame: dict[str, str] | None = None,
-    ) -> Run:
+    ) -> tuple[Run, Any]:
         """Turn the run's terminal data into a ``Run``. Shared by the blocking
         and streaming paths so they can never disagree about the outcome.
 
@@ -464,6 +529,14 @@ class WorkflowServiceDifyPort:
         stream that ended with neither is an unknown outcome.
         """
         run_id = str(final.get("id") or stream_run_id or "")
+
+        run_row = (
+            DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                sessionmaker(bind=db.engine)
+            ).get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=run_id)
+            if run_id
+            else None
+        )
 
         # Backend diagnosis still uses persisted node-execution rows to build
         # ``per_node[].outputs``; the frontend consumes the full event stream.
@@ -476,30 +549,23 @@ class WorkflowServiceDifyPort:
         )
 
         if final:
-            return map_run_result(final, node_execs)
+            return map_run_result(final, node_execs), run_row
 
         # The pipeline said the run threw (ESQ1-302: Graph.init rejected a node
         # before workflow_started, so there is no run row at all). That is a
         # failure with a reason, not an outcome we lost sight of.
         if error_frame is not None:
-            return map_error_frame_run(error_frame, run_id, node_execs)
+            return map_error_frame_run(error_frame, run_id, node_execs), run_row
 
         # The stream ended without a terminal frame. The stream is no longer
         # the authority on how the run went; the database is. Synthesising
         # "failed" here would report a run that may well have SUCCEEDED as a
         # failed build and feed the repair loop a lie.
-        return self._run_result_without_terminal_frame(tenant_id, app_id, run_id, node_execs)
+        return self._run_result_without_terminal_frame(run_id, node_execs, run_row), run_row
 
     @staticmethod
-    def _run_result_without_terminal_frame(tenant_id: str, app_id: str, run_id: str, node_execs: list[Any]) -> Run:
-        """Recover a truncated stream's outcome from the workflow-run row."""
-        run_row = (
-            DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                sessionmaker(bind=db.engine)
-            ).get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=run_id)
-            if run_id
-            else None
-        )
+    def _run_result_without_terminal_frame(run_id: str, node_execs: Sequence[Any], run_row: Any) -> Run:
+        """Recover a truncated stream's outcome from the scoped workflow-run row."""
         if run_row is None:
             # No id, or no row: nothing can say how this went.
             return map_unknown_run_outcome({"id": run_id}, node_execs)
@@ -511,15 +577,28 @@ class WorkflowServiceDifyPort:
             return map_unknown_run_outcome(recovered, node_execs)
         return map_run_result(recovered, node_execs)
 
-    def publish(self, app_id: str, actor: Actor) -> PublishResult:
+    def publish(
+        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
+    ) -> PublishResult:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
 
+            draft = _load_draft_workflow_or_raise(app, session=session)
+            session.refresh(draft, with_for_update=True)
+            if (
+                not expected_revision
+                or not expected_graph_revision
+                or execution_revision(draft) != expected_revision
+                or executable_graph_revision(dict(draft.graph_dict)) != expected_graph_revision
+            ):
+                raise HashMismatchError(f"workflow verification is stale: {app_id}")
+            # Reselect only this locked identity, even if duplicate draft rows exist.
             workflow = WorkflowService().publish_workflow(
                 session=session,
                 app_model=app,
                 account=account,
+                expected_draft_id=draft.id,
             )
 
             app_in_session = session.get(App, app_id)

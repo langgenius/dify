@@ -9,12 +9,16 @@ check a proposed batch passes before it can reach an approval gate)."""
 import copy
 import json
 from pathlib import Path
+from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
 from core.dify_builder.models import MutationIntent
 from core.workflow.graph_normalizers import heal_nodes_for_preflight
+from core.workflow.human_input_adapter import parse_human_input_delivery_methods
 from core.workflow.node_factory import validate_node_config
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from services.dify_builder import graph_ops
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors, vet_intents
 
@@ -67,6 +71,119 @@ def test_note_widgets_are_skipped_exactly_like_graph_init_skips_them():
 def test_an_empty_or_shapeless_graph_has_nothing_to_report():
     assert preflight_errors({}) == []
     assert preflight_errors({"nodes": [None, "junk"], "edges": []}) == []
+
+
+def _human_input_graph(delivery_methods: object) -> dict:
+    return {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "custom",
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "review",
+                "type": "custom",
+                "data": {
+                    "type": "human-input",
+                    "title": "Review",
+                    "delivery_methods": delivery_methods,
+                    "form_content": "Review and approve. {{#$output.comment#}}",
+                    "inputs": [
+                        {
+                            "type": "paragraph",
+                            "output_variable_name": "comment",
+                            "default": {"type": "constant", "selector": [], "value": ""},
+                        }
+                    ],
+                    "user_actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
+                    "timeout": 3,
+                    "timeout_unit": "day",
+                },
+            },
+            {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-review", "source": "start", "target": "review", "sourceHandle": "source"},
+            {"id": "approved", "source": "review", "target": "end", "sourceHandle": "approve"},
+            {"id": "timed-out", "source": "review", "target": "end", "sourceHandle": "__timeout"},
+        ],
+    }
+
+
+def test_preflight_rejects_a_channel_kind_used_as_the_human_input_delivery_uuid():
+    graph = _human_input_graph([{"id": "webapp", "type": "webapp", "enabled": True}])
+
+    errors = preflight_errors(graph)
+
+    assert len(errors) == 1
+    assert errors[0].startswith("node 'review' (human-input): ")
+    assert "0.webapp.id" in errors[0]
+    assert "UUID" in errors[0]
+
+
+@pytest.mark.parametrize("delivery_id", [None, "b3d2e84f-5629-4f43-9662-ac69ed1b551c"])
+def test_preflight_accepts_native_human_input_delivery_ids_without_changing_the_graph(delivery_id):
+    method = {"type": "webapp", "enabled": True}
+    if delivery_id is not None:
+        method["id"] = delivery_id
+    graph = _human_input_graph([method])
+    before = copy.deepcopy(graph)
+
+    assert preflight_errors(graph) == []
+    node_data = validate_node_config(graph["nodes"][1])
+    methods = parse_human_input_delivery_methods(node_data)
+
+    assert len(methods) == 1
+    assert isinstance(methods[0].id, UUID)
+    if delivery_id is None:
+        assert methods[0].id.version == 4
+        assert "id" not in node_data.model_dump()["delivery_methods"][0]
+    else:
+        assert methods[0].id == UUID("b3d2e84f-5629-4f43-9662-ac69ed1b551c")
+        assert node_data.model_dump()["delivery_methods"][0]["id"] == delivery_id
+    form_data = HumanInputNodeData.model_validate(node_data.model_dump())
+    assert form_data.user_actions[0].id == "approve"
+    assert form_data.inputs[0].output_variable_name == "comment"
+    assert graph["nodes"][0]["data"]["variables"] == []
+    assert [edge["sourceHandle"] for edge in graph["edges"][1:]] == ["approve", "__timeout"]
+    assert graph == before
+
+
+@pytest.mark.parametrize(
+    ("delivery_methods", "location", "error_type"),
+    [
+        ([{"id": "webapp", "type": "webapp", "enabled": False}], (0, "webapp", "id"), "uuid_parsing"),
+        (["raw-method"], (0,), "model_attributes_type"),
+        ([{"type": "unknown"}], (0,), "union_tag_invalid"),
+        ([{"type": "email"}], (0, "email", "config"), "missing"),
+        ([{"type": "webapp", "config": "raw-config"}], (0, "webapp", "config"), "model_type"),
+    ],
+)
+def test_preflight_preserves_human_input_delivery_adapter_failures(delivery_methods, location, error_type):
+    graph = _human_input_graph(delivery_methods)
+    before = copy.deepcopy(graph)
+
+    errors = preflight_errors(graph)
+
+    assert len(errors) == 1
+    assert errors[0].startswith("node 'review' (human-input): ")
+    with pytest.raises(ValueError) as excinfo:
+        validate_node_config(graph["nodes"][1])
+    assert isinstance(excinfo.value.__cause__, ValidationError)
+    error = excinfo.value.__cause__.errors()[0]
+    assert error["loc"] == location
+    assert error["type"] == error_type
+    assert graph == before
+
+
+@pytest.mark.parametrize("delivery_methods", [None, "raw-methods", {"type": "webapp"}, []])
+def test_preflight_keeps_the_delivery_adapters_empty_result_for_non_lists(delivery_methods):
+    graph = _human_input_graph(delivery_methods)
+
+    assert preflight_errors(graph) == []
+    node_data = validate_node_config(graph["nodes"][1])
+    assert parse_human_input_delivery_methods(node_data) == []
 
 
 def _http_node(node_id: str, authorization: dict) -> dict:

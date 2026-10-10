@@ -21,8 +21,10 @@ class _Result:
 class _FakeInstance:
     def __init__(self, replies):
         self._r = list(replies)
+        self.calls = []
 
     def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
+        self.calls.append((prompt_messages, model_parameters, stop, stream))
         return _Result(self._r.pop(0))
 
 
@@ -232,15 +234,118 @@ def test_propose_plan_v1_returns_bullets():
     assert build.propose_plan_v1(m, {"x": 1}) == ["Ingest", "Summarize", "Emit"]
 
 
-def test_propose_plan_v1_degrades_on_none():
+def test_propose_plan_v1_reports_no_plan_without_a_model():
     out = build.propose_plan_v1(None, {})
-    assert out == ["Ingest the input", "Process with an LLM", "Emit the result"]
+    assert out == []
 
 
-def test_propose_plan_v1_degrades_on_boom():
+def test_propose_plan_v1_reports_no_plan_on_provider_failure():
     m = _BoomInstance()
     out = build.propose_plan_v1(m, {})
-    assert out == ["Ingest the input", "Process with an LLM", "Emit the result"]
+    assert out == []
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "not JSON",
+        "[]",
+        "{}",
+        '{"plan": []}',
+        '{"plan": "step"}',
+        '{"plan": {"step": "work"}}',
+        '{"plan": ["valid", null]}',
+        '{"plan": ["valid", ""]}',
+        '{"plan": ["valid", "  "]}',
+        '{"plan": ["valid", 7]}',
+        '{"plan": ["valid", true]}',
+        '{"plan": ["valid", ["nested"]]}',
+        '{"plan": ["valid", {"step": "nested"}]}',
+    ],
+)
+def test_propose_plan_v1_rejects_the_entire_invalid_plan_with_one_correction(reply):
+    model = _FakeInstance([reply, reply])
+
+    assert build.propose_plan_v1(model, {"count": 2}) == []
+    assert len(model.calls) == 2
+
+
+def test_propose_plan_v1_corrects_schema_once_with_full_source_and_same_provider_parameters():
+    goal = "Produce a 文件 " + ("original source " * 300) + "UNTRUNCATED_END"
+    requirements = {"title": "报告", "render_api_url": "", "count": 2}
+    model = _FakeInstance(['{"plan": ["valid", 7]}', '{"plan": ["start node reads input", "end node returns link"]}'])
+    reasoning = []
+
+    out = build.propose_plan_v1(model, requirements, reasoning.append, goal_text=goal)
+
+    assert out == ["start node reads input", "end node returns link"]
+    assert len(model.calls) == 2
+    source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
+    assert model.calls[0][0][1].content == source
+    assert model.calls[1][0][1].content.startswith(source + "\n\n")
+    assert model.calls[0][0][0].content == model.calls[1][0][0].content
+    assert model.calls[0][1:] == model.calls[1][1:]
+
+
+def test_propose_plan_v1_does_not_retry_a_provider_failure():
+    class FailingProvider:
+        calls = 0
+
+        def invoke_llm(self, **kwargs):  # noqa: ARG002
+            self.calls += 1
+            raise RuntimeError("provider unavailable")
+
+    model = FailingProvider()
+
+    assert build.propose_plan_v1(model, {}) == []
+    assert model.calls == 1
+
+
+def test_propose_plan_v1_preserves_valid_plan_strings_without_content_thresholds():
+    model = _FakeInstance(['{"plan": ["start node: collect input", "llm node: draft", "end node: return"]}'])
+
+    assert build.propose_plan_v1(model, {}) == ["start node: collect input", "llm node: draft", "end node: return"]
+    assert len(model.calls) == 1
+
+
+def test_discover_resources_retains_full_source_in_model_payload(monkeypatch):
+    goal = "Use only the company knowledge base; optionally consider exports. " * 200
+    requirements = {"answer_language": "中文", "approved_dataset": "kb-1"}
+    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
+    model = _FakeInstance(['{"resource_ids": ["kb-1"]}'])
+
+    options = build.discover_resources(model, "t1", ["retrieve knowledge"], goal_text=goal, requirements=requirements)
+
+    assert [option.id for option in options] == ["kb-1"]
+    payload = model.calls[0][0][1].content
+    source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
+    assert payload.startswith(source + "\n\nPLAN:\nretrieve knowledge\n\nAVAILABLE:\n")
+    assert payload.endswith("- kb-1 (knowledge, ready): Company KB")
+
+
+def test_assess_capability_gap_retains_source_and_distinguishes_same_label_resource_ids():
+    from core.dify_builder.contract import ResourceOption
+
+    goal = "A company endpoint returns the requested 文件 link. " * 200
+    requirements = {"render_api_url": "", "artifact": "pptx"}
+    options = [
+        ResourceOption(id="provider/send", label="Send", meta="", kind="plugin", readiness="ready"),
+        ResourceOption(id="other/send", label="Send", meta="", kind="plugin", readiness="missing_config"),
+    ]
+    model = _FakeInstance(['{"gap": ""}'])
+
+    assert (
+        build.assess_capability_gap(
+            model, ["http-request node sends slides"], options, goal_text=goal, requirements=requirements
+        )
+        == ""
+    )
+    payload = model.calls[0][0][1].content
+    source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
+    assert payload == (
+        source + "\n\nPLAN:\nhttp-request node sends slides\n\nAVAILABLE:\n"
+        "- provider/send (plugin, ready): Send\n- other/send (plugin, missing_config): Send"
+    )
 
 
 def test_discover_resources_grounds_real_ids(monkeypatch):
@@ -742,12 +847,12 @@ def test_plan_prompt_carries_the_node_vocabulary(monkeypatch):
     generator was then asked to map steps onto nodes that do not exist."""
     captured = {}
 
-    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
         captured["user"] = user
-        return {"plan": ["Start node collects the review list"]}
+        return json.dumps({"plan": ["Start node collects the review list"]})
 
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {"goal": "summarise reviews"})
 
     system = captured["system"]
@@ -765,11 +870,11 @@ def test_plan_prompt_names_capabilities_dify_lacks(monkeypatch):
     common ones explicitly so the model routes them instead of inventing."""
     captured = {}
 
-    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return {"plan": ["step"]}
+        return json.dumps({"plan": ["step"]})
 
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {})
 
     lowered = captured["system"].lower()
@@ -783,11 +888,11 @@ def test_plan_prompt_still_requests_json_and_language(monkeypatch):
     Builder replies in the user's language."""
     captured = {}
 
-    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return {"plan": ["step"]}
+        return json.dumps({"plan": ["step"]})
 
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {})
 
     assert '{"plan": ["step", ...]}' in captured["system"]
@@ -907,11 +1012,11 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
     REQUIREMENTS only -- it could not name a tool it had never seen."""
     captured = {}
 
-    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return {"plan": ["tool node converts the outline to a PPTX"]}
+        return json.dumps({"plan": ["tool node converts the outline to a PPTX"]})
 
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     tools = [resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")]
 
     build.propose_plan_v1(_FakeInstance([]), {"goal": "make a deck"}, tools=tools)
@@ -920,7 +1025,7 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
     assert "bowenliang123/md_exporter/md_exporter/md_to_pptx" in system
     assert "Markdown ⮕ PPTX" in system
     assert "installed tools" in system.lower()
-    # http-request survives, but only for an endpoint the user actually supplied
+    # HTTP remains available without authorizing an invented endpoint.
     assert "http-request" in system
     assert "invent" in system.lower()
     # the generator pins a tool only on its id as a whole word -- an id glued
@@ -932,11 +1037,11 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
 def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
     captured = {}
 
-    def fake_invoke_json(model, *, system, user, **kw):  # noqa: ARG001
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return {"plan": ["step"]}
+        return json.dumps({"plan": ["step"]})
 
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
 
     build.propose_plan_v1(_FakeInstance([]), {})
 

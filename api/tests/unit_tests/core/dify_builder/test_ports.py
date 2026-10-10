@@ -119,13 +119,13 @@ class _StubAgent:
     def propose_app_name(self, _goal_text, _requirements):
         return ""
 
-    def propose_plan_v1(self, _requirements):
+    def propose_plan_v1(self, _requirements, *, goal_text):  # noqa: ARG002
         return []
 
-    def discover_resources(self, _plan_items):
+    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
         return []
 
-    def assess_capability_gap(self, _plan_items, _options):
+    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):  # noqa: ARG002
         return ""
 
     def bind_resources(self, _plan_items, _resource_ids):
@@ -166,6 +166,9 @@ class _StubAgent:
 class _StubDifyPort:
     """A trivial conforming DifyPort. Takes `actor`, never ForwardAuth."""
 
+    def get_app_mode(self, _app_id, _actor):
+        return "workflow"
+
     def read_graph(self, _app_id, _actor):
         return {}, "hash-1"
 
@@ -183,6 +186,9 @@ class _StubDifyPort:
 
     def restore_graph(self, _app_id, _actor, _graph):
         return "hash-restored"
+
+    def graph_revision(self, _graph):
+        return "graph"
 
     def structural_fingerprint(self, _graph):
         return "fp-stub"
