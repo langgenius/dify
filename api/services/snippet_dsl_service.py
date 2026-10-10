@@ -185,6 +185,17 @@ class SnippetDslService:
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = _check_version_compatibility(imported_version)
+            if status == ImportStatus.FAILED:
+                # An invalid DSL version must be rejected without creating or
+                # updating any snippet: the failed check would otherwise fall
+                # through to `_create_or_update_snippet` and persist rows that
+                # the caller believes failed (see #43471).
+                return SnippetImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    imported_dsl_version=imported_version,
+                    error=f"Invalid DSL version: '{imported_version}'. Expected a supported version (current: {CURRENT_DSL_VERSION}).",
+                )
 
             # Extract snippet data
             snippet_data = data.get("snippet")
