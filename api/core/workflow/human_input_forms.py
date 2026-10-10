@@ -17,8 +17,9 @@ from core.workflow.human_input_policy import (
     HumanInputSurface,
     disposition_for_surface,
 )
+from enums.human_input import RecipientType
 from extensions.ext_database import db
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputFormRecipient
 
 
 def load_form_dispositions_by_form_id(

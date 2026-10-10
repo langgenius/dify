@@ -19,12 +19,12 @@ from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import App, AppMode, Site
 from services.feature_service import FeatureService
 from services.human_input_service import Form, FormNotFoundError, HumanInputService

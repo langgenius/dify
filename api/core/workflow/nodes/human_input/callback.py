@@ -8,17 +8,16 @@ from typing import Any
 
 from configs import dify_config
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
-from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
+from enums.human_input import HumanInputFormStatus
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
-
-from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
-from .entities import (
+from models.human_input_delivery import DeliveryChannelConfig
+from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -26,7 +25,8 @@ from .entities import (
     ParagraphInputConfig,
     SelectInputConfig,
 )
-from .enums import HumanInputFormStatus
+
+from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .session_binding import default_session_binding
 
 logger = logging.getLogger(__name__)

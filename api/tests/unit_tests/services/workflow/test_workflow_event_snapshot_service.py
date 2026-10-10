@@ -22,15 +22,15 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import RecipientType, ValueSourceType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import SelectInputConfig, StringListSource
 from models.model import AppMode, Message
 from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot

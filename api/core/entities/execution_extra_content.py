@@ -5,8 +5,8 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
+from models.human_input_entities import FormInputConfig, UserActionConfig
 
 
 class HumanInputFormDefinition(BaseModel):

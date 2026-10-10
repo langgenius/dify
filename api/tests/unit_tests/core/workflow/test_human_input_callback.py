@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.session_binding import SessionBinding
+from enums.human_input import HumanInputFormStatus
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 
 
 @dataclass(frozen=True, slots=True)
