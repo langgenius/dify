@@ -67,7 +67,7 @@ from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 _PLUGIN_PACKAGE_UPLOAD_PARAMS = {
     "pkg": {

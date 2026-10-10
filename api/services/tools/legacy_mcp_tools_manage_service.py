@@ -22,11 +22,9 @@ from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
-from core.tools.errors import ToolProviderNotFoundError
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
-from services.tools.provider_queries import ToolProviders
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +171,17 @@ class MCPToolManageService:
                 server_identifier=id_or_server_identifier, tenant_id=tenant_id
             )
 
+    def get_provider_entity_by_persisted_reference(
+        self, *, id_or_server_identifier: str, tenant_id: str
+    ) -> MCPProviderEntity:
+        """Resolve a provider entity from a persisted graph or agent config reference.
+
+        Accepts both meanings — see get_provider_by_persisted_reference.
+        """
+        return self.get_provider_by_persisted_reference(
+            id_or_server_identifier=id_or_server_identifier, tenant_id=tenant_id
+        ).to_entity()
+
     def create_provider(
         self,
         *,
@@ -188,8 +197,8 @@ class MCPToolManageService:
         authentication: MCPAuthentication | None = None,
         headers: dict[str, str] | None = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
-    ) -> str:
-        """Create a new MCP provider and return its ID for reads after commit."""
+    ) -> ToolProviderApiEntity:
+        """Create a new MCP provider."""
         # Validate URL format
         if not self._is_valid_url(server_url):
             raise ValueError("Server URL is not valid.")
@@ -229,7 +238,8 @@ class MCPToolManageService:
         self._session.add(mcp_tool)
         self._session.flush()
 
-        return mcp_tool.id
+        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
+        return mcp_providers
 
     def update_provider(
         self,
@@ -324,21 +334,34 @@ class MCPToolManageService:
         mcp_tool = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
         self._session.delete(mcp_tool)
 
-    @staticmethod
-    def list_providers(
-        *, tenant_id: str, tool_providers: ToolProviders, include_sensitive: bool = True
-    ) -> list[ToolProviderApiEntity]:
-        return [
-            ToolTransformService.mcp_provider_to_user_provider(record, include_sensitive=include_sensitive)
-            for record in tool_providers.mcp_providers(tenant_id=tenant_id)
-        ]
+    def list_providers(self, *, tenant_id: str, include_sensitive: bool = True) -> list[ToolProviderApiEntity]:
+        """List all MCP providers for a tenant.
 
-    @staticmethod
-    def provider_response(*, tenant_id: str, provider_id: str, tool_providers: ToolProviders) -> ToolProviderApiEntity:
-        record = tool_providers.mcp_record(tenant_id=tenant_id, provider_id=provider_id)
-        if record is None:
-            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
-        return ToolTransformService.mcp_provider_to_user_provider(record)
+        Args:
+            tenant_id: Tenant ID
+            include_sensitive: If False, skip expensive decryption operations (default: True for backward compatibility)
+        """
+        from models.account import Account
+
+        stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
+        mcp_providers = self._session.scalars(stmt).all()
+
+        if not mcp_providers:
+            return []
+
+        # Batch query all users to avoid N+1 problem
+        user_ids = {provider.user_id for provider in mcp_providers}
+        users = self._session.scalars(select(Account).where(Account.id.in_(user_ids))).all()
+        user_name_map = {user.id: user.name for user in users}
+
+        return [
+            ToolTransformService.mcp_provider_to_user_provider(
+                provider,
+                user_name=user_name_map.get(provider.user_id),
+                include_sensitive=include_sensitive,
+            )
+            for provider in mcp_providers
+        ]
 
     # ========== Tool Operations ==========
 
@@ -730,7 +753,7 @@ class MCPToolManageService:
         response = provider_entity.to_api_response(
             user_name=user_name,
         )
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(tools, user_name=user_name)
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools, user_name=user_name)
         response["plugin_unique_identifier"] = provider_entity.server_identifier
         return ToolProviderApiEntity(**response)
 

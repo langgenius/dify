@@ -11,7 +11,7 @@ from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.app_service import AppService, CreateAppParams
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -28,10 +28,12 @@ class TestWorkflowToolManageService:
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
             patch(
-                "services.tools.workflow_tools_manage_service.WorkflowToolProviderController"
+                "services.tools.legacy_workflow_tools_manage_service.WorkflowToolProviderController"
             ) as mock_workflow_tool_provider_controller,
-            patch("services.tools.workflow_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
-            patch("services.tools.workflow_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
+            patch("services.tools.legacy_workflow_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
+            patch(
+                "services.tools.legacy_workflow_tools_manage_service.ToolTransformService"
+            ) as mock_tool_transform_service,
         ):
             # Setup default mock returns for app service
             mock_feature_service.is_webapp_auth_enabled.return_value = False

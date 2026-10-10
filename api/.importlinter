@@ -67,7 +67,7 @@ ignore_imports =
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
-    core.mcp.auth_client -> services.tools.mcp_tools_manage_service
+    core.mcp.auth_client -> services.tools.legacy_mcp_tools_manage_service
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
@@ -83,16 +83,16 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    core.tools.tool_manager -> services.tools.builtin_tools_manage_service
-    core.tools.tool_manager -> services.tools.mcp_tools_manage_service
-    core.tools.tool_manager -> services.tools.tools_transform_service
-    core.workflow.node_runtime -> services.tools.builtin_tools_manage_service
+    core.tools.tool_manager -> services.tools.legacy_builtin_tools_manage_service
+    core.tools.tool_manager -> services.tools.legacy_mcp_tools_manage_service
+    core.tools.tool_manager -> services.tools.legacy_tools_transform_service
+    core.workflow.node_runtime -> services.tools.legacy_builtin_tools_manage_service
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
-    core.workflow.nodes.agent.message_transformer -> services.tools.builtin_tools_manage_service
+    core.workflow.nodes.agent.message_transformer -> services.tools.legacy_builtin_tools_manage_service
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
-    core.workflow.nodes.agent_v2.dify_tools_builder -> services.tools.mcp_tools_manage_service
+    core.workflow.nodes.agent_v2.dify_tools_builder -> services.tools.legacy_mcp_tools_manage_service
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
@@ -1221,4 +1221,36 @@ forbidden_modules =
     flask
     controllers
     extensions
+allow_indirect_imports = True
+
+[importlinter:contract:api-tool-provider-boundary]
+name = API tool providers build runtimes from loaded configuration
+type = forbidden
+source_modules =
+    services.tools.api.provider
+    services.tools.tool_manager
+    services.tools.tools_transform_service
+    services.tools.api.contracts
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:builtin-tool-credential-boundary]
+name = Builtin tool credential resolution owns no database or composition dependencies
+type = forbidden
+source_modules =
+    services.tools.builtin.credentials
+    services.tools.provider_queries
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
 allow_indirect_imports = True
