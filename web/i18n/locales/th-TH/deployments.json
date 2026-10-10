@@ -79,7 +79,6 @@
   "studio.accessControl.tooltipPaused": "ตั้งค่าแล้ว แต่หยุดไว้ชั่วคราว",
   "studio.accessControl.tooltipPro": "การควบคุมการเข้าถึงพร้อมใช้งานในแผน Professional และ Team",
   "studio.accessControl.tooltipProtected": "จุดเข้าถึง {{n}} จาก {{total}} จุดได้รับการป้องกัน",
-  "studio.accessControl.tooltipProtectedPartial": "จุดเข้าถึง {{n}} จาก {{total}} จุดได้รับการป้องกัน",
   "studio.accessControl.turnOffConfirm": "ปิด",
   "studio.accessControl.turnOffDescription": "จุดเข้าถึงทั้งหมดจะสามารถเข้าถึงได้จากทุกที่อยู่ IP โดยจะเก็บการตั้งค่าของคุณไว้",
   "studio.accessControl.turnOffTitle": "ปิดการควบคุมการเข้าถึงตาม IP หรือไม่?",

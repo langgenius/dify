@@ -79,7 +79,6 @@
   "studio.accessControl.tooltipPaused": "Konfiguriert, aber pausiert",
   "studio.accessControl.tooltipPro": "Die Zugriffskontrolle ist in den Tarifen Professional und Team verfügbar.",
   "studio.accessControl.tooltipProtected": "{{n}} von {{total}} Zugriffspunkten sind geschützt",
-  "studio.accessControl.tooltipProtectedPartial": "{{n}} von {{total}} Zugriffspunkten sind geschützt",
   "studio.accessControl.turnOffConfirm": "Deaktivieren",
   "studio.accessControl.turnOffDescription": "Alle Zugriffspunkte sind dann von jeder IP-Adresse aus erreichbar. Deine Konfiguration bleibt erhalten.",
   "studio.accessControl.turnOffTitle": "IP-Zugriffskontrolle deaktivieren?",

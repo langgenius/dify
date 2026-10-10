@@ -79,7 +79,6 @@
   "studio.accessControl.tooltipPaused": "已配置但已暂停",
   "studio.accessControl.tooltipPro": "访问控制功能适用于 Professional 和 Team 套餐。",
   "studio.accessControl.tooltipProtected": "{{total}} 个访问入口中有 {{n}} 个受到保护",
-  "studio.accessControl.tooltipProtectedPartial": "{{total}} 个访问入口中的 {{n}} 个已保护",
   "studio.accessControl.turnOffConfirm": "关闭",
   "studio.accessControl.turnOffDescription": "所有访问入口都将可从任意 IP 地址访问。你的配置将被保留。",
   "studio.accessControl.turnOffTitle": "关闭 IP 访问控制？",

@@ -3038,7 +3038,6 @@ export default interface Resources {
     'studio.accessControl.tooltipPaused': 'Configured but paused'
     'studio.accessControl.tooltipPro': 'Access control is available on Professional and Team plans.'
     'studio.accessControl.tooltipProtected': '{{n}} of {{total}} access points are protected'
-    'studio.accessControl.tooltipProtectedPartial': '{{n}} of {{total}} access points are protected'
     'studio.accessControl.turnOffConfirm': 'Turn off'
     'studio.accessControl.turnOffDescription': 'All access points will be reachable from any IP address. Your configuration will be kept.'
     'studio.accessControl.turnOffTitle': 'Turn off IP access control?'

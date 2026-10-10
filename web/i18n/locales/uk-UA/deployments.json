@@ -81,7 +81,6 @@
   "studio.accessControl.tooltipPaused": "Налаштовано, але призупинено",
   "studio.accessControl.tooltipPro": "Керування доступом доступне в планах Professional і Team.",
   "studio.accessControl.tooltipProtected": "Захищено точок доступу: {{n}} із {{total}}",
-  "studio.accessControl.tooltipProtectedPartial": "Захищено точок доступу: {{n}} із {{total}}",
   "studio.accessControl.turnOffConfirm": "Вимкнути",
   "studio.accessControl.turnOffDescription": "Усі точки доступу стануть доступними з будь-якої IP-адреси. Вашу конфігурацію буде збережено.",
   "studio.accessControl.turnOffTitle": "Вимкнути контроль доступу за IP?",

@@ -79,7 +79,6 @@
   "studio.accessControl.tooltipPaused": "設定済みですが一時停止中です",
   "studio.accessControl.tooltipPro": "アクセス制御は Professional および Team プランで利用できます。",
   "studio.accessControl.tooltipProtected": "{{total}} 個のアクセスポイントのうち {{n}} 個が保護されています",
-  "studio.accessControl.tooltipProtectedPartial": "アクセスポイント {{total}} 個中 {{n}} 個が保護されています",
   "studio.accessControl.turnOffConfirm": "オフにする",
   "studio.accessControl.turnOffDescription": "すべてのアクセスポイントが任意の IP アドレスからアクセス可能になります。設定は保持されます。",
   "studio.accessControl.turnOffTitle": "IP アクセス制御をオフにしますか？",
