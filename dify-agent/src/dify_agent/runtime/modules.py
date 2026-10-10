@@ -99,7 +99,7 @@ def load_modules(
     for name, cfg in configs.items():
         module = registry[name]
         for field, expected_module in _REFERENCES.get(module, {}).items():
-            target = getattr(cfg, field)
+            target = cast(str | None, layers[name]["config"][field])
             if target is None:
                 continue
             if target not in layers or registry[target] is not expected_module:
