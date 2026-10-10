@@ -163,3 +163,34 @@ def test_changing_node_type_cannot_bypass_existing_external_guard():
     graph = _graph("code", type_marker="compute")
 
     assert fix._shape_risk([_set("type", "http-request")], graph, Risk(level="low")).level == "high"
+
+
+@pytest.mark.parametrize("grouped", [False, True], ids=["ordinary", "grouped"])
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_native_aggregator_selector_changes_require_approval_only_when_final_access_changes(grouped, effect):
+    """Missing aggregator projection would auto-approve an upstream data-source switch."""
+    from services.dify_builder.mutation_policy import sensitive_change_reasons
+
+    graph = _graph(
+        "variable-aggregator",
+        title="Aggregator",
+        output_type="string",
+        variables=[["source-a", "text"]],
+        advanced_settings={
+            "group_enabled": grouped,
+            "groups": [{"group_name": "answer", "output_type": "string", "variables": [["source-a", "text"]]}],
+        },
+    )
+    path = "advanced_settings.groups.0.variables" if grouped else "variables"
+    intents = [_set(path, [["source-a" if effect == "identical" else "source-b", "text"]])]
+    if effect == "reverted":
+        intents.append(_set(path, [["source-a", "text"]]))
+    intents.append(_set("title", "Corrected aggregator"))
+    before = deepcopy((graph, intents))
+
+    reasons = sensitive_change_reasons(graph, intents)
+    risk = fix._shape_risk(intents, graph, Risk(level="low", reason="safe config repair"))
+
+    assert bool(reasons) is (effect == "switch")
+    assert risk.level == ("high" if effect == "switch" else "low")
+    assert (graph, intents) == before
