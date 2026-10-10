@@ -408,9 +408,9 @@ class BaseAgentRunner(AppRunner):
                         else:
                             tool_responses = dict.fromkeys(tool_names, observation_payload)
 
-                        for tool in tool_names:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
+                        for index, tool in enumerate(tool_names):
+                            # Keep IDs stable across turns so replayed history can use prompt caching.
+                            tool_call_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{agent_thought.id}:{index}:{tool}"))
                             tool_calls.append(
                                 AssistantPromptMessage.ToolCall(
                                     id=tool_call_id,
