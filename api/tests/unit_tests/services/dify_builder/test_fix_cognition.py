@@ -1,6 +1,8 @@
 import json
 from copy import deepcopy
 
+import pytest
+
 from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
 from services.dify_builder import credentials
 from services.dify_builder.agent import fix, graph_prompt
@@ -323,6 +325,39 @@ def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_
     assert "connection refused" in prompt
     assert "no node executed" in prompt
     assert (run, graph) == before
+
+
+@pytest.mark.parametrize("credential_source", ["run", "outputs"])
+def test_diagnose_withholds_runtime_only_credentials_repeated_in_graph_labels(credential_source):
+    graph = {
+        "nodes": [
+            {"id": "http1", "data": {"type": "http-request", "title": "HTTP runtime-only-private"}},
+            {
+                "id": "branch1",
+                "data": {"type": "if-else", "title": "Branch", "cases": [{"case_id": "runtime-only-private"}]},
+            },
+        ],
+        "edges": [{"source": "branch1", "target": "http1", "sourceHandle": "runtime-only-private"}],
+    }
+    credential_output = NodeOutput(
+        node_id="earlier1", status="success", inputs={"nested": [{"api_key": "runtime-only-private"}]}
+    )
+    run = Run(status="failed", per_node=[credential_output] if credential_source == "run" else [], immutable=True)
+    outputs = [NodeOutput(node_id="http1", status="failed", error="connection refused")]
+    if credential_source == "outputs":
+        outputs.append(credential_output)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    diagnosis = fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "runtime-only-private" not in prompt
+    assert f"HTTP {credentials.REDACTED}" in prompt
+    assert f"-[{credentials.REDACTED}]->" in prompt
+    assert "connection refused" in prompt
+    assert diagnosis.culprit_node_id == "http1"
+    assert (run, graph, outputs) == before
 
 
 _SECRET_HTTP_GRAPH = {
