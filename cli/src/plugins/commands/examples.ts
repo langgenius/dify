@@ -5,7 +5,7 @@ import { argToken, flagToken } from '@/util/flag-name'
 import { shellWord } from '@/util/shell-word'
 import { BINARY } from '@/version/info'
 
-export type CommandExample = Readonly<{ title: string; command: string }>
+export type CommandExample = Example & Readonly<{ command: string }>
 
 type ExampleSource = Readonly<{ id: string; input: JsonSchema; positional: readonly string[] }>
 
@@ -49,18 +49,17 @@ export function exampleLine(d: ExampleSource, example: Example): string {
   ].join(COMMAND_SEPARATOR)
 }
 
-// A server that ships no example still gets a runnable line: the required fields,
-// each standing for itself.
 export function commandExamples(d: ExampleSource, examples: readonly Example[]): CommandExample[] {
+  return examples.map((example) => ({ ...example, command: exampleLine(d, example) }))
+}
+
+// The text view of a command that ships no example still gets a runnable line: the
+// required fields, each standing for itself.
+export function skeletonExample(d: ExampleSource): CommandExample {
   const required = Array.isArray(d.input.required) ? d.input.required.map(String) : []
-  const shown =
-    examples.length > 0
-      ? examples
-      : [
-          {
-            title: SKELETON_TITLE,
-            input: Object.fromEntries(required.map((n) => [n, argToken(n)])),
-          },
-        ]
-  return shown.map((example) => ({ title: example.title, command: exampleLine(d, example) }))
+  const example = {
+    title: SKELETON_TITLE,
+    input: Object.fromEntries(required.map((name) => [name, argToken(name)])),
+  }
+  return { ...example, command: exampleLine(d, example) }
 }
