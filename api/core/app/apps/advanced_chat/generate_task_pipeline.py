@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
+from core.app.apps.common.user_snapshot import UserSnapshot
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import (
@@ -152,7 +153,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_manager: AppQueueManager,
         conversation: ConversationSnapshot,
         message: MessageSnapshot,
-        user: Union[Account, EndUser],
+        user: Union[Account, EndUser, UserSnapshot],
         stream: bool,
         dialogue_count: int,
         draft_var_saver_factory: DraftVariableSaverFactory,
@@ -163,17 +164,15 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             stream=stream,
         )
 
-        match user:
-            case EndUser():
-                self._user_id = user.id
-                user_session_id = user.session_id
-                self._created_by_role = CreatorUserRole.END_USER
-            case Account():
-                self._user_id = user.id
-                user_session_id = user.id
-                self._created_by_role = CreatorUserRole.ACCOUNT
-            case _:
-                raise NotImplementedError(f"User type not supported: {type(user)}")
+        user_snapshot = user if isinstance(user, UserSnapshot) else UserSnapshot.from_user(user)
+        if user_snapshot.is_account:
+            self._user_id = user_snapshot.id
+            user_session_id = user_snapshot.id
+            self._created_by_role = CreatorUserRole.ACCOUNT
+        else:
+            self._user_id = user_snapshot.id
+            user_session_id = user_snapshot.session_id
+            self._created_by_role = CreatorUserRole.END_USER
 
         self._workflow_system_variables = build_system_variables(
             query=message.query,
@@ -187,7 +186,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         self._workflow_response_converter = WorkflowResponseConverter(
             application_generate_entity=application_generate_entity,
-            user=user,
+            user=user_snapshot,
             system_variables=self._workflow_system_variables,
         )
 

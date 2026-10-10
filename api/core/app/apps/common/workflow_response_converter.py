@@ -9,6 +9,7 @@ from typing import Any, NewType, TypedDict, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.apps.common.user_snapshot import UserSnapshot
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -128,7 +129,7 @@ class WorkflowResponseConverter:
         self,
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
-        user: Union[Account, EndUser],
+        user: Union[Account, EndUser, UserSnapshot],
         system_variables: Sequence[Variable],
     ):
         self._application_generate_entity = application_generate_entity
@@ -283,18 +284,29 @@ class WorkflowResponseConverter:
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
-        match user:
-            case Account():
+        if isinstance(user, UserSnapshot):
+            if user.is_account:
                 created_by = AccountCreatedByDict(
                     id=user.id,
                     name=user.name,
                     email=user.email,
                 )
-            case EndUser():
+            else:
                 created_by = EndUserCreatedByDict(
                     id=user.id,
                     user=user.session_id,
                 )
+        elif isinstance(user, Account):
+            created_by = AccountCreatedByDict(
+                id=user.id,
+                name=user.name,
+                email=user.email,
+            )
+        else:
+            created_by = EndUserCreatedByDict(
+                id=user.id,
+                user=user.session_id,
+            )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
