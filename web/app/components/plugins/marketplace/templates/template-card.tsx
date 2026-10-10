@@ -10,6 +10,7 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import TemplateDetailDialog from './template-detail-dialog'
 
 type TemplateCardProps = {
@@ -22,6 +23,8 @@ const MAX_VISIBLE_PLUGIN_DEPENDENCIES = 7
 
 export default function TemplateCard({ template, className, partnerText }: TemplateCardProps) {
   const router = useRouter()
+  const navigation = useMarketplaceDetailNavigation()
+  const externalHref = navigation.templateHref(template)
   const [isDetailOpen, { setTrue: showDetail, setFalse: hideDetail }] = useBoolean(false)
   const publisher =
     template.publisher_handle || template.publisher_unique_handle || template.creator_email || ''
@@ -50,12 +53,22 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           className,
         )}
       >
-        <button
-          type="button"
-          aria-label={template.template_name}
-          className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={showDetail}
-        />
+        {externalHref ? (
+          <a
+            href={externalHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={template.template_name}
+            className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          />
+        ) : (
+          <button
+            type="button"
+            aria-label={template.template_name}
+            className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={showDetail}
+          />
+        )}
         <div className="relative z-0 flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <AppIcon
             size="large"
@@ -100,12 +113,14 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           )}
         </div>
       </article>
-      <TemplateDetailDialog
-        open={isDetailOpen}
-        template={template}
-        onInstall={handleInstall}
-        onOpenChange={handleOpenChange}
-      />
+      {!externalHref && (
+        <TemplateDetailDialog
+          open={isDetailOpen}
+          template={template}
+          onInstall={handleInstall}
+          onOpenChange={handleOpenChange}
+        />
+      )}
     </>
   )
 }
