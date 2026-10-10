@@ -17,18 +17,22 @@ from controllers.openapi._errors import (
     VersionNotFound,
 )
 from controllers.openapi._models import (
+    AdvancedChatNodeRunPayload,
     EnvVariableSetPayload,
+    NodeRunPayload,
     RestoreResponse,
     RunListQuery,
     RunListResponse,
     VersionListQuery,
 )
+from controllers.openapi._upload import file_fields
 from controllers.openapi.app_workflow import (
     AppEnvItemApi,
     AppRunNodeListApi,
     AppVersionListApi,
     AppVersionRestoreApi,
     env_variable_rows,
+    run_draft_node,
     with_next_cursor,
 )
 from controllers.openapi.auth.context import Context
@@ -236,3 +240,50 @@ def test_run_node_list_is_not_found_for_a_run_of_another_app(app: Flask, monkeyp
             cast(_EndpointView, api.get).__handler__(api, _app_context(run_id=run_id), "app-1", run_id)
 
     runs.get_workflow_run_node_executions.assert_not_called()
+
+
+@pytest.mark.parametrize("payload_cls", [NodeRunPayload, AdvancedChatNodeRunPayload])
+def test_node_run_payload_accepts_files_and_forbids_attachments(payload_cls: type[NodeRunPayload]) -> None:
+    assert payload_cls.model_validate({"inputs": {}, "files": None}).files is None
+    with pytest.raises(ValidationError):
+        payload_cls.model_validate({"attachments": []})
+
+
+def test_run_draft_node_merges_local_files_into_the_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = SimpleNamespace(graph_dict={"nodes": [{"id": "n1", "data": {}}]})
+    merge = Mock(return_value={"x": 1, "doc": {"id": "file-1"}})
+    monkeypatch.setattr(app_workflow, "merge_files", merge)
+    monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
+    monkeypatch.setattr(app_workflow.WorkflowRunNodeExecutionResponse, "model_validate", Mock())
+    ctx = _app_context()
+    parts = {"doc": Mock()}
+
+    run_draft_node(ctx, "n1", inputs={"x": 1}, query="", files=parts)
+
+    merge.assert_called_once_with({"x": 1}, parts, ctx.caller)
+    assert service.run_draft_workflow_node.call_args.kwargs["user_inputs"] == {"x": 1, "doc": {"id": "file-1"}}
+
+
+def test_node_run_payloads_take_files_as_multipart_parts() -> None:
+    assert file_fields(NodeRunPayload) == {"files"}
+    assert file_fields(AdvancedChatNodeRunPayload) == {"files"}
+
+
+@pytest.mark.parametrize(("files", "ends_transaction"), [({"doc": Mock()}, True), (None, False)])
+def test_run_draft_node_ends_the_read_transaction_before_uploading(
+    monkeypatch: pytest.MonkeyPatch, files: dict[str, Mock] | None, ends_transaction: bool
+) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.get_draft_workflow.return_value = SimpleNamespace(graph_dict={"nodes": [{"id": "n1", "data": {}}]})
+    calls = Mock()
+    monkeypatch.setattr(app_workflow, "end_read_transaction", calls.end)
+    monkeypatch.setattr(app_workflow, "merge_files", calls.merge)
+    monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
+    monkeypatch.setattr(app_workflow.WorkflowRunNodeExecutionResponse, "model_validate", Mock())
+    ctx = _app_context()
+
+    run_draft_node(ctx, "n1", inputs={}, query="", files=files)
+
+    names = [call[0] for call in calls.mock_calls]
+    assert names == (["end", "merge"] if ends_transaction else ["merge"])

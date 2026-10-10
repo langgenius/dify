@@ -1,31 +1,38 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import Protocol, cast
 from unittest.mock import Mock
 
 import pytest
+import yaml
 from flask import Flask
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
+from controllers.openapi._errors import DslInvalid
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    DslCheckPayload,
+    DslCheckResponse,
     Hint,
 )
-from controllers.openapi.app_dsl import AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import Subject
 from extensions.ext_database import db
 from machinery.context import RequestContext
 from models.model import App, AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.base import NoPermissionError
+from services.workflow.graph_check import IssueCode, IssueSeverity
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 
@@ -149,3 +156,144 @@ def test_export_reads_draft_hash_before_building_dsl(app: Flask, monkeypatch: py
     assert call_order == ["draft_hash", "export"]
     assert response.draft_hash == "hash-before-edit"
     assert status == 200
+
+
+class _CheckView(Protocol):
+    __handler__: Callable[..., tuple[DslCheckResponse, int]]
+
+
+_CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
+_START: dict[str, object] = {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}
+_END: dict[str, object] = {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}}
+_ANSWER: dict[str, object] = {"id": "a", "data": {"type": "answer", "title": "A", "answer": "hi"}}
+
+
+def _dsl(mode: str, *nodes: Mapping[str, object]) -> str:
+    return yaml.safe_dump(
+        {"app": {"mode": mode, "name": "x"}, "workflow": {"graph": {"nodes": list(nodes), "edges": []}}}
+    )
+
+
+class _Credentials:
+    def __init__(self, problem: str | None) -> None:
+        self._problem = problem
+
+    def validate_node_credentials(self, *_args: object, **_kwargs: object) -> None:
+        if self._problem:
+            raise ValueError(self._problem)
+
+
+@pytest.fixture
+def credentials(monkeypatch: pytest.MonkeyPatch) -> Callable[[str | None], None]:
+    monkeypatch.setattr(app_dsl, "session_factory", SimpleNamespace(create_session=nullcontext))
+
+    def set_problem(problem: str | None) -> None:
+        monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _Credentials(problem))
+
+    set_problem(None)
+    return set_problem
+
+
+def _check(app: Flask, body: DslCheckPayload) -> DslCheckResponse:
+    api = AppDslCheckApi()
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports:check", method="POST"):
+        response, status = cast(_CheckView, api.post).__handler__(api, _CONTEXT, workspace_id="workspace-1", body=body)
+    assert status == 200
+    return response
+
+
+def test_import_refuses_a_graph_with_errors_and_hints_the_check(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import_app = Mock()
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+
+    api = AppDslImportApi()
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
+        with pytest.raises(DslInvalid) as exc_info:
+            cast(_EndpointView, api.post).__handler__(
+                api,
+                _CONTEXT,
+                workspace_id="workspace-1",
+                body=AppDslImportPayload(mode="yaml-content", yaml_content=_dsl("workflow", _START, _ANSWER)),
+            )
+
+    import_app.assert_not_called()
+    assert [(d.type, d.loc) for d in exc_info.value.details or []] == [
+        (IssueCode.MODE_INCOMPATIBLE, ["nodes", "a", "data", "type"])
+    ]
+    assert [h.op for h in exc_info.value.hints or []] == [op_of(AppDslCheckApi.post)]
+
+
+@pytest.mark.parametrize(
+    "yaml_content",
+    [
+        pytest.param(_dsl("chat"), id="not-a-graph-mode"),
+        pytest.param("app: [", id="unparseable"),
+        pytest.param(_dsl("future-mode", _ANSWER), id="unknown-mode"),
+    ],
+)
+def test_import_leaves_dsls_the_check_cannot_read_to_the_import(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch, yaml_content: str
+) -> None:
+    result = Import(id="import-1", status=ImportStatus.FAILED, error="from the import")
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", lambda *_args, **_kwargs: result)
+
+    api = AppDslImportApi()
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
+        response, status = cast(_EndpointView, api.post).__handler__(
+            api,
+            _CONTEXT,
+            workspace_id="workspace-1",
+            body=AppDslImportPayload(mode="yaml-content", yaml_content=yaml_content),
+        )
+
+    assert (status, response.error) == (400, "from the import")
+
+
+@pytest.mark.usefixtures("app_query_services")
+def test_check_reports_credential_problems_as_warnings(app: Flask, credentials: Callable[[str | None], None]) -> None:
+    credentials("no key")
+
+    response = _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START, _END)))
+
+    assert response.valid is True
+    assert {(row.code, row.severity, row.message) for row in response.issues} == {
+        (IssueCode.RESOURCE_UNAVAILABLE, IssueSeverity.WARNING, "no key")
+    }
+
+
+@pytest.mark.usefixtures("credentials")
+def test_check_uses_the_overwritten_apps_mode(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        app_query_services.apps.console,
+        "get",
+        lambda *_args: SimpleNamespace(mode_compatible_with_agent=AppMode.ADVANCED_CHAT),
+    )
+
+    response = _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START, _END), app_id="app-1"))
+
+    assert response.valid is False
+    assert [(row.code, row.node_id) for row in response.issues] == [(IssueCode.MODE_INCOMPATIBLE, "end")]
+
+
+@pytest.mark.usefixtures("credentials")
+def test_check_answers_404_for_an_app_outside_the_workspace(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def missing(*_args: object) -> None:
+        raise ConsoleAppNotFoundError("App not found")
+
+    monkeypatch.setattr(app_query_services.apps.console, "get", missing)
+
+    with pytest.raises(NotFound):
+        _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START), app_id="app-1"))
+
+
+@pytest.mark.parametrize("yaml_content", [_dsl("chat"), _dsl("future-mode"), "app: [", "- a list"])
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_check_refuses_dsls_it_cannot_read(app: Flask, yaml_content: str) -> None:
+    with pytest.raises(BadRequest):
+        _check(app, DslCheckPayload(yaml_content=yaml_content))

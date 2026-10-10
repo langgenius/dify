@@ -138,7 +138,7 @@ class AppDescribeInfo(AppInfo):
     is_agent: bool = False
 
 
-class AppDescribeResponse(BaseModel):
+class AppDescribeResponse(Hinted):
     info: AppDescribeInfo | None = None
     parameters: dict[str, Any] | None = Field(default=None)
     input_schema: dict[str, Any] | None = Field(default=None)
@@ -557,13 +557,6 @@ class PluginInstallPayload(BaseModel):
     )
 
 
-class PluginUpgradePayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    plugin_id: str = Field(description="Installed plugin id such as langgenius/openai")
-    identifier: str = Field(description="Versioned id to upgrade to, from get.marketplace.plugin")
-
-
 class PluginTaskStartResponse(Hinted):
     task_id: str
     all_installed: bool
@@ -650,6 +643,69 @@ class AppDslExportResponse(BaseModel):
 
 class AppDslImportResponse(Import, Hinted):
     """`Import` plus the server-built next step for a pending import."""
+
+
+class DslCheckPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    yaml_content: str = Field(description="The DSL to check, as YAML text")
+    app_id: str | None = Field(None, description="Check against this existing app's mode, as an overwrite import would")
+
+
+class DslIssueRow(BaseModel):
+    code: str
+    severity: str = Field(description="error: import refuses it; warning: import allows it, publish does not")
+    node_id: str | None
+    loc: list[str | int]
+    message: str
+
+
+class DslCheckResponse(Hinted):
+    valid: bool = Field(description="No error-severity issues")
+    issues: list[DslIssueRow]
+
+
+class ReleaseCheckName(StrEnum):
+    DRAFT_VALID = "draft_valid"
+    TESTED = "tested"
+
+
+class ReleaseCheckRow(BaseModel):
+    name: ReleaseCheckName
+    passed: bool
+    detail: str
+
+
+class NodeChangeRow(BaseModel):
+    id: str
+    type: str
+    title: str
+    fields: list[str]
+
+
+class DraftChanges(BaseModel):
+    published: bool = Field(description="false when the app was never published; then everything counts as added")
+    nodes_added: list[NodeChangeRow]
+    nodes_removed: list[NodeChangeRow]
+    nodes_changed: list[NodeChangeRow]
+    edges_added: list[str]
+    edges_removed: list[str]
+    features_changed: bool
+    env_added: list[str]
+    env_removed: list[str]
+
+
+class ReleaseState(BaseModel):
+    service_api_enabled: bool
+    webapp_enabled: bool
+
+
+class ReleaseCheckResponse(Hinted):
+    ready: bool = Field(description="Every check passed; show the human `changes` and ask before publishing")
+    checks: list[ReleaseCheckRow]
+    issues: list[DslIssueRow]
+    state: ReleaseState
+    changes: DraftChanges
 
 
 class FormSubmitResponse(BaseModel):
@@ -870,6 +926,12 @@ class NodeRunPayload(BaseModel):
     inputs: dict[str, Any] = Field(
         default_factory=dict,
         description="Overrides for what the last draft run saved, keyed by variable reference such as #llm.text#",
+    )
+    files: UploadParts | None = Field(
+        default=None,
+        description=(
+            "Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded"
+        ),
     )
 
 
@@ -1145,6 +1207,13 @@ class ModelListQuery(PageQuery):
     query: str = Field("", description="Words to match in the model name, label or provider")
 
 
+class LlmModelBlock(BaseModel):
+    provider: str
+    name: str
+    mode: str
+    completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
 class ModelRow(BaseModel):
     provider: str
     provider_label: str | None
@@ -1153,9 +1222,50 @@ class ModelRow(BaseModel):
     label: str | None
     status: str = Field(description="active means usable now; anything else needs the provider set up")
     features: list[str]
+    node_model: LlmModelBlock | None = Field(None, description="LLM rows: paste as the node's model")
 
 
 class ModelListResponse(PaginationEnvelope[ModelRow]):
+    pass
+
+
+KNOWLEDGE_TOP_K: Final = 4
+
+
+class MultipleRetrievalFragment(BaseModel):
+    top_k: int = KNOWLEDGE_TOP_K
+    reranking_enable: bool = False
+
+
+class KnowledgeRetrievalFragment(BaseModel):
+    dataset_ids: list[str]
+    retrieval_mode: Literal["multiple"] = "multiple"
+    multiple_retrieval_config: MultipleRetrievalFragment = Field(default_factory=MultipleRetrievalFragment)
+
+
+class KnowledgeBaseListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the knowledge base name")
+
+
+class KnowledgeBaseRow(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    provider: str = Field(description="vendor: indexed in Dify; external: an external knowledge API")
+    indexing_technique: str | None
+    document_count: int
+    usable: bool = Field(description="false when its embedding model isn't available in this workspace")
+    node_data: KnowledgeRetrievalFragment = Field(
+        description=(
+            "Merge into a knowledge-retrieval node's data and set query_variable_selector; "
+            "to search several bases, join their dataset_ids. For rerank or weights read describe node_type"
+        )
+    )
+
+
+class KnowledgeBaseListResponse(PaginationEnvelope[KnowledgeBaseRow]):
     pass
 
 
@@ -1174,24 +1284,3 @@ class ModelCredentialCreatePayload(ModelRef):
 class ModelCredentialUpdatePayload(ModelRef):
     credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
     name: str | None = None
-
-
-class DefaultModelRow(BaseModel):
-    model_type: str
-    provider: str | None
-    model: str | None
-
-
-class DefaultModelListResponse(Hinted):
-    data: list[DefaultModelRow]
-
-
-class DefaultModelPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    provider: str = Field(description="Provider id such as langgenius/openai/openai")
-    model: str = Field(description="Model name, as in get.model")
-
-
-class DefaultModelResponse(DefaultModelRow, Hinted):
-    pass

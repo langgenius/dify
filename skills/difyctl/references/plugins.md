@@ -1,13 +1,14 @@
 # Plugins, models and credentials
 
-Read this in the spec phase to find tools and models, and whenever a plugin, model, tool or credential is missing, or the user asks to install, upgrade or remove a plugin.
+Read this in the spec phase to find tools, models and knowledge bases, and whenever a plugin, model, tool or credential is missing, or the user asks to install or remove a plugin.
 
-## Find tools and models
+## Find tools, models and knowledge bases
 
 1. `difyctl get tool --query <service>` lists tools the workspace can use: built-in and plugin tools, workflows published as tools, API tools and MCP tools. Each row has `configured` and a ready `node_data`.
-2. `difyctl get model --model-type llm` lists models across providers. Use one whose `status` is `active`.
-3. Nothing fits: `difyctl get marketplace plugin --query <service> --category tool` (or `--category model`).
-4. Show the human the options and let them pick. Never install or choose for them.
+2. `difyctl get model --model-type llm` lists models across providers. Use one whose `status` is `active`. Paste the row's `node_model` as the LLM node's `model` block; don't build it by hand.
+3. For knowledge bases: `difyctl get knowledge_base --query <words>`. A knowledge-retrieval node needs a row's `node_data`.
+4. Nothing fits: `difyctl get marketplace plugin --query <service> --category tool` (or `--category model`).
+5. Show the human the options and let them pick. Never install or choose for them.
 
 ## Missing plugins after an import
 
@@ -36,8 +37,7 @@ Read this in the spec phase to find tools and models, and whenever a plugin, mod
 
 - `difyctl get model --provider <id>` lists one provider's models; use one whose `status` is `active`.
 - Self-hosted or OpenAI-compatible models: `create model credential` with `--model`, `--model-type` and `--credentials @-`.
-- `get.default_model` and `set.default_model` read and set the workspace defaults. Change a default only when the user asks.
 
-## Upgrade and remove
+## Remove
 
-Only when the user asks: `upgrade.plugin` (with the new `identifier`), `delete.plugin`. Removing a plugin breaks apps that use it; say so first. Uninstalling also deletes the plugin's saved credentials.
+Only when the user asks: `delete.plugin`. Removing a plugin breaks apps that use it; say so first. Uninstalling also deletes the plugin's saved credentials.

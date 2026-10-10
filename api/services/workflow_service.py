@@ -817,93 +817,100 @@ class WorkflowService:
         )
 
         for node in nodes:
-            node_data = node.get("data", {})
-            node_type = node_data.get("type")
-            node_id = node.get("id", "unknown")
+            self.validate_node_credentials(workflow.tenant_id, node, environment_variables, session=session)
 
-            try:
-                # Extract and validate credentials based on node type
-                if node_type == "tool":
-                    credential_id = node_data.get("credential_id")
-                    provider = node_data.get("provider_id")
-                    if provider:
-                        if credential_id:
-                            # Check specific credential
-                            from core.helper.credential_utils import check_credential_policy_compliance
+    def validate_node_credentials(
+        self,
+        tenant_id: str,
+        node: Mapping[str, Any],
+        environment_variables: Mapping[str, VariableBase],
+        *,
+        session: Session,
+    ) -> None:
+        """Check the credentials one node needs; raises ValueError naming the node when one is unusable."""
+        node_data = node.get("data", {})
+        node_type = node_data.get("type")
+        node_id = node.get("id", "unknown")
 
-                            check_credential_policy_compliance(
-                                credential_id=credential_id,
-                                provider=provider,
-                                credential_type=PluginCredentialType.TOOL,
-                            )
-                        else:
-                            # Check default workspace credential for this provider
-                            self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
+        try:
+            # Extract and validate credentials based on node type
+            if node_type == "tool":
+                credential_id = node_data.get("credential_id")
+                provider = node_data.get("provider_id")
+                if provider:
+                    if credential_id:
+                        # Check specific credential
+                        from core.helper.credential_utils import check_credential_policy_compliance
 
-                elif node_type == "agent":
-                    agent_params = node_data.get("agent_parameters", {})
-
-                    model_config = agent_params.get("model", {}).get("value", {})
-                    if model_config.get("provider") and model_config.get("model"):
-                        self._validate_llm_model_config(
-                            workflow.tenant_id, model_config["provider"], model_config["model"]
-                        )
-
-                        # Validate load balancing credentials for agent model if load balancing is enabled
-                        agent_model_node_data = {"model": model_config}
-                        self._validate_load_balancing_credentials(
-                            workflow, agent_model_node_data, node_id, session=session
-                        )
-
-                    # Validate agent tools
-                    tools = agent_params.get("tools", {}).get("value", [])
-                    for tool in tools:
-                        # Agent tools store provider in provider_name field
-                        provider = tool.get("provider_name")
-                        credential_id = tool.get("credential_id")
-                        if provider:
-                            if credential_id:
-                                from core.helper.credential_utils import check_credential_policy_compliance
-
-                                check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
-                            else:
-                                self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
-
-                elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
-                    validation_node_data = node_data
-                    model_config = node_data.get("model", {})
-                    if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
-                        selector = parse_llm_model_selector(node_data["model_selector"])
-                        variable = environment_variables.get(selector[1])
-                        if not isinstance(variable, LLMEnvironmentVariable):
-                            raise ValueError(
-                                f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
-                            )
-                        resolved_model = resolve_llm_model_config(
-                            node_model=ModelConfig.model_validate(model_config),
-                            variable_name=selector[1],
-                            variable_value=variable.value,
-                        )
-                        model_config = resolved_model.model_dump(mode="json")
-                        validation_node_data = {**node_data, "model": model_config}
-                    provider = model_config.get("provider")
-                    model_name = model_config.get("name")
-
-                    if provider and model_name:
-                        # Validate that the provider+model combination can fetch valid credentials
-                        self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
-                        # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(
-                            workflow, validation_node_data, node_id, session=session
+                        check_credential_policy_compliance(
+                            credential_id=credential_id,
+                            provider=provider,
+                            credential_type=PluginCredentialType.TOOL,
                         )
                     else:
-                        raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+                        # Check default workspace credential for this provider
+                        self._check_default_tool_credential(tenant_id, provider, session=session)
 
-            except Exception as e:
-                if isinstance(e, ValueError):
-                    raise e
+            elif node_type == "agent":
+                agent_params = node_data.get("agent_parameters", {})
+
+                model_config = agent_params.get("model", {}).get("value", {})
+                if model_config.get("provider") and model_config.get("model"):
+                    self._validate_llm_model_config(tenant_id, model_config["provider"], model_config["model"])
+
+                    # Validate load balancing credentials for agent model if load balancing is enabled
+                    agent_model_node_data = {"model": model_config}
+                    self._validate_load_balancing_credentials(
+                        tenant_id, agent_model_node_data, node_id, session=session
+                    )
+
+                # Validate agent tools
+                tools = agent_params.get("tools", {}).get("value", [])
+                for tool in tools:
+                    # Agent tools store provider in provider_name field
+                    provider = tool.get("provider_name")
+                    credential_id = tool.get("credential_id")
+                    if provider:
+                        if credential_id:
+                            from core.helper.credential_utils import check_credential_policy_compliance
+
+                            check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
+                        else:
+                            self._check_default_tool_credential(tenant_id, provider, session=session)
+
+            elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
+                validation_node_data = node_data
+                model_config = node_data.get("model", {})
+                if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
+                    selector = parse_llm_model_selector(node_data["model_selector"])
+                    variable = environment_variables.get(selector[1])
+                    if not isinstance(variable, LLMEnvironmentVariable):
+                        raise ValueError(
+                            f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                        )
+                    resolved_model = resolve_llm_model_config(
+                        node_model=ModelConfig.model_validate(model_config),
+                        variable_name=selector[1],
+                        variable_value=variable.value,
+                    )
+                    model_config = resolved_model.model_dump(mode="json")
+                    validation_node_data = {**node_data, "model": model_config}
+                provider = model_config.get("provider")
+                model_name = model_config.get("name")
+
+                if provider and model_name:
+                    # Validate that the provider+model combination can fetch valid credentials
+                    self._validate_llm_model_config(tenant_id, provider, model_name)
+                    # Validate load balancing credentials if load balancing is enabled
+                    self._validate_load_balancing_credentials(tenant_id, validation_node_data, node_id, session=session)
                 else:
-                    raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
+                    raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+
+        except Exception as e:
+            if isinstance(e, ValueError):
+                raise e
+            else:
+                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -1002,12 +1009,12 @@ class WorkflowService:
             raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
 
     def _validate_load_balancing_credentials(
-        self, workflow: Workflow, node_data: dict[str, Any], node_id: str, *, session: Session
+        self, tenant_id: str, node_data: Mapping[str, Any], node_id: str, *, session: Session
     ) -> None:
         """
         Validate load balancing credentials for a workflow node.
 
-        :param workflow: The workflow being validated
+        :param tenant_id: The workspace the workflow belongs to
         :param node_data: The node data containing model configuration
         :param node_id: The node ID for error reporting
         :raises ValueError: If load balancing credentials violate policy compliance
@@ -1021,11 +1028,9 @@ class WorkflowService:
             return  # No model config to validate
 
         # Check if this model has load balancing enabled
-        if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
+        if self._is_load_balancing_enabled(tenant_id, provider, model_name):
             # Get all load balancing configurations for this model
-            load_balancing_configs = self._get_load_balancing_configs(
-                workflow.tenant_id, provider, model_name, session=session
-            )
+            load_balancing_configs = self._get_load_balancing_configs(tenant_id, provider, model_name, session=session)
             # Validate each load balancing configuration
             try:
                 for config in load_balancing_configs:

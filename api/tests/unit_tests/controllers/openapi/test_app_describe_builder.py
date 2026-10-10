@@ -1,9 +1,13 @@
 from datetime import datetime
+from types import SimpleNamespace
+from typing import cast
 
+import pytest
 from sqlalchemy.orm import Session
 
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA
-from controllers.openapi.apps import _EMPTY_PARAMETERS, build_app_describe_response
+from controllers.openapi._models import AppDescribeResponse
+from controllers.openapi.apps import _EMPTY_PARAMETERS, AppDescribeApi, build_app_describe_response, settings_hints
 from controllers.service_api.app.error import AppUnavailableError
 from models.model import App, AppMode
 
@@ -85,3 +89,55 @@ def test_input_schema_fallback_on_app_unavailable(monkeypatch, unbound_session: 
     monkeypatch.setattr("controllers.openapi.apps.build_input_schema", _raise)
     resp = build_app_describe_response(_app(), ["input_schema"], session=unbound_session)
     assert resp.input_schema == dict(EMPTY_INPUT_SCHEMA)
+
+
+def test_settings_hints_name_the_mode_ops() -> None:
+    ops = [hint.op for hint in settings_hints("app-1", AppMode.WORKFLOW)]
+    assert ops == [
+        "describe.app_info.workflow",
+        "describe.webapp.workflow",
+        "describe.service_api",
+        "describe.webapp_access",
+    ]
+    agent_ops = [hint.op for hint in settings_hints("app-1", AppMode.AGENT)]
+    assert agent_ops == [
+        "describe.app_info.agent",
+        "describe.webapp.agent",
+        "describe.service_api.agent",
+        "describe.webapp_access.agent",
+    ]
+    assert all(hint.input == {"app_id": "app-1"} for hint in settings_hints("app-1", AppMode.CHAT))
+
+
+def _stub_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {})
+    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {})
+
+
+def _describe(app: App, session: Session) -> AppDescribeResponse:
+    api = AppDescribeApi()
+    ctx = SimpleNamespace(app=app, session=session)
+    return api.get.__handler__(api, ctx, str(app.id), query=SimpleNamespace(fields=None))
+
+
+def test_shared_builder_adds_no_hints(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    """The builder also serves describe.console_app.external, whose callers can't use account-only settings ops."""
+    _stub_payloads(monkeypatch)
+    resp = build_app_describe_response(_app(), None, session=unbound_session)
+    assert resp.hints == []
+
+
+def test_account_describe_adds_settings_hints(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    _stub_payloads(monkeypatch)
+    resp = _describe(_app(), unbound_session)
+    assert [hint.op for hint in resp.hints] == [hint.op for hint in settings_hints(str(_app().id), AppMode.CHAT)]
+    assert resp.hints
+
+
+def test_account_describe_unknown_mode_has_no_hints(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    _stub_payloads(monkeypatch)
+    app = _app()
+    app.mode = cast(AppMode, "mode-from-a-newer-version")
+    resp = _describe(app, unbound_session)
+    assert resp.hints == []
+    assert resp.info is not None

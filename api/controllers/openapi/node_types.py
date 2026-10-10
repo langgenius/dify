@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Any, get_args
+from typing import Any
 
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -16,34 +15,15 @@ from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResp
 from controllers.openapi.auth.context import Context
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from graphon.nodes.base.node import Node
+from services.workflow.node_defaults import complete_sub_models
 from services.workflow_service import WorkflowService
 
 
-def _model_of(annotation: object) -> type[BaseModel] | None:
-    for candidate in (annotation, *get_args(annotation)):
-        if isinstance(candidate, type) and issubclass(candidate, BaseModel):
-            return candidate
-    return None
-
-
 def _complete_default_config(node_class: type[Node], default_config: Mapping[str, Any]) -> dict[str, Any]:
-    """Add the keys each sub-object's model defaults; keys the default already has win."""
     config = default_config.get("config")
     if not isinstance(config, Mapping):
         return dict(default_config)
-    fields = node_class._get_node_data_type().model_fields
-    completed = dict(config)
-    for key, value in config.items():
-        field = fields.get(key)
-        model = _model_of(field.annotation) if field else None
-        if model is None or not isinstance(value, Mapping):
-            continue
-        try:
-            filled = model.model_validate(value).model_dump(mode="json")
-        except ValidationError:
-            continue
-        completed[key] = {**filled, **value}
-    return {**default_config, "config": completed}
+    return {**default_config, "config": complete_sub_models(node_class, config)}
 
 
 @openapi_ns.route("/node-types")

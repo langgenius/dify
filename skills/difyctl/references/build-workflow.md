@@ -23,11 +23,10 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - [`build-workflow/build.md`](build-workflow/build.md): read in the build phase.
 - [`build-workflow/handover.md`](build-workflow/handover.md): read when the build is done.
 - [`build-workflow/dsl.md`](build-workflow/dsl.md): read when writing or reading app YAML.
-- Read [`plugins.md`](plugins.md) in the spec phase to find tools and models, and when a plugin, model, tool or credential is missing.
+- Read [`plugins.md`](plugins.md) in the spec phase to find tools, models and knowledge bases, and when a plugin, model, tool or credential is missing.
 
 ## Limits
 
-- `difyctl test node` can't take file inputs.
 - A draft run paused on a human-input node can't be resumed over difyctl.
 - Trigger-started workflows (webhook, schedule, plugin) can't be draft-tested.
 - Loop and iteration nodes can't be tested alone; use a full draft run.

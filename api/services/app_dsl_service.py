@@ -82,6 +82,8 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow.graph_check import refused_node_types
+from services.workflow.node_defaults import fill_graph
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -600,11 +602,7 @@ class AppDslService:
         }:
             raise ValueError("Only workflow or advanced chat DSLs can overwrite workflow Apps")
         # Package uploads cannot run the editor's YAML node checks before import.
-        invalid_types = (
-            {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
-            if app.mode == AppMode.ADVANCED_CHAT
-            else {BuiltinNodeTypes.ANSWER}
-        )
+        invalid_types = refused_node_types(AppMode(app.mode))
         nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
         incompatible = [
             f"{node['id']} ({node_type})" if "id" in node else node_type
@@ -758,6 +756,7 @@ class AppDslService:
                 # The source canvas position should not determine the imported app's initial view.
                 graph = graph.copy()
                 graph.pop("viewport", None)
+                graph = fill_graph(graph)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])

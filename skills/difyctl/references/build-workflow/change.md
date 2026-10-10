@@ -40,5 +40,5 @@ Use this path when the app already exists. It reuses the four phases.
 
 3. If `difyctl/<app-slug>/` has no `spec.md`, the app was built elsewhere. Rebuild a baseline spec from the export: the graph, the requirements you can infer, the inputs and outputs. The human confirms it.
 4. Write the change as a "Change" section in the spec: new, changed and removed requirements and cases. Existing cases become regression cases.
-5. Plan only the nodes that change, in slices as usual.
+5. Plan only the nodes that change, in slices as usual. After you edit the export, run `difyctl check console_app dsl` on it before every import, as in [build.md](build.md).
 6. At the end, run every old case again. Then hand over as usual.

@@ -9,19 +9,24 @@ from controllers.openapi._search import matches
 from controllers.openapi.model_providers import _activate_if_none, _provider_write_response, model_rows
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
 
 
 def _model(
-    name: str, *, provider: str = "langgenius/openai/openai", deprecated: bool = False
+    name: str,
+    *,
+    provider: str = "langgenius/openai/openai",
+    deprecated: bool = False,
+    model_type: ModelType = ModelType.LLM,
+    model_properties: dict[ModelPropertyKey, object] | None = None,
 ) -> ModelWithProviderEntity:
     data: dict[str, object] = {
         "model": name,
         "label": {"en_US": name.upper()},
-        "model_type": ModelType.LLM,
+        "model_type": model_type,
         "features": [],
         "fetch_from": FetchFrom.PREDEFINED_MODEL,
-        "model_properties": {},
+        "model_properties": model_properties or {},
         "deprecated": deprecated,
         "status": ModelStatus.ACTIVE,
         "load_balancing_enabled": False,
@@ -42,6 +47,24 @@ def test_rows_carry_their_provider() -> None:
         "gpt-4o",
         "GPT-4O",
     )
+
+
+def test_llm_rows_carry_the_node_model_block() -> None:
+    model = _model("gpt-4o", model_properties={ModelPropertyKey.MODE: "chat"})
+    [row] = model_rows([model], words="", language=None)
+    assert row.node_model is not None
+    assert row.node_model.model_dump() == {
+        "provider": "langgenius/openai/openai",
+        "name": "gpt-4o",
+        "mode": "chat",
+        "completion_params": {},
+    }
+
+
+def test_rows_without_a_node_model_when_not_llm_or_no_mode() -> None:
+    embedding = _model("embed", model_type=ModelType.TEXT_EMBEDDING, model_properties={ModelPropertyKey.MODE: "chat"})
+    no_mode = _model("plain")
+    assert [r.node_model for r in model_rows([embedding, no_mode], words="", language=None)] == [None, None]
 
 
 def test_deprecated_models_are_left_out() -> None:

@@ -417,7 +417,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AdvancedChatNodeRunPayload](#advancedchatnoderunpayload)<br> |
+| Yes | **application/json**: [AdvancedChatNodeRunPayload](#advancedchatnoderunpayload)<br>**multipart/form-data**: [AdvancedChatNodeRunPayload](#advancedchatnoderunpayload)<br> |
 
 #### Responses
 
@@ -460,7 +460,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br> |
+| Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br>**multipart/form-data**: [NodeRunPayload](#noderunpayload)<br> |
 
 #### Responses
 
@@ -623,6 +623,20 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/release:check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Release check | **application/json**: [ReleaseCheckResponse](#releasecheckresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/runs
 #### Parameters
 
@@ -672,7 +686,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/service-api/advanced-chat
+### [GET] /apps/{app_id}/service-api
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -686,7 +700,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [PATCH] /apps/{app_id}/service-api/advanced-chat
+### [PATCH] /apps/{app_id}/service-api
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -739,146 +753,6 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/service-api/agent-chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PATCH] /apps/{app_id}/service-api/agent-chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/service-api/chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PATCH] /apps/{app_id}/service-api/chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/service-api/completion
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PATCH] /apps/{app_id}/service-api/completion
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/service-api/workflow
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PATCH] /apps/{app_id}/service-api/workflow
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -948,7 +822,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Restored into the draft | **application/json**: [RestoreResponse](#restoreresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/webapp-access/advanced-chat
+### [GET] /apps/{app_id}/webapp-access
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -962,7 +836,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [PUT] /apps/{app_id}/webapp-access/advanced-chat
+### [PUT] /apps/{app_id}/webapp-access
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1018,146 +892,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/webapp-access/agent-chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PUT] /apps/{app_id}/webapp-access/agent-chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/webapp-access/chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PUT] /apps/{app_id}/webapp-access/chat
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/webapp-access/completion
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PUT] /apps/{app_id}/webapp-access/completion
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/webapp-access/workflow
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PUT] /apps/{app_id}/webapp-access/workflow
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [GET] /apps/{app_id}/webapp/advanced-chat
 #### Parameters
 
@@ -1191,20 +925,6 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Web app | **application/json**: [AdvancedChatWebApp](#advancedchatwebapp)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [POST] /apps/{app_id}/webapp/advanced-chat:reset
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/webapp/agent
@@ -1277,20 +997,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}/webapp/agent-chat:reset
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [POST] /apps/{app_id}/webapp/agent:reset
 #### Parameters
 
@@ -1340,20 +1046,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}/webapp/chat:reset
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [GET] /apps/{app_id}/webapp/completion
 #### Parameters
 
@@ -1387,20 +1079,6 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Web app | **application/json**: [WebApp](#webapp)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [POST] /apps/{app_id}/webapp/completion:reset
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/webapp/workflow
@@ -1438,7 +1116,7 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}/webapp/workflow:reset
+### [POST] /apps/{app_id}/webapp:reset
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1705,6 +1383,27 @@ Upload a file to use as an input variable when running the app
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /workspaces/{workspace_id}/apps/imports:check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DslCheckPayload](#dslcheckpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Check result | **application/json**: [DslCheckResponse](#dslcheckresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/apps/workflow
 #### Parameters
 
@@ -1726,39 +1425,21 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /workspaces/{workspace_id}/default-models
+### [GET] /workspaces/{workspace_id}/knowledge-bases
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to match in the knowledge base name | No | string |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Default models | **application/json**: [DefaultModelListResponse](#defaultmodellistresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [PUT] /workspaces/{workspace_id}/default-models/{model_type}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| model_type | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DefaultModelPayload](#defaultmodelpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Default model set | **application/json**: [DefaultModelResponse](#defaultmodelresponse)<br> |
+| 200 | Knowledge bases | **application/json**: [KnowledgeBaseListResponse](#knowledgebaselistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1893,22 +1574,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
 #### Parameters
 
@@ -1951,25 +1616,6 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| model | query | Model name, as in get.model | Yes | string |
-| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2083,27 +1729,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/plugins:upgrade
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| workspace_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [PluginUpgradePayload](#pluginupgradepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Upgrade started | **application/json**: [PluginTaskStartResponse](#plugintaskstartresponse)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
 #### Parameters
 
@@ -2139,22 +1764,6 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [PATCH] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
@@ -2240,6 +1849,7 @@ Upload a file to use as an input variable when running the app
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| files | object | Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded | No |
 | inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
 | query | string | The user message the node sees as sys.query | No |
 
@@ -2386,6 +1996,7 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | info | [AppDescribeInfo](#appdescribeinfo) |  | No |
 | input_schema | object |  | No |
 | parameters | object |  | No |
@@ -2668,37 +2279,6 @@ mode is a closed enum of listable app types.
 | model | string |  | Yes |
 | model_type | string |  | Yes |
 
-#### DefaultModelListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [DefaultModelRow](#defaultmodelrow) ] |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
-
-#### DefaultModelPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| model | string | Model name, as in get.model | Yes |
-| provider | string | Provider id such as langgenius/openai/openai | Yes |
-
-#### DefaultModelResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
-| model | string |  | Yes |
-| model_type | string |  | Yes |
-| provider | string |  | Yes |
-
-#### DefaultModelRow
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| model | string |  | Yes |
-| model_type | string |  | Yes |
-| provider | string |  | Yes |
-
 #### DeploymentEdition
 
 Enum representing the deployment edition of the platform.
@@ -2771,6 +2351,20 @@ Enum representing the deployment edition of the platform.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### DraftChanges
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edges_added | [ string ] |  | Yes |
+| edges_removed | [ string ] |  | Yes |
+| env_added | [ string ] |  | Yes |
+| env_removed | [ string ] |  | Yes |
+| features_changed | boolean |  | Yes |
+| nodes_added | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
+| nodes_changed | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
+| nodes_removed | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
+| published | boolean | false when the app was never published; then everything counts as added | Yes |
+
 #### DraftWorkflowRunPayload
 
 | Name | Type | Description | Required |
@@ -2779,6 +2373,21 @@ Enum representing the deployment edition of the platform.
 | files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### DslCheckPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Check against this existing app's mode, as an overwrite import would | No |
+| yaml_content | string | The DSL to check, as YAML text | Yes |
+
+#### DslCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| issues | [ [DslIssueRow](#dslissuerow) ] |  | Yes |
+| valid | boolean | No error-severity issues | Yes |
 
 #### DslImportWarning
 
@@ -2790,6 +2399,16 @@ Portable DSL reference that could not be restored in the target workspace.
 | details | object |  | No |
 | message | string |  | Yes |
 | path | string |  | Yes |
+
+#### DslIssueRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| loc | [ string<br>integer ] |  | Yes |
+| message | string |  | Yes |
+| node_id | string |  | Yes |
+| severity | string | error: import refuses it; warning: import allows it, publish does not | Yes |
 
 #### EnvVariableListResponse
 
@@ -2839,6 +2458,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | code | string |  | Yes |
 | details | [ [ErrorDetail](#errordetail) ] |  | No |
 | hint | string |  | No |
+| hints | [ [Hint](#hint) ] |  | No |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -2954,6 +2574,55 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
+
+#### KnowledgeBaseListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to match in the knowledge base name | No |
+
+#### KnowledgeBaseListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeBaseRow](#knowledgebaserow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeBaseRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| document_count | integer |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| name | string |  | Yes |
+| node_data | [KnowledgeRetrievalFragment](#knowledgeretrievalfragment) | Merge into a knowledge-retrieval node's data and set query_variable_selector; to search several bases, join their dataset_ids. For rerank or weights read describe node_type | Yes |
+| provider | string | vendor: indexed in Dify; external: an external knowledge API | Yes |
+| usable | boolean | false when its embedding model isn't available in this workspace | Yes |
+
+#### KnowledgeRetrievalFragment
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_ids | [ string ] |  | Yes |
+| multiple_retrieval_config | [MultipleRetrievalFragment](#multipleretrievalfragment) |  | No |
+| retrieval_mode | string, <br>**Default:** multiple |  | No |
+
+#### LlmModelBlock
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### Marketplace
 
@@ -3144,6 +2813,7 @@ Strict (extra='forbid').
 | label | string |  | Yes |
 | model | string |  | Yes |
 | model_type | string |  | Yes |
+| node_model | [LlmModelBlock](#llmmodelblock) | LLM rows: paste as the node's model | No |
 | provider | string |  | Yes |
 | provider_label | string |  | Yes |
 | status | string | active means usable now; anything else needs the provider set up | Yes |
@@ -3156,10 +2826,27 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
 
+#### MultipleRetrievalFragment
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reranking_enable | boolean |  | No |
+| top_k | integer, <br>**Default:** 4 |  | No |
+
+#### NodeChangeRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ string ] |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
+
 #### NodeRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| files | object | Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded | No |
 | inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
 
 #### NodeTypeDetailResponse
@@ -3321,13 +3008,6 @@ Strict (extra='forbid').
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | task_id | string |  | Yes |
 
-#### PluginUpgradePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| identifier | string | Versioned id to upgrade to, from get.marketplace.plugin | Yes |
-| plugin_id | string | Installed plugin id such as langgenius/openai | Yes |
-
 #### ProviderCredentialCreatePayload
 
 | Name | Type | Description | Required |
@@ -3356,6 +3036,38 @@ Strict (extra='forbid').
 | created_at | integer |  | Yes |
 | version_id | string |  | Yes |
 | warning | string | Variable references that may read a skipped branch | No |
+
+#### ReleaseCheckName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ReleaseCheckName | string |  |  |
+
+#### ReleaseCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| changes | [DraftChanges](#draftchanges) |  | Yes |
+| checks | [ [ReleaseCheckRow](#releasecheckrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| issues | [ [DslIssueRow](#dslissuerow) ] |  | Yes |
+| ready | boolean | Every check passed; show the human `changes` and ask before publishing | Yes |
+| state | [ReleaseState](#releasestate) |  | Yes |
+
+#### ReleaseCheckRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string |  | Yes |
+| name | [ReleaseCheckName](#releasecheckname) |  | Yes |
+| passed | boolean |  | Yes |
+
+#### ReleaseState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| service_api_enabled | boolean |  | Yes |
+| webapp_enabled | boolean |  | Yes |
 
 #### RestoreResponse
 

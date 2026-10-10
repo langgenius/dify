@@ -18,9 +18,18 @@ from controllers.openapi.auth.context import Context
 from enums import WebAppAccessMode
 from extensions.ext_application_services import application_services
 from libs.url_utils import normalize_api_base_url
+from models import AppMode
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
 from services.entities.app_entities import AppRecord, UpdateAppParams
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+
+REGULAR_MODES: Final = (
+    AppMode.WORKFLOW,
+    AppMode.ADVANCED_CHAT,
+    AppMode.CHAT,
+    AppMode.AGENT_CHAT,
+    AppMode.COMPLETION,
+)
 
 _SETTABLE_ACCESS_MODES: Final = frozenset(
     {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE_ALL, WebAppAccessMode.SSO_VERIFIED}
@@ -34,6 +43,18 @@ class WebAppPath(StrEnum):
     COMPLETION = "completion"
     WORKFLOW = "workflow"
     AGENT = "agent"
+
+    @classmethod
+    def of(cls, mode: AppMode) -> WebAppPath:
+        match mode:
+            case AppMode.WORKFLOW:
+                return cls.WORKFLOW
+            case AppMode.COMPLETION:
+                return cls.COMPLETION
+            case AppMode.AGENT:
+                return cls.AGENT
+            case _:
+                return cls.CHAT
 
     def url(self, base_url: str, code: str | None) -> str | None:
         return f"{base_url}/{self}/{code}" if code else None
@@ -136,7 +157,8 @@ def update_webapp[T: BaseModel](ctx: Context, patch: BaseModel, model: type[T], 
     return webapp(ctx, model, path)
 
 
-def reset_webapp(ctx: Context, path: WebAppPath) -> WebAppToken:
+def reset_webapp(ctx: Context) -> WebAppToken:
+    path = WebAppPath.of(ctx.app.mode)
     try:
         site = application_services().app_sites.reset_access_token(ctx.request_context, ctx.app.id)
     except (AppSiteNotFoundError, AppSiteAppNotFoundError) as error:

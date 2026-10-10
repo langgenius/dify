@@ -1,4 +1,4 @@
-"""Web-app and web-app access cards, one route per app mode."""
+"""Web-app and web-app access cards: one route for regular apps, one for agent apps."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ class WorkflowWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="A workflow app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.WORKFLOW, roles=None),
+        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.WORKFLOW,), roles=None),
         returns=(HTTPStatus.OK, WorkflowWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -73,61 +73,13 @@ class WorkflowWebAppApi(Resource):
         summary="Change a workflow app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.WORKFLOW, roles=EDITOR_ROLES
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.WORKFLOW,), roles=EDITOR_ROLES
         ),
         body=WorkflowWebAppPatch,
         returns=(HTTPStatus.OK, WorkflowWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: WorkflowWebAppPatch):
         return settings.update_webapp(ctx, body, WorkflowWebApp, WebAppPath.WORKFLOW)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp/workflow:reset")
-class WorkflowWebAppResetApi(Resource):
-    @endpoint(
-        op="reset.webapp.workflow",
-        kind=Kind.OBJECT,
-        summary="Rotate a workflow app's web app URL; the old URL stops working",
-        examples=(_RESET_EXAMPLE,),
-        requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.WORKFLOW, roles=ADMIN_ROLES
-        ),
-        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
-    )
-    def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.WORKFLOW)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp-access/workflow")
-class WorkflowWebAppAccessApi(Resource):
-    @endpoint(
-        op="describe.webapp_access.workflow",
-        kind=Kind.OBJECT,
-        summary="Who may open a workflow app's web app (Enterprise)",
-        examples=(_ACCESS_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, mode=AppMode.WORKFLOW, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def get(self, ctx: Context, app_id: str):
-        return settings.webapp_access(ctx)
-
-    @endpoint(
-        op="set.webapp_access.workflow",
-        kind=Kind.OBJECT,
-        summary="Set who may open a workflow app's web app (Enterprise)",
-        examples=(_ACCESS_SET_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.WORKFLOW, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        body=WebAppAccessPayload,
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
-        return settings.update_webapp_access(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/advanced-chat")
@@ -137,7 +89,9 @@ class AdvancedChatWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="An advanced-chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.ADVANCED_CHAT, roles=None),
+        requirements=account_settings_guards(
+            _SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.ADVANCED_CHAT,), roles=None
+        ),
         returns=(HTTPStatus.OK, AdvancedChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -149,63 +103,13 @@ class AdvancedChatWebAppApi(Resource):
         summary="Change an advanced-chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.ADVANCED_CHAT, roles=EDITOR_ROLES
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.ADVANCED_CHAT,), roles=EDITOR_ROLES
         ),
         body=AdvancedChatWebAppPatch,
         returns=(HTTPStatus.OK, AdvancedChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: AdvancedChatWebAppPatch):
         return settings.update_webapp(ctx, body, AdvancedChatWebApp, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp/advanced-chat:reset")
-class AdvancedChatWebAppResetApi(Resource):
-    @endpoint(
-        op="reset.webapp.advanced_chat",
-        kind=Kind.OBJECT,
-        summary="Rotate an advanced-chat app's web app URL; the old URL stops working",
-        examples=(_RESET_EXAMPLE,),
-        requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.ADVANCED_CHAT, roles=ADMIN_ROLES
-        ),
-        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
-    )
-    def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp-access/advanced-chat")
-class AdvancedChatWebAppAccessApi(Resource):
-    @endpoint(
-        op="describe.webapp_access.advanced_chat",
-        kind=Kind.OBJECT,
-        summary="Who may open an advanced-chat app's web app (Enterprise)",
-        examples=(_ACCESS_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, mode=AppMode.ADVANCED_CHAT, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def get(self, ctx: Context, app_id: str):
-        return settings.webapp_access(ctx)
-
-    @endpoint(
-        op="set.webapp_access.advanced_chat",
-        kind=Kind.OBJECT,
-        summary="Set who may open an advanced-chat app's web app (Enterprise)",
-        examples=(_ACCESS_SET_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(
-                _ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.ADVANCED_CHAT, roles=EDITOR_ROLES
-            ),
-            CheckWebAppAuthEnterprise(),
-        ),
-        body=WebAppAccessPayload,
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
-        return settings.update_webapp_access(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/chat")
@@ -215,7 +119,7 @@ class ChatWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="A chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.CHAT, roles=None),
+        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.CHAT,), roles=None),
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -227,61 +131,13 @@ class ChatWebAppApi(Resource):
         summary="Change a chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.CHAT, roles=EDITOR_ROLES
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.CHAT,), roles=EDITOR_ROLES
         ),
         body=ChatWebAppPatch,
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ChatWebAppPatch):
         return settings.update_webapp(ctx, body, ChatWebApp, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp/chat:reset")
-class ChatWebAppResetApi(Resource):
-    @endpoint(
-        op="reset.webapp.chat",
-        kind=Kind.OBJECT,
-        summary="Rotate a chat app's web app URL; the old URL stops working",
-        examples=(_RESET_EXAMPLE,),
-        requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.CHAT, roles=ADMIN_ROLES
-        ),
-        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
-    )
-    def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp-access/chat")
-class ChatWebAppAccessApi(Resource):
-    @endpoint(
-        op="describe.webapp_access.chat",
-        kind=Kind.OBJECT,
-        summary="Who may open a chat app's web app (Enterprise)",
-        examples=(_ACCESS_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, mode=AppMode.CHAT, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def get(self, ctx: Context, app_id: str):
-        return settings.webapp_access(ctx)
-
-    @endpoint(
-        op="set.webapp_access.chat",
-        kind=Kind.OBJECT,
-        summary="Set who may open a chat app's web app (Enterprise)",
-        examples=(_ACCESS_SET_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.CHAT, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        body=WebAppAccessPayload,
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
-        return settings.update_webapp_access(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/agent-chat")
@@ -291,7 +147,9 @@ class AgentChatWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="An agent-chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.AGENT_CHAT, roles=None),
+        requirements=account_settings_guards(
+            _SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.AGENT_CHAT,), roles=None
+        ),
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -303,61 +161,13 @@ class AgentChatWebAppApi(Resource):
         summary="Change an agent-chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT_CHAT, roles=EDITOR_ROLES
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.AGENT_CHAT,), roles=EDITOR_ROLES
         ),
         body=ChatWebAppPatch,
         returns=(HTTPStatus.OK, ChatWebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: ChatWebAppPatch):
         return settings.update_webapp(ctx, body, ChatWebApp, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp/agent-chat:reset")
-class AgentChatWebAppResetApi(Resource):
-    @endpoint(
-        op="reset.webapp.agent_chat",
-        kind=Kind.OBJECT,
-        summary="Rotate an agent-chat app's web app URL; the old URL stops working",
-        examples=(_RESET_EXAMPLE,),
-        requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT_CHAT, roles=ADMIN_ROLES
-        ),
-        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
-    )
-    def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.CHAT)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp-access/agent-chat")
-class AgentChatWebAppAccessApi(Resource):
-    @endpoint(
-        op="describe.webapp_access.agent_chat",
-        kind=Kind.OBJECT,
-        summary="Who may open an agent-chat app's web app (Enterprise)",
-        examples=(_ACCESS_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, mode=AppMode.AGENT_CHAT, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def get(self, ctx: Context, app_id: str):
-        return settings.webapp_access(ctx)
-
-    @endpoint(
-        op="set.webapp_access.agent_chat",
-        kind=Kind.OBJECT,
-        summary="Set who may open an agent-chat app's web app (Enterprise)",
-        examples=(_ACCESS_SET_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT_CHAT, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        body=WebAppAccessPayload,
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
-        return settings.update_webapp_access(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/completion")
@@ -367,7 +177,9 @@ class CompletionWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="A completion app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.COMPLETION, roles=None),
+        requirements=account_settings_guards(
+            _SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.COMPLETION,), roles=None
+        ),
         returns=(HTTPStatus.OK, WebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -379,61 +191,13 @@ class CompletionWebAppApi(Resource):
         summary="Change a completion app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.COMPLETION, roles=EDITOR_ROLES
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.COMPLETION,), roles=EDITOR_ROLES
         ),
         body=WebAppPatch,
         returns=(HTTPStatus.OK, WebApp, "Web app"),
     )
     def patch(self, ctx: Context, app_id: str, *, body: WebAppPatch):
         return settings.update_webapp(ctx, body, WebApp, WebAppPath.COMPLETION)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp/completion:reset")
-class CompletionWebAppResetApi(Resource):
-    @endpoint(
-        op="reset.webapp.completion",
-        kind=Kind.OBJECT,
-        summary="Rotate a completion app's web app URL; the old URL stops working",
-        examples=(_RESET_EXAMPLE,),
-        requirements=account_settings_guards(
-            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.COMPLETION, roles=ADMIN_ROLES
-        ),
-        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
-    )
-    def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.COMPLETION)
-
-
-@openapi_ns.route("/apps/<string:app_id>/webapp-access/completion")
-class CompletionWebAppAccessApi(Resource):
-    @endpoint(
-        op="describe.webapp_access.completion",
-        kind=Kind.OBJECT,
-        summary="Who may open a completion app's web app (Enterprise)",
-        examples=(_ACCESS_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, mode=AppMode.COMPLETION, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def get(self, ctx: Context, app_id: str):
-        return settings.webapp_access(ctx)
-
-    @endpoint(
-        op="set.webapp_access.completion",
-        kind=Kind.OBJECT,
-        summary="Set who may open a completion app's web app (Enterprise)",
-        examples=(_ACCESS_SET_EXAMPLE,),
-        requirements=(
-            *account_settings_guards(_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.COMPLETION, roles=EDITOR_ROLES),
-            CheckWebAppAuthEnterprise(),
-        ),
-        body=WebAppAccessPayload,
-        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
-    )
-    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
-        return settings.update_webapp_access(ctx, body)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp/agent")
@@ -443,7 +207,9 @@ class AgentWebAppApi(Resource):
         kind=Kind.OBJECT,
         summary="An agent app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
-        requirements=account_settings_guards(_AGENT_SITE_READ, scope=Scope.APPS_READ, mode=AppMode.AGENT, roles=None),
+        requirements=account_settings_guards(
+            _AGENT_SITE_READ, scope=Scope.APPS_READ, modes=(AppMode.AGENT,), roles=None
+        ),
         returns=(HTTPStatus.OK, AgentWebApp, "Web app"),
     )
     def get(self, ctx: Context, app_id: str):
@@ -455,7 +221,7 @@ class AgentWebAppApi(Resource):
         summary="Change an agent app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _AGENT_SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT, roles=EDITOR_ROLES
+            _AGENT_SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.AGENT,), roles=EDITOR_ROLES
         ),
         body=ChatWebAppPatch,
         returns=(HTTPStatus.OK, AgentWebApp, "Web app"),
@@ -472,12 +238,12 @@ class AgentWebAppResetApi(Resource):
         summary="Rotate an agent app's web app URL; the old URL stops working",
         examples=(_RESET_EXAMPLE,),
         requirements=account_settings_guards(
-            _AGENT_SITE_WRITE, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT, roles=ADMIN_ROLES
+            _AGENT_SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.AGENT,), roles=ADMIN_ROLES
         ),
         returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
     )
     def post(self, ctx: Context, app_id: str):
-        return settings.reset_webapp(ctx, WebAppPath.AGENT)
+        return settings.reset_webapp(ctx)
 
 
 @openapi_ns.route("/apps/<string:app_id>/webapp-access/agent")
@@ -488,7 +254,7 @@ class AgentWebAppAccessApi(Resource):
         summary="Who may open an agent app's web app (Enterprise)",
         examples=(_ACCESS_EXAMPLE,),
         requirements=(
-            *account_settings_guards(_AGENT_ACCESS, scope=Scope.APPS_READ, mode=AppMode.AGENT, roles=EDITOR_ROLES),
+            *account_settings_guards(_AGENT_ACCESS, scope=Scope.APPS_READ, modes=(AppMode.AGENT,), roles=EDITOR_ROLES),
             CheckWebAppAuthEnterprise(),
         ),
         returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
@@ -503,7 +269,57 @@ class AgentWebAppAccessApi(Resource):
         examples=(_ACCESS_SET_EXAMPLE,),
         requirements=(
             *account_settings_guards(
-                _AGENT_ACCESS, scope=Scope.WORKSPACE_WRITE, mode=AppMode.AGENT, roles=EDITOR_ROLES
+                _AGENT_ACCESS, scope=Scope.WORKSPACE_WRITE, modes=(AppMode.AGENT,), roles=EDITOR_ROLES
+            ),
+            CheckWebAppAuthEnterprise(),
+        ),
+        body=WebAppAccessPayload,
+        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
+    )
+    def put(self, ctx: Context, app_id: str, *, body: WebAppAccessPayload):
+        return settings.update_webapp_access(ctx, body)
+
+
+@openapi_ns.route("/apps/<string:app_id>/webapp:reset")
+class WebAppResetApi(Resource):
+    @endpoint(
+        op="reset.webapp",
+        kind=Kind.OBJECT,
+        summary="Rotate an app's web app URL; the old URL stops working (agent apps: reset.webapp.agent)",
+        examples=(_RESET_EXAMPLE,),
+        requirements=account_settings_guards(
+            _SITE_WRITE, scope=Scope.WORKSPACE_WRITE, modes=settings.REGULAR_MODES, roles=ADMIN_ROLES
+        ),
+        returns=(HTTPStatus.OK, WebAppToken, "New URL token"),
+    )
+    def post(self, ctx: Context, app_id: str):
+        return settings.reset_webapp(ctx)
+
+
+@openapi_ns.route("/apps/<string:app_id>/webapp-access")
+class WebAppAccessApi(Resource):
+    @endpoint(
+        op="describe.webapp_access",
+        kind=Kind.OBJECT,
+        summary="Who may open an app's web app (Enterprise; agent apps: describe.webapp_access.agent)",
+        examples=(_ACCESS_EXAMPLE,),
+        requirements=(
+            *account_settings_guards(_ACCESS, scope=Scope.APPS_READ, modes=settings.REGULAR_MODES, roles=EDITOR_ROLES),
+            CheckWebAppAuthEnterprise(),
+        ),
+        returns=(HTTPStatus.OK, WebAppAccess, "Web-app access"),
+    )
+    def get(self, ctx: Context, app_id: str):
+        return settings.webapp_access(ctx)
+
+    @endpoint(
+        op="set.webapp_access",
+        kind=Kind.OBJECT,
+        summary="Set who may open an app's web app (Enterprise; agent apps: set.webapp_access.agent)",
+        examples=(_ACCESS_SET_EXAMPLE,),
+        requirements=(
+            *account_settings_guards(
+                _ACCESS, scope=Scope.WORKSPACE_WRITE, modes=settings.REGULAR_MODES, roles=EDITOR_ROLES
             ),
             CheckWebAppAuthEnterprise(),
         ),

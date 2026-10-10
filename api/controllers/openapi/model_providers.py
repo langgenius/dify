@@ -13,18 +13,15 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import CredentialInvalid, CredentialNotFound, ProviderNotFound
+from controllers.openapi._errors import CredentialInvalid, ProviderNotFound
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
     CredentialRef,
     CredentialWriteResponse,
     CustomModelRow,
-    DefaultModelListResponse,
-    DefaultModelPayload,
-    DefaultModelResponse,
-    DefaultModelRow,
     Hint,
+    LlmModelBlock,
     ModelCredentialCreatePayload,
     ModelCredentialUpdatePayload,
     ModelListQuery,
@@ -41,7 +38,7 @@ from controllers.openapi.auth.requirements import admin_write, workspace_read
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.entities.provider_entities import CustomModelConfiguration
 from extensions.ext_application_services import application_services
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import CredentialFormSchema
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from services.entities.model_provider_entities import CustomConfigurationStatus, ProviderResponse
@@ -196,6 +193,9 @@ def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, languag
             label=localized(m.label.model_dump(), language),
             status=str(m.status),
             features=[str(f) for f in m.features or []],
+            node_model=LlmModelBlock(provider=m.provider.provider, name=m.model, mode=str(mode))
+            if m.model_type == ModelType.LLM and (mode := m.model_properties.get(ModelPropertyKey.MODE))
+            else None,
         )
         if matches(words, row.model, row.label, row.provider, row.provider_label):
             rows.append(row)
@@ -330,25 +330,6 @@ class ModelProviderCredentialApi(Resource):
             )
         return _provider_write_response(ctx.workspace.id, provider, credential_id)
 
-    @endpoint(
-        op="delete.model_provider.credential",
-        kind=Kind.OBJECT,
-        summary="Delete a saved model provider credential",
-        examples=(Example(title="Delete", input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"}),),
-        requirements=_MANAGE,
-        returns=(HTTPStatus.OK, CredentialRef, "Credential deleted"),
-    )
-    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        configuration = _provider(ctx.workspace.id, provider).custom_configuration
-        names = {c.credential_id: c.credential_name for c in configuration.available_credentials or []}
-        if credential_id not in names:
-            raise CredentialNotFound()
-        with _credential_errors():
-            ModelProviderService().remove_provider_credential(
-                tenant_id=ctx.workspace.id, provider=provider, credential_id=credential_id
-            )
-        return CredentialRef(id=credential_id, name=names[credential_id])
-
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/models")
 class ModelsApi(Resource):
@@ -455,87 +436,3 @@ class ModelCredentialApi(Resource):
                 credential_name=body.name,
             )
         return _model_write_response(ctx.workspace.id, provider, body, credential_id)
-
-    @endpoint(
-        op="delete.model.credential",
-        kind=Kind.OBJECT,
-        summary="Delete a saved credential of one model",
-        examples=(
-            Example(
-                title="Delete",
-                input={
-                    "provider": _OLLAMA_EXAMPLE,
-                    "credential_id": "<credential_id>",
-                    "model": "llama3",
-                    "model_type": "llm",
-                },
-            ),
-        ),
-        requirements=_MANAGE,
-        query=ModelRef,
-        returns=(HTTPStatus.OK, CredentialRef, "Credential deleted"),
-    )
-    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str, *, query: ModelRef):
-        custom = _custom_model(_provider(ctx.workspace.id, provider), query.model, query.model_type.value)
-        names = {c.credential_id: c.credential_name for c in (custom.available_model_credentials if custom else [])}
-        if credential_id not in names:
-            raise CredentialNotFound()
-        with _credential_errors():
-            ModelProviderService().remove_model_credential(
-                tenant_id=ctx.workspace.id,
-                provider=provider,
-                model_type=query.model_type.value,
-                model=query.model,
-                credential_id=credential_id,
-            )
-        return CredentialRef(id=credential_id, name=names[credential_id])
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/default-models")
-class DefaultModelsApi(Resource):
-    @endpoint(
-        op="get.default_model",
-        kind=Kind.OBJECT,
-        summary="The workspace's default model for each model type; null when unset",
-        examples=(Example(title="All defaults", input={}),),
-        requirements=_READ,
-        returns=(HTTPStatus.OK, DefaultModelListResponse, "Default models"),
-    )
-    def get(self, ctx: Context, workspace_id: str):
-        service = ModelProviderService()
-        rows = []
-        for model_type in ModelType:
-            default = service.get_default_model_of_model_type(tenant_id=ctx.workspace.id, model_type=model_type.value)
-            rows.append(
-                DefaultModelRow(
-                    model_type=model_type.value,
-                    provider=default.provider.provider if default else None,
-                    model=default.model if default else None,
-                )
-            )
-        return DefaultModelListResponse(data=rows)
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/default-models/<string:model_type>")
-class DefaultModelApi(Resource):
-    @endpoint(
-        op="set.default_model",
-        kind=Kind.OBJECT,
-        summary="Set the workspace's default model for one model type",
-        examples=(
-            Example(title="Default LLM", input={"model_type": "llm", "provider": _PROVIDER_EXAMPLE, "model": "gpt-4o"}),
-        ),
-        requirements=_PREFERENCES,
-        body=DefaultModelPayload,
-        returns=(HTTPStatus.OK, DefaultModelResponse, "Default model set"),
-    )
-    def put(self, ctx: Context, workspace_id: str, model_type: str, *, body: DefaultModelPayload):
-        try:
-            model_type = ModelType(model_type).value
-        except ValueError as error:
-            raise BadRequest(f"Unknown model type {model_type}.") from error
-        with _credential_errors():
-            ModelProviderService().update_default_model_of_model_type(
-                tenant_id=ctx.workspace.id, model_type=model_type, provider=body.provider, model=body.model
-            )
-        return DefaultModelResponse(model_type=model_type, provider=body.provider, model=body.model)

@@ -28,6 +28,7 @@ from controllers.openapi._errors import (
     VersionNotFound,
     VersionNotRestorable,
 )
+from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._models import (
     AdvancedChatNodeRunPayload,
     EnvVariableListResponse,
@@ -45,6 +46,7 @@ from controllers.openapi._models import (
     VersionListResponse,
     VersionRow,
 )
+from controllers.openapi._upload import UploadParts
 from controllers.openapi.app_run import _DRAFT_RUN_GUARDS, require_mode
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckAppMode, account_app_guards
@@ -79,7 +81,7 @@ _VERSION_LIST_OP: Final = "get.console_app.version"
 _RUN_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, editor=False
 )
-_VERSION_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, editor=True)
+VERSION_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, editor=True)
 _RELEASE_GUARDS: Final = account_app_guards(
     RBACPermission.APP_RELEASE_AND_VERSION, scope=Scope.WORKSPACE_WRITE, editor=True
 )
@@ -230,7 +232,7 @@ class AppVersionListApi(Resource):
             Example(title="Latest versions", input={"app_id": "<app_id>"}),
             Example(title="Only named versions", input={"app_id": "<app_id>", "named_only": True}),
         ),
-        requirements=_VERSION_READ_GUARDS,
+        requirements=VERSION_READ_GUARDS,
         query=VersionListQuery,
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
     )
@@ -303,7 +305,7 @@ def env_variable_rows(variables: Iterable[VariableBase]) -> list[EnvVariableRow]
     ]
 
 
-def _require_draft(ctx: Context) -> Workflow:
+def require_draft(ctx: Context) -> Workflow:
     draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
     if draft is None:
         raise DraftNotFound()
@@ -340,7 +342,7 @@ class AppEnvListApi(Resource):
     )
     def get(self, ctx: Context, app_id: str):
         require_mode(ctx.app, *GRAPH_MODES)
-        return EnvVariableListResponse(data=env_variable_rows(_require_draft(ctx).environment_variables))
+        return EnvVariableListResponse(data=env_variable_rows(require_draft(ctx).environment_variables))
 
 
 @openapi_ns.route("/apps/<string:app_id>/env/<string:env_id>")
@@ -368,7 +370,7 @@ class AppEnvItemApi(Resource):
     )
     def put(self, ctx: Context, app_id: str, env_id: str, *, body: EnvVariableSetPayload):
         require_mode(ctx.app, *GRAPH_MODES)
-        draft = _require_draft(ctx)
+        draft = require_draft(ctx)
         if body.value == encrypter.full_mask_token() and body.value_type != EnvVariableValueType.SECRET:
             raise SecretMaskNotSecret()
         [mapping] = Workflow.normalize_environment_variable_mappings([{**body.model_dump(mode="json"), "id": env_id}])
@@ -392,7 +394,7 @@ class AppEnvItemApi(Resource):
     )
     def delete(self, ctx: Context, app_id: str, env_id: str):
         require_mode(ctx.app, *GRAPH_MODES)
-        if all(variable.id != env_id for variable in _require_draft(ctx).environment_variables):
+        if all(variable.id != env_id for variable in require_draft(ctx).environment_variables):
             raise EnvVariableNotFound()
         _patch_env(ctx, upserts=[], deletions=[env_id])
         return SimpleResultResponse(result="success")
@@ -402,21 +404,24 @@ _CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.LOOP, BuiltinNodeType
 
 
 def run_draft_node(
-    ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str
+    ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str, files: UploadParts | None = None
 ) -> WorkflowRunNodeExecutionResponse:
     workflow_service = WorkflowService()
-    draft = _require_draft(ctx)
+    draft = require_draft(ctx)
     node = next((node for node in draft.graph_dict.get("nodes", []) if node.get("id") == node_id), None)
     if node is None:
         raise NodeNotFound()
     if node.get("data", {}).get("type") in _CONTAINER_NODE_TYPES:
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
+    if files:
+        end_read_transaction(ctx.session)
+    user_inputs = merge_files(inputs, files, ctx.caller)
     try:
         execution = workflow_service.run_draft_workflow_node(
             app_model=ctx.app,
             draft_workflow=draft,
             node_id=node_id,
-            user_inputs=inputs,
+            user_inputs=user_inputs,
             account=ctx.account,
             query=query,
         )
@@ -445,7 +450,7 @@ class WorkflowDraftNodeRunApi(Resource):
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
     )
     def post(self, ctx: Context, app_id: str, node_id: str, *, body: NodeRunPayload):
-        return run_draft_node(ctx, node_id, inputs=body.inputs, query="")
+        return run_draft_node(ctx, node_id, inputs=body.inputs, query="", files=body.files)
 
 
 @openapi_ns.route("/apps/<string:app_id>/draft/advanced-chat/nodes/<string:node_id>:run")
@@ -460,4 +465,4 @@ class AdvancedChatDraftNodeRunApi(Resource):
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
     )
     def post(self, ctx: Context, app_id: str, node_id: str, *, body: AdvancedChatNodeRunPayload):
-        return run_draft_node(ctx, node_id, inputs=body.inputs, query=body.query)
+        return run_draft_node(ctx, node_id, inputs=body.inputs, query=body.query, files=body.files)

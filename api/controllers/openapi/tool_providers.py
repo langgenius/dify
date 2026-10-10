@@ -338,19 +338,3 @@ class ToolProviderCredentialApi(Resource):
                 name=body.name,
             )
         return _write_response(ctx, provider, credential_id)
-
-    @endpoint(
-        op="delete.tool_provider.credential",
-        kind=Kind.OBJECT,
-        summary="Delete a saved tool provider credential",
-        examples=(Example(title="Delete", input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"}),),
-        requirements=admin_write(RBACPermission.CREDENTIAL_MANAGE),
-        returns=(HTTPStatus.OK, CredentialRef, "Credential deleted"),
-    )
-    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        credential = _visible_credential(ctx, provider, credential_id)
-        try:
-            BuiltinToolManageService.delete_builtin_tool_provider(ctx.workspace.id, provider, credential_id)
-        except ValueError as error:
-            raise BadRequest(str(error)) from error
-        return CredentialRef(id=credential_id, name=credential.name)

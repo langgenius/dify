@@ -1,24 +1,32 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
+import yaml
 from flask_restx import Resource
-from werkzeug.exceptions import Forbidden
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._errors import DslInvalid, ErrorDetail
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
     CheckDependenciesResponse,
+    DslCheckPayload,
+    DslCheckResponse,
+    DslIssueRow,
     Hint,
 )
+from controllers.openapi.app_workflow import GRAPH_MODES
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
@@ -31,17 +39,132 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.plugins import PluginInstallApi
+from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from factories import variable_factory
+from graphon.variables import VariableBase
+from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
+from models import AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import AppImportParams, Import, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.workflow.graph_check import GraphIssue, IssueSeverity, ResourceCheck, check_graph
+from services.workflow.node_defaults import fill_graph
 from services.workflow_service import WorkflowService
 
 _DSL_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, scope=Scope.APPS_READ, editor=True)
+_DSL_WRITE_GUARDS: Final = (
+    CheckSubject(allowed=(AccountSubject,)),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
+    CheckWorkspaceRole(EDITOR_ROLES),
+)
+
+
+class _DslNotCheckableError(ValueError):
+    pass
+
+
+def _mapping(value: object) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _graph_dsl(context: RequestContext, yaml_content: str, app_id: str | None) -> tuple[Mapping[str, Any], AppMode]:
+    """The DSL's workflow section and the mode its graph must fit: the overwritten app's, else the DSL's own."""
+    try:
+        data = yaml.safe_load(yaml_content)
+    except yaml.YAMLError as error:
+        raise _DslNotCheckableError(f"Invalid YAML: {error}") from error
+    if not isinstance(data, Mapping):
+        raise _DslNotCheckableError("The DSL must be a YAML mapping")
+    target = (
+        application_services().apps.console.get(context, app_id).mode_compatible_with_agent
+        if app_id
+        else _mapping(data.get("app")).get("mode")
+    )
+    if target not in GRAPH_MODES:
+        raise _DslNotCheckableError("Only workflow or advanced-chat DSLs can be checked")
+    return _mapping(data.get("workflow")), AppMode(target)
+
+
+def _graph_of(workflow: Mapping[str, Any]) -> dict[str, Any]:
+    return fill_graph(_mapping(workflow.get("graph")))
+
+
+def node_credential_check(
+    workspace_id: str, environment: Mapping[str, VariableBase], session: Session
+) -> ResourceCheck:
+    service = WorkflowService()
+
+    def resources(node: Mapping[str, Any]) -> str | None:
+        try:
+            service.validate_node_credentials(workspace_id, node, environment, session=session)
+        except ValueError as error:
+            return str(error)
+        return None
+
+    return resources
+
+
+def _dsl_issues(context: RequestContext, yaml_content: str, app_id: str | None) -> list[GraphIssue]:
+    try:
+        workflow, mode = _graph_dsl(context, yaml_content, app_id)
+        environment = {
+            variable.name: variable
+            for variable in (
+                variable_factory.build_environment_variable_from_mapping(item)
+                for item in workflow.get("environment_variables") or []
+            )
+        }
+    except (_DslNotCheckableError, VariableError) as error:
+        raise BadRequest(str(error)) from error
+    except ConsoleAppNotFoundError as error:
+        raise NotFound(str(error)) from error
+    with session_factory.create_session() as session:
+        resources = node_credential_check(context.active_workspace_id, environment, session)
+        return check_graph(_graph_of(workflow), mode=mode, resources=resources)
+
+
+def _refuse_invalid_dsl(context: RequestContext, body: AppDslImportPayload) -> None:
+    """Refuse a YAML import whose graph has error-severity issues; DSLs the check can't read are left to the import."""
+    if body.mode != "yaml-content" or not body.yaml_content:
+        return
+    try:
+        workflow, mode = _graph_dsl(context, body.yaml_content, body.app_id)
+    except (_DslNotCheckableError, ConsoleAppNotFoundError):
+        return
+    errors = [i for i in check_graph(_graph_of(workflow), mode=mode) if i.code.severity is IssueSeverity.ERROR]
+    if errors:
+        raise DslInvalid(
+            details=[ErrorDetail(type=i.code, loc=list(i.loc), msg=i.message) for i in errors],
+            hints=[
+                Hint(
+                    summary="See every problem, including warnings",
+                    op=op_of(AppDslCheckApi.post),
+                    input={
+                        "workspace_id": context.active_workspace_id,
+                        "yaml_content": None,
+                        "app_id": body.app_id,
+                    },
+                )
+            ],
+        )
+
+
+def issue_row(issue: GraphIssue) -> DslIssueRow:
+    return DslIssueRow(
+        code=issue.code,
+        severity=issue.code.severity,
+        node_id=issue.node_id,
+        loc=list(issue.loc),
+        message=issue.message,
+    )
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -90,13 +213,7 @@ class AppDslImportApi(Resource):
                 input={"mode": "yaml-content", "yaml_content": "<yaml text of the app DSL>", "app_id": "<app_id>"},
             ),
         ),
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckScope(Scope.WORKSPACE_WRITE),
-            CheckWorkspaceMember(),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
-            CheckWorkspaceRole(EDITOR_ROLES),
-        ),
+        requirements=_DSL_WRITE_GUARDS,
         body=AppDslImportPayload,
         returns=(
             (HTTPStatus.OK, AppDslImportResponse, "Import completed"),
@@ -105,6 +222,7 @@ class AppDslImportApi(Resource):
         ),
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
+        _refuse_invalid_dsl(ctx, body)
         try:
             result = application_services().apps.imports.import_app(
                 ctx, AppImportParams.model_validate(body.model_dump())
@@ -120,6 +238,33 @@ class AppDslImportApi(Resource):
                 return response, HTTPStatus.ACCEPTED
             case _:
                 return response, HTTPStatus.OK
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports:check")
+class AppDslCheckApi(Resource):
+    """Check a DSL without importing it.
+
+    Errors are what the import refuses; warnings (missing credentials or models) are what publish refuses.
+    Pass ``app_id`` to check against an existing app's mode, as an overwrite import would.
+    """
+
+    @endpoint(
+        account_context=True,
+        op="check.console_app.dsl",
+        kind=Kind.OBJECT,
+        summary="Check a DSL without importing it: every problem with its node and field",
+        examples=(Example(title="Check a DSL (pipe the YAML)", input={"yaml_content": "<yaml text of the app DSL>"}),),
+        requirements=_DSL_WRITE_GUARDS,
+        body=DslCheckPayload,
+        returns=(HTTPStatus.OK, DslCheckResponse, "Check result"),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: DslCheckPayload):
+        issues = _dsl_issues(ctx, body.yaml_content, body.app_id)
+        response = DslCheckResponse(
+            valid=not any(i.code.severity is IssueSeverity.ERROR for i in issues),
+            issues=[issue_row(i) for i in issues],
+        )
+        return response, HTTPStatus.OK
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>:confirm")
@@ -140,13 +285,7 @@ class AppDslImportConfirmApi(Resource):
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
         examples=(Example(title="Confirm an import that is pending confirmation", input={"import_id": "<import_id>"}),),
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckScope(Scope.WORKSPACE_WRITE),
-            CheckWorkspaceMember(),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
-            CheckWorkspaceRole(EDITOR_ROLES),
-        ),
+        requirements=_DSL_WRITE_GUARDS,
         returns=((HTTPStatus.OK, Import, "Import confirmed"), (HTTPStatus.BAD_REQUEST, Import, "Import failed")),
     )
     def post(self, ctx: RequestContext, workspace_id: str, import_id: str):

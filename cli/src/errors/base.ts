@@ -1,4 +1,5 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import type { Hint } from '@/protocol/fold'
 import { BINARY } from '@/version/info'
 import { ErrorCode, exitFor } from './codes'
 
@@ -14,6 +15,7 @@ export type ServerErrorBody = {
   readonly message: string
   readonly status?: number
   readonly hint?: string
+  readonly hints?: Hint[]
   readonly details?: ServerErrorDetail[]
 }
 

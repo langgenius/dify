@@ -15,6 +15,15 @@ export const zAccountPayload = z.object({
  * AdvancedChatNodeRunPayload
  */
 export const zAdvancedChatNodeRunPayload = z.object({
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
 })
@@ -175,15 +184,6 @@ export const zAppDescribeInfo = z.object({
  */
 export const zAppDescribeQuery = z.object({
   fields: z.string().optional(),
-})
-
-/**
- * AppDescribeResponse
- */
-export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.nullish(),
-  input_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -449,23 +449,6 @@ export const zCustomModelRow = z.object({
 })
 
 /**
- * DefaultModelPayload
- */
-export const zDefaultModelPayload = z.object({
-  model: z.string(),
-  provider: z.string(),
-})
-
-/**
- * DefaultModelRow
- */
-export const zDefaultModelRow = z.object({
-  model: z.string().nullable(),
-  model_type: z.string(),
-  provider: z.string().nullable(),
-})
-
-/**
  * DeploymentEdition
  *
  * Enum representing the deployment edition of the platform.
@@ -550,6 +533,14 @@ export const zDraftWorkflowRunPayload = z.object({
 })
 
 /**
+ * DslCheckPayload
+ */
+export const zDslCheckPayload = z.object({
+  app_id: z.string().nullish(),
+  yaml_content: z.string(),
+})
+
+/**
  * DslImportWarning
  *
  * Portable DSL reference that could not be restored in the target workspace.
@@ -559,6 +550,17 @@ export const zDslImportWarning = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
   message: z.string(),
   path: z.string(),
+})
+
+/**
+ * DslIssueRow
+ */
+export const zDslIssueRow = z.object({
+  code: z.string(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  message: z.string(),
+  node_id: z.string().nullable(),
+  severity: z.string(),
 })
 
 /**
@@ -610,21 +612,6 @@ export const zErrorDetail = z.object({
     .default([]),
   msg: z.string(),
   type: z.string(),
-})
-
-/**
- * ErrorBody
- *
- * Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
- * generated client schema stays an open enum — old CLIs keep parsing when a
- * future server adds a code. Formatter tests pin emitted values to the enum.
- */
-export const zErrorBody = z.object({
-  code: z.string(),
-  details: z.array(zErrorDetail).nullish(),
-  hint: z.string().nullish(),
-  message: z.string(),
-  status: z.int(),
 })
 
 /**
@@ -701,6 +688,16 @@ export const zHint = z.object({
 })
 
 /**
+ * AppDescribeResponse
+ */
+export const zAppDescribeResponse = z.object({
+  hints: z.array(zHint).optional(),
+  info: zAppDescribeInfo.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
  * AppListResponse
  */
 export const zAppListResponse = z.object({
@@ -723,21 +720,28 @@ export const zCredentialWriteResponse = z.object({
 })
 
 /**
- * DefaultModelListResponse
+ * DslCheckResponse
  */
-export const zDefaultModelListResponse = z.object({
-  data: z.array(zDefaultModelRow),
+export const zDslCheckResponse = z.object({
   hints: z.array(zHint).optional(),
+  issues: z.array(zDslIssueRow),
+  valid: z.boolean(),
 })
 
 /**
- * DefaultModelResponse
+ * ErrorBody
+ *
+ * Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+ * generated client schema stays an open enum — old CLIs keep parsing when a
+ * future server adds a code. Formatter tests pin emitted values to the enum.
  */
-export const zDefaultModelResponse = z.object({
-  hints: z.array(zHint).optional(),
-  model: z.string().nullable(),
-  model_type: z.string(),
-  provider: z.string().nullable(),
+export const zErrorBody = z.object({
+  code: z.string(),
+  details: z.array(zErrorDetail).nullish(),
+  hint: z.string().nullish(),
+  hints: z.array(zHint).nullish(),
+  message: z.string(),
+  status: z.int(),
 })
 
 /**
@@ -790,6 +794,25 @@ export const zImport = z.object({
 })
 
 export const zJsonValue = z.unknown()
+
+/**
+ * KnowledgeBaseListQuery
+ */
+export const zKnowledgeBaseListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  query: z.string().optional().default(''),
+})
+
+/**
+ * LlmModelBlock
+ */
+export const zLlmModelBlock = z.object({
+  completion_params: z.record(z.string(), z.unknown()).optional(),
+  mode: z.string(),
+  name: z.string(),
+  provider: z.string(),
+})
 
 /**
  * Marketplace
@@ -930,6 +953,7 @@ export const zModelRow = z.object({
   label: z.string().nullable(),
   model: z.string(),
   model_type: z.string(),
+  node_model: zLlmModelBlock.nullish(),
   provider: z.string(),
   provider_label: z.string().nullable(),
   status: z.string(),
@@ -1001,9 +1025,86 @@ export const zModelRef = z.object({
 })
 
 /**
+ * MultipleRetrievalFragment
+ */
+export const zMultipleRetrievalFragment = z.object({
+  reranking_enable: z.boolean().optional().default(false),
+  top_k: z.int().optional().default(4),
+})
+
+/**
+ * KnowledgeRetrievalFragment
+ */
+export const zKnowledgeRetrievalFragment = z.object({
+  dataset_ids: z.array(z.string()),
+  multiple_retrieval_config: zMultipleRetrievalFragment.optional(),
+  retrieval_mode: z.literal('multiple').optional().default('multiple'),
+})
+
+/**
+ * KnowledgeBaseRow
+ */
+export const zKnowledgeBaseRow = z.object({
+  description: z.string().nullable(),
+  document_count: z.int(),
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  name: z.string(),
+  node_data: zKnowledgeRetrievalFragment,
+  provider: z.string(),
+  usable: z.boolean(),
+})
+
+/**
+ * KnowledgeBaseListResponse
+ */
+export const zKnowledgeBaseListResponse = z.object({
+  data: z.array(zKnowledgeBaseRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * NodeChangeRow
+ */
+export const zNodeChangeRow = z.object({
+  fields: z.array(z.string()),
+  id: z.string(),
+  title: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DraftChanges
+ */
+export const zDraftChanges = z.object({
+  edges_added: z.array(z.string()),
+  edges_removed: z.array(z.string()),
+  env_added: z.array(z.string()),
+  env_removed: z.array(z.string()),
+  features_changed: z.boolean(),
+  nodes_added: z.array(zNodeChangeRow),
+  nodes_changed: z.array(zNodeChangeRow),
+  nodes_removed: z.array(zNodeChangeRow),
+  published: z.boolean(),
+})
+
+/**
  * NodeRunPayload
  */
 export const zNodeRunPayload = z.object({
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -1048,6 +1149,7 @@ export const zOpenApiErrorCode = z.enum([
   'credential_not_found',
   'credential_oauth_only',
   'draft_not_found',
+  'dsl_invalid',
   'env_variable_not_found',
   'file_extension_blocked',
   'file_too_large',
@@ -1265,14 +1367,6 @@ export const zPluginTaskStartResponse = z.object({
 })
 
 /**
- * PluginUpgradePayload
- */
-export const zPluginUpgradePayload = z.object({
-  identifier: z.string(),
-  plugin_id: z.string(),
-})
-
-/**
  * ProviderCredentialCreatePayload
  */
 export const zProviderCredentialCreatePayload = z.object({
@@ -1303,6 +1397,40 @@ export const zPublishResponse = z.object({
   created_at: z.int(),
   version_id: z.string(),
   warning: z.string().nullish(),
+})
+
+/**
+ * ReleaseCheckName
+ */
+export const zReleaseCheckName = z.enum(['draft_valid', 'tested'])
+
+/**
+ * ReleaseCheckRow
+ */
+export const zReleaseCheckRow = z.object({
+  detail: z.string(),
+  name: zReleaseCheckName,
+  passed: z.boolean(),
+})
+
+/**
+ * ReleaseState
+ */
+export const zReleaseState = z.object({
+  service_api_enabled: z.boolean(),
+  webapp_enabled: z.boolean(),
+})
+
+/**
+ * ReleaseCheckResponse
+ */
+export const zReleaseCheckResponse = z.object({
+  changes: zDraftChanges,
+  checks: z.array(zReleaseCheckRow),
+  hints: z.array(zHint).optional(),
+  issues: z.array(zDslIssueRow),
+  ready: z.boolean(),
+  state: zReleaseState,
 })
 
 /**
@@ -2330,6 +2458,15 @@ export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
  */
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse = zFormSubmitResponse
 
+export const zGetAppsByAppIdReleaseCheckPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Release check
+ */
+export const zGetAppsByAppIdReleaseCheckResponse = zReleaseCheckResponse
+
 export const zGetAppsByAppIdRunsPath = z.object({
   app_id: z.string(),
 })
@@ -2366,25 +2503,25 @@ export const zGetAppsByAppIdRunsByRunIdNodesPath = z.object({
  */
 export const zGetAppsByAppIdRunsByRunIdNodesResponse = zWorkflowRunNodeExecutionListResponse
 
-export const zGetAppsByAppIdServiceApiAdvancedChatPath = z.object({
+export const zGetAppsByAppIdServiceApiPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Service API
  */
-export const zGetAppsByAppIdServiceApiAdvancedChatResponse = zServiceApi
+export const zGetAppsByAppIdServiceApiResponse = zServiceApi
 
-export const zPatchAppsByAppIdServiceApiAdvancedChatBody = zServiceApiPatch
+export const zPatchAppsByAppIdServiceApiBody = zServiceApiPatch
 
-export const zPatchAppsByAppIdServiceApiAdvancedChatPath = z.object({
+export const zPatchAppsByAppIdServiceApiPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Service API
  */
-export const zPatchAppsByAppIdServiceApiAdvancedChatResponse = zServiceApi
+export const zPatchAppsByAppIdServiceApiResponse = zServiceApi
 
 export const zGetAppsByAppIdServiceApiAgentPath = z.object({
   app_id: z.string(),
@@ -2405,86 +2542,6 @@ export const zPatchAppsByAppIdServiceApiAgentPath = z.object({
  * Service API
  */
 export const zPatchAppsByAppIdServiceApiAgentResponse = zAgentServiceApi
-
-export const zGetAppsByAppIdServiceApiAgentChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zGetAppsByAppIdServiceApiAgentChatResponse = zServiceApi
-
-export const zPatchAppsByAppIdServiceApiAgentChatBody = zServiceApiPatch
-
-export const zPatchAppsByAppIdServiceApiAgentChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zPatchAppsByAppIdServiceApiAgentChatResponse = zServiceApi
-
-export const zGetAppsByAppIdServiceApiChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zGetAppsByAppIdServiceApiChatResponse = zServiceApi
-
-export const zPatchAppsByAppIdServiceApiChatBody = zServiceApiPatch
-
-export const zPatchAppsByAppIdServiceApiChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zPatchAppsByAppIdServiceApiChatResponse = zServiceApi
-
-export const zGetAppsByAppIdServiceApiCompletionPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zGetAppsByAppIdServiceApiCompletionResponse = zServiceApi
-
-export const zPatchAppsByAppIdServiceApiCompletionBody = zServiceApiPatch
-
-export const zPatchAppsByAppIdServiceApiCompletionPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zPatchAppsByAppIdServiceApiCompletionResponse = zServiceApi
-
-export const zGetAppsByAppIdServiceApiWorkflowPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zGetAppsByAppIdServiceApiWorkflowResponse = zServiceApi
-
-export const zPatchAppsByAppIdServiceApiWorkflowBody = zServiceApiPatch
-
-export const zPatchAppsByAppIdServiceApiWorkflowPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Service API
- */
-export const zPatchAppsByAppIdServiceApiWorkflowResponse = zServiceApi
 
 export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
   app_id: z.string(),
@@ -2536,25 +2593,25 @@ export const zPostAppsByAppIdVersionsByVersionIdRestorePath = z.object({
  */
 export const zPostAppsByAppIdVersionsByVersionIdRestoreResponse = zRestoreResponse
 
-export const zGetAppsByAppIdWebappAccessAdvancedChatPath = z.object({
+export const zGetAppsByAppIdWebappAccessPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Web-app access
  */
-export const zGetAppsByAppIdWebappAccessAdvancedChatResponse = zWebAppAccess
+export const zGetAppsByAppIdWebappAccessResponse = zWebAppAccess
 
-export const zPutAppsByAppIdWebappAccessAdvancedChatBody = zWebAppAccessPayload
+export const zPutAppsByAppIdWebappAccessBody = zWebAppAccessPayload
 
-export const zPutAppsByAppIdWebappAccessAdvancedChatPath = z.object({
+export const zPutAppsByAppIdWebappAccessPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Web-app access
  */
-export const zPutAppsByAppIdWebappAccessAdvancedChatResponse = zWebAppAccess
+export const zPutAppsByAppIdWebappAccessResponse = zWebAppAccess
 
 export const zGetAppsByAppIdWebappAccessAgentPath = z.object({
   app_id: z.string(),
@@ -2576,86 +2633,6 @@ export const zPutAppsByAppIdWebappAccessAgentPath = z.object({
  */
 export const zPutAppsByAppIdWebappAccessAgentResponse = zWebAppAccess
 
-export const zGetAppsByAppIdWebappAccessAgentChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zGetAppsByAppIdWebappAccessAgentChatResponse = zWebAppAccess
-
-export const zPutAppsByAppIdWebappAccessAgentChatBody = zWebAppAccessPayload
-
-export const zPutAppsByAppIdWebappAccessAgentChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zPutAppsByAppIdWebappAccessAgentChatResponse = zWebAppAccess
-
-export const zGetAppsByAppIdWebappAccessChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zGetAppsByAppIdWebappAccessChatResponse = zWebAppAccess
-
-export const zPutAppsByAppIdWebappAccessChatBody = zWebAppAccessPayload
-
-export const zPutAppsByAppIdWebappAccessChatPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zPutAppsByAppIdWebappAccessChatResponse = zWebAppAccess
-
-export const zGetAppsByAppIdWebappAccessCompletionPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zGetAppsByAppIdWebappAccessCompletionResponse = zWebAppAccess
-
-export const zPutAppsByAppIdWebappAccessCompletionBody = zWebAppAccessPayload
-
-export const zPutAppsByAppIdWebappAccessCompletionPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zPutAppsByAppIdWebappAccessCompletionResponse = zWebAppAccess
-
-export const zGetAppsByAppIdWebappAccessWorkflowPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zGetAppsByAppIdWebappAccessWorkflowResponse = zWebAppAccess
-
-export const zPutAppsByAppIdWebappAccessWorkflowBody = zWebAppAccessPayload
-
-export const zPutAppsByAppIdWebappAccessWorkflowPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * Web-app access
- */
-export const zPutAppsByAppIdWebappAccessWorkflowResponse = zWebAppAccess
-
 export const zGetAppsByAppIdWebappAdvancedChatPath = z.object({
   app_id: z.string(),
 })
@@ -2675,15 +2652,6 @@ export const zPatchAppsByAppIdWebappAdvancedChatPath = z.object({
  * Web app
  */
 export const zPatchAppsByAppIdWebappAdvancedChatResponse = zAdvancedChatWebApp
-
-export const zPostAppsByAppIdWebappAdvancedChatResetPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * New URL token
- */
-export const zPostAppsByAppIdWebappAdvancedChatResetResponse = zWebAppToken
 
 export const zGetAppsByAppIdWebappAgentPath = z.object({
   app_id: z.string(),
@@ -2725,15 +2693,6 @@ export const zPatchAppsByAppIdWebappAgentChatPath = z.object({
  */
 export const zPatchAppsByAppIdWebappAgentChatResponse = zChatWebApp
 
-export const zPostAppsByAppIdWebappAgentChatResetPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * New URL token
- */
-export const zPostAppsByAppIdWebappAgentChatResetResponse = zWebAppToken
-
 export const zPostAppsByAppIdWebappAgentResetPath = z.object({
   app_id: z.string(),
 })
@@ -2763,15 +2722,6 @@ export const zPatchAppsByAppIdWebappChatPath = z.object({
  */
 export const zPatchAppsByAppIdWebappChatResponse = zChatWebApp
 
-export const zPostAppsByAppIdWebappChatResetPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * New URL token
- */
-export const zPostAppsByAppIdWebappChatResetResponse = zWebAppToken
-
 export const zGetAppsByAppIdWebappCompletionPath = z.object({
   app_id: z.string(),
 })
@@ -2791,15 +2741,6 @@ export const zPatchAppsByAppIdWebappCompletionPath = z.object({
  * Web app
  */
 export const zPatchAppsByAppIdWebappCompletionResponse = zWebApp
-
-export const zPostAppsByAppIdWebappCompletionResetPath = z.object({
-  app_id: z.string(),
-})
-
-/**
- * New URL token
- */
-export const zPostAppsByAppIdWebappCompletionResetResponse = zWebAppToken
 
 export const zGetAppsByAppIdWebappWorkflowPath = z.object({
   app_id: z.string(),
@@ -2821,14 +2762,14 @@ export const zPatchAppsByAppIdWebappWorkflowPath = z.object({
  */
 export const zPatchAppsByAppIdWebappWorkflowResponse = zWorkflowWebApp
 
-export const zPostAppsByAppIdWebappWorkflowResetPath = z.object({
+export const zPostAppsByAppIdWebappResetPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * New URL token
  */
-export const zPostAppsByAppIdWebappWorkflowResetResponse = zWebAppToken
+export const zPostAppsByAppIdWebappResetResponse = zWebAppToken
 
 export const zPostAppsByAppIdWorkflowRunBody = zWorkflowRunPayload
 
@@ -2979,6 +2920,17 @@ export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath = z.ob
  */
 export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse = zImport
 
+export const zPostWorkspacesByWorkspaceIdAppsImportsCheckBody = zDslCheckPayload
+
+export const zPostWorkspacesByWorkspaceIdAppsImportsCheckPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Check result
+ */
+export const zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse = zDslCheckResponse
+
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowBody = zCreateAppPayload
 
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowPath = z.object({
@@ -2990,26 +2942,20 @@ export const zPostWorkspacesByWorkspaceIdAppsWorkflowPath = z.object({
  */
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowResponse = zCreatedAppResponse
 
-export const zGetWorkspacesByWorkspaceIdDefaultModelsPath = z.object({
+export const zGetWorkspacesByWorkspaceIdKnowledgeBasesPath = z.object({
   workspace_id: z.string(),
 })
 
-/**
- * Default models
- */
-export const zGetWorkspacesByWorkspaceIdDefaultModelsResponse = zDefaultModelListResponse
-
-export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeBody = zDefaultModelPayload
-
-export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypePath = z.object({
-  model_type: z.string(),
-  workspace_id: z.string(),
+export const zGetWorkspacesByWorkspaceIdKnowledgeBasesQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  query: z.string().optional().default(''),
 })
 
 /**
- * Default model set
+ * Knowledge bases
  */
-export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse = zDefaultModelResponse
+export const zGetWorkspacesByWorkspaceIdKnowledgeBasesResponse = zKnowledgeBaseListResponse
 
 export const zGetWorkspacesByWorkspaceIdMarketplacePluginsPath = z.object({
   workspace_id: z.string(),
@@ -3101,19 +3047,6 @@ export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsPath
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
   zCredentialWriteResponse
 
-export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
-
-/**
- * Credential deleted
- */
-export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
-  zCredentialRef
-
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdBody =
   zProviderCredentialUpdatePayload
 
@@ -3143,25 +3076,6 @@ export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentia
  */
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   zCredentialWriteResponse
-
-export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
-
-export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery =
-  z.object({
-    model: z.string(),
-    model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
-  })
-
-/**
- * Credential deleted
- */
-export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
-  zCredentialRef
 
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdBody =
   zModelCredentialUpdatePayload
@@ -3244,17 +3158,6 @@ export const zPostWorkspacesByWorkspaceIdPluginsInstallPath = z.object({
  */
 export const zPostWorkspacesByWorkspaceIdPluginsInstallResponse = zPluginTaskStartResponse
 
-export const zPostWorkspacesByWorkspaceIdPluginsUpgradeBody = zPluginUpgradePayload
-
-export const zPostWorkspacesByWorkspaceIdPluginsUpgradePath = z.object({
-  workspace_id: z.string(),
-})
-
-/**
- * Upgrade started
- */
-export const zPostWorkspacesByWorkspaceIdPluginsUpgradeResponse = zPluginTaskStartResponse
-
 export const zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath = z.object({
   provider: z.string(),
   workspace_id: z.string(),
@@ -3279,19 +3182,6 @@ export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath 
  */
 export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
   zCredentialWriteResponse
-
-export const zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
-
-/**
- * Credential deleted
- */
-export const zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
-  zCredentialRef
 
 export const zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdBody =
   zToolCredentialUpdatePayload

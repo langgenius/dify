@@ -31,9 +31,24 @@ This is the shape of an exported draft. Values vary. Both examples below are tri
 
 ## What import refuses
 
-- No `answer` node in a Workflow app.
-- No `end` node and no trigger nodes in a Chatflow app.
-- Don't use `datasource` or `knowledge-index`. They belong to knowledge pipelines.
+`difyctl check console_app dsl` and the import run the same check. Each issue has a `severity`. An `error` stops the import. These are the error codes:
+
+- `graph_invalid`: the graph is missing or is not a valid graph.
+- `mode_incompatible`: the node does not fit the app mode. No `answer` node in a Workflow app. No `end` node and no trigger nodes in a Chatflow app.
+- `unknown_node_type`: `data.type` is not a node type the server knows.
+- `node_data_invalid`: a node's `data` does not match its type. The `loc` names the field.
+- `edge_endpoint_missing`: an edge's `source` or `target` is not a node id.
+- `branch_handle_invalid`: an edge's `sourceHandle` is not one of the node's branches.
+- `reference_missing`: a `{{#node_id.var#}}` or `value_selector` points to a node that does not exist.
+- `container_start_missing`: a loop or iteration has no start node.
+
+A `warning` does not stop the import. Publish refuses it on Enterprise, and runs fail on it everywhere. Fix it before hand-over:
+
+- `resource_unavailable`: the YAML names a model, tool or plugin that the workspace does not have.
+
+Don't use `datasource` or `knowledge-index` nodes. They belong to knowledge pipelines.
+
+Import fills empty containers for you: Start `variables`, tool parameter maps and similar. It never fills in a model, classes or a prompt. Write those yourself. An old if-else condition becomes a `true` case.
 
 ## Tool node
 

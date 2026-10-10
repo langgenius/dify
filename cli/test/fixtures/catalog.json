@@ -1039,11 +1039,11 @@
       "summary": "Create a blank advanced-chat app; export its DSL to start building"
     },
     "test.node.workflow": {
-      "bind": { "app_id": "path", "inputs": "body", "node_id": "path" },
+      "bind": { "app_id": "path", "files": "body", "inputs": "body", "node_id": "path" },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "app_id": {}, "inputs": {}, "node_id": {} },
+        "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {} },
         "required": ["app_id", "node_id"]
       },
       "internal": false,
@@ -1053,11 +1053,17 @@
       "summary": "Test one node of a workflow draft, reusing what the last draft run saved"
     },
     "test.node.advanced_chat": {
-      "bind": { "app_id": "path", "inputs": "body", "node_id": "path", "query": "body" },
+      "bind": {
+        "app_id": "path",
+        "files": "body",
+        "inputs": "body",
+        "node_id": "path",
+        "query": "body"
+      },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "app_id": {}, "inputs": {}, "node_id": {}, "query": {} },
+        "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {}, "query": {} },
         "required": ["app_id", "node_id"]
       },
       "internal": false,
@@ -1123,6 +1129,102 @@
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/draft/advanced-chat:run",
       "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. A human-input pause in a draft run cannot be resumed over openapi."
+    },
+    "check.console_app.dsl": {
+      "bind": { "app_id": "body", "workspace_id": "path", "yaml_content": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "workspace_id": {}, "yaml_content": {} },
+        "required": ["workspace_id", "yaml_content"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports:check",
+      "summary": "Check app DSL and list every problem"
+    },
+    "check.console_app.release": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/release:check",
+      "summary": "Check whether an app draft is ready to publish and what changed"
+    },
+    "get.knowledge_base": {
+      "bind": { "limit": "query", "page": "query", "query": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-bases",
+      "summary": "List knowledge bases"
+    },
+    "describe.service_api": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/service-api",
+      "summary": "Show an app's Service API settings"
+    },
+    "set.service_api": {
+      "bind": { "app_id": "path", "enabled": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/service-api",
+      "summary": "Turn an app's Service API on or off"
+    },
+    "describe.webapp_access": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access",
+      "summary": "Show who can open an app's web app"
+    },
+    "set.webapp_access": {
+      "bind": { "access_mode": "body", "app_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {} },
+        "required": ["app_id", "access_mode"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PUT",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access",
+      "summary": "Set who can open an app's web app"
+    },
+    "reset.webapp": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/webapp:reset",
+      "summary": "Reset an app's web app address"
     },
     "get.node_type": {
       "bind": {},
@@ -1476,76 +1578,6 @@
       "path": "/openapi/v1/apps/{app_id}/webapp/agent",
       "summary": "Change an agent app's web app; only the fields passed change"
     },
-    "set.service_api.workflow": {
-      "bind": { "app_id": "path", "enabled": "body" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "app_id": {}, "enabled": {} },
-        "required": ["app_id", "enabled"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PATCH",
-      "path": "/openapi/v1/apps/{app_id}/service-api/workflow",
-      "summary": "Turn a workflow app's Service API on or off"
-    },
-    "set.service_api.advanced_chat": {
-      "bind": { "app_id": "path", "enabled": "body" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "app_id": {}, "enabled": {} },
-        "required": ["app_id", "enabled"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PATCH",
-      "path": "/openapi/v1/apps/{app_id}/service-api/advanced-chat",
-      "summary": "Turn an advanced-chat app's Service API on or off"
-    },
-    "set.service_api.chat": {
-      "bind": { "app_id": "path", "enabled": "body" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "app_id": {}, "enabled": {} },
-        "required": ["app_id", "enabled"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PATCH",
-      "path": "/openapi/v1/apps/{app_id}/service-api/chat",
-      "summary": "Turn a chat app's Service API on or off"
-    },
-    "set.service_api.agent_chat": {
-      "bind": { "app_id": "path", "enabled": "body" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "app_id": {}, "enabled": {} },
-        "required": ["app_id", "enabled"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PATCH",
-      "path": "/openapi/v1/apps/{app_id}/service-api/agent-chat",
-      "summary": "Turn an agent-chat app's Service API on or off"
-    },
-    "set.service_api.completion": {
-      "bind": { "app_id": "path", "enabled": "body" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "app_id": {}, "enabled": {} },
-        "required": ["app_id", "enabled"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PATCH",
-      "path": "/openapi/v1/apps/{app_id}/service-api/completion",
-      "summary": "Turn a completion app's Service API on or off"
-    },
     "set.service_api.agent": {
       "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
@@ -1559,76 +1591,6 @@
       "method": "PATCH",
       "path": "/openapi/v1/apps/{app_id}/service-api/agent",
       "summary": "Turn an agent app's Service API on or off"
-    },
-    "set.webapp_access.workflow": {
-      "bind": { "access_mode": "body", "app_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "access_mode": {}, "app_id": {} },
-        "required": ["app_id", "access_mode"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/apps/{app_id}/webapp-access/workflow",
-      "summary": "Set who may open a workflow app's web app (Enterprise)"
-    },
-    "set.webapp_access.advanced_chat": {
-      "bind": { "access_mode": "body", "app_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "access_mode": {}, "app_id": {} },
-        "required": ["app_id", "access_mode"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/apps/{app_id}/webapp-access/advanced-chat",
-      "summary": "Set who may open an advanced-chat app's web app (Enterprise)"
-    },
-    "set.webapp_access.chat": {
-      "bind": { "access_mode": "body", "app_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "access_mode": {}, "app_id": {} },
-        "required": ["app_id", "access_mode"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/apps/{app_id}/webapp-access/chat",
-      "summary": "Set who may open a chat app's web app (Enterprise)"
-    },
-    "set.webapp_access.agent_chat": {
-      "bind": { "access_mode": "body", "app_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "access_mode": {}, "app_id": {} },
-        "required": ["app_id", "access_mode"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/apps/{app_id}/webapp-access/agent-chat",
-      "summary": "Set who may open an agent-chat app's web app (Enterprise)"
-    },
-    "set.webapp_access.completion": {
-      "bind": { "access_mode": "body", "app_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "access_mode": {}, "app_id": {} },
-        "required": ["app_id", "access_mode"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/apps/{app_id}/webapp-access/completion",
-      "summary": "Set who may open a completion app's web app (Enterprise)"
     },
     "set.webapp_access.agent": {
       "bind": { "access_mode": "body", "app_id": "path" },
@@ -1705,20 +1667,6 @@
       "method": "GET",
       "path": "/openapi/v1/workspaces/{workspace_id}/plugin-tasks/{task_id}",
       "summary": "Progress of a plugin install or upgrade; check again while pending or running"
-    },
-    "upgrade.plugin": {
-      "bind": { "identifier": "body", "plugin_id": "body", "workspace_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "identifier": {}, "plugin_id": {}, "workspace_id": {} },
-        "required": ["workspace_id", "plugin_id", "identifier"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "POST",
-      "path": "/openapi/v1/workspaces/{workspace_id}/plugins:upgrade",
-      "summary": "Upgrade an installed plugin to a marketplace version; finishes in the background"
     },
     "delete.plugin": {
       "bind": { "plugin_id": "path", "workspace_id": "path" },
@@ -1817,34 +1765,6 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/models/credentials",
       "summary": "Save a credential for one model you name, for providers such as OpenAI-compatible or Ollama"
-    },
-    "get.default_model": {
-      "bind": { "workspace_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "workspace_id": {} },
-        "required": ["workspace_id"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "GET",
-      "path": "/openapi/v1/workspaces/{workspace_id}/default-models",
-      "summary": "The workspace's default model for each model type; null when unset"
-    },
-    "set.default_model": {
-      "bind": { "model": "body", "model_type": "path", "provider": "body", "workspace_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "model": {}, "model_type": {}, "provider": {}, "workspace_id": {} },
-        "required": ["model_type", "workspace_id", "provider", "model"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "PUT",
-      "path": "/openapi/v1/workspaces/{workspace_id}/default-models/{model_type}",
-      "summary": "Set the workspace's default model for one model type"
     },
     "get.tool": {
       "bind": {

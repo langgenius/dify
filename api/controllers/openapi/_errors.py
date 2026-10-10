@@ -8,6 +8,7 @@ mandated by the OAuth spec)::
     message  str                 human-readable summary
     status   int                 HTTP status, duplicated in the body
     hint     str | None          actionable next step for the caller
+    hints    list[Hint] | None   ops the caller can run next, with ready input
     details  list[ErrorDetail]   per-field validation breakdown {type, loc, msg}
 
 ``OpenApiErrorFormatter`` is injected into ``ExternalApi`` so every
@@ -27,6 +28,7 @@ from typing import Any
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
 
 
@@ -89,6 +91,7 @@ class OpenApiErrorCode(StrEnum):
     CREDENTIAL_OAUTH_ONLY = "credential_oauth_only"
     CREDENTIAL_NOT_FOUND = "credential_not_found"
     PLUGIN_SERVICE_UNAVAILABLE = "plugin_service_unavailable"
+    DSL_INVALID = "dsl_invalid"
 
 
 class ErrorDetail(BaseModel):
@@ -106,6 +109,7 @@ class ErrorBody(BaseModel):
     message: str
     status: int
     hint: str | None = None
+    hints: list[Hint] | None = None
     details: list[ErrorDetail] | None = None
 
 
@@ -142,17 +146,21 @@ class OpenApiError(HTTPException):
     code = 400
     error_code: OpenApiErrorCode = OpenApiErrorCode.UNKNOWN
     hint: str | None = None
+    hints: list[Hint] | None = None
 
     def __init__(
         self,
         message: str | None = None,
         *,
         hint: str | None = None,
+        hints: list[Hint] | None = None,
         details: list[ErrorDetail] | None = None,
     ) -> None:
         super().__init__(description=message)
         if hint is not None:
             self.hint = hint
+        if hints is not None:
+            self.hints = hints
         self.details = details
 
 
@@ -177,6 +185,7 @@ class OpenApiErrorFormatter:
                 message=self._resolve_message(e, merged, status_code),
                 status=status_code,
                 hint=self._resolve_hint(e),
+                hints=e.hints if isinstance(e, OpenApiError) else None,
                 details=self._extract_details(e, merged),
             )
             wire = body.model_dump(mode="json", exclude_none=True)
@@ -425,3 +434,9 @@ class PluginServiceUnavailable(OpenApiError):  # noqa: N818
     code = 503
     error_code = OpenApiErrorCode.PLUGIN_SERVICE_UNAVAILABLE
     description = "Plugin service is unavailable."
+
+
+class DslInvalid(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.DSL_INVALID
+    description = "The DSL has problems the import refuses; each is in details with its location"

@@ -5,10 +5,12 @@ from unittest.mock import Mock
 import pytest
 
 from controllers.openapi import _app_settings
+from controllers.openapi._app_settings import WebAppPath
 from controllers.openapi._errors import WebAppAccessUnavailable
 from controllers.openapi._models import WebAppAccessPayload
 from controllers.openapi.auth.context import Context
 from enums import WebAppAccessMode
+from models import AppMode
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
 
@@ -42,3 +44,18 @@ def test_set_webapp_access_returns_the_written_mode_without_reading_back(monkeyp
 
     assert result.access_mode == WebAppAccessMode.PRIVATE_ALL
     console.update_access.assert_called_once_with("app-1", WebAppAccessMode.PRIVATE_ALL)
+
+
+@pytest.mark.parametrize(
+    ("mode", "path"),
+    [
+        (AppMode.WORKFLOW, WebAppPath.WORKFLOW),
+        (AppMode.ADVANCED_CHAT, WebAppPath.CHAT),
+        (AppMode.CHAT, WebAppPath.CHAT),
+        (AppMode.AGENT_CHAT, WebAppPath.CHAT),
+        (AppMode.COMPLETION, WebAppPath.COMPLETION),
+        (AppMode.AGENT, WebAppPath.AGENT),
+    ],
+)
+def test_web_app_path_follows_the_app_mode(mode: AppMode, path: WebAppPath) -> None:
+    assert WebAppPath.of(mode) is path

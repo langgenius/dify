@@ -326,13 +326,13 @@ def admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
 
 
 def account_settings_guards(
-    check: RBACCheck, *, scope: Scope, mode: AppMode, roles: frozenset[TenantAccountRole] | None
+    check: RBACCheck, *, scope: Scope, modes: tuple[AppMode, ...], roles: frozenset[TenantAccountRole] | None
 ) -> tuple[Requirement, ...]:
     """App-settings guards. No `CheckAppApiEnabled`, so an admin can always switch the Service API back on."""
     guards: tuple[Requirement, ...] = (
         CheckSubject(allowed=(AccountSubject,)),
         CheckWorkspaceMember(),
-        CheckAppMode(mode),
+        CheckAppMode(*modes),
         CheckScope(scope),
         CheckRBACPermission(check),
     )

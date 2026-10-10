@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid as _uuid
+from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Final
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
     SUPPORTED_APP_TYPES,
@@ -24,6 +25,27 @@ from controllers.openapi._models import (
     AppListQuery,
     AppListResponse,
     AppListRow,
+    Hint,
+)
+from controllers.openapi.app_info import (
+    AdvancedChatAppInfoApi,
+    AgentAppInfoApi,
+    AgentChatAppInfoApi,
+    AgentServiceApiApi,
+    ChatAppInfoApi,
+    CompletionAppInfoApi,
+    ServiceApiApi,
+    WorkflowAppInfoApi,
+)
+from controllers.openapi.app_webapp import (
+    AdvancedChatWebAppApi,
+    AgentChatWebAppApi,
+    AgentWebAppAccessApi,
+    AgentWebAppApi,
+    ChatWebAppApi,
+    CompletionWebAppApi,
+    WebAppAccessApi,
+    WorkflowWebAppApi,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -65,6 +87,29 @@ def parameters_payload(app: App, *, session: Session) -> dict:
     return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
+_SETTINGS_VIEWS: Final[dict[str, tuple[Callable[..., object], ...]]] = {
+    AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.ADVANCED_CHAT: (
+        AdvancedChatAppInfoApi.get,
+        AdvancedChatWebAppApi.get,
+        ServiceApiApi.get,
+        WebAppAccessApi.get,
+    ),
+    AppMode.CHAT: (ChatAppInfoApi.get, ChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT_CHAT: (AgentChatAppInfoApi.get, AgentChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.COMPLETION: (CompletionAppInfoApi.get, CompletionWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT: (AgentAppInfoApi.get, AgentWebAppApi.get, AgentServiceApiApi.get, AgentWebAppAccessApi.get),
+}
+
+
+def settings_hints(app_id: str, mode: str) -> list[Hint]:
+    """A stored mode this build doesn't know gets no hints."""
+    return [
+        Hint(summary="Read this setting", op=op_of(view), input={"app_id": app_id})
+        for view in _SETTINGS_VIEWS.get(mode, ())
+    ]
+
+
 def build_app_describe_response(app: App, fields: set[str] | None, *, session: Session) -> AppDescribeResponse:
     """Public projection of an app (name / params / input schema) — never internal config."""
     want_info = fields is None or "info" in fields
@@ -98,7 +143,11 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
         except AppUnavailableError:
             input_schema = dict(EMPTY_INPUT_SCHEMA)
 
-    return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
+    return AppDescribeResponse(
+        info=info,
+        parameters=parameters,
+        input_schema=input_schema,
+    )
 
 
 @openapi_ns.route("/apps/<string:app_id>")
@@ -126,7 +175,9 @@ class AppDescribeApi(Resource):
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
         # The pipeline has already loaded the app; project it.
-        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)
+        response = build_app_describe_response(ctx.app, query.fields, session=ctx.session)
+        response.hints = settings_hints(str(ctx.app.id), ctx.app.mode)
+        return response
 
 
 @openapi_ns.route("/apps")

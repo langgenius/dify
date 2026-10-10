@@ -38,7 +38,6 @@ from controllers.openapi._models import (
     PluginTaskItem,
     PluginTaskResponse,
     PluginTaskStartResponse,
-    PluginUpgradePayload,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -298,36 +297,6 @@ class PluginTaskApi(Resource):
             ],
             hints=hints,
         )
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/plugins:upgrade")
-class PluginUpgradeApi(Resource):
-    @endpoint(
-        op="upgrade.plugin",
-        kind=Kind.OBJECT,
-        summary="Upgrade an installed plugin to a marketplace version; finishes in the background",
-        examples=(
-            Example(
-                title="Upgrade OpenAI",
-                input={"plugin_id": "langgenius/openai", "identifier": "langgenius/openai:0.3.0@<sha256>"},
-            ),
-        ),
-        requirements=_write(RBACPermission.PLUGIN_MODEL_CONFIG),
-        body=PluginUpgradePayload,
-        returns=(HTTPStatus.OK, PluginTaskStartResponse, "Upgrade started"),
-    )
-    def post(self, ctx: Context, workspace_id: str, *, body: PluginUpgradePayload):
-        _require_marketplace()
-        if _plugin_id_of(body.identifier) != body.plugin_id:
-            raise BadRequest(f"Identifier {body.identifier} is not a version of {body.plugin_id}.")
-        current = _installed(ctx.workspace.id, body.plugin_id)
-        if current.plugin_unique_identifier == body.identifier:
-            raise BadRequest(f"Plugin {body.plugin_id} is already at this version.")
-        with _plugin_errors():
-            started = PluginService.upgrade_plugin_with_marketplace(
-                ctx.workspace.id, current.plugin_unique_identifier, body.identifier
-            )
-        return _start_response(ctx.workspace.id, started.task_id, started.all_installed, [body.plugin_id])
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/plugins/<path:plugin_id>")

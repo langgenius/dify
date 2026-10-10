@@ -31,4 +31,4 @@ Operations that remove or revoke have no confirmation prompt. Confirm with the p
 - Read [`references/setup.md`](references/setup.md) to check login or log in, switching server or workspace, or running in a sandbox or CI.
 - Read [`references/operations.md`](references/operations.md) before running any operation: flags, inputs, files, results, hints, errors and exit codes.
 - Read [`references/build-workflow.md`](references/build-workflow.md) when asked to create, change, test or publish a Workflow or Chatflow app.
-- Read [`references/plugins.md`](references/plugins.md) to find tools and models before building, when a plugin, model, tool or credential is missing, or when the user asks to install, upgrade or remove a plugin. Prefer an existing tool over an HTTP Request or Code node; the human picks.
+- Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the user asks to install or remove a plugin. Prefer an existing tool over an HTTP Request or Code node; the human picks.

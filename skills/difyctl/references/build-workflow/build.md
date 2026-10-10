@@ -37,7 +37,17 @@ Work on this one app for the whole build. Change it by importing over its draft.
    ```
 
 2. Write the slice's nodes and edges into `app.yml` by converting the node table. Make no new decisions here. Read [dsl.md](dsl.md) for where things go in the YAML.
-3. Import over the draft with that `draft_hash`:
+3. Check the YAML before every import. The check lists every problem at once, so you fix them in one pass:
+
+   ```bash
+   jq -Rs '{yaml_content: .}' difyctl/<app-slug>/app.yml |
+     difyctl check console_app dsl --app-id <app_id> --input @- --json
+   ```
+
+   - Each issue has a `code`, a `severity` (`error` or `warning`), a `node_id` and a `loc` that points to the field. Fix every `error` by its `loc`, then check again. Read `warning` issues and decide.
+   - Go on when `valid` is true.
+
+4. Import over the draft with that `draft_hash`:
 
    ```bash
    jq -Rs '{yaml_content: .}' difyctl/<app-slug>/app.yml |
@@ -45,23 +55,23 @@ Work on this one app for the whole build. Change it by importing over its draft.
    ```
 
    - Send the YAML through stdin with `--input @-`, as above. Do not pass it as `--yaml-content "$(cat …)"`: a large file breaks the command line.
-   - A failed import exits 1 with an error envelope on stderr that carries the server's message. Stop and show the human the message.
+   - A failed import exits 1 with an error envelope on stderr that carries the server's message. If the code is `dsl_invalid`, the `details` hold the same issues as the check. Fix them by `loc`. For any other failure, stop and show the human the message.
    - If the draft changed since your export, the server's message says to export again. Someone else changed the draft. Export again, show the human the difference, and never overwrite it.
    - A successful import prints a result. Check its `status`. Go on only when it is `completed`. On `completed-with-warnings`, stop and read `warnings`.
    - `pending` means the DSL version differs from the server's, and the draft has not changed. Show the human `imported_dsl_version` and `current_dsl_version`. If they agree, run `difyctl confirm console_app dsl_import --import-id <id> --json` with the result's `id`.
    - Each import changes the hash. Export again before the next import.
    - Read [dsl.md](dsl.md) for what else an import changes.
 
-4. Test each new node alone with the plan's inputs. Fix it, import again, test again.
+5. Test each new node alone with the plan's inputs. Fix it, import again, test again.
 
    ```bash
    difyctl test node workflow --app-id <app_id> --node-id <node_id> --inputs '{"#<node_id>.<var>#": "<value>"}' --json
    difyctl test node advanced_chat --app-id <app_id> --node-id <node_id> --query "<message>" --json
    ```
 
-   A node test reuses the values the last full draft run saved. Override any value the node reads with `--inputs`, keyed `#<node_id>.<var>#`.
+   A node test reuses the values the last full draft run saved. Override any value the node reads with `--inputs`, keyed `#<node_id>.<var>#`. To give a file variable a local file, pass `--files '{"<variable>": "<path>"}'`.
 
-5. Run the whole draft on the slice's acceptance cases. Check each result with the case's check type.
+6. Run the whole draft on the slice's acceptance cases. Check each result with the case's check type.
 
    ```bash
    difyctl test console_app workflow --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
@@ -76,8 +86,8 @@ Work on this one app for the whole build. Change it by importing over its draft.
    difyctl get run --app-id <app_id> --triggered-from debugging --limit 5 --json
    ```
 
-6. Review the slice against the plan, and the YAML against the node table.
-7. Tick the slice in `plan.md` and add its run ids. The ticked list is the progress record. A new session resumes at the first unticked slice.
+7. Review the slice against the plan, and the YAML against the node table.
+8. Tick the slice in `plan.md` and add its run ids. The ticked list is the progress record. A new session resumes at the first unticked slice.
 
 ## When something fails
 
@@ -103,7 +113,7 @@ Stop and ask the human when a change touches the spec: a requirement, an accepta
 ## Building with subagents
 
 - Give one slice at a time to a fresh subagent. Pass it the slice text, the file paths and the `app_id`.
-- The subagent runs steps 1 to 5. A reviewer subagent runs step 6.
+- The subagent runs steps 1 to 6. A reviewer subagent runs step 7.
 - Never run two subagents on one app at the same time. Their imports would collide on the draft hash.
 
 The build phase never publishes.

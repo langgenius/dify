@@ -20,6 +20,9 @@ export type AccountResponse = {
 }
 
 export type AdvancedChatNodeRunPayload = {
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
   inputs?: {
     [key: string]: unknown
   }
@@ -146,6 +149,7 @@ export type AppDescribeQuery = {
 }
 
 export type AppDescribeResponse = {
+  hints?: Array<Hint>
   info?: AppDescribeInfo | null
   input_schema?: {
     [key: string]: unknown
@@ -389,29 +393,6 @@ export type CustomModelRow = {
   model_type: string
 }
 
-export type DefaultModelListResponse = {
-  data: Array<DefaultModelRow>
-  hints?: Array<Hint>
-}
-
-export type DefaultModelPayload = {
-  model: string
-  provider: string
-}
-
-export type DefaultModelResponse = {
-  hints?: Array<Hint>
-  model: string | null
-  model_type: string
-  provider: string | null
-}
-
-export type DefaultModelRow = {
-  model: string | null
-  model_type: string
-  provider: string | null
-}
-
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type DeviceCodeRequest = {
@@ -462,6 +443,18 @@ export type DeviceTokenResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
+export type DraftChanges = {
+  edges_added: Array<string>
+  edges_removed: Array<string>
+  env_added: Array<string>
+  env_removed: Array<string>
+  features_changed: boolean
+  nodes_added: Array<NodeChangeRow>
+  nodes_changed: Array<NodeChangeRow>
+  nodes_removed: Array<NodeChangeRow>
+  published: boolean
+}
+
 export type DraftWorkflowRunPayload = {
   attachments?: Array<Blob | File> | null
   files?: {
@@ -473,6 +466,17 @@ export type DraftWorkflowRunPayload = {
   workspace_id?: string | null
 }
 
+export type DslCheckPayload = {
+  app_id?: string | null
+  yaml_content: string
+}
+
+export type DslCheckResponse = {
+  hints?: Array<Hint>
+  issues: Array<DslIssueRow>
+  valid: boolean
+}
+
 export type DslImportWarning = {
   code: string
   details?: {
@@ -480,6 +484,14 @@ export type DslImportWarning = {
   }
   message: string
   path: string
+}
+
+export type DslIssueRow = {
+  code: string
+  loc: Array<string | number>
+  message: string
+  node_id: string | null
+  severity: string
 }
 
 export type EnvVariableListResponse = {
@@ -507,6 +519,7 @@ export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
   hint?: string | null
+  hints?: Array<Hint> | null
   message: string
   status: number
 }
@@ -596,6 +609,47 @@ export type Import = {
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
 export type JsonValue = unknown
+
+export type KnowledgeBaseListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type KnowledgeBaseListResponse = {
+  data: Array<KnowledgeBaseRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type KnowledgeBaseRow = {
+  description: string | null
+  document_count: number
+  id: string
+  indexing_technique: string | null
+  name: string
+  node_data: KnowledgeRetrievalFragment
+  provider: string
+  usable: boolean
+}
+
+export type KnowledgeRetrievalFragment = {
+  dataset_ids: Array<string>
+  multiple_retrieval_config?: MultipleRetrievalFragment
+  retrieval_mode?: 'multiple'
+}
+
+export type LlmModelBlock = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
 
 export type Marketplace = {
   marketplace_plugin_unique_identifier: string
@@ -749,6 +803,7 @@ export type ModelRow = {
   label: string | null
   model: string
   model_type: string
+  node_model?: LlmModelBlock | null
   provider: string
   provider_label: string | null
   status: string
@@ -756,7 +811,22 @@ export type ModelRow = {
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
+export type MultipleRetrievalFragment = {
+  reranking_enable?: boolean
+  top_k?: number
+}
+
+export type NodeChangeRow = {
+  fields: Array<string>
+  id: string
+  title: string
+  type: string
+}
+
 export type NodeRunPayload = {
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
   inputs?: {
     [key: string]: unknown
   }
@@ -795,6 +865,7 @@ export type OpenApiErrorCode =
   | 'credential_not_found'
   | 'credential_oauth_only'
   | 'draft_not_found'
+  | 'dsl_invalid'
   | 'env_variable_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
@@ -940,11 +1011,6 @@ export type PluginTaskStartResponse = {
   task_id: string
 }
 
-export type PluginUpgradePayload = {
-  identifier: string
-  plugin_id: string
-}
-
 export type ProviderCredentialCreatePayload = {
   credentials: {
     [key: string]: unknown
@@ -968,6 +1034,28 @@ export type PublishResponse = {
   created_at: number
   version_id: string
   warning?: string | null
+}
+
+export type ReleaseCheckName = 'draft_valid' | 'tested'
+
+export type ReleaseCheckResponse = {
+  changes: DraftChanges
+  checks: Array<ReleaseCheckRow>
+  hints?: Array<Hint>
+  issues: Array<DslIssueRow>
+  ready: boolean
+  state: ReleaseState
+}
+
+export type ReleaseCheckRow = {
+  detail: string
+  name: ReleaseCheckName
+  passed: boolean
+}
+
+export type ReleaseState = {
+  service_api_enabled: boolean
+  webapp_enabled: boolean
 }
 
 export type RestoreResponse = {
@@ -2226,6 +2314,29 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
 
+export type GetAppsByAppIdReleaseCheckData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/release:check'
+}
+
+export type GetAppsByAppIdReleaseCheckErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdReleaseCheckError =
+  GetAppsByAppIdReleaseCheckErrors[keyof GetAppsByAppIdReleaseCheckErrors]
+
+export type GetAppsByAppIdReleaseCheckResponses = {
+  200: ReleaseCheckResponse
+}
+
+export type GetAppsByAppIdReleaseCheckResponse =
+  GetAppsByAppIdReleaseCheckResponses[keyof GetAppsByAppIdReleaseCheckResponses]
+
 export type GetAppsByAppIdRunsData = {
   body?: never
   path: {
@@ -2302,52 +2413,52 @@ export type GetAppsByAppIdRunsByRunIdNodesResponses = {
 export type GetAppsByAppIdRunsByRunIdNodesResponse =
   GetAppsByAppIdRunsByRunIdNodesResponses[keyof GetAppsByAppIdRunsByRunIdNodesResponses]
 
-export type GetAppsByAppIdServiceApiAdvancedChatData = {
+export type GetAppsByAppIdServiceApiData = {
   body?: never
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/service-api/advanced-chat'
+  url: '/apps/{app_id}/service-api'
 }
 
-export type GetAppsByAppIdServiceApiAdvancedChatErrors = {
+export type GetAppsByAppIdServiceApiErrors = {
   default: ErrorBody
 }
 
-export type GetAppsByAppIdServiceApiAdvancedChatError =
-  GetAppsByAppIdServiceApiAdvancedChatErrors[keyof GetAppsByAppIdServiceApiAdvancedChatErrors]
+export type GetAppsByAppIdServiceApiError =
+  GetAppsByAppIdServiceApiErrors[keyof GetAppsByAppIdServiceApiErrors]
 
-export type GetAppsByAppIdServiceApiAdvancedChatResponses = {
+export type GetAppsByAppIdServiceApiResponses = {
   200: ServiceApi
 }
 
-export type GetAppsByAppIdServiceApiAdvancedChatResponse =
-  GetAppsByAppIdServiceApiAdvancedChatResponses[keyof GetAppsByAppIdServiceApiAdvancedChatResponses]
+export type GetAppsByAppIdServiceApiResponse =
+  GetAppsByAppIdServiceApiResponses[keyof GetAppsByAppIdServiceApiResponses]
 
-export type PatchAppsByAppIdServiceApiAdvancedChatData = {
+export type PatchAppsByAppIdServiceApiData = {
   body: ServiceApiPatch
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/service-api/advanced-chat'
+  url: '/apps/{app_id}/service-api'
 }
 
-export type PatchAppsByAppIdServiceApiAdvancedChatErrors = {
+export type PatchAppsByAppIdServiceApiErrors = {
   422: ErrorBody
   default: ErrorBody
 }
 
-export type PatchAppsByAppIdServiceApiAdvancedChatError =
-  PatchAppsByAppIdServiceApiAdvancedChatErrors[keyof PatchAppsByAppIdServiceApiAdvancedChatErrors]
+export type PatchAppsByAppIdServiceApiError =
+  PatchAppsByAppIdServiceApiErrors[keyof PatchAppsByAppIdServiceApiErrors]
 
-export type PatchAppsByAppIdServiceApiAdvancedChatResponses = {
+export type PatchAppsByAppIdServiceApiResponses = {
   200: ServiceApi
 }
 
-export type PatchAppsByAppIdServiceApiAdvancedChatResponse =
-  PatchAppsByAppIdServiceApiAdvancedChatResponses[keyof PatchAppsByAppIdServiceApiAdvancedChatResponses]
+export type PatchAppsByAppIdServiceApiResponse =
+  PatchAppsByAppIdServiceApiResponses[keyof PatchAppsByAppIdServiceApiResponses]
 
 export type GetAppsByAppIdServiceApiAgentData = {
   body?: never
@@ -2395,194 +2506,6 @@ export type PatchAppsByAppIdServiceApiAgentResponses = {
 
 export type PatchAppsByAppIdServiceApiAgentResponse =
   PatchAppsByAppIdServiceApiAgentResponses[keyof PatchAppsByAppIdServiceApiAgentResponses]
-
-export type GetAppsByAppIdServiceApiAgentChatData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/agent-chat'
-}
-
-export type GetAppsByAppIdServiceApiAgentChatErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdServiceApiAgentChatError =
-  GetAppsByAppIdServiceApiAgentChatErrors[keyof GetAppsByAppIdServiceApiAgentChatErrors]
-
-export type GetAppsByAppIdServiceApiAgentChatResponses = {
-  200: ServiceApi
-}
-
-export type GetAppsByAppIdServiceApiAgentChatResponse =
-  GetAppsByAppIdServiceApiAgentChatResponses[keyof GetAppsByAppIdServiceApiAgentChatResponses]
-
-export type PatchAppsByAppIdServiceApiAgentChatData = {
-  body: ServiceApiPatch
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/agent-chat'
-}
-
-export type PatchAppsByAppIdServiceApiAgentChatErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PatchAppsByAppIdServiceApiAgentChatError =
-  PatchAppsByAppIdServiceApiAgentChatErrors[keyof PatchAppsByAppIdServiceApiAgentChatErrors]
-
-export type PatchAppsByAppIdServiceApiAgentChatResponses = {
-  200: ServiceApi
-}
-
-export type PatchAppsByAppIdServiceApiAgentChatResponse =
-  PatchAppsByAppIdServiceApiAgentChatResponses[keyof PatchAppsByAppIdServiceApiAgentChatResponses]
-
-export type GetAppsByAppIdServiceApiChatData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/chat'
-}
-
-export type GetAppsByAppIdServiceApiChatErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdServiceApiChatError =
-  GetAppsByAppIdServiceApiChatErrors[keyof GetAppsByAppIdServiceApiChatErrors]
-
-export type GetAppsByAppIdServiceApiChatResponses = {
-  200: ServiceApi
-}
-
-export type GetAppsByAppIdServiceApiChatResponse =
-  GetAppsByAppIdServiceApiChatResponses[keyof GetAppsByAppIdServiceApiChatResponses]
-
-export type PatchAppsByAppIdServiceApiChatData = {
-  body: ServiceApiPatch
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/chat'
-}
-
-export type PatchAppsByAppIdServiceApiChatErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PatchAppsByAppIdServiceApiChatError =
-  PatchAppsByAppIdServiceApiChatErrors[keyof PatchAppsByAppIdServiceApiChatErrors]
-
-export type PatchAppsByAppIdServiceApiChatResponses = {
-  200: ServiceApi
-}
-
-export type PatchAppsByAppIdServiceApiChatResponse =
-  PatchAppsByAppIdServiceApiChatResponses[keyof PatchAppsByAppIdServiceApiChatResponses]
-
-export type GetAppsByAppIdServiceApiCompletionData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/completion'
-}
-
-export type GetAppsByAppIdServiceApiCompletionErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdServiceApiCompletionError =
-  GetAppsByAppIdServiceApiCompletionErrors[keyof GetAppsByAppIdServiceApiCompletionErrors]
-
-export type GetAppsByAppIdServiceApiCompletionResponses = {
-  200: ServiceApi
-}
-
-export type GetAppsByAppIdServiceApiCompletionResponse =
-  GetAppsByAppIdServiceApiCompletionResponses[keyof GetAppsByAppIdServiceApiCompletionResponses]
-
-export type PatchAppsByAppIdServiceApiCompletionData = {
-  body: ServiceApiPatch
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/completion'
-}
-
-export type PatchAppsByAppIdServiceApiCompletionErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PatchAppsByAppIdServiceApiCompletionError =
-  PatchAppsByAppIdServiceApiCompletionErrors[keyof PatchAppsByAppIdServiceApiCompletionErrors]
-
-export type PatchAppsByAppIdServiceApiCompletionResponses = {
-  200: ServiceApi
-}
-
-export type PatchAppsByAppIdServiceApiCompletionResponse =
-  PatchAppsByAppIdServiceApiCompletionResponses[keyof PatchAppsByAppIdServiceApiCompletionResponses]
-
-export type GetAppsByAppIdServiceApiWorkflowData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/workflow'
-}
-
-export type GetAppsByAppIdServiceApiWorkflowErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdServiceApiWorkflowError =
-  GetAppsByAppIdServiceApiWorkflowErrors[keyof GetAppsByAppIdServiceApiWorkflowErrors]
-
-export type GetAppsByAppIdServiceApiWorkflowResponses = {
-  200: ServiceApi
-}
-
-export type GetAppsByAppIdServiceApiWorkflowResponse =
-  GetAppsByAppIdServiceApiWorkflowResponses[keyof GetAppsByAppIdServiceApiWorkflowResponses]
-
-export type PatchAppsByAppIdServiceApiWorkflowData = {
-  body: ServiceApiPatch
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/service-api/workflow'
-}
-
-export type PatchAppsByAppIdServiceApiWorkflowErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PatchAppsByAppIdServiceApiWorkflowError =
-  PatchAppsByAppIdServiceApiWorkflowErrors[keyof PatchAppsByAppIdServiceApiWorkflowErrors]
-
-export type PatchAppsByAppIdServiceApiWorkflowResponses = {
-  200: ServiceApi
-}
-
-export type PatchAppsByAppIdServiceApiWorkflowResponse =
-  PatchAppsByAppIdServiceApiWorkflowResponses[keyof PatchAppsByAppIdServiceApiWorkflowResponses]
 
 export type GetAppsByAppIdTasksByTaskIdEventsData = {
   body?: never
@@ -2688,52 +2611,52 @@ export type PostAppsByAppIdVersionsByVersionIdRestoreResponses = {
 export type PostAppsByAppIdVersionsByVersionIdRestoreResponse =
   PostAppsByAppIdVersionsByVersionIdRestoreResponses[keyof PostAppsByAppIdVersionsByVersionIdRestoreResponses]
 
-export type GetAppsByAppIdWebappAccessAdvancedChatData = {
+export type GetAppsByAppIdWebappAccessData = {
   body?: never
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/webapp-access/advanced-chat'
+  url: '/apps/{app_id}/webapp-access'
 }
 
-export type GetAppsByAppIdWebappAccessAdvancedChatErrors = {
+export type GetAppsByAppIdWebappAccessErrors = {
   default: ErrorBody
 }
 
-export type GetAppsByAppIdWebappAccessAdvancedChatError =
-  GetAppsByAppIdWebappAccessAdvancedChatErrors[keyof GetAppsByAppIdWebappAccessAdvancedChatErrors]
+export type GetAppsByAppIdWebappAccessError =
+  GetAppsByAppIdWebappAccessErrors[keyof GetAppsByAppIdWebappAccessErrors]
 
-export type GetAppsByAppIdWebappAccessAdvancedChatResponses = {
+export type GetAppsByAppIdWebappAccessResponses = {
   200: WebAppAccess
 }
 
-export type GetAppsByAppIdWebappAccessAdvancedChatResponse =
-  GetAppsByAppIdWebappAccessAdvancedChatResponses[keyof GetAppsByAppIdWebappAccessAdvancedChatResponses]
+export type GetAppsByAppIdWebappAccessResponse =
+  GetAppsByAppIdWebappAccessResponses[keyof GetAppsByAppIdWebappAccessResponses]
 
-export type PutAppsByAppIdWebappAccessAdvancedChatData = {
+export type PutAppsByAppIdWebappAccessData = {
   body: WebAppAccessPayload
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/webapp-access/advanced-chat'
+  url: '/apps/{app_id}/webapp-access'
 }
 
-export type PutAppsByAppIdWebappAccessAdvancedChatErrors = {
+export type PutAppsByAppIdWebappAccessErrors = {
   422: ErrorBody
   default: ErrorBody
 }
 
-export type PutAppsByAppIdWebappAccessAdvancedChatError =
-  PutAppsByAppIdWebappAccessAdvancedChatErrors[keyof PutAppsByAppIdWebappAccessAdvancedChatErrors]
+export type PutAppsByAppIdWebappAccessError =
+  PutAppsByAppIdWebappAccessErrors[keyof PutAppsByAppIdWebappAccessErrors]
 
-export type PutAppsByAppIdWebappAccessAdvancedChatResponses = {
+export type PutAppsByAppIdWebappAccessResponses = {
   200: WebAppAccess
 }
 
-export type PutAppsByAppIdWebappAccessAdvancedChatResponse =
-  PutAppsByAppIdWebappAccessAdvancedChatResponses[keyof PutAppsByAppIdWebappAccessAdvancedChatResponses]
+export type PutAppsByAppIdWebappAccessResponse =
+  PutAppsByAppIdWebappAccessResponses[keyof PutAppsByAppIdWebappAccessResponses]
 
 export type GetAppsByAppIdWebappAccessAgentData = {
   body?: never
@@ -2782,194 +2705,6 @@ export type PutAppsByAppIdWebappAccessAgentResponses = {
 export type PutAppsByAppIdWebappAccessAgentResponse =
   PutAppsByAppIdWebappAccessAgentResponses[keyof PutAppsByAppIdWebappAccessAgentResponses]
 
-export type GetAppsByAppIdWebappAccessAgentChatData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/agent-chat'
-}
-
-export type GetAppsByAppIdWebappAccessAgentChatErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdWebappAccessAgentChatError =
-  GetAppsByAppIdWebappAccessAgentChatErrors[keyof GetAppsByAppIdWebappAccessAgentChatErrors]
-
-export type GetAppsByAppIdWebappAccessAgentChatResponses = {
-  200: WebAppAccess
-}
-
-export type GetAppsByAppIdWebappAccessAgentChatResponse =
-  GetAppsByAppIdWebappAccessAgentChatResponses[keyof GetAppsByAppIdWebappAccessAgentChatResponses]
-
-export type PutAppsByAppIdWebappAccessAgentChatData = {
-  body: WebAppAccessPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/agent-chat'
-}
-
-export type PutAppsByAppIdWebappAccessAgentChatErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PutAppsByAppIdWebappAccessAgentChatError =
-  PutAppsByAppIdWebappAccessAgentChatErrors[keyof PutAppsByAppIdWebappAccessAgentChatErrors]
-
-export type PutAppsByAppIdWebappAccessAgentChatResponses = {
-  200: WebAppAccess
-}
-
-export type PutAppsByAppIdWebappAccessAgentChatResponse =
-  PutAppsByAppIdWebappAccessAgentChatResponses[keyof PutAppsByAppIdWebappAccessAgentChatResponses]
-
-export type GetAppsByAppIdWebappAccessChatData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/chat'
-}
-
-export type GetAppsByAppIdWebappAccessChatErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdWebappAccessChatError =
-  GetAppsByAppIdWebappAccessChatErrors[keyof GetAppsByAppIdWebappAccessChatErrors]
-
-export type GetAppsByAppIdWebappAccessChatResponses = {
-  200: WebAppAccess
-}
-
-export type GetAppsByAppIdWebappAccessChatResponse =
-  GetAppsByAppIdWebappAccessChatResponses[keyof GetAppsByAppIdWebappAccessChatResponses]
-
-export type PutAppsByAppIdWebappAccessChatData = {
-  body: WebAppAccessPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/chat'
-}
-
-export type PutAppsByAppIdWebappAccessChatErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PutAppsByAppIdWebappAccessChatError =
-  PutAppsByAppIdWebappAccessChatErrors[keyof PutAppsByAppIdWebappAccessChatErrors]
-
-export type PutAppsByAppIdWebappAccessChatResponses = {
-  200: WebAppAccess
-}
-
-export type PutAppsByAppIdWebappAccessChatResponse =
-  PutAppsByAppIdWebappAccessChatResponses[keyof PutAppsByAppIdWebappAccessChatResponses]
-
-export type GetAppsByAppIdWebappAccessCompletionData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/completion'
-}
-
-export type GetAppsByAppIdWebappAccessCompletionErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdWebappAccessCompletionError =
-  GetAppsByAppIdWebappAccessCompletionErrors[keyof GetAppsByAppIdWebappAccessCompletionErrors]
-
-export type GetAppsByAppIdWebappAccessCompletionResponses = {
-  200: WebAppAccess
-}
-
-export type GetAppsByAppIdWebappAccessCompletionResponse =
-  GetAppsByAppIdWebappAccessCompletionResponses[keyof GetAppsByAppIdWebappAccessCompletionResponses]
-
-export type PutAppsByAppIdWebappAccessCompletionData = {
-  body: WebAppAccessPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/completion'
-}
-
-export type PutAppsByAppIdWebappAccessCompletionErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PutAppsByAppIdWebappAccessCompletionError =
-  PutAppsByAppIdWebappAccessCompletionErrors[keyof PutAppsByAppIdWebappAccessCompletionErrors]
-
-export type PutAppsByAppIdWebappAccessCompletionResponses = {
-  200: WebAppAccess
-}
-
-export type PutAppsByAppIdWebappAccessCompletionResponse =
-  PutAppsByAppIdWebappAccessCompletionResponses[keyof PutAppsByAppIdWebappAccessCompletionResponses]
-
-export type GetAppsByAppIdWebappAccessWorkflowData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/workflow'
-}
-
-export type GetAppsByAppIdWebappAccessWorkflowErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdWebappAccessWorkflowError =
-  GetAppsByAppIdWebappAccessWorkflowErrors[keyof GetAppsByAppIdWebappAccessWorkflowErrors]
-
-export type GetAppsByAppIdWebappAccessWorkflowResponses = {
-  200: WebAppAccess
-}
-
-export type GetAppsByAppIdWebappAccessWorkflowResponse =
-  GetAppsByAppIdWebappAccessWorkflowResponses[keyof GetAppsByAppIdWebappAccessWorkflowResponses]
-
-export type PutAppsByAppIdWebappAccessWorkflowData = {
-  body: WebAppAccessPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp-access/workflow'
-}
-
-export type PutAppsByAppIdWebappAccessWorkflowErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PutAppsByAppIdWebappAccessWorkflowError =
-  PutAppsByAppIdWebappAccessWorkflowErrors[keyof PutAppsByAppIdWebappAccessWorkflowErrors]
-
-export type PutAppsByAppIdWebappAccessWorkflowResponses = {
-  200: WebAppAccess
-}
-
-export type PutAppsByAppIdWebappAccessWorkflowResponse =
-  PutAppsByAppIdWebappAccessWorkflowResponses[keyof PutAppsByAppIdWebappAccessWorkflowResponses]
-
 export type GetAppsByAppIdWebappAdvancedChatData = {
   body?: never
   path: {
@@ -3016,29 +2751,6 @@ export type PatchAppsByAppIdWebappAdvancedChatResponses = {
 
 export type PatchAppsByAppIdWebappAdvancedChatResponse =
   PatchAppsByAppIdWebappAdvancedChatResponses[keyof PatchAppsByAppIdWebappAdvancedChatResponses]
-
-export type PostAppsByAppIdWebappAdvancedChatResetData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp/advanced-chat:reset'
-}
-
-export type PostAppsByAppIdWebappAdvancedChatResetErrors = {
-  default: ErrorBody
-}
-
-export type PostAppsByAppIdWebappAdvancedChatResetError =
-  PostAppsByAppIdWebappAdvancedChatResetErrors[keyof PostAppsByAppIdWebappAdvancedChatResetErrors]
-
-export type PostAppsByAppIdWebappAdvancedChatResetResponses = {
-  200: WebAppToken
-}
-
-export type PostAppsByAppIdWebappAdvancedChatResetResponse =
-  PostAppsByAppIdWebappAdvancedChatResetResponses[keyof PostAppsByAppIdWebappAdvancedChatResetResponses]
 
 export type GetAppsByAppIdWebappAgentData = {
   body?: never
@@ -3134,29 +2846,6 @@ export type PatchAppsByAppIdWebappAgentChatResponses = {
 export type PatchAppsByAppIdWebappAgentChatResponse =
   PatchAppsByAppIdWebappAgentChatResponses[keyof PatchAppsByAppIdWebappAgentChatResponses]
 
-export type PostAppsByAppIdWebappAgentChatResetData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp/agent-chat:reset'
-}
-
-export type PostAppsByAppIdWebappAgentChatResetErrors = {
-  default: ErrorBody
-}
-
-export type PostAppsByAppIdWebappAgentChatResetError =
-  PostAppsByAppIdWebappAgentChatResetErrors[keyof PostAppsByAppIdWebappAgentChatResetErrors]
-
-export type PostAppsByAppIdWebappAgentChatResetResponses = {
-  200: WebAppToken
-}
-
-export type PostAppsByAppIdWebappAgentChatResetResponse =
-  PostAppsByAppIdWebappAgentChatResetResponses[keyof PostAppsByAppIdWebappAgentChatResetResponses]
-
 export type PostAppsByAppIdWebappAgentResetData = {
   body?: never
   path: {
@@ -3227,29 +2916,6 @@ export type PatchAppsByAppIdWebappChatResponses = {
 export type PatchAppsByAppIdWebappChatResponse =
   PatchAppsByAppIdWebappChatResponses[keyof PatchAppsByAppIdWebappChatResponses]
 
-export type PostAppsByAppIdWebappChatResetData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp/chat:reset'
-}
-
-export type PostAppsByAppIdWebappChatResetErrors = {
-  default: ErrorBody
-}
-
-export type PostAppsByAppIdWebappChatResetError =
-  PostAppsByAppIdWebappChatResetErrors[keyof PostAppsByAppIdWebappChatResetErrors]
-
-export type PostAppsByAppIdWebappChatResetResponses = {
-  200: WebAppToken
-}
-
-export type PostAppsByAppIdWebappChatResetResponse =
-  PostAppsByAppIdWebappChatResetResponses[keyof PostAppsByAppIdWebappChatResetResponses]
-
 export type GetAppsByAppIdWebappCompletionData = {
   body?: never
   path: {
@@ -3296,29 +2962,6 @@ export type PatchAppsByAppIdWebappCompletionResponses = {
 
 export type PatchAppsByAppIdWebappCompletionResponse =
   PatchAppsByAppIdWebappCompletionResponses[keyof PatchAppsByAppIdWebappCompletionResponses]
-
-export type PostAppsByAppIdWebappCompletionResetData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/webapp/completion:reset'
-}
-
-export type PostAppsByAppIdWebappCompletionResetErrors = {
-  default: ErrorBody
-}
-
-export type PostAppsByAppIdWebappCompletionResetError =
-  PostAppsByAppIdWebappCompletionResetErrors[keyof PostAppsByAppIdWebappCompletionResetErrors]
-
-export type PostAppsByAppIdWebappCompletionResetResponses = {
-  200: WebAppToken
-}
-
-export type PostAppsByAppIdWebappCompletionResetResponse =
-  PostAppsByAppIdWebappCompletionResetResponses[keyof PostAppsByAppIdWebappCompletionResetResponses]
 
 export type GetAppsByAppIdWebappWorkflowData = {
   body?: never
@@ -3367,28 +3010,28 @@ export type PatchAppsByAppIdWebappWorkflowResponses = {
 export type PatchAppsByAppIdWebappWorkflowResponse =
   PatchAppsByAppIdWebappWorkflowResponses[keyof PatchAppsByAppIdWebappWorkflowResponses]
 
-export type PostAppsByAppIdWebappWorkflowResetData = {
+export type PostAppsByAppIdWebappResetData = {
   body?: never
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/webapp/workflow:reset'
+  url: '/apps/{app_id}/webapp:reset'
 }
 
-export type PostAppsByAppIdWebappWorkflowResetErrors = {
+export type PostAppsByAppIdWebappResetErrors = {
   default: ErrorBody
 }
 
-export type PostAppsByAppIdWebappWorkflowResetError =
-  PostAppsByAppIdWebappWorkflowResetErrors[keyof PostAppsByAppIdWebappWorkflowResetErrors]
+export type PostAppsByAppIdWebappResetError =
+  PostAppsByAppIdWebappResetErrors[keyof PostAppsByAppIdWebappResetErrors]
 
-export type PostAppsByAppIdWebappWorkflowResetResponses = {
+export type PostAppsByAppIdWebappResetResponses = {
   200: WebAppToken
 }
 
-export type PostAppsByAppIdWebappWorkflowResetResponse =
-  PostAppsByAppIdWebappWorkflowResetResponses[keyof PostAppsByAppIdWebappWorkflowResetResponses]
+export type PostAppsByAppIdWebappResetResponse =
+  PostAppsByAppIdWebappResetResponses[keyof PostAppsByAppIdWebappResetResponses]
 
 export type PostAppsByAppIdWorkflowRunData = {
   body: WorkflowRunPayload
@@ -3726,6 +3369,30 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses = {
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse =
   PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses]
 
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckData = {
+  body: DslCheckPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports:check'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckError =
+  PostWorkspacesByWorkspaceIdAppsImportsCheckErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsCheckErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponses = {
+  200: DslCheckResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponse =
+  PostWorkspacesByWorkspaceIdAppsImportsCheckResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsCheckResponses]
+
 export type PostWorkspacesByWorkspaceIdAppsWorkflowData = {
   body: CreateAppPayload
   path: {
@@ -3750,53 +3417,33 @@ export type PostWorkspacesByWorkspaceIdAppsWorkflowResponses = {
 export type PostWorkspacesByWorkspaceIdAppsWorkflowResponse =
   PostWorkspacesByWorkspaceIdAppsWorkflowResponses[keyof PostWorkspacesByWorkspaceIdAppsWorkflowResponses]
 
-export type GetWorkspacesByWorkspaceIdDefaultModelsData = {
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesData = {
   body?: never
   path: {
     workspace_id: string
   }
-  query?: never
-  url: '/workspaces/{workspace_id}/default-models'
-}
-
-export type GetWorkspacesByWorkspaceIdDefaultModelsErrors = {
-  default: ErrorBody
-}
-
-export type GetWorkspacesByWorkspaceIdDefaultModelsError =
-  GetWorkspacesByWorkspaceIdDefaultModelsErrors[keyof GetWorkspacesByWorkspaceIdDefaultModelsErrors]
-
-export type GetWorkspacesByWorkspaceIdDefaultModelsResponses = {
-  200: DefaultModelListResponse
-}
-
-export type GetWorkspacesByWorkspaceIdDefaultModelsResponse =
-  GetWorkspacesByWorkspaceIdDefaultModelsResponses[keyof GetWorkspacesByWorkspaceIdDefaultModelsResponses]
-
-export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeData = {
-  body: DefaultModelPayload
-  path: {
-    model_type: string
-    workspace_id: string
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
   }
-  query?: never
-  url: '/workspaces/{workspace_id}/default-models/{model_type}'
+  url: '/workspaces/{workspace_id}/knowledge-bases'
 }
 
-export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors = {
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesErrors = {
   422: ErrorBody
   default: ErrorBody
 }
 
-export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeError =
-  PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors[keyof PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors]
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesError =
+  GetWorkspacesByWorkspaceIdKnowledgeBasesErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeBasesErrors]
 
-export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses = {
-  200: DefaultModelResponse
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesResponses = {
+  200: KnowledgeBaseListResponse
 }
 
-export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse =
-  PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses[keyof PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses]
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeBasesResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeBasesResponses]
 
 export type GetWorkspacesByWorkspaceIdMarketplacePluginsData = {
   body?: never
@@ -3976,32 +3623,6 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsRespon
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses]
 
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
-  body?: never
-  path: {
-    credential_id: string
-    provider: string
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}'
-}
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors = {
-  default: ErrorBody
-}
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdError =
-  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors]
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses =
-  {
-    200: CredentialRef
-  }
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
-  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
-
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
   body: ProviderCredentialUpdatePayload
   path: {
@@ -4053,38 +3674,6 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentials
 
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses]
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
-  {
-    body?: never
-    path: {
-      credential_id: string
-      provider: string
-      workspace_id: string
-    }
-    query: {
-      model: string
-      model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-    }
-    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}'
-  }
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors =
-  {
-    422: ErrorBody
-    default: ErrorBody
-  }
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdError =
-  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors]
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses =
-  {
-    200: CredentialRef
-  }
-
-export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
-  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
 
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
   {
@@ -4243,30 +3832,6 @@ export type PostWorkspacesByWorkspaceIdPluginsInstallResponses = {
 export type PostWorkspacesByWorkspaceIdPluginsInstallResponse =
   PostWorkspacesByWorkspaceIdPluginsInstallResponses[keyof PostWorkspacesByWorkspaceIdPluginsInstallResponses]
 
-export type PostWorkspacesByWorkspaceIdPluginsUpgradeData = {
-  body: PluginUpgradePayload
-  path: {
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}/plugins:upgrade'
-}
-
-export type PostWorkspacesByWorkspaceIdPluginsUpgradeErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type PostWorkspacesByWorkspaceIdPluginsUpgradeError =
-  PostWorkspacesByWorkspaceIdPluginsUpgradeErrors[keyof PostWorkspacesByWorkspaceIdPluginsUpgradeErrors]
-
-export type PostWorkspacesByWorkspaceIdPluginsUpgradeResponses = {
-  200: PluginTaskStartResponse
-}
-
-export type PostWorkspacesByWorkspaceIdPluginsUpgradeResponse =
-  PostWorkspacesByWorkspaceIdPluginsUpgradeResponses[keyof PostWorkspacesByWorkspaceIdPluginsUpgradeResponses]
-
 export type GetWorkspacesByWorkspaceIdToolProvidersByProviderData = {
   body?: never
   path: {
@@ -4315,32 +3880,6 @@ export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsRespons
 
 export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses]
-
-export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
-  body?: never
-  path: {
-    credential_id: string
-    provider: string
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}'
-}
-
-export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors = {
-  default: ErrorBody
-}
-
-export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdError =
-  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors]
-
-export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses =
-  {
-    200: CredentialRef
-  }
-
-export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
-  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses]
 
 export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
   body: ToolCredentialUpdatePayload

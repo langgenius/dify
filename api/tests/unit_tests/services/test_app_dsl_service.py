@@ -786,6 +786,48 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
+def test_create_or_update_app_fills_node_defaults_and_keeps_unreadable_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    unknown_auth = {"type": "oauth2", "config": {"type": "basic", "api_key": "k"}}
+    http = {"type": "http-request", "title": "H", "method": "get", "url": "https://x", "authorization": unknown_auth}
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {
+                "graph": {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "title": "Start"}},
+                        {"id": "h", "data": http},
+                    ],
+                    "edges": [],
+                }
+            },
+        },
+        account=Mock(id="account-1"),
+    )
+
+    nodes = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]["nodes"]
+    assert nodes[0]["data"]["variables"] == []
+    assert nodes[1]["data"]["authorization"] == unknown_auth
+
+
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)
