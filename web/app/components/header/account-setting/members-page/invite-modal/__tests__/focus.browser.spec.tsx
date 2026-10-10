@@ -94,16 +94,76 @@ it.each(['click', 'Enter'] as const)(
       .element(inviteDialog.getByRole('button', { name: /operation\.close/ }))
       .toBeDisabled()
 
-    resolveInvite({ result: 'success', tenant_id: 'tenant-id', invitation_results: [] })
-    const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
+    resolveInvite({
+      result: 'success',
+      tenant_id: 'tenant-id',
+      invitation_results: [
+        { email: 'person@example.com', status: 'already_member', message: 'Already a member' },
+      ],
+    })
+    const result = screen.getByRole('dialog', { name: /members\.noNewInvitationsSent$/ })
     await expect.element(result).toBeVisible()
     await expect.element(result.getByRole('button', { name: /operation\.close/ })).toHaveFocus()
     // The closing invitation dialog must not take focus back while it exits.
     await expect.element(inviteDialog).not.toBeInTheDocument()
     expect(result.element().contains(document.activeElement)).toBe(true)
+    await expect.element(result.getByText('person@example.com')).toBeVisible()
 
-    await result.getByRole('button', { name: /members\.ok$/ }).click()
+    const popup = result.element()
+    await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+    const exitContent = new Promise<boolean>((resolve) => {
+      const onTransition = (event: Event) => {
+        if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
+        popup.removeEventListener('transitionrun', onTransition)
+        resolve(popup.textContent?.includes('person@example.com') ?? false)
+      }
+      popup.addEventListener('transitionrun', onTransition)
+    })
+    if (submission === 'click') await result.getByRole('button', { name: /members\.ok$/ }).click()
+    else await userEvent.keyboard('{Escape}')
+    expect(await exitContent).toBe(true)
     await expect.element(result).not.toBeInTheDocument()
+    await expect.element(trigger).toHaveFocus()
+    await expect.element(screen.getByText('person@example.com')).not.toBeInTheDocument()
+
+    await userEvent.keyboard('{Enter}')
+    await expect.element(input).toHaveValue('')
+    await inviteDialog.getByRole('button', { name: /operation\.close/ }).click()
     await expect.element(trigger).toHaveFocus()
   },
 )
+
+it('opens workspace editing from the real keyboard entry and retains the canceled draft through exit', async () => {
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: /account\.editWorkspaceInfo$/ })
+  await userEvent.tab()
+  await expect.element(trigger).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  const dialog = screen.getByRole('dialog', { name: /account\.editWorkspaceInfo$/ })
+  const input = dialog.getByRole('textbox', { name: /account\.workspaceName$/ })
+  await expect.element(input).toHaveValue('Workspace')
+  await input.fill('Canceled workspace name')
+  const popup = dialog.element()
+  await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+  const exitDraft = new Promise<string>((resolve) => {
+    const onTransition = (event: Event) => {
+      if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
+      popup.removeEventListener('transitionrun', onTransition)
+      resolve((input.element() as HTMLInputElement).value)
+    }
+    popup.addEventListener('transitionrun', onTransition)
+  })
+  await dialog.getByRole('button', { name: /operation\.cancel$/ }).click()
+  expect(await exitDraft).toBe('Canceled workspace name')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('Workspace')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+})

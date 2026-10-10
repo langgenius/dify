@@ -92,14 +92,6 @@ const setConsoleState = (value: ConsoleStateFixture) => {
   mockConsoleStateReader.mockReturnValue(value)
 }
 
-vi.mock('../edit-workspace-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Edit Workspace Modal</div>
-      <button onClick={onCancel}>Close Edit Workspace</button>
-    </div>
-  ),
-}))
 vi.mock('../role-badges', () => ({
   default: ({ roleNames }: { roleNames: string[] }) => (
     <div data-testid="role-badges">{roleNames.join(',')}</div>
@@ -377,10 +369,13 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     await user.click(screen.getByRole('button', { name: /account\.editWorkspaceInfo/i }))
-    expect(screen.getByText('Edit Workspace Modal'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /account\.editWorkspaceInfo/ })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /account\.workspaceName$/ })).toHaveValue(
+      'Test Workspace',
+    )
 
-    await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
-    expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /operation\.cancel$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should close transfer ownership modal when close is clicked', async () => {
