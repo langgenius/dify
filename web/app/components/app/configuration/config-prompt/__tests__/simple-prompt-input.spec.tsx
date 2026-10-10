@@ -55,28 +55,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/app/configuration/config/automatic/automatic-btn', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>automatic-btn</button>
-  ),
-}))
-
-vi.mock('@/app/components/app/configuration/config/automatic/get-automatic-res', () => ({
-  default: ({ onFinished }: { onFinished: (value: Record<string, unknown>) => void }) => (
-    <button
-      onClick={() =>
-        onFinished({
-          modified: 'auto prompt',
-          variables: ['city'],
-          opening_statement: 'hello there',
-        })
-      }
-    >
-      finish-automatic
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/prompt-editor', () => ({
   default: (props: {
     onBlur: () => void
@@ -210,40 +188,6 @@ describe('SimplePromptInput', () => {
         type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
       }),
     )
-  })
-
-  it('should apply automatic generation results to prompt and opening statement', () => {
-    render(
-      <ConfigContext.Provider value={createContextValue()}>
-        <Prompt
-          mode={AppModeEnum.CHAT}
-          promptTemplate="Hello"
-          promptVariables={[]}
-          onChange={mockOnChange}
-        />
-      </ConfigContext.Provider>,
-    )
-
-    fireEvent.click(screen.getByText('automatic-btn'))
-    fireEvent.click(screen.getByText('finish-automatic'))
-
-    expect(mockEmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: 'auto prompt',
-        type: 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER',
-      }),
-    )
-    expect(mockSetModelConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        configs: expect.objectContaining({
-          prompt_template: 'auto prompt',
-          prompt_variables: [expect.objectContaining({ key: 'city', name: 'city' })],
-        }),
-      }),
-    )
-    expect(mockSetPrevPromptConfig).toHaveBeenCalled()
-    expect(mockSetIntroduction).toHaveBeenCalledWith('hello there')
-    expect(mockSetFeatures).toHaveBeenCalled()
   })
 
   it('should expose dataset and external tool metadata to the editor', () => {

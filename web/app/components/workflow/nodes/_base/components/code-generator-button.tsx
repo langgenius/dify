@@ -46,18 +46,16 @@ const CodeGenerateBtn: FC<Props> = ({
       >
         <span aria-hidden className="i-custom-vender-other-generator size-4 text-primary-600" />
       </IconButton>
-      {showAutomatic && (
-        <GetCodeGeneratorResModal
-          mode={AppModeEnum.CHAT}
-          isShow={showAutomatic}
-          codeLanguages={codeLanguages}
-          onClose={() => setShowAutomatic(false)}
-          onFinished={handleAutomaticRes}
-          flowId={configsMap?.flowId || ''}
-          nodeId={nodeId}
-          currentCode={currentCode}
-        />
-      )}
+      <GetCodeGeneratorResModal
+        mode={AppModeEnum.CHAT}
+        open={showAutomatic}
+        codeLanguages={codeLanguages}
+        onOpenChange={setShowAutomatic}
+        onFinished={handleAutomaticRes}
+        flowId={configsMap?.flowId || ''}
+        nodeId={nodeId}
+        currentCode={currentCode}
+      />
     </div>
   )
 }
