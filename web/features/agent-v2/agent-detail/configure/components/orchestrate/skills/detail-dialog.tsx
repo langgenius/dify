@@ -338,7 +338,7 @@ function AgentFilePreviewContent({
   )
 }
 
-export function AgentSkillDetailDialog({
+export function AgentSkillDetailContent({
   skillName,
   detail,
 }: {
@@ -351,10 +351,7 @@ export function AgentSkillDetailDialog({
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
 
   return (
-    <DialogContent
-      backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
-    >
+    <>
       <div
         className={cn(
           'flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section',
@@ -465,6 +462,17 @@ export function AgentSkillDetailDialog({
           </ScrollAreaScrollbar>
         </ScrollArea>
       </div>
+    </>
+  )
+}
+
+export function AgentSkillDetailDialog(props: { skillName: string; detail: AgentSkillDetail }) {
+  return (
+    <DialogContent
+      backdropProps={{ forceRender: true, className: 'fixed' }}
+      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
+    >
+      <AgentSkillDetailContent {...props} />
     </DialogContent>
   )
 }
