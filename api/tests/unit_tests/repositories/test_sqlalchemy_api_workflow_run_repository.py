@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -322,3 +322,40 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text
     assert caplog.records[-1].exc_info is not None
+
+
+def test_get_paginated_workflow_runs_returns_every_run_when_created_at_ties(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    # Runs triggered in one batch share a created_at, so the cursor must break
+    # ties by id instead of dropping every row that matches the boundary time.
+    tied_created_at = datetime(2024, 1, 1, 12, 0, 0)
+    runs = []
+    for index in range(3):
+        run = _workflow_run(run_id=f"run-{index}", tenant_id="tenant-1", status=WorkflowExecutionStatus.SUCCEEDED)
+        run.created_at = tied_created_at
+        runs.append(run)
+    older_run = _workflow_run(run_id="run-older", tenant_id="tenant-1", status=WorkflowExecutionStatus.SUCCEEDED)
+    older_run.created_at = tied_created_at - timedelta(seconds=10)
+    sqlite_session.add_all([*runs, older_run])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    collected: list[str] = []
+    last_id: str | None = None
+    for _ in range(5):
+        page = repository.get_paginated_workflow_runs(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            limit=2,
+            last_id=last_id,
+        )
+        collected.extend(run.id for run in page.data)
+        if not page.has_more:
+            break
+        last_id = page.data[-1].id
+
+    # Newest first; ties resolved by id descending so page boundaries are stable.
+    assert collected == ["run-2", "run-1", "run-0", "run-older"]

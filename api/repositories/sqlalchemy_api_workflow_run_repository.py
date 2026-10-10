@@ -265,14 +265,21 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 if not last_workflow_run:
                     raise ValueError("Last workflow run not exists")
 
-                # Get records created before the last run's timestamp
+                # Keyset cursor on (created_at, id): runs triggered in one batch share
+                # a created_at, so created_at alone would skip every row that ties
+                # with the cursor.
                 base_stmt = base_stmt.where(
-                    WorkflowRun.created_at < last_workflow_run.created_at,
-                    WorkflowRun.id != last_workflow_run.id,
+                    tuple_(WorkflowRun.created_at, WorkflowRun.id)
+                    < tuple_(
+                        sa.literal(last_workflow_run.created_at, type_=sa.DateTime()),
+                        sa.literal(last_workflow_run.id, type_=WorkflowRun.id.type),
+                    )
                 )
 
             # First page - get most recent records
-            workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit + 1)).all()
+            workflow_runs = session.scalars(
+                base_stmt.order_by(WorkflowRun.created_at.desc(), WorkflowRun.id.desc()).limit(limit + 1)
+            ).all()
 
             # Check if there are more records for pagination
             has_more = len(workflow_runs) > limit
