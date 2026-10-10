@@ -4,6 +4,9 @@ import type { Tool } from '@/app/components/tools/types'
 import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useCallback } from 'react'
+import { applyResetOnChange } from '@/app/components/tools/utils/reset-on-change'
+import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
 import ToolFormItem from './item'
 
 type Props = Readonly<{
@@ -34,17 +37,31 @@ const ToolForm: FC<Props> = ({
   onManageInputField,
   extraParams,
 }) => {
+  const handleChange = useCallback(
+    (nextValue: ResourceVarInputs) => {
+      onChange(
+        applyResetOnChange({
+          schemas: schema,
+          previousValue: value,
+          nextValue,
+          getResetValue: resetToolSettingFieldValue,
+        }),
+      )
+    },
+    [onChange, schema, value],
+  )
+
   return (
     <div className="space-y-1">
-      {schema.map((schema, index) => (
+      {schema.map((schema) => (
         <ToolFormItem
-          key={index}
+          key={schema.variable}
           readOnly={readOnly}
           staticSchema={staticSchema}
           nodeId={nodeId}
           schema={schema}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           currentTool={currentTool}
           currentProvider={currentProvider}
           showManageInputField={showManageInputField}

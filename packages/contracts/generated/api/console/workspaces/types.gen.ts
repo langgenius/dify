@@ -2449,6 +2449,7 @@ export type ToolParameter = {
   placeholder?: I18nObject | null
   precision?: number | null
   required?: boolean
+  reset_on_change?: Array<string>
   scope?: string | null
   template?: PluginParameterTemplate | null
   type: ToolParameterType
@@ -2562,6 +2563,7 @@ export type AgentStrategyParameter = {
   placeholder?: I18nObject | null
   precision?: number | null
   required?: boolean
+  reset_on_change?: Array<string>
   scope?: string | null
   template?: PluginParameterTemplate | null
   type: AgentStrategyParameterType
