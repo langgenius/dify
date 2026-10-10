@@ -52,20 +52,13 @@ from controllers.console.agent.roster import (
     AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
-from controllers.console.app import message as message_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.app.error import AgentSessionConfigurationChangedError, CompletionRequestError
-from controllers.console.app.message import (
-    AgentChatMessageListApi,
-    AgentMessageApi,
-)
-from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
-from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
+from models.enums import ApiTokenType, CustomizeTokenStrategy, TagType
+from models.model import ApiToken, App, AppMode, IconType, Site, Tag, TagBinding
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -77,66 +70,6 @@ from services.entities.agent_entities import (
 from services.entities.app_entities import AgentAppPublicationCounts, AppListParams, CreateAppParams
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
-
-
-def _persist_conversation_message(
-    session: Session,
-    *,
-    app_id: str,
-    conversation_id: str,
-    message_id: str,
-    created_at: datetime,
-) -> tuple[Conversation, Message]:
-    conversation = session.get(Conversation, conversation_id)
-    if conversation is None:
-        conversation = Conversation(
-            app_id=app_id,
-            app_model_config_id=None,
-            model_provider=None,
-            override_model_configs=None,
-            model_id=None,
-            mode=AppMode.CHAT,
-            name="Conversation",
-            inputs={},
-            introduction="",
-            system_instruction="",
-            system_instruction_tokens=0,
-            status="normal",
-            invoke_from=InvokeFrom.DEBUGGER,
-            from_source=ConversationFromSource.CONSOLE,
-            from_end_user_id=None,
-            from_account_id="00000000-0000-0000-0000-000000000021",
-        )
-        conversation.id = conversation_id
-        session.add(conversation)
-        session.flush()
-    message = Message(
-        app_id=app_id,
-        conversation_id=conversation.id,
-        inputs={},
-        query="query",
-        message={},
-        message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
-        answer="answer",
-        answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
-        provider_response_latency=0,
-        total_price=0,
-        currency="USD",
-        invoke_from=InvokeFrom.DEBUGGER,
-        from_source=ConversationFromSource.CONSOLE,
-        from_end_user_id=None,
-        from_account_id="00000000-0000-0000-0000-000000000021",
-        app_mode=AppMode.CHAT,
-        created_at=created_at,
-    )
-    message.id = message_id
-    session.add(message)
-    session.flush()
-    return conversation, message
 
 
 def _version_response(version_id: str = "version-1") -> dict[str, object]:
@@ -2206,176 +2139,6 @@ def test_agent_chat_helper_maps_generation_errors(
         with pytest.raises(expected):
             completion_controller._create_chat_message(
                 current_user=_account(), app_model=app_model, session=unbound_session
-            )
-
-
-def test_agent_chat_message_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    message_id = "00000000-0000-0000-0000-000000000002"
-    app_model = _app_detail_obj(id="app-1", mode=AppMode.AGENT)
-    current_user = _account()
-    captured: dict[str, object] = {}
-    resolver_calls: list[dict[str, object]] = []
-
-    def resolve_agent_app_model(**kwargs: object) -> object:
-        resolver_calls.append(kwargs)
-        return app_model
-
-    def list_chat_messages(**kwargs: object) -> dict[str, object]:
-        captured["list"] = kwargs
-        return {"data": []}
-
-    def get_message_detail(**kwargs: object) -> dict[str, object]:
-        captured["detail"] = kwargs
-        return {"id": message_id}
-
-    monkeypatch.setattr(message_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
-    monkeypatch.setattr(message_controller, "_list_chat_messages", list_chat_messages)
-    monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
-    assert unwrap(AgentChatMessageListApi.get)(
-        AgentChatMessageListApi(),
-        message_controller.ChatMessagesQuery(conversation_id="00000000-0000-0000-0000-000000000010"),
-        unbound_session,
-        "tenant-1",
-        current_user,
-        agent_id,
-    ) == {"data": []}
-    list_call = cast(dict[str, object], captured["list"])
-    assert list_call["session"] is unbound_session
-    assert list_call["app_model"] is app_model
-    assert unwrap(AgentMessageApi.get)(AgentMessageApi(), unbound_session, "tenant-1", agent_id, message_id) == {
-        "id": message_id
-    }
-    detail_call = cast(dict[str, object], captured["detail"])
-    assert detail_call == {"session": unbound_session, "app_model": app_model, "message_id": message_id}
-    assert resolver_calls == [
-        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
-        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
-    ]
-
-
-def test_list_chat_messages_supports_first_id_pagination(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    app_id = "00000000-0000-0000-0000-000000000001"
-    conversation_id = "00000000-0000-0000-0000-000000000010"
-    first_message_id = "00000000-0000-0000-0000-000000000011"
-    older_message_id = "00000000-0000-0000-0000-000000000012"
-    _persist_conversation_message(
-        sqlite_session,
-        app_id=app_id,
-        conversation_id=conversation_id,
-        message_id="00000000-0000-0000-0000-000000000013",
-        created_at=datetime(2025, 1, 1),
-    )
-    _persist_conversation_message(
-        sqlite_session,
-        app_id=app_id,
-        conversation_id=conversation_id,
-        message_id=older_message_id,
-        created_at=datetime(2025, 1, 2),
-    )
-    _persist_conversation_message(
-        sqlite_session,
-        app_id=app_id,
-        conversation_id=conversation_id,
-        message_id=first_message_id,
-        created_at=datetime(2025, 1, 3),
-    )
-
-    class FakeMessagePaginationResponse:
-        @classmethod
-        def model_validate(cls, pagination: InfiniteScrollPagination, from_attributes: bool = False) -> SimpleNamespace:
-            return SimpleNamespace(
-                model_dump=lambda mode: {
-                    "data": [item.id for item in pagination.data],
-                    "limit": pagination.limit,
-                    "has_more": pagination.has_more,
-                }
-            )
-
-    monkeypatch.setattr(message_controller, "attach_message_extra_contents", lambda messages: None)
-    monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
-    with app.test_request_context(
-        f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
-    ):
-        result = message_controller._list_chat_messages(
-            args=message_controller.ChatMessagesQuery(
-                conversation_id=conversation_id,
-                first_id=first_message_id,
-                limit=1,
-            ),
-            session=sqlite_session,
-            app_model=_app_detail_obj(id=app_id, mode=AppMode.CHAT),
-        )
-    assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
-
-
-def test_list_agent_chat_messages_uses_current_user_conversation(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    app_id = "00000000-0000-0000-0000-000000000001"
-    conversation_id = "00000000-0000-0000-0000-000000000010"
-    message_id = "00000000-0000-0000-0000-000000000011"
-    conversation, _ = _persist_conversation_message(
-        sqlite_session,
-        app_id=app_id,
-        conversation_id=conversation_id,
-        message_id=message_id,
-        created_at=datetime(2025, 1, 1),
-    )
-    current_user = _account()
-    app_model = _app_detail_obj(id=app_id, mode=AppMode.AGENT)
-    captured: dict[str, object] = {}
-
-    class FakeMessagePaginationResponse:
-        @classmethod
-        def model_validate(cls, pagination: InfiniteScrollPagination, from_attributes: bool = False) -> SimpleNamespace:
-            return SimpleNamespace(
-                model_dump=lambda mode: {
-                    "data": [item.id for item in pagination.data],
-                    "limit": pagination.limit,
-                    "has_more": pagination.has_more,
-                }
-            )
-
-    def get_conversation(**kwargs: object) -> object:
-        captured.update(kwargs)
-        return conversation
-
-    monkeypatch.setattr(message_controller.ConversationService, "get_conversation", get_conversation)
-    monkeypatch.setattr(message_controller, "attach_message_extra_contents", lambda messages: None)
-    monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
-    with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
-        result = message_controller._list_chat_messages(
-            args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
-            session=sqlite_session,
-            app_model=app_model,
-            current_user=current_user,
-        )
-    assert result == {"data": [message_id], "limit": 20, "has_more": False}
-    assert captured.pop("session") is sqlite_session
-    assert captured == {"app_model": app_model, "conversation_id": conversation_id, "user": current_user}
-
-
-def test_list_agent_chat_messages_rejects_foreign_conversation(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
-    conversation_id = "00000000-0000-0000-0000-000000000010"
-    monkeypatch.setattr(
-        message_controller.ConversationService,
-        "get_conversation",
-        lambda **kwargs: (_ for _ in ()).throw(message_controller.ConversationNotExistsError()),
-    )
-    with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
-        with pytest.raises(NotFound):
-            message_controller._list_chat_messages(
-                args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
-                session=unbound_session,
-                app_model=_app_detail_obj(id="app-1", mode=AppMode.AGENT),
-                current_user=_account(),
             )
 
 

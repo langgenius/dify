@@ -174,7 +174,10 @@ def harness(
     event.listen(db.session.session_factory, "after_begin", track_scoped)
 
     queries = SuggestedQuestionsQuery(
-        session_factory=query_factory, repository=MessageRepository(session_factory=query_factory)
+        session_factory=query_factory,
+        repository=MessageRepository(
+            session_factory=query_factory,
+        ),
     )
     service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
     app.extensions["application_services"] = _Services(

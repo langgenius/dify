@@ -5,9 +5,8 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, func, select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from sqlalchemy import func, select
+from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.errors import InternalServerError as InternalServerHTTPError
@@ -15,9 +14,7 @@ from controllers.common.errors import MessageFeedbackRatingRequiredError, NotFou
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
     AppNotFoundError,
     AppUnavailableError,
@@ -32,44 +29,38 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
-    edit_permission_required,
     model_validate,
     rbac_permission_required,
     setup_required,
-    with_current_tenant_id,
-    with_current_user,
 )
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
 )
-from fields.conversation_fields import MessageResponseSource
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response, uuid_value
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
 from machinery.context import RequestContext
-from models.account import Account
 from models.enums import FeedbackRating
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from models.model import App, AppMode, MessageAnnotation
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.conversation_service import ConversationService
 from services.entities.message_entities import MessageAccount
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FeedbackRatingRequiredError,
+    FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.message_service import attach_message_extra_contents
 
 logger = logging.getLogger(__name__)
 
@@ -164,24 +155,21 @@ class ChatMessageListApi(Resource):
     @console_ns.doc("list_chat_messages")
     @console_ns.doc(description="Get chat messages for a conversation with pagination")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatMessagesQuery)})
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
-    @console_ns.response(404, "Conversation not found")
-    @login_required
-    @account_initialization_required
-    @setup_required
-    @edit_permission_required
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
     @model_validate(ChatMessagesQuery)
-    def get(self, req_data: ChatMessagesQuery, session: Session, current_user: Account, app_model: App):
-        return _list_chat_messages(
-            args=req_data,
-            session=session,
-            app_model=app_model,
-            current_user=current_user,
-        )
+    def get(self, req_data: ChatMessagesQuery, context: RequestContext, app_id: UUID) -> dict[str, object]:
+        try:
+            app = application_services().apps.console.get_reference(context, str(app_id))
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError() from exc
+        if app.mode not in (AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT):
+            raise AppNotFoundError("App mode does not support chat messages")
+        return _list_chat_messages(args=req_data, context=context, app_id=app.id)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -190,36 +178,19 @@ class AgentChatMessageListApi(Resource):
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
-    @console_ns.response(404, "Agent or conversation not found")
-    @login_required
-    @account_initialization_required
-    @setup_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent or conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()),),
+    )
     @model_validate(ChatMessagesQuery)
-    def get(
-        self,
-        req_data: ChatMessagesQuery,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        return _list_chat_messages(
-            args=req_data,
-            session=session,
-            app_model=app_model,
-            current_user=current_user,
-        )
+    def get(self, req_data: ChatMessagesQuery, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        try:
+            app_id = application_services().agent_apps.access.resolve_existing_runtime_app_id(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError() from exc
+        return _list_chat_messages(args=req_data, context=context, app_id=app_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -389,16 +360,17 @@ class MessageApi(Resource):
     @console_ns.doc("get_message")
     @console_ns.doc(description="Get message details by ID")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
-    @console_ns.response(404, "Message not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model
-    def get(self, session: Session, app_model: App, message_id: UUID):
-        return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
+    @console_ns.response(
+        HTTPStatus.OK, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Message not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    def get(self, context: RequestContext, app_id: UUID, message_id: UUID) -> dict[str, object]:
+        try:
+            app = application_services().apps.console.get_reference(context, str(app_id))
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError() from exc
+        return _get_message_detail(context=context, app_id=app.id, message_id=message_id)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
@@ -406,104 +378,38 @@ class AgentMessageApi(Resource):
     @console_ns.doc("get_agent_message")
     @console_ns.doc(description="Get Agent App message details by ID")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
-    @console_ns.response(404, "Agent or message not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
-
-
-def _list_chat_messages(
-    *,
-    args: ChatMessagesQuery,
-    session: Session,
-    app_model: App,
-    current_user: Account | None = None,
-):
-    if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
-        try:
-            conversation = ConversationService.get_conversation(
-                app_model=app_model,
-                conversation_id=args.conversation_id,
-                user=current_user,
-                session=session,
-            )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-    else:
-        conversation = session.scalar(
-            select(Conversation)
-            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-            .limit(1)
-        )
-
-    if not conversation:
-        raise NotFound("Conversation Not Exists.")
-
-    if args.first_id:
-        first_message = session.scalar(
-            select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
-        )
-
-        if not first_message:
-            raise NotFound("First message not found")
-
-        history_messages = session.scalars(
-            select(Message)
-            .where(
-                Message.conversation_id == conversation.id,
-                Message.created_at < first_message.created_at,
-                Message.id != first_message.id,
-            )
-            .order_by(Message.created_at.desc())
-            .limit(args.limit)
-        ).all()
-    else:
-        history_messages = session.scalars(
-            select(Message)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.desc())
-            .limit(args.limit)
-        ).all()
-
-    # Initialize has_more based on whether we have a full page
-    if len(history_messages) == args.limit:
-        current_page_first_message = history_messages[-1]
-        # Check if there are more messages before the current page
-        has_more = session.scalar(
-            select(
-                exists().where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
-                )
-            )
-        )
-    else:
-        # If we don't have a full page, there are no more messages
-        has_more = False
-
-    history_messages = list(reversed(history_messages))
-    attach_message_extra_contents(history_messages)
-
-    return dump_response(
-        MessageInfiniteScrollPaginationResponse,
-        InfiniteScrollPagination(
-            data=[MessageResponseSource(message, session=session) for message in history_messages],
-            limit=args.limit,
-            has_more=has_more,
-        ),
+    @console_ns.response(
+        HTTPStatus.OK, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__]
     )
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent or message not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID, message_id: UUID) -> dict[str, object]:
+        try:
+            app_id = application_services().agent_apps.access.resolve_existing_runtime_app_id(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError() from exc
+        return _get_message_detail(context=context, app_id=app_id, message_id=message_id)
+
+
+def _list_chat_messages(*, args: ChatMessagesQuery, context: RequestContext, app_id: str) -> dict[str, object]:
+    try:
+        page = application_services().message_queries.get_console_page(
+            app_id=app_id,
+            app_owner_tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
+            conversation_id=args.conversation_id,
+            first_id=args.first_id,
+            limit=args.limit,
+        )
+    except AppDefinitionUnavailableError as exc:
+        raise AppUnavailableError() from exc
+    except MessageActorNotFoundError as exc:
+        raise UnauthorizedError("Account no longer exists") from exc
+    except ConversationNotExistsError as exc:
+        raise NotFoundError("Conversation Not Exists.") from exc
+    except FirstMessageNotExistsError as exc:
+        raise NotFoundError("First message not found") from exc
+    return dump_response(MessageInfiniteScrollPaginationResponse, page)
 
 
 def _update_message_feedback(
@@ -571,15 +477,18 @@ def _get_message_suggested_questions(
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
-def _get_message_detail(*, session: Session, app_model: App, message_id: UUID):
-    message_id_str = str(message_id)
-
-    message = session.scalar(
-        select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
-    )
-
-    if not message:
-        raise NotFound("Message Not Exists.")
-
-    attach_message_extra_contents([message])
-    return dump_response(MessageDetailResponse, MessageResponseSource(message, session=session))
+def _get_message_detail(*, context: RequestContext, app_id: str, message_id: UUID) -> dict[str, object]:
+    try:
+        message = application_services().message_queries.get_console_message(
+            app_id=app_id,
+            app_owner_tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
+            message_id=str(message_id),
+        )
+    except AppDefinitionUnavailableError as exc:
+        raise AppUnavailableError() from exc
+    except MessageActorNotFoundError as exc:
+        raise UnauthorizedError("Account no longer exists") from exc
+    except MessageNotExistsError as exc:
+        raise NotFoundError("Message Not Exists.") from exc
+    return dump_response(MessageDetailResponse, message)

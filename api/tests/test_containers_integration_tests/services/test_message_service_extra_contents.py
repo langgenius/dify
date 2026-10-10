@@ -3,18 +3,22 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import to_timestamp
 from models.enums import ConversationFromSource
 from models.model import Message
-from services import message_service
+from repositories.message_repository import MessageRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
+from services.message_query_service import MessageQueryService
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (
     create_human_input_message_fixture,
 )
 
 
 @pytest.mark.usefixtures("flask_req_ctx_with_containers")
-def test_attach_message_extra_contents_assigns_serialized_payload(db_session_with_containers) -> None:
+def test_message_details_include_serialized_extra_contents(db_session_with_containers: Session) -> None:
     fixture = create_human_input_message_fixture(db_session_with_containers)
 
     message_without_extra_content = Message(
@@ -44,9 +48,23 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
     db_session_with_containers.add(message_without_extra_content)
     db_session_with_containers.commit()
 
-    messages = [fixture.message, message_without_extra_content]
-
-    message_service.attach_message_extra_contents(messages)
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    service = MessageQueryService(
+        messages=MessageRepository(session_factory=sessions),
+        files=MessageFileResolver(),
+        extra_contents=ExecutionExtraContentReader(
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+        ),
+    )
+    messages = [
+        service.get_console_message(
+            app_id=fixture.app.id,
+            app_owner_tenant_id=fixture.app.tenant_id,
+            account_id=fixture.account.id,
+            message_id=message.id,
+        )
+        for message in (fixture.message, message_without_extra_content)
+    ]
 
     form = fixture.form
 

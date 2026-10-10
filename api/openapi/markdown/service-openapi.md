@@ -742,7 +742,7 @@ Returns historical chat records in a scrolling load format, with the first page 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation history. | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. `app_unavailable` : App is no longer available. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. |  |
