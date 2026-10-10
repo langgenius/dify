@@ -417,3 +417,78 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, mo
         "parent_message_id": None,
         "extra_contents": [],
     }
+
+
+@pytest.mark.parametrize("limit", [1, 2])
+def test_list_chat_messages_pages_all_tied_timestamps(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, limit: int
+) -> None:
+    message = _persist_message(
+        sqlite_session,
+        message_id="550e8400-e29b-41d4-a716-446655440001",
+    )
+    messages = [message]
+    for number in (2, 3):
+        copy = Message(
+            app_id=message.app_id,
+            conversation_id=message.conversation_id,
+            inputs={},
+            query=f"query-{number}",
+            message="",
+            message_tokens=0,
+            message_unit_price=0,
+            message_price_unit=0,
+            answer="answer",
+            answer_tokens=0,
+            answer_unit_price=0,
+            answer_price_unit=0,
+            provider_response_latency=0,
+            total_price=0,
+            currency="USD",
+            invoke_from=InvokeFrom.DEBUGGER,
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id="account-1",
+            app_mode=AppMode.CHAT,
+        )
+        copy.id = f"550e8400-e29b-41d4-a716-44665544000{number}"
+        sqlite_session.add(copy)
+        messages.append(copy)
+    sqlite_session.flush()
+    conversation = sqlite_session.get(Conversation, message.conversation_id)
+    assert conversation is not None
+    conversation.id = "550e8400-e29b-41d4-a716-446655440000"
+    for row in messages:
+        row.conversation_id = conversation.id
+    tied_timestamp = datetime(2026, 9, 29, 5, 19, 54, tzinfo=UTC)
+    for row in messages:
+        row.created_at = tied_timestamp
+    sqlite_session.commit()
+
+    monkeypatch.setattr(message_module, "attach_message_extra_contents", lambda _messages: None)
+    monkeypatch.setattr(message_module, "MessageResponseSource", lambda row, **_kwargs: row.id)
+    monkeypatch.setattr(message_module, "dump_response", lambda _model, pagination: pagination)
+
+    found: list[str] = []
+    newest_first: list[str] = []
+    first_id = None
+    while True:
+        result = message_module._list_chat_messages(
+            args=message_module.ChatMessagesQuery(
+                conversation_id=message.conversation_id, first_id=first_id, limit=limit
+            ),
+            session=sqlite_session,
+            app_model=_app(),
+        )
+        page_ids = result.data
+        assert page_ids
+        found.extend(page_ids)
+        # The endpoint returns each page oldest-first, although its cursor walks newest-first.
+        newest_first.extend(reversed(page_ids))
+        assert result.has_more is (len(found) < len(messages))
+        if not result.has_more:
+            break
+        first_id = page_ids[0]
+    assert len(found) == len(messages)
+    assert set(found) == {row.id for row in messages}
+    assert newest_first == sorted((row.id for row in messages), reverse=True)
