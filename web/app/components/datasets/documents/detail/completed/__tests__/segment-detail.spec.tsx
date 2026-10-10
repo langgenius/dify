@@ -187,7 +187,7 @@ vi.mock('../common/regeneration-modal', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: ({
+  ImageUploaderInChunk: ({
     disabled,
     value,
     onChange,

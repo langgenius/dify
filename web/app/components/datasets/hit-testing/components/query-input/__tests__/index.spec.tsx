@@ -12,7 +12,7 @@ let capturedOnChange: ((files: FileEntity[]) => void) | null = null
 vi.mock(
   '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
   () => ({
-    default: ({
+    ImageUploaderInRetrievalTesting: ({
       textArea,
       actionButton,
       onChange,

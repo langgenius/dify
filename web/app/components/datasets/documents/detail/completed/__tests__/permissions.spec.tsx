@@ -87,7 +87,7 @@ vi.mock('@/app/components/base/markdown', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: () => null,
+  ImageUploaderInChunk: () => null,
 }))
 
 function renderChunks(canEdit: boolean, docForm: ChunkingMode = ChunkingMode.text) {
