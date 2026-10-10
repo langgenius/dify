@@ -31,6 +31,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
+from core.dify_builder.execution_policy import HttpFixtureSetV1
 from core.dify_builder.state import PcState
 
 
@@ -174,6 +175,7 @@ class TestInput:
     source: str = ""  # reuse | mock | upload
     inputs: Inputs = field(default_factory=dict)
     start_schema_hash: str = ""
+    http_fixtures: HttpFixtureSetV1 | None = None
 
 
 @dataclass(kw_only=True)

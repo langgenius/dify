@@ -23,6 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
 
 from core.dify_builder.contract import ConversationPage, ResourceOption
+from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -170,6 +171,10 @@ class DifyPort(Protocol):
     def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         """Return the graph and its execution revision, excluding canvas presentation."""
         ...
+
+    def stamp_http_fixtures(
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1: ...
 
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         """Return the persisted app mode after actor/tenant-scoped authorization."""
