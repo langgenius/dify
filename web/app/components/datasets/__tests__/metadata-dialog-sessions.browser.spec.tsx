@@ -257,6 +257,8 @@ it.each([
       exact: true,
     })
     const open = async () => {
+      if (entry === 'dataset-card')
+        await screen.getByRole('link', { name: dataset.name, exact: true }).hover()
       if (entry === 'template') await screen.getByText(pipeline.name, { exact: true }).hover()
       if (entry === 'document-list') {
         const link = screen.getByRole('link', { name: documentInfo.name, exact: true })
