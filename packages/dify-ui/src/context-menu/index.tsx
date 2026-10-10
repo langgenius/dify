@@ -209,7 +209,7 @@ function ContextMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
   )

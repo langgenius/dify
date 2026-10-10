@@ -9,6 +9,14 @@
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
     },
+    "./use-merged-refs": {
+      "types": "./src/use-merged-refs.ts",
+      "import": "./src/use-merged-refs.ts"
+    },
+    "./use-ref-with-init": {
+      "types": "./src/use-ref-with-init.ts",
+      "import": "./src/use-ref-with-init.ts"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
