@@ -1,10 +1,14 @@
-"""Annotation writes followed by index tasks after the database transaction closes."""
+"""Annotation writes and settings, with index tasks dispatched after transactions close."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from services.annotation_query import AnnotationRecord
+from services.annotation_query import AnnotationRecord, AnnotationSettingRecord
+
+
+class AnnotationSettingNotFoundError(Exception):
+    """The requested annotation setting does not belong to the admitted app."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +61,18 @@ class AnnotationWriteStore(Protocol):
 
     def clear(self, *, tenant_id: str, app_id: str) -> AnnotationDeletionResult:
         """Delete all annotations and their histories for this app, retaining its settings."""
+        ...
+
+    def update_setting(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        setting_id: str,
+        account_id: str,
+        score_threshold: float,
+    ) -> AnnotationSettingRecord:
+        """Update the threshold and audit fields atomically, returning detached settings."""
         ...
 
 
@@ -158,6 +174,24 @@ class AnnotationCommandService:
     def clear(self, *, tenant_id: str, app_id: str) -> None:
         result = self._annotations.clear(tenant_id=tenant_id, app_id=app_id)
         self._delete_indexes(tenant_id=tenant_id, app_id=app_id, result=result)
+
+    def update_setting(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        setting_id: str,
+        account_id: str,
+        score_threshold: float,
+    ) -> AnnotationSettingRecord:
+        # Threshold changes affect matching, not stored embeddings, so no reindex task is needed.
+        return self._annotations.update_setting(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            setting_id=setting_id,
+            account_id=account_id,
+            score_threshold=score_threshold,
+        )
 
     def _delete_indexes(self, *, tenant_id: str, app_id: str, result: AnnotationDeletionResult) -> None:
         if result.collection_binding_id is None:

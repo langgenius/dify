@@ -42,11 +42,11 @@ from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from services.annotation_command_service import AnnotationSettingNotFoundError
 from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError
 from services.annotation_service import (
     AppAnnotationService,
     EnableAnnotationArgs,
-    UpdateAnnotationSettingArgs,
 )
 from services.errors.message import MessageNotExistsError
 
@@ -246,29 +246,35 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
     @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
-    @console_ns.response(200, "Settings updated successfully", console_ns.models[AnnotationSettingResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Settings updated successfully", console_ns.models[AnnotationSettingResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_EDIT, PlainApp()),),
+    )
     @model_validate(AnnotationSettingUpdatePayload)
     def post(
         self,
         req_data: AnnotationSettingUpdatePayload,
-        session: Session,
+        context: RequestContext,
         app_id: UUID,
         annotation_setting_id: UUID,
-    ):
-        annotation_setting_id_str = str(annotation_setting_id)
-
-        setting_args: UpdateAnnotationSettingArgs = {"score_threshold": req_data.score_threshold}
-        result = AppAnnotationService.update_app_annotation_setting(
-            str(app_id), annotation_setting_id_str, setting_args, session
-        )
-        return dump_response(AnnotationSettingResponse, result), 200
+    ) -> tuple[dict[str, object], HTTPStatus]:
+        try:
+            result = application_services().annotation_commands.update_setting(
+                tenant_id=context.active_workspace_id,
+                app_id=str(app_id),
+                setting_id=str(annotation_setting_id),
+                account_id=context.account_id,
+                score_threshold=req_data.score_threshold,
+            )
+        except AnnotationAppNotFoundError as exc:
+            raise NotFoundError("App not found") from exc
+        except AnnotationSettingNotFoundError as exc:
+            raise NotFoundError("App annotation not found") from exc
+        return dump_response(AnnotationSettingResponse, result), HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")

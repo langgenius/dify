@@ -14,7 +14,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
 from models.account import Account
-from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
 from services.app_ref_service import AnnotationRef
 from services.feature_service import FeatureService
@@ -31,18 +30,6 @@ logger = logging.getLogger(__name__)
 class AnnotationJobStatusDict(TypedDict):
     job_id: str
     job_status: str
-
-
-class EmbeddingModelDict(TypedDict):
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class AnnotationSettingDict(TypedDict):
-    id: str
-    enabled: bool
-    score_threshold: float
-    embedding_model: EmbeddingModelDict | dict
 
 
 class EnableAnnotationArgs(TypedDict):
@@ -69,12 +56,6 @@ class UpdateAnnotationArgs(TypedDict, total=False):
 
     answer: str
     question: str
-
-
-class UpdateAnnotationSettingArgs(TypedDict):
-    """Expected shape of the args dict passed to update_app_annotation_setting."""
-
-    score_threshold: float
 
 
 class AppAnnotationService:
@@ -462,52 +443,3 @@ class AppAnnotationService:
         )
         session.add(annotation_hit_history)
         session.flush()
-
-    @classmethod
-    def update_app_annotation_setting(
-        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs, session: Session
-    ) -> AnnotationSettingDict:
-        current_user, current_tenant_id = current_account_with_tenant()
-        # get app info
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            raise NotFound("App not found")
-
-        annotation_setting = session.scalar(
-            select(AppAnnotationSetting)
-            .where(
-                AppAnnotationSetting.app_id == app_id,
-                AppAnnotationSetting.id == annotation_setting_id,
-            )
-            .limit(1)
-        )
-        if not annotation_setting:
-            raise NotFound("App annotation not found")
-        annotation_setting.score_threshold = args["score_threshold"]
-        annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = naive_utc_now()
-        session.add(annotation_setting)
-        session.flush()
-
-        collection_binding_detail = session.get(DatasetCollectionBinding, annotation_setting.collection_binding_id)
-
-        if collection_binding_detail:
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {
-                    "embedding_provider_name": collection_binding_detail.provider_name,
-                    "embedding_model_name": collection_binding_detail.model_name,
-                },
-            }
-        else:
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {},
-            }

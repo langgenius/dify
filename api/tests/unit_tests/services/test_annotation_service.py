@@ -23,8 +23,6 @@ from werkzeug.exceptions import NotFound
 import services.annotation_service as annotation_service_module
 from enums import DeploymentEdition
 from models.account import Account
-from models.dataset import DatasetCollectionBinding
-from models.enums import CollectionBindingType
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -103,25 +101,6 @@ def _persist_annotation(
     session.add(annotation)
     session.commit()
     return annotation
-
-
-def _persist_binding(
-    session: Session,
-    *,
-    binding_id: str = "collection-1",
-    provider_name: str = "provider-a",
-    model_name: str = "model-a",
-) -> DatasetCollectionBinding:
-    binding = DatasetCollectionBinding(
-        provider_name=provider_name,
-        model_name=model_name,
-        type=CollectionBindingType.ANNOTATION,
-        collection_name=f"collection-{binding_id}",
-    )
-    binding.id = binding_id
-    session.add(binding)
-    session.commit()
-    return binding
 
 
 def _persist_setting(
@@ -622,46 +601,3 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             "a",
             0.8,
         )
-
-    def test_update_setting_is_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        other_setting = _persist_setting(sqlite_session, other_app)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.update_app_annotation_setting(
-                app.id, other_setting.id, {"score_threshold": 0.8}, sqlite_session
-            )
-
-    def test_update_setting_flushes_changes_and_returns_binding(
-        self, sqlite_session: Session, current_user: Account
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        binding = _persist_binding(sqlite_session)
-        setting = _persist_setting(sqlite_session, app, binding_id=binding.id)
-
-        result = AppAnnotationService.update_app_annotation_setting(
-            app.id, setting.id, {"score_threshold": 0.8}, sqlite_session
-        )
-
-        assert result["enabled"] is True
-        assert result["score_threshold"] == 0.8
-        assert result["embedding_model"] == {
-            "embedding_provider_name": binding.provider_name,
-            "embedding_model_name": binding.model_name,
-        }
-        assert setting.score_threshold == 0.8
-        assert setting.updated_user_id == current_user.id
-
-    def test_update_setting_returns_empty_detail_for_missing_binding(
-        self, sqlite_session: Session, current_user: Account
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        setting = _persist_setting(sqlite_session, app, binding_id="missing-binding")
-
-        result = AppAnnotationService.update_app_annotation_setting(
-            app.id, setting.id, {"score_threshold": 0.7}, sqlite_session
-        )
-
-        assert result["score_threshold"] == 0.7
-        assert result["embedding_model"] == {}

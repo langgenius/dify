@@ -7,13 +7,19 @@ from typing import override
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from models.dataset import DatasetCollectionBinding
 from models.enums import AppStatus
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from repositories.app.console_repository import find_console_app
-from services.annotation_command_service import AnnotationDeletionResult, AnnotationWriteResult, AnnotationWriteStore
+from services.annotation_command_service import (
+    AnnotationDeletionResult,
+    AnnotationSettingNotFoundError,
+    AnnotationWriteResult,
+    AnnotationWriteStore,
+)
 from services.annotation_query import (
     AnnotationAppNotFoundError,
     AnnotationEmbeddingModel,
@@ -87,16 +93,7 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore):
             setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1))
             if setting is None:
                 return AnnotationSettingRecord(enabled=False, id=None, score_threshold=None, embedding_model=None)
-            binding = session.get(DatasetCollectionBinding, setting.collection_binding_id)
-            return AnnotationSettingRecord(
-                enabled=True,
-                id=setting.id,
-                score_threshold=setting.score_threshold,
-                embedding_model=AnnotationEmbeddingModel(
-                    embedding_provider_name=binding.provider_name if binding is not None else None,
-                    embedding_model_name=binding.model_name if binding is not None else None,
-                ),
-            )
+            return self._setting_record(session, setting)
 
     @override
     def get_hit_history_page(
@@ -242,6 +239,38 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore):
             return AnnotationDeletionResult(
                 annotation_ids=annotation_ids, collection_binding_id=self._binding_id(session, app_id=app_id)
             )
+
+    @override
+    def update_setting(
+        self, *, tenant_id: str, app_id: str, setting_id: str, account_id: str, score_threshold: float
+    ) -> AnnotationSettingRecord:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            setting = session.scalar(
+                select(AppAnnotationSetting).where(
+                    AppAnnotationSetting.app_id == app_id, AppAnnotationSetting.id == setting_id
+                )
+            )
+            if setting is None:
+                raise AnnotationSettingNotFoundError(f"Annotation setting {setting_id} is unavailable for app {app_id}")
+            setting.score_threshold = score_threshold
+            setting.updated_user_id = account_id
+            setting.updated_at = naive_utc_now()
+            session.flush()
+            return self._setting_record(session, setting)
+
+    @staticmethod
+    def _setting_record(session: Session, setting: AppAnnotationSetting) -> AnnotationSettingRecord:
+        binding = session.get(DatasetCollectionBinding, setting.collection_binding_id)
+        return AnnotationSettingRecord(
+            enabled=True,
+            id=setting.id,
+            score_threshold=setting.score_threshold,
+            embedding_model=AnnotationEmbeddingModel(
+                embedding_provider_name=binding.provider_name if binding is not None else None,
+                embedding_model_name=binding.model_name if binding is not None else None,
+            ),
+        )
 
     @staticmethod
     def _delete_annotations(session: Session, *, app_id: str, annotation_ids: Sequence[str]) -> None:

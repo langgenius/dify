@@ -781,61 +781,6 @@ class TestAnnotationService:
         assert "error_msg" in result
         assert "limit" in result["error_msg"].lower()
 
-    def test_update_app_annotation_setting_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful update of app annotation setting.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create annotation setting first
-        from models.dataset import DatasetCollectionBinding
-        from models.model import AppAnnotationSetting
-
-        # Create a collection binding first
-        collection_binding = DatasetCollectionBinding(
-            provider_name="openai",
-            model_name="text-embedding-ada-002",
-            type="annotation",
-            collection_name=f"annotation_collection_{fake.uuid4()}",
-        )
-        collection_binding.id = str(fake.uuid4())
-        db_session_with_containers.add(collection_binding)
-        db_session_with_containers.flush()
-
-        # Create annotation setting
-        annotation_setting = AppAnnotationSetting(
-            app_id=app.id,
-            score_threshold=0.8,
-            collection_binding_id=collection_binding.id,
-            created_user_id=account.id,
-            updated_user_id=account.id,
-        )
-        db_session_with_containers.add(annotation_setting)
-        db_session_with_containers.commit()
-
-        # Update annotation setting
-        update_args = {
-            "score_threshold": 0.9,
-        }
-
-        result = AppAnnotationService.update_app_annotation_setting(
-            app.id, annotation_setting.id, update_args, session=db_session_with_containers
-        )
-
-        # Verify result structure
-        assert result["enabled"] is True
-        assert result["id"] == annotation_setting.id
-        assert result["score_threshold"] == 0.9
-        assert result["embedding_model"]["embedding_provider_name"] == "openai"
-        assert result["embedding_model"]["embedding_model_name"] == "text-embedding-ada-002"
-
-        # Verify database was updated
-        db_session_with_containers.refresh(annotation_setting)
-        assert annotation_setting.score_threshold == 0.9
-
     def test_insert_app_annotation_directly_with_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

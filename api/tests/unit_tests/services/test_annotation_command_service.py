@@ -13,7 +13,7 @@ from celery import Celery, Task
 from celery.signals import before_task_publish
 from kombu.exceptions import SerializerNotInstalled
 from kombu.simple import SimpleQueue
-from sqlalchemy import Connection, event, text
+from sqlalchemy import Connection, event, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
@@ -127,6 +127,36 @@ def _enable(harness: _Harness) -> None:
                 updated_user_id=harness.annotation.account_id,
             )
         )
+
+
+def test_changing_the_matching_threshold_keeps_embeddings_without_publishing(harness: _Harness) -> None:
+    _enable(harness)
+    with harness.factory() as session:
+        setting = session.scalars(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == harness.app.id)
+        ).one()
+        setting_id = setting.id
+
+    result = harness.service.update_setting(
+        tenant_id=harness.app.tenant_id,
+        app_id=harness.app.id,
+        setting_id=setting_id,
+        account_id=harness.annotation.account_id,
+        score_threshold=0.75,
+    )
+
+    assert result.enabled
+    assert result.id == setting_id
+    assert result.score_threshold == 0.75
+    with harness.factory() as session:
+        stored = session.get_one(AppAnnotationSetting, setting_id)
+        assert stored.score_threshold == 0.75
+        assert stored.collection_binding_id == harness.binding_id
+        assert session.get(MessageAnnotation, harness.annotation.id) is not None
+    assert harness.publications == []
+    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
+        with pytest.raises(Empty):
+            messages.get(block=False)
 
 
 @pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])

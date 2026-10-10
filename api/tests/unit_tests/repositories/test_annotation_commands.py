@@ -13,9 +13,11 @@ from sqlalchemy import Connection, Engine, event, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
-from models.enums import ConversationFromSource
+from models.dataset import DatasetCollectionBinding
+from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -26,8 +28,18 @@ from models.model import (
     MessageAnnotation,
 )
 from repositories.annotation_repository import AnnotationRepository
-from services.annotation_command_service import AnnotationDeletionResult, AnnotationWriteResult
-from services.annotation_query import AnnotationAppNotFoundError, AnnotationNotFoundError, AnnotationRecord
+from services.annotation_command_service import (
+    AnnotationDeletionResult,
+    AnnotationSettingNotFoundError,
+    AnnotationWriteResult,
+)
+from services.annotation_query import (
+    AnnotationAppNotFoundError,
+    AnnotationEmbeddingModel,
+    AnnotationNotFoundError,
+    AnnotationRecord,
+    AnnotationSettingRecord,
+)
 from services.errors.message import MessageNotExistsError
 
 Operation = Literal["upsert", "update", "delete", "delete_many", "clear"]
@@ -107,6 +119,30 @@ def annotation(sqlite_session: Session, scope: Scope, message: Message) -> Messa
     sqlite_session.add(annotation)
     sqlite_session.commit()
     return annotation
+
+
+@pytest.fixture
+def setting(sqlite_session: Session, scope: Scope) -> AppAnnotationSetting:
+    binding = DatasetCollectionBinding(
+        provider_name="test-provider",
+        model_name="test-embedding",
+        type=CollectionBindingType.ANNOTATION,
+        collection_name="annotations",
+    )
+    sqlite_session.add(binding)
+    sqlite_session.flush()
+    setting = AppAnnotationSetting(
+        app_id=scope.app.id,
+        score_threshold=0.5,
+        collection_binding_id=binding.id,
+        created_user_id=scope.account.id,
+        updated_user_id=scope.account.id,
+    )
+    setting.created_at = CREATED_AT
+    setting.updated_at = CREATED_AT
+    sqlite_session.add(setting)
+    sqlite_session.commit()
+    return setting
 
 
 def _setting(session: Session, scope: Scope, *, app_id: str) -> str:
@@ -760,3 +796,184 @@ def test_large_bulk_delete_respects_sql_parameter_limit_and_rolls_back_all_batch
     expected_count = len(annotation_ids) if fail else 0
     assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == expected_count
     assert sqlite_session.scalar(select(func.count()).select_from(AppAnnotationHitHistory)) == expected_count
+
+
+@pytest.mark.parametrize("score_threshold", [-0.1, 0.0, 0.75, 1.0, 1.5])
+@pytest.mark.parametrize("has_binding", [True, False])
+def test_update_setting_preserves_binding_creation_audit_and_other_settings(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    scope: Scope,
+    setting: AppAnnotationSetting,
+    score_threshold: float,
+    has_binding: bool,
+) -> None:
+    binding_id = setting.collection_binding_id
+    if not has_binding:
+        sqlite_session.delete(sqlite_session.get_one(DatasetCollectionBinding, binding_id))
+    decoy = AppAnnotationSetting(
+        app_id=scope.app.id,
+        score_threshold=0.4,
+        collection_binding_id=str(uuid4()),
+        created_user_id=scope.account.id,
+        updated_user_id=scope.account.id,
+    )
+    sqlite_session.add(decoy)
+    sqlite_session.commit()
+    before = naive_utc_now()
+    result = repository.update_setting(
+        tenant_id=scope.app.tenant_id,
+        app_id=scope.app.id,
+        setting_id=setting.id,
+        account_id=scope.other_account.id,
+        score_threshold=score_threshold,
+    )
+    after = naive_utc_now()
+    assert result == AnnotationSettingRecord(
+        enabled=True,
+        id=setting.id,
+        score_threshold=score_threshold,
+        embedding_model=AnnotationEmbeddingModel(
+            embedding_provider_name="test-provider" if has_binding else None,
+            embedding_model_name="test-embedding" if has_binding else None,
+        ),
+    )
+    assert inspect(result, raiseerr=False) is None
+    sqlite_session.refresh(setting)
+    assert setting.score_threshold == score_threshold
+    assert setting.updated_user_id == scope.other_account.id
+    assert before <= setting.updated_at <= after
+    assert setting.updated_at.tzinfo is None
+    assert setting.created_at == CREATED_AT
+    assert setting.created_user_id == scope.account.id
+    assert setting.collection_binding_id == binding_id
+    assert setting.app_id == scope.app.id
+    sqlite_session.refresh(decoy)
+    assert decoy.score_threshold == 0.4
+    assert decoy.updated_user_id == scope.account.id
+
+
+@pytest.mark.parametrize("visibility", ["missing", "wrong_tenant", "foreign_app", "disabled"])
+def test_update_setting_checks_app_visibility_before_setting(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    scope: Scope,
+    setting: AppAnnotationSetting,
+    visibility: str,
+) -> None:
+    tenant_id, app_id = scope.app.tenant_id, scope.app.id
+    if visibility == "missing":
+        app_id = str(uuid4())
+    elif visibility == "wrong_tenant":
+        tenant_id = str(uuid4())
+    elif visibility == "foreign_app":
+        app_id = scope.foreign_app.id
+    else:
+        sqlite_session.execute(text("UPDATE apps SET status = 'disabled' WHERE id = :id"), {"id": app_id})
+    sqlite_session.commit()
+    with pytest.raises(AnnotationAppNotFoundError):
+        repository.update_setting(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            setting_id=str(uuid4()),
+            account_id=scope.other_account.id,
+            score_threshold=0.75,
+        )
+    sqlite_session.refresh(setting)
+    assert setting.score_threshold == 0.5
+    assert setting.updated_user_id == scope.account.id
+    assert setting.updated_at == CREATED_AT
+
+
+@pytest.mark.parametrize("setting_scope", ["missing", "other_app", "foreign_app"])
+def test_update_setting_requires_setting_in_admitted_app(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    scope: Scope,
+    setting: AppAnnotationSetting,
+    setting_scope: str,
+) -> None:
+    setting_id = setting.id
+    if setting_scope == "missing":
+        setting_id = str(uuid4())
+    else:
+        setting.app_id = scope.other_app.id if setting_scope == "other_app" else scope.foreign_app.id
+    sqlite_session.commit()
+    with pytest.raises(AnnotationSettingNotFoundError):
+        repository.update_setting(
+            tenant_id=scope.app.tenant_id,
+            app_id=scope.app.id,
+            setting_id=setting_id,
+            account_id=scope.other_account.id,
+            score_threshold=0.75,
+        )
+    sqlite_session.refresh(setting)
+    assert setting.score_threshold == 0.5
+    assert setting.updated_user_id == scope.account.id
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_update_setting_closes_session_and_rolls_back_database_failure(
+    repository: AnnotationRepository,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    scope: Scope,
+    setting: AppAnnotationSetting,
+    fail: bool,
+) -> None:
+    if fail:
+        sqlite_session.execute(
+            text(
+                "CREATE TRIGGER reject_annotation_setting_update BEFORE UPDATE ON app_annotation_settings "
+                "BEGIN SELECT RAISE(ABORT, 'setting update rejected'); END"
+            )
+        )
+    sqlite_session.commit()
+    sessions: list[Session] = []
+    commits: list[Session] = []
+    rollbacks: list[Session] = []
+
+    def record_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    def record_commit(session: Session) -> None:
+        commits.append(session)
+
+    def record_rollback(session: Session) -> None:
+        rollbacks.append(session)
+
+    event.listen(sqlite_session_factory, "after_begin", record_session)
+    event.listen(sqlite_session_factory, "after_commit", record_commit)
+    event.listen(sqlite_session_factory, "after_rollback", record_rollback)
+    try:
+        if fail:
+            with pytest.raises(IntegrityError, match="setting update rejected"):
+                repository.update_setting(
+                    tenant_id=scope.app.tenant_id,
+                    app_id=scope.app.id,
+                    setting_id=setting.id,
+                    account_id=scope.other_account.id,
+                    score_threshold=0.75,
+                )
+        else:
+            repository.update_setting(
+                tenant_id=scope.app.tenant_id,
+                app_id=scope.app.id,
+                setting_id=setting.id,
+                account_id=scope.other_account.id,
+                score_threshold=0.75,
+            )
+    finally:
+        event.remove(sqlite_session_factory, "after_begin", record_session)
+        event.remove(sqlite_session_factory, "after_commit", record_commit)
+        event.remove(sqlite_session_factory, "after_rollback", record_rollback)
+    assert len(sessions) == 1
+    assert not sessions[0].in_transaction()
+    assert not sessions[0].identity_map
+    assert len(commits) == (0 if fail else 1)
+    assert len(rollbacks) == (1 if fail else 0)
+    sqlite_session.refresh(setting)
+    assert setting.score_threshold == (0.5 if fail else 0.75)
+    assert setting.updated_user_id == (scope.account.id if fail else scope.other_account.id)
+    if fail:
+        assert setting.updated_at == CREATED_AT
