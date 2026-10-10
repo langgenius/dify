@@ -1,8 +1,9 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentType, FC } from 'react'
 import type { Credential, ModelItem, ModelProvider } from '../declarations'
-import type { ModelLoadBalancingModalProps } from './model-load-balancing-modal'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import type { ModelLoadBalancingContentProps } from './model-load-balancing-modal'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,31 +16,6 @@ import LazyCustomModelActions from './lazy-custom-model-actions'
 // import Tab from './tab'
 import ModelListItem from './model-list-item'
 
-const ModelLoadBalancingLoadingDialog = ({
-  onClose,
-}: Pick<ModelLoadBalancingModalProps, 'onClose'>) => {
-  const { t } = useTranslation(['common', 'modelProvider'])
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose?.()}>
-      <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
-        </DialogTitle>
-        <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-          <span className="system-sm-regular text-text-secondary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </span>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 type ModelListProps = {
   provider: ModelProvider | ModelProviderSummaryResponse
   models: ModelItem[]
@@ -49,19 +25,28 @@ type ModelListProps = {
 
 const getModelKey = (model: ModelItem) => `${model.model}-${model.model_type}-${model.fetch_from}`
 
-let ModelLoadBalancingModal: ComponentType<ModelLoadBalancingModalProps> | undefined
-let modelLoadBalancingModalPromise: Promise<void> | undefined
+type ModelLoadBalancingSession = {
+  input: Omit<ModelLoadBalancingContentProps, 'onClose'>
+  open: boolean
+  Content?: ComponentType<ModelLoadBalancingContentProps>
+}
 
-const loadModelLoadBalancingModal = () => {
-  if (ModelLoadBalancingModal) return Promise.resolve()
+let ModelLoadBalancingContent: ComponentType<ModelLoadBalancingContentProps> | undefined
+let modelLoadBalancingContentPromise:
+  | Promise<ComponentType<ModelLoadBalancingContentProps>>
+  | undefined
 
-  modelLoadBalancingModalPromise ??= import('./model-load-balancing-modal').then(
-    ({ default: Modal }) => {
-      ModelLoadBalancingModal = Modal
+const loadModelLoadBalancingContent = () => {
+  if (ModelLoadBalancingContent) return Promise.resolve(ModelLoadBalancingContent)
+
+  modelLoadBalancingContentPromise ??= import('./model-load-balancing-modal').then(
+    ({ ModelLoadBalancingContent: Content }) => {
+      ModelLoadBalancingContent = Content
+      return Content
     },
   )
 
-  return modelLoadBalancingModalPromise
+  return modelLoadBalancingContentPromise
 }
 
 const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange }) => {
@@ -72,10 +57,8 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
-  const [modelLoadBalancingModalProps, setModelLoadBalancingModalProps] =
-    useState<ModelLoadBalancingModalProps | null>(null)
+  const [session, setSession] = useState<ModelLoadBalancingSession | null>(null)
   const [loadingModelKey, setLoadingModelKey] = useState<string | null>(null)
-  const [isModelLoadBalancingModalLoading, setIsModelLoadBalancingModalLoading] = useState(false)
   const { loadProviderDetail } = useLazyModelProviderDetail(provider.provider)
   const onModifyLoadBalancing = useCallback(
     async (model: ModelItem, credential?: Credential) => {
@@ -98,29 +81,38 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
         return
       }
 
-      setModelLoadBalancingModalProps({
-        provider: providerDetail,
-        credential,
-        configurateMethod: model.fetch_from,
-        model,
+      const openingSession: ModelLoadBalancingSession = {
+        input: {
+          provider: providerDetail,
+          credential,
+          configurateMethod: model.fetch_from,
+          model,
+          onSave: onChange,
+        },
         open: true,
-        onSave: onChange,
-      })
+        Content: ModelLoadBalancingContent,
+      }
+      setSession(openingSession)
 
-      if (ModelLoadBalancingModal) return
+      if (ModelLoadBalancingContent) return
 
-      setIsModelLoadBalancingModalLoading(true)
       try {
-        await loadModelLoadBalancingModal()
+        const Content = await loadModelLoadBalancingContent()
+        setSession((current) => (current === openingSession ? { ...current, Content } : current))
       } catch {
-        setModelLoadBalancingModalProps(null)
+        setSession((current) =>
+          current === openingSession ? { ...current, open: false } : current,
+        )
         toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-      } finally {
-        setIsModelLoadBalancingModalLoading(false)
       }
     },
     [loadingModelKey, loadProviderDetail, onChange, provider, t],
   )
+
+  const Content = session?.Content
+  const handleOpenChange = (open: boolean) => {
+    setSession((current) => (current ? { ...current, open } : current))
+  }
 
   return (
     <>
@@ -164,14 +156,39 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
           ))}
         </div>
       </div>
-      {isModelLoadBalancingModalLoading && modelLoadBalancingModalProps && (
-        <ModelLoadBalancingLoadingDialog onClose={() => setModelLoadBalancingModalProps(null)} />
-      )}
-      {ModelLoadBalancingModal && modelLoadBalancingModalProps && (
-        <ModelLoadBalancingModal
-          {...modelLoadBalancingModalProps}
-          onClose={() => setModelLoadBalancingModalProps(null)}
-        />
+      {session && (
+        <Dialog open={session.open} onOpenChange={handleOpenChange}>
+          <DialogContent className="w-160 border-none px-8 pt-8 text-left align-middle">
+            <DialogClose
+              render={
+                <IconButton
+                  className="absolute top-4 right-4"
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+            {Content ? (
+              <Content {...session.input} onClose={() => handleOpenChange(false)} />
+            ) : (
+              <>
+                <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                  {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+                </DialogTitle>
+                <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
+                  <span
+                    aria-hidden
+                    className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+                  />
+                  <span className="system-sm-regular text-text-secondary">
+                    {t(($) => $.loading, { ns: 'common' })}
+                  </span>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       )}
     </>
   )

@@ -127,20 +127,22 @@ describe('ModelList', () => {
     vi.clearAllMocks()
     mockLoadProviderDetail.mockResolvedValue(mockProvider)
     mockLoadModelLoadBalancingModal.mockResolvedValue({
-      default: MockModelLoadBalancingModal,
+      ModelLoadBalancingContent: MockModelLoadBalancingModal,
     })
     mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.manage', 'credential.use']
   })
 
   it('should allow reopening the loading dialog after it is dismissed before the module is available', async () => {
     let resolveModule:
-      | ((module: { default: typeof MockModelLoadBalancingModal }) => void)
+      | ((module: { ModelLoadBalancingContent: typeof MockModelLoadBalancingModal }) => void)
       | undefined
     mockLoadModelLoadBalancingModal.mockImplementationOnce(
       () =>
-        new Promise<{ default: typeof MockModelLoadBalancingModal }>((resolve) => {
-          resolveModule = resolve
-        }),
+        new Promise<{ ModelLoadBalancingContent: typeof MockModelLoadBalancingModal }>(
+          (resolve) => {
+            resolveModule = resolve
+          },
+        ),
     )
 
     render(
@@ -163,7 +165,7 @@ describe('ModelList', () => {
     await user.click(screen.getByRole('button', { name: 'gpt-4' }))
     expect(await screen.findByRole('status')).toHaveAttribute('aria-busy', 'true')
 
-    resolveModule?.({ default: MockModelLoadBalancingModal })
+    resolveModule?.({ ModelLoadBalancingContent: MockModelLoadBalancingModal })
 
     expect(await screen.findByTestId('model-load-balancing-modal')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -284,7 +286,9 @@ describe('ModelList', () => {
     await user.click(screen.getByRole('button', { name: 'gpt-4' }))
 
     expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed')
-    expect(screen.queryByTestId('model-load-balancing-modal')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByTestId('model-load-balancing-modal')).not.toBeInTheDocument(),
+    )
   })
 
   it('should hide custom model actions without plugin.model_config', () => {
@@ -369,7 +373,9 @@ describe('ModelList', () => {
     expect(mockOnChange).toHaveBeenCalledWith('test-provider')
 
     fireEvent.click(screen.getByRole('button', { name: 'Close load balancing' }))
-    expect(screen.queryByTestId('model-load-balancing-modal')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByTestId('model-load-balancing-modal')).not.toBeInTheDocument(),
+    )
   })
 
   it('should hide custom model actions when provider uses fetchFromRemote only', () => {
