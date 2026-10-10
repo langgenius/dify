@@ -162,37 +162,11 @@ class TestMCPClient:
     @patch("core.mcp.mcp_client.sse_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_with_unknown_method_fallback_to_sse(
+    def test_initialize_with_unknown_method_fallback_to_streamable_http(
         self, mock_client_session, mock_streamable_client, mock_sse_client
     ):
-        """Test initialization with unknown method falls back to SSE."""
+        """Test initialization with unknown method tries streamable-http first."""
         # Setup mocks
-        mock_read_stream = Mock()
-        mock_write_stream = Mock()
-        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
-
-        mock_session = Mock()
-        mock_client_session.return_value.__enter__.return_value = mock_session
-
-        client = MCPClient(server_url="http://test.example.com/unknown")
-        client._initialize()
-
-        # Verify SSE client was tried
-        mock_sse_client.assert_called_once()
-        mock_streamable_client.assert_not_called()
-
-        # Verify session was created
-        assert client._session == mock_session
-
-    @patch("core.mcp.mcp_client.sse_client")
-    @patch("core.mcp.mcp_client.streamablehttp_client")
-    @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_fallback_from_sse_to_mcp(self, mock_client_session, mock_streamable_client, mock_sse_client):
-        """Test initialization falls back from SSE to MCP on connection error."""
-        # Setup SSE to fail
-        mock_sse_client.side_effect = MCPConnectionError("SSE connection failed")
-
-        # Setup MCP to succeed
         mock_read_stream = Mock()
         mock_write_stream = Mock()
         mock_client_context = Mock()
@@ -208,34 +182,90 @@ class TestMCPClient:
         client = MCPClient(server_url="http://test.example.com/unknown")
         client._initialize()
 
-        # Verify both were tried
-        mock_sse_client.assert_called_once()
+        # Verify streamable-http client was tried first
         mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_not_called()
 
-        # Verify session was created with MCP
+        # Verify session was created
         assert client._session == mock_session
 
     @patch("core.mcp.mcp_client.sse_client")
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
-    def test_initialize_fallback_closes_partial_sse_connection(
+    def test_initialize_fallback_from_streamable_http_to_sse(
         self, mock_client_session, mock_streamable_client, mock_sse_client
     ):
-        """A failed SSE handshake is closed before streamable HTTP fallback starts."""
+        """Test initialization falls back from streamable-http to SSE on connection error."""
+        # Setup streamable-http to fail
+        mock_streamable_client.side_effect = MCPConnectionError("streamable-http connection failed")
+
+        # Setup SSE to succeed
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        # Verify both were tried
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_called_once()
+
+        # Verify session was created with SSE
+        assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_on_httpx_timeout(self, mock_client_session, mock_streamable_client, mock_sse_client):
+        """Test initialization falls back from streamable-http to SSE on httpx.ReadTimeout (#39301)."""
+        import httpx
+
+        # Setup streamable-http to fail with ReadTimeout (the bug from #39301)
+        mock_streamable_client.side_effect = httpx.ReadTimeout("timed out")
+
+        # Setup SSE to succeed
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_sse_client.return_value.__enter__.return_value = (mock_read_stream, mock_write_stream)
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        # Verify both were tried
+        mock_streamable_client.assert_called_once()
+        mock_sse_client.assert_called_once()
+
+        # Verify session was created with SSE
+        assert client._session == mock_session
+
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_closes_partial_streamable_http_connection(
+        self, mock_client_session, mock_streamable_client, mock_sse_client
+    ):
+        """A failed streamable-http handshake is closed before SSE fallback starts."""
         events: list[str] = []
 
-        sse_context = MagicMock()
-        sse_context.__enter__.return_value = (Mock(), Mock())
-        sse_context.__exit__.side_effect = lambda *_args: events.append("sse_closed")
-        mock_sse_client.return_value = sse_context
-
         mcp_context = MagicMock()
-        mcp_context.__enter__.side_effect = lambda *_args: events.append("mcp_opened") or (Mock(), Mock(), Mock())
+        mcp_context.__enter__.return_value = (Mock(), Mock(), Mock())
+        mcp_context.__exit__.side_effect = lambda *_args: events.append("mcp_closed")
         mock_streamable_client.return_value = mcp_context
+
+        sse_context = MagicMock()
+        sse_context.__enter__.side_effect = lambda *_args: events.append("sse_opened") or (Mock(), Mock())
+        mock_sse_client.return_value = sse_context
 
         failed_session_context = MagicMock()
         failed_session = Mock()
-        failed_session.initialize.side_effect = MCPConnectionError("SSE handshake failed")
+        failed_session.initialize.side_effect = MCPConnectionError("streamable-http handshake failed")
         failed_session_context.__enter__.return_value = failed_session
         failed_session_context.__exit__.side_effect = lambda *_args: events.append("session_closed")
 
@@ -247,9 +277,9 @@ class TestMCPClient:
         client = MCPClient(server_url="http://test.example.com/unknown")
         client._initialize()
 
-        assert events[:3] == ["session_closed", "sse_closed", "mcp_opened"]
+        assert events[:3] == ["session_closed", "mcp_closed", "sse_opened"]
         failed_session_context.__exit__.assert_called_once()
-        sse_context.__exit__.assert_called_once()
+        mcp_context.__exit__.assert_called_once()
         assert client._session is live_session
 
     @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
