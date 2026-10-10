@@ -1106,6 +1106,16 @@ class AppService:
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            from models.evaluation import EvaluationTargetType
+            from services.evaluation_service import EvaluationService
+
+            EvaluationService.stage_target_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(

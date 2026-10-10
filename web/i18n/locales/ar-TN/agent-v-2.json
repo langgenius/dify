@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "نقطة الوصول",
   "agentDetail.sections.access-config": "الوصول إلى الموارد",
   "agentDetail.sections.configure": "تكوين",
+  "agentDetail.sections.evaluation": "التقييم",
   "agentDetail.sections.logs": "السجلات",
   "agentDetail.sections.monitoring": "المراقبة",
   "agentDetail.title": "وكيل",

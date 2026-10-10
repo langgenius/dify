@@ -26,16 +26,20 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
   const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
   const section = pathname.endsWith('/access-config')
     ? 'access-config'
-    : pathname.endsWith('/access')
-      ? 'access'
-      : pathname.endsWith('/logs')
-        ? 'logs'
-        : pathname.endsWith('/monitoring')
-          ? 'monitoring'
-          : 'configure'
+    : pathname.endsWith('/evaluation')
+      ? 'evaluation'
+      : pathname.endsWith('/access')
+        ? 'access'
+        : pathname.endsWith('/logs')
+          ? 'logs'
+          : pathname.endsWith('/monitoring')
+            ? 'monitoring'
+            : 'configure'
   const sectionTitle = t(($) => $[`agentDetail.sections.${section}`])
   const agentTitle = agentQuery.data?.name ?? t(($) => $['agentDetail.documentTitle'])
-  const canAccessSection = getAgentSectionAccess(capabilities)[section]
+  const canAccessSection =
+    getAgentSectionAccess(capabilities)[section] &&
+    (section !== 'evaluation' || agentQuery.data?.access_ready === true)
   const defaultSection = getAgentDefaultSection(capabilities)
   const redirectPath = shouldRedirectToRoster
     ? '/agents'

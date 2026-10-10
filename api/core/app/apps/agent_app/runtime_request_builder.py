@@ -86,10 +86,23 @@ class AgentAppRuntimeBuildContext:
     backend_binding_ref: str
     files: tuple[File, ...] = ()
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None
+    capture_available_tools: bool = False
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AgentAppRuntimeToolDefinition:
+    """Credential-free description of one model-visible runtime tool."""
+
+    tool_ref: str
+    name: str
+    display_name: str
+    description: str
+    input_schema: dict[str, Any]
+    schema_available: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +111,7 @@ class AgentAppRuntimeRequest:
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
     binding_id: str
+    available_tools: tuple[AgentAppRuntimeToolDefinition, ...] = ()
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -172,6 +186,8 @@ class AgentAppRuntimeRequestBuilder:
             image_detail_config=context.image_detail_config,
         )
 
+        shell_config = build_shell_layer_config(agent_soul)
+        ask_human_config = build_ask_human_layer_config(agent_soul)
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -206,9 +222,9 @@ class AgentAppRuntimeRequestBuilder:
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
+                ask_human_config=ask_human_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
-                shell_config=build_shell_layer_config(agent_soul),
+                shell_config=shell_config,
                 session_snapshot=context.session_snapshot,
                 deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=context.idempotency_key,
@@ -222,7 +238,64 @@ class AgentAppRuntimeRequestBuilder:
             redacted_request=redacted,
             metadata=metadata,
             binding_id=context.binding_id,
+            available_tools=(
+                self._runtime_tool_definitions(
+                    tool_layers=tool_layers,
+                    include_shell=dify_config.AGENT_SHELL_ENABLED,
+                    ask_human_enabled=ask_human_config is not None,
+                )
+                if context.capture_available_tools
+                else ()
+            ),
         )
+
+    @staticmethod
+    def _runtime_tool_definitions(
+        *,
+        tool_layers: WorkflowAgentToolLayers,
+        include_shell: bool,
+        ask_human_enabled: bool,
+    ) -> tuple[AgentAppRuntimeToolDefinition, ...]:
+        """Capture the exact non-secret tool surface used by Agent evaluation."""
+        definitions: list[AgentAppRuntimeToolDefinition] = []
+        if tool_layers.plugin_tools is not None:
+            for tool in tool_layers.plugin_tools.tools:
+                name = tool.name or tool.tool_name
+                definitions.append(
+                    AgentAppRuntimeToolDefinition(
+                        tool_ref=f"plugin:{tool.plugin_id}/{tool.provider}/{tool.tool_name}",
+                        name=name,
+                        display_name=name,
+                        description=tool.description or "",
+                        input_schema=tool.parameters_json_schema or {},
+                    )
+                )
+        if tool_layers.core_tools is not None:
+            for tool in tool_layers.core_tools.tools:
+                name = tool.name or tool.tool_name
+                definitions.append(
+                    AgentAppRuntimeToolDefinition(
+                        tool_ref=f"core:{tool.provider_type}/{tool.provider_id}/{tool.tool_name}",
+                        name=name,
+                        display_name=name,
+                        description=tool.description or "",
+                        input_schema=tool.parameters_json_schema or {},
+                    )
+                )
+        if include_shell:
+            definitions.extend(_shell_runtime_tool_definitions())
+        if ask_human_enabled:
+            definitions.append(
+                AgentAppRuntimeToolDefinition(
+                    tool_ref="dify.ask_human/ask_human",
+                    name="ask_human",
+                    display_name="Ask human",
+                    description="Request structured input from a human when the task cannot continue autonomously.",
+                    input_schema={},
+                    schema_available=False,
+                )
+            )
+        return tuple(definitions)
 
     @staticmethod
     def _build_user_files(
@@ -345,9 +418,64 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
     return DifyUserPromptDownloadConfig(type=file_type, transfer_method=transfer_method, reference=reference)
 
 
+def _shell_runtime_tool_definitions() -> tuple[AgentAppRuntimeToolDefinition, ...]:
+    """Return the stable model-visible tools supplied by the shell layer."""
+    return (
+        AgentAppRuntimeToolDefinition(
+            tool_ref="dify.shell/shell_run",
+            name="shell_run",
+            display_name="Run shell command",
+            description="Start a command or script in the isolated Agent workspace.",
+            input_schema={
+                "type": "object",
+                "properties": {"script": {"type": "string"}, "timeout": {"type": "number"}},
+                "required": ["script"],
+            },
+        ),
+        AgentAppRuntimeToolDefinition(
+            tool_ref="dify.shell/shell_wait",
+            name="shell_wait",
+            display_name="Wait for shell command",
+            description="Wait for more output or completion from an existing shell job.",
+            input_schema={
+                "type": "object",
+                "properties": {"job_id": {"type": "string"}, "timeout": {"type": "number"}},
+                "required": ["job_id"],
+            },
+        ),
+        AgentAppRuntimeToolDefinition(
+            tool_ref="dify.shell/shell_input",
+            name="shell_input",
+            display_name="Send shell input",
+            description="Send standard-input text to a running shell job.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "timeout": {"type": "number"},
+                },
+                "required": ["job_id", "text"],
+            },
+        ),
+        AgentAppRuntimeToolDefinition(
+            tool_ref="dify.shell/shell_interrupt",
+            name="shell_interrupt",
+            display_name="Interrupt shell command",
+            description="Interrupt a running shell job.",
+            input_schema={
+                "type": "object",
+                "properties": {"job_id": {"type": "string"}, "grace_seconds": {"type": "number"}},
+                "required": ["job_id"],
+            },
+        ),
+    )
+
+
 __all__ = [
     "AgentAppRuntimeBuildContext",
     "AgentAppRuntimeRequest",
     "AgentAppRuntimeRequestBuildError",
     "AgentAppRuntimeRequestBuilder",
+    "AgentAppRuntimeToolDefinition",
 ]

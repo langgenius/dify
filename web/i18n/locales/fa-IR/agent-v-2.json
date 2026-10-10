@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "نقطه دسترسی",
   "agentDetail.sections.access-config": "دسترسی به منابع",
   "agentDetail.sections.configure": "پیکربندی",
+  "agentDetail.sections.evaluation": "ارزیابی",
   "agentDetail.sections.logs": "گزارش‌ها",
   "agentDetail.sections.monitoring": "نظارت",
   "agentDetail.title": "عامل",

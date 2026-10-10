@@ -33,6 +33,7 @@ type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
 export const DEFAULT_PIPELINE_METRIC_THRESHOLD = 0.85
 export const EVALUATION_TEMPLATE_FILE_NAMES: Record<EvaluationResourceType, string> = {
+  agents: 'agent-evaluation-template.xlsx',
   apps: 'workflow-evaluation-template.xlsx',
   snippets: 'snippet-evaluation-template.xlsx',
   datasets: 'dataset-evaluation-template.xlsx',
@@ -60,6 +61,9 @@ export const resolveMetricOption = (metricId: string): MetricOption => {
 }
 
 const isPipelineResourceType = (resourceType: EvaluationResourceType) => resourceType === 'datasets'
+
+const supportsCustomMetrics = (resourceType: EvaluationResourceType) =>
+  resourceType === 'apps' || resourceType === 'snippets'
 
 const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
   if (!value?.length) return []
@@ -447,9 +451,9 @@ export const buildStateFromEvaluationConfig = (
   config: EvaluationConfigResponse,
 ): EvaluationResourceState => {
   const defaultMetrics = normalizeDefaultMetrics(config.default_metrics)
-  const customMetrics = isPipelineResourceType(resourceType)
-    ? []
-    : normalizeCustomMetric(config.customized_metrics)
+  const customMetrics = supportsCustomMetrics(resourceType)
+    ? normalizeCustomMetric(config.customized_metrics)
+    : []
   const metrics = isPipelineResourceType(resourceType)
     ? normalizePipelineMetrics(resourceId, config, defaultMetrics)
     : [...defaultMetrics, ...customMetrics]
@@ -597,9 +601,9 @@ export const buildEvaluationTemplateConfigPayload = (
         value_type: metric.valueType,
         node_info_list: isPipelineResourceType(resourceType) ? [] : (metric.nodeInfoList ?? []),
       })),
-    customized_metrics: isPipelineResourceType(resourceType)
-      ? null
-      : buildCustomizedMetricsPayload(resource.metrics),
+    customized_metrics: supportsCustomMetrics(resourceType)
+      ? buildCustomizedMetricsPayload(resource.metrics)
+      : null,
     judgment_config: buildJudgmentConfigPayload(resource, resourceType, resourceId),
   }
 }

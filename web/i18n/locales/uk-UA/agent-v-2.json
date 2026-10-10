@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Точка доступу",
   "agentDetail.sections.access-config": "Доступ до ресурсів",
   "agentDetail.sections.configure": "Налаштувати",
+  "agentDetail.sections.evaluation": "Оцінювання",
   "agentDetail.sections.logs": "Журнали",
   "agentDetail.sections.monitoring": "Моніторинг",
   "agentDetail.title": "Агент",

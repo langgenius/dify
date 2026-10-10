@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Titik Akses",
   "agentDetail.sections.access-config": "Akses Sumber Daya",
   "agentDetail.sections.configure": "Konfigurasikan",
+  "agentDetail.sections.evaluation": "Evaluasi",
   "agentDetail.sections.logs": "Log",
   "agentDetail.sections.monitoring": "Pemantauan",
   "agentDetail.title": "Agen",

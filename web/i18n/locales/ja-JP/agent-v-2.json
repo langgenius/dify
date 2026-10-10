@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "アクセスポイント",
   "agentDetail.sections.access-config": "リソースアクセス",
   "agentDetail.sections.configure": "設定",
+  "agentDetail.sections.evaluation": "評価",
   "agentDetail.sections.logs": "ログ",
   "agentDetail.sections.monitoring": "モニタリング",
   "agentDetail.title": "エージェント",

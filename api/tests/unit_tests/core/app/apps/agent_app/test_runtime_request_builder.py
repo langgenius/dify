@@ -174,6 +174,7 @@ def _ctx(
     session_snapshot: CompositorSessionSnapshot | None = None,
     files: tuple[File, ...] = (),
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    capture_available_tools: bool = False,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -196,6 +197,7 @@ def _ctx(
         session_snapshot=session_snapshot,
         files=files,
         image_detail_config=image_detail_config,
+        capture_available_tools=capture_available_tools,
     )
 
 
@@ -508,11 +510,16 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=tools_builder,  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul, agent_config_version_kind="draft"))
+        result = builder.build(_ctx(soul, agent_config_version_kind="draft", capture_available_tools=True))
 
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
         assert DIFY_CORE_TOOLS_LAYER_ID not in names
+        plugin_tool = next(
+            tool for tool in result.available_tools if tool.tool_ref == "plugin:langgenius/time/time/current_time"
+        )
+        assert plugin_tool.name == "current_time"
+        assert plugin_tool.input_schema == {"type": "object", "properties": {}, "required": []}
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_snapshot(self):
         soul = _soul_with_model()
@@ -533,6 +540,7 @@ class TestAgentAppRuntimeRequestBuilder:
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
         assert DIFY_CORE_TOOLS_LAYER_ID not in names
+        assert result.available_tools == ()
 
     def test_build_includes_core_tools_layer_returned_by_injected_builder(self):
         soul = _soul_with_model()
@@ -547,11 +555,13 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_CoreLayerBuilder(),  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul))
+        result = builder.build(_ctx(soul, capture_available_tools=True))
 
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_CORE_TOOLS_LAYER_ID in names
         assert DIFY_PLUGIN_TOOLS_LAYER_ID not in names
+        assert result.available_tools[0].tool_ref == "core:builtin/audio/transcribe"
+        assert result.available_tools[0].name == "transcribe"
 
     def test_build_normalizes_marketplace_model_plugin_id(self):
         soul = _soul_with_model()
@@ -567,6 +577,7 @@ class TestAgentAppRuntimeRequestBuilder:
         llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
         assert llm.config.plugin_id == "langgenius/openai"
         assert llm.config.model_provider == "openai"
+        assert result.available_tools == ()
 
     def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
         soul = _soul_with_model()
@@ -649,7 +660,7 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul))
+        result = builder.build(_ctx(soul, capture_available_tools=True))
 
         dumped = result.request.model_dump(mode="json")
         shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID][
@@ -663,6 +674,12 @@ class TestAgentAppRuntimeRequestBuilder:
             "dify_tool_names": [],
             "cli_tool_count": 1,
         }
+        assert [tool.name for tool in result.available_tools] == [
+            "shell_run",
+            "shell_wait",
+            "shell_input",
+            "shell_interrupt",
+        ]
 
 
 # ── Agent config layer declaration on the Agent App surface ──────────────────

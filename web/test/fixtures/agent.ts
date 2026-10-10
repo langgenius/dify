@@ -4,6 +4,7 @@ import { AgentPermission } from '@/features/agent-v2/acl'
 
 export function createAgentFixture(overrides: Partial<AgentAppDetailWithSite> = {}) {
   return zAgentAppDetailWithSite.parse({
+    access_ready: true,
     id: 'agent-1',
     app_id: 'app-1',
     name: 'Agent',

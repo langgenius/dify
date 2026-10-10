@@ -45,6 +45,7 @@ type AgentDetailNavItem = {
   href: string
   icon: NavIcon
   activeIcon: NavIcon
+  requiresPublishedAgent?: boolean
 }
 
 const createAgentNavIcon = (iconClassName: string) => {
@@ -57,6 +58,8 @@ const createAgentNavIcon = (iconClassName: string) => {
 
 const configureIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure')
 const configureActiveIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure-active')
+const evaluationLineIcon = createAgentNavIcon('i-ri-flask-line')
+const evaluationFillIcon = createAgentNavIcon('i-ri-flask-fill')
 const accessPointIcon = createAgentNavIcon('i-custom-vender-agent-v2-access-point')
 const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
 const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
@@ -70,6 +73,13 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
     href: getAgentDetailPath(agentId, 'configure'),
     icon: configureIcon,
     activeIcon: configureActiveIcon,
+  },
+  {
+    labelKey: 'agentDetail.sections.evaluation',
+    href: getAgentDetailPath(agentId, 'evaluation'),
+    icon: evaluationLineIcon,
+    activeIcon: evaluationFillIcon,
+    requiresPublishedAgent: true,
   },
   {
     labelKey: 'agentDetail.sections.access',
@@ -275,6 +285,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
+            disabled={item.requiresPublishedAgent && agent?.access_ready !== true}
           />
         ))}
       </nav>

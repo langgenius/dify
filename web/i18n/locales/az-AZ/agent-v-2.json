@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Giriş nöqtəsi",
   "agentDetail.sections.access-config": "Resurslara giriş",
   "agentDetail.sections.configure": "Konfiqurasiya",
+  "agentDetail.sections.evaluation": "Qiymətləndirmə",
   "agentDetail.sections.logs": "Jurnallar",
   "agentDetail.sections.monitoring": "Monitorinq",
   "agentDetail.title": "Agent",

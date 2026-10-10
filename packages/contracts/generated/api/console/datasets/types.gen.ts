@@ -558,6 +558,7 @@ export type EvaluationRunResponse = {
   result_file_id?: string | null
   started_at?: number | null
   status: string
+  target_agent_config_snapshot_id?: string | null
   target_id: string
   target_type: string
   target_workflow_version_id?: string | null

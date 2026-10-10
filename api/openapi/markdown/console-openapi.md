@@ -13452,6 +13452,12 @@ Import a Skill zip package from multipart form field `file`.
 | evaluate_target_id | path |  | Yes | string (uuid) |
 | evaluate_target_type | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18934,6 +18940,7 @@ declaration of an endpoint group
 | result_file_id | string |  | No |
 | started_at | integer |  | No |
 | status | string |  | Yes |
+| target_agent_config_snapshot_id | string |  | No |
 | target_id | string |  | Yes |
 | target_type | string |  | Yes |
 | target_workflow_version_id | string |  | No |

@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Point d’accès",
   "agentDetail.sections.access-config": "Accès aux ressources",
   "agentDetail.sections.configure": "Configurer",
+  "agentDetail.sections.evaluation": "Évaluation",
   "agentDetail.sections.logs": "Journaux",
   "agentDetail.sections.monitoring": "Surveillance",
   "agentDetail.title": "Agent",

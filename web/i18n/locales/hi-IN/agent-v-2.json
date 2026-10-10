@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "एक्सेस पॉइंट",
   "agentDetail.sections.access-config": "संसाधन पहुँच",
   "agentDetail.sections.configure": "कॉन्फ़िगर करें",
+  "agentDetail.sections.evaluation": "मूल्यांकन",
   "agentDetail.sections.logs": "लॉग",
   "agentDetail.sections.monitoring": "निगरानी",
   "agentDetail.title": "एजेंट",

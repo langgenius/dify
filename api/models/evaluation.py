@@ -27,11 +27,13 @@ class EvaluationTargetType(StrEnum):
     APPS = "apps"
     SNIPPETS = "snippets"
     KNOWLEDGE_BASE = "knowledge_base"
+    AGENTS = "agents"
 
 
 class EvaluationRunItemStatus(StrEnum):
     """Durable checkpoint state for one evaluation dataset row."""
 
+    TARGET_RUNNING = "target_running"
     TARGET_COMPLETED = "target_completed"
     COMPLETED = "completed"
 
@@ -106,6 +108,7 @@ class EvaluationRun(Base):
     target_type: Mapped[EvaluationTargetType] = mapped_column(EnumText(EvaluationTargetType, length=32), nullable=False)
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     target_workflow_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    target_agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     evaluation_config_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
 
@@ -160,11 +163,14 @@ class EvaluationRunItem(Base):
         sa.PrimaryKeyConstraint("id", name="evaluation_run_item_pkey"),
         sa.UniqueConstraint("evaluation_run_id", "item_index", name="evaluation_run_item_run_index_unique"),
         sa.Index("evaluation_run_item_workflow_run_idx", "workflow_run_id"),
+        sa.Index("evaluation_run_item_agent_backend_run_idx", "agent_backend_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     evaluation_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    agent_backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     item_index: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[EvaluationRunItemStatus] = mapped_column(
         EnumText(EvaluationRunItemStatus, length=20),
@@ -178,6 +184,7 @@ class EvaluationRunItem(Base):
     metrics: Mapped[str | None] = mapped_column(LongText, nullable=True)
     judgment: Mapped[str | None] = mapped_column(LongText, nullable=True)
     metadata_json: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    target_result_json: Mapped[str | None] = mapped_column(LongText, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

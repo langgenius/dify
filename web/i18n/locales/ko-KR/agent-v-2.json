@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "액세스 지점",
   "agentDetail.sections.access-config": "리소스 접근",
   "agentDetail.sections.configure": "구성",
+  "agentDetail.sections.evaluation": "평가",
   "agentDetail.sections.logs": "로그",
   "agentDetail.sections.monitoring": "모니터링",
   "agentDetail.title": "에이전트",

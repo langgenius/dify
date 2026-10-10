@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Erişim Noktası",
   "agentDetail.sections.access-config": "Kaynak Erişimi",
   "agentDetail.sections.configure": "Yapılandır",
+  "agentDetail.sections.evaluation": "Değerlendirme",
   "agentDetail.sections.logs": "Günlükler",
   "agentDetail.sections.monitoring": "İzleme",
   "agentDetail.title": "Ajan",

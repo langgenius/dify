@@ -345,6 +345,7 @@
   "agentDetail.sections.access": "Dostopna točka",
   "agentDetail.sections.access-config": "Dostop do virov",
   "agentDetail.sections.configure": "Konfiguriraj",
+  "agentDetail.sections.evaluation": "Ocenjevanje",
   "agentDetail.sections.logs": "Dnevniki",
   "agentDetail.sections.monitoring": "Spremljanje",
   "agentDetail.title": "Agent",
