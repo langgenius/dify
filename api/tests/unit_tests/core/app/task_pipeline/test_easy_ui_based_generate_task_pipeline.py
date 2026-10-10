@@ -33,6 +33,7 @@ from core.app.entities.task_entities import (
     MessageReplaceStreamResponse,
     MessageStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamEvent,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
@@ -313,6 +314,65 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         assert isinstance(session, Session)
         assert committed_sessions == [session]
         pipeline._message_end_to_stream_response.assert_called_once()
+
+    def test_llm_chunk_event_routes_reasoning_out_of_answer(self, pipeline, mock_message_cycle_manager, task_state):
+        """Reasoning must never reach the answer; it is published on its own channel."""
+        message = queue_message(QueueLLMChunkEvent(chunk=llm_chunk("<think>hidden</think>visible")))
+        pipeline.queue_manager.messages = [message]
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+
+        reasoning = [r.data.reasoning for r in responses if isinstance(r, ReasoningChunkStreamResponse)]
+        assert reasoning == ["hidden"]
+        mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
+            answer="visible", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+        )
+        assert task_state.llm_result.message.content == "visible"
+
+    def test_llm_chunk_event_handles_tag_split_across_chunks(self, pipeline, mock_message_cycle_manager, task_state):
+        """A tag split across deltas must not leak into the answer."""
+        pipeline.queue_manager.messages = [
+            queue_message(QueueLLMChunkEvent(chunk=llm_chunk("<thi"))),
+            queue_message(QueueLLMChunkEvent(chunk=llm_chunk("nk>reasoning</thi"))),
+            queue_message(QueueLLMChunkEvent(chunk=llm_chunk("nk>answer"))),
+        ]
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+
+        reasoning = "".join(r.data.reasoning for r in responses if isinstance(r, ReasoningChunkStreamResponse))
+        assert reasoning == "reasoning"
+        assert task_state.llm_result.message.content == "answer"
+
+    def test_agent_message_event_routes_reasoning_out_of_answer(self, pipeline, mock_message_cycle_manager):
+        """Agent messages take the same path as regular LLM chunks."""
+        pipeline.queue_manager.messages = [
+            queue_message(QueueAgentMessageEvent(chunk=llm_chunk("<think>reasoning</think>answer")))
+        ]
+        pipeline._agent_message_to_stream_response = Mock(return_value=Mock())
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+
+        reasoning = [r.data.reasoning for r in responses if isinstance(r, ReasoningChunkStreamResponse)]
+        assert reasoning == ["reasoning"]
+        pipeline._agent_message_to_stream_response.assert_called_once_with(
+            answer="answer", message_id="test-message-id"
+        )
+
+    def test_message_end_event_strips_reasoning_from_stored_result(self, pipeline, task_state):
+        """Blocking results and the stored message must match the streamed answer."""
+        result = llm_result("<think>reasoning</think>final")
+        pipeline.queue_manager.messages = [queue_message(QueueMessageEndEvent(llm_result=result))]
+        pipeline._save_message = Mock()
+        pipeline._message_end_to_stream_response = Mock(
+            return_value=MessageEndStreamResponse(task_id="test-task-id", id="test-message-id")
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+
+        reasoning = [r.data.reasoning for r in responses if isinstance(r, ReasoningChunkStreamResponse)]
+        assert reasoning == ["reasoning"]
+        assert result.message.content == "final"
+        assert task_state.llm_result.message.content == "final"
 
     def test_error_event(self, pipeline, committed_sessions):
         """Test handling of error events."""
