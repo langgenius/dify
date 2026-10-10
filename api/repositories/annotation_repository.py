@@ -1,7 +1,6 @@
 """Bounded, tenant-scoped annotation persistence returning detached records."""
 
 from collections.abc import Sequence
-from itertools import batched
 from typing import override
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -251,7 +250,9 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
         with self._session_factory.begin() as session:
             self._require_app(session, tenant_id=tenant_id, app_id=app_id)
             matching_ids: list[str] = []
-            for batch in batched(dict.fromkeys(annotation_ids), 500):
+            unique_ids = tuple(dict.fromkeys(annotation_ids))
+            for offset in range(0, len(unique_ids), 500):
+                batch = unique_ids[offset : offset + 500]
                 matching_ids.extend(
                     session.scalars(
                         select(MessageAnnotation.id).where(
@@ -532,7 +533,9 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
         # TODO: A durable job receipt is needed to distinguish a new batch from
         # a completed batch whose rows have all subsequently been deleted.
         found = 0
-        for batch in batched(tuple(entry.id for entry in entries), 500):
+        annotation_ids = tuple(entry.id for entry in entries)
+        for offset in range(0, len(annotation_ids), 500):
+            batch = annotation_ids[offset : offset + 500]
             annotations = session.execute(
                 select(MessageAnnotation.app_id, MessageAnnotation.account_id).where(MessageAnnotation.id.in_(batch))
             )
@@ -611,7 +614,8 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
     @staticmethod
     def _delete_annotations(session: Session, *, app_id: str, annotation_ids: Sequence[str]) -> None:
         # Bound SQL parameters without splitting the annotation/history transaction.
-        for batch in batched(annotation_ids, 500):
+        for offset in range(0, len(annotation_ids), 500):
+            batch = annotation_ids[offset : offset + 500]
             session.execute(
                 delete(AppAnnotationHitHistory).where(
                     AppAnnotationHitHistory.app_id == app_id, AppAnnotationHitHistory.annotation_id.in_(batch)
