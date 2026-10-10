@@ -109,10 +109,10 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
             if isinstance(result, BaseModel):
-                return result.model_dump(mode="json"), code
+                return result.model_dump(mode="json", by_alias=True), code
             if isinstance(result, tuple) and result and isinstance(result[0], BaseModel):
                 payload, *rest = result
-                return (payload.model_dump(mode="json"), *rest)
+                return (payload.model_dump(mode="json", by_alias=True), *rest)
             return result
 
         openapi_ns.response(code, description or model.__name__, openapi_ns.models[model.__name__])(wrapper)
