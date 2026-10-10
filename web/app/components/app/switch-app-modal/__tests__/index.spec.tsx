@@ -1,12 +1,12 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
-import SwitchAppModal from '../index'
+import { SwitchAppDialog } from '../index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -115,18 +115,18 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
-  const onClose = vi.fn()
+const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppDialog>> = {}) => {
+  const onOpenChange = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal show sourceApp={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppDialog open sourceApp={appDetail} onOpenChange={onOpenChange} {...overrides} />,
   )
 
   return {
     ...utils,
     notify: toastMocks.notify,
-    onClose,
+    onOpenChange,
     appDetail,
   }
 }
@@ -138,7 +138,7 @@ function render(ui: ReactElement) {
   })
 }
 
-describe('SwitchAppModal', () => {
+describe('SwitchAppDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConvertToWorkflow.mockReset()
@@ -169,21 +169,19 @@ describe('SwitchAppModal', () => {
 
   // Rendering behavior for modal visibility and default values.
   describe('Rendering', () => {
-    it('should render modal content when show is true', () => {
+    it('should render modal content when open is true', () => {
       // Arrange
       renderComponent()
 
       // Assert
       expect(screen.getByText('app.switch')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Demo App(copy)')).toBeInTheDocument()
-      expect(
-        document.querySelector('.i-custom-vender-solid-alertsAndFeedback-alert-triangle'),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
     })
 
-    it('should not render modal content when show is false', () => {
+    it('should not render modal content when open is false', () => {
       // Arrange
-      renderComponent({ show: false })
+      renderComponent({ open: false })
 
       // Assert
       expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
@@ -223,31 +221,31 @@ describe('SwitchAppModal', () => {
 
   // User interactions that trigger navigation and API calls.
   describe('Interactions', () => {
-    it('should call onClose when cancel is clicked', async () => {
+    it('should call onOpenChange when cancel is clicked', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { onClose } = renderComponent()
+      const { onOpenChange } = renderComponent()
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
       // Assert
-      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when close button is clicked', async () => {
+    it('should call onOpenChange when close button is clicked', async () => {
       const user = userEvent.setup()
-      const { onClose } = renderComponent()
+      const { onOpenChange } = renderComponent()
 
       await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
-      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail, notify, onClose } = renderComponent()
+      const { appDetail, notify, onOpenChange } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-001',
         permission_keys: ['app.acl.view_layout'],
@@ -267,7 +265,7 @@ describe('SwitchAppModal', () => {
             icon_background: '#FFEAD5',
           },
         })
-        expect(onClose).toHaveBeenCalledTimes(1)
+        expect(onOpenChange).toHaveBeenCalledTimes(1)
         expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
@@ -344,7 +342,14 @@ describe('SwitchAppModal', () => {
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail } = renderComponent()
+      const { appDetail, onOpenChange } = renderComponent()
+      let finishDelete!: () => void
+      mockDeleteOriginalApp.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishDelete = resolve
+          }),
+      )
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
@@ -362,6 +367,9 @@ describe('SwitchAppModal', () => {
           params: { app_id: appDetail.id },
         })
       })
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+      expect(mockReplace).not.toHaveBeenCalled()
+      await act(async () => finishDelete())
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
     })
@@ -369,7 +377,7 @@ describe('SwitchAppModal', () => {
     it('should notify error when switch app fails', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { notify, onClose } = renderComponent()
+      const { notify, onOpenChange } = renderComponent()
       mockConvertToWorkflow.mockRejectedValueOnce(new Error('fail'))
 
       // Act
@@ -382,8 +390,94 @@ describe('SwitchAppModal', () => {
           message: 'app.newApp.appCreateFailed',
         })
       })
-      expect(onClose).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
+  })
+
+  it('blocks duplicate submits and dismissal while conversion is pending, then preserves a failed draft for retry', async () => {
+    let rejectConversion!: (error: Error) => void
+    mockConvertToWorkflow
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectConversion = reject
+          }),
+      )
+      .mockResolvedValueOnce({
+        new_app_id: 'retried-app',
+        permission_keys: ['app.acl.view_layout'],
+      })
+    const user = userEvent.setup()
+    const { onOpenChange } = renderComponent()
+    const name = screen.getByRole('textbox', { name: 'app.switchLabel' })
+    await user.clear(name)
+    await user.type(name, 'Retried workflow{Enter}')
+    await waitFor(() => expect(mockConvertToWorkflow).toHaveBeenCalledOnce())
+    expect(name).toHaveAttribute('readonly')
+    const submit = screen.getByRole('button', { name: 'app.switchStart' })
+    expect(submit).toHaveAttribute('aria-disabled', 'true')
+    const close = screen.getByRole('button', { name: /operation\.close$/ })
+    const cancel = screen.getByRole('button', { name: 'app.newApp.Cancel' })
+    expect(close).toBeDisabled()
+    expect(cancel).toBeDisabled()
+    expect(screen.getByRole('checkbox')).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter}{Escape}')
+    await user.click(close)
+    await user.click(cancel)
+    expect(mockConvertToWorkflow).toHaveBeenCalledOnce()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await act(async () => rejectConversion(new Error('Conversion failed')))
+    await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+    expect(name).toHaveValue('Retried workflow')
+    await user.click(submit)
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(mockConvertToWorkflow).toHaveBeenCalledTimes(2)
+    expect(mockConvertToWorkflow).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ name: 'Retried workflow' }),
+      }),
+    )
+    expect(mockPush).toHaveBeenCalledWith('/app/retried-app/workflow')
+  })
+
+  it('keeps nested cancellation within the dialog and discards form drafts after closing', async () => {
+    const user = userEvent.setup()
+    const sourceApp = createMockApp()
+    function Session() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open conversion
+          </button>
+          <SwitchAppDialog open={open} sourceApp={sourceApp} onOpenChange={setOpen} />
+        </>
+      )
+    }
+    render(<Session />)
+    const trigger = screen.getByRole('button', { name: 'Open conversion' })
+    await user.click(trigger)
+    const dialog = screen.getByRole('dialog', { name: 'app.switch' })
+    const name = within(dialog).getByRole('textbox', { name: 'app.switchLabel' })
+    await user.clear(name)
+    await user.type(name, 'Unsaved workflow')
+    await user.click(within(dialog).getByRole('checkbox'))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByRole('checkbox')).not.toBeChecked()
+    expect(mockConvertToWorkflow).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    expect(mockConvertToWorkflow).not.toHaveBeenCalled()
+    expect(within(dialog).getByRole('checkbox')).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'app.newApp.Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(trigger)
+    expect(screen.getByRole('textbox', { name: 'app.switchLabel' })).toHaveValue('Demo App(copy)')
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })
 

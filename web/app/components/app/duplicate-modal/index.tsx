@@ -2,13 +2,13 @@
 import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -22,30 +22,27 @@ import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 
-export type DuplicateAppModalProps = {
+export type DuplicateAppDialogProps = {
   appName: string
   icon_type: AppDetailWithSite['icon_type']
   icon: AppDetailWithSite['icon']
   icon_background?: string | null
   icon_url?: string | null
-  show: boolean
+  open: boolean
   onConfirm: (info: CopyAppPayload) => Promise<void>
-  onHide: () => void
+  onOpenChange: (open: boolean) => void
 }
 
-const DuplicateAppModal = ({
+function DuplicateAppForm({
   appName,
   icon_type,
   icon,
   icon_background,
   icon_url,
-  show = false,
   onConfirm,
-  onHide,
-}: DuplicateAppModalProps) => {
+  isPending,
+}: Omit<DuplicateAppDialogProps, 'open' | 'onOpenChange'> & { isPending: boolean }) {
   const { t } = useTranslation(['app', 'common', 'explore'])
-
-  const [name, setName] = React.useState(appName)
 
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
   const pickerValue: IconPickerInputValue | undefined =
@@ -81,92 +78,115 @@ const DuplicateAppModal = ({
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const submit = () => {
-    if (isAppQuotaUnavailable || isAppsFull) return
+  const submit = (name: string) => {
+    if (isPending || isAppQuotaUnavailable || isAppsFull) return
 
     if (!name.trim()) {
       toast.error(t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }))
       return
     }
-    onConfirm({
+    void onConfirm({
       name,
       icon_type: currentIcon.icon_type,
       icon: currentIcon.icon,
       icon_background: currentIcon.icon_background,
     })
-    onHide()
   }
 
   return (
     <>
-      <Dialog
-        open={show}
-        onOpenChange={(open) => {
-          if (!open) onHide()
-        }}
-      >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
+      <DialogClose
+        disabled={isPending}
+        render={
           <IconButton
             size="lg"
             className="absolute top-4 right-4"
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
           >
             <span aria-hidden="true" className="i-ri-close-line size-4" />
           </IconButton>
-          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
-            {t(($) => $.duplicateTitle, { ns: 'app' })}
-          </DialogTitle>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              submit()
-            }}
-          >
-            <div className="mb-9 system-sm-regular text-text-secondary">
-              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
-                <Field name="name">
-                  <FieldLabel className="system-md-medium">
-                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                  </FieldLabel>
-                  <div className="flex items-center justify-between space-x-2">
-                    <IconPickerTrigger
-                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
-                      className="shrink-0 cursor-pointer rounded-[10px]"
-                    >
-                      <IconPickerIcon size="large" />
-                    </IconPickerTrigger>
-                    <Input
-                      autoComplete="off"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="h-10"
-                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
-                    />
-                  </div>
-                </Field>
-                <IconPickerContent />
-              </IconPicker>
-              {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-            </div>
-            <div className="flex flex-row-reverse">
-              <Button
-                type="submit"
-                disabled={isAppQuotaUnavailable || isAppsFull}
-                className="ml-2 w-24"
-                variant="primary"
+        }
+      />
+      <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
+        {t(($) => $.duplicateTitle, { ns: 'app' })}
+      </DialogTitle>
+      <Form<{ name: string }> onFormSubmit={({ name }) => submit(name)}>
+        <div className="mb-9 system-sm-regular text-text-secondary">
+          <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
+            <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+              <IconPickerTrigger
+                disabled={isPending}
+                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                className="col-start-1 row-start-2 shrink-0 cursor-pointer rounded-[10px]"
               >
-                {t(($) => $.duplicate, { ns: 'app' })}
-              </Button>
-              <Button type="button" className="w-24" onClick={onHide}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <IconPickerIcon size="large" />
+              </IconPickerTrigger>
+              <IconPickerContent />
+            </IconPicker>
+            <Field name="name" className="contents">
+              <FieldLabel className="col-span-2 row-start-1 system-md-medium">
+                {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+              </FieldLabel>
+              <Input
+                autoComplete="off"
+                defaultValue={appName}
+                readOnly={isPending}
+                className="col-start-2 row-start-2 h-10"
+                placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+              />
+            </Field>
+          </div>
+          {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
+        </div>
+        <div className="flex flex-row-reverse">
+          <Button
+            type="submit"
+            disabled={isAppQuotaUnavailable || isAppsFull}
+            loading={isPending}
+            className="ml-2 w-24"
+            variant="primary"
+          >
+            {t(($) => $.duplicate, { ns: 'app' })}
+          </Button>
+          <DialogClose disabled={isPending} render={<Button className="w-24" />}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </DialogClose>
+        </div>
+      </Form>
     </>
   )
 }
 
-export default DuplicateAppModal
+export function DuplicateAppDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  ...props
+}: DuplicateAppDialogProps) {
+  const [isPending, setIsPending] = useState(false)
+  const handleConfirm = async (info: CopyAppPayload) => {
+    if (isPending) return
+    setIsPending(true)
+    try {
+      await onConfirm(info)
+    } catch {
+      // The caller owns request feedback and closes only after a successful copy.
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isPending) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
+        <DuplicateAppForm {...props} onConfirm={handleConfirm} isPending={isPending} />
+      </DialogContent>
+    </Dialog>
+  )
+}

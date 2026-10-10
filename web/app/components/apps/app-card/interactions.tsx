@@ -5,7 +5,7 @@ import type {
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FormEventHandler, MouseEvent, ReactElement } from 'react'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
+import type { DuplicateAppDialogProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
@@ -66,12 +66,14 @@ import { basePath } from '@/utils/var'
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
 })
-const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
-  ssr: false,
-})
-const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
-  ssr: false,
-})
+const DuplicateAppDialog = dynamic(
+  () => import('@/app/components/app/duplicate-modal').then((module) => module.DuplicateAppDialog),
+  { ssr: false },
+)
+const SwitchAppDialog = dynamic(
+  () => import('@/app/components/app/switch-app-modal').then((module) => module.SwitchAppDialog),
+  { ssr: false },
+)
 const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
   ssr: false,
 })
@@ -273,7 +275,9 @@ export function AppCardInteractions({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
-  const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
+  const { mutateAsync: copyApp } = useMutation(
+    consoleQuery.apps.byAppId.copy.post.mutationOptions(),
+  )
   const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
   const { mutate: deleteApp, isPending: isDeleting } = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions(),
@@ -288,6 +292,8 @@ export function AppCardInteractions({
   const [activeDialog, setActiveDialog] = useState<
     'delete' | 'duplicate' | 'edit' | 'switch' | null
   >(null)
+  const [hasActivatedDuplicateDialog, setHasActivatedDuplicateDialog] = useState(false)
+  const [hasActivatedSwitchDialog, setHasActivatedSwitchDialog] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
@@ -374,6 +380,7 @@ export function AppCardInteractions({
   const handleShowDuplicateModal = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
+      setHasActivatedDuplicateDialog(true)
       setActiveDialog('duplicate')
     })
   }, [setIsOperationsMenuOpen])
@@ -381,6 +388,7 @@ export function AppCardInteractions({
   const handleShowSwitchModal = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
+      setHasActivatedSwitchDialog(true)
       setActiveDialog('switch')
     })
   }, [setIsOperationsMenuOpen])
@@ -429,46 +437,38 @@ export function AppCardInteractions({
     [app.id, t, updateApp],
   )
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = ({
+  const onCopy: DuplicateAppDialogProps['onConfirm'] = async ({
     name,
     icon_type,
     icon,
     icon_background,
   }) => {
     try {
-      copyApp(
-        {
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-          },
+      const newApp = await copyApp({
+        params: { app_id: app.id },
+        body: {
+          name,
+          icon_type,
+          icon,
+          icon_background,
         },
-        {
-          onSuccess: (newApp) => {
-            if (!('mode' in newApp)) {
-              toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-              return
-            }
+      })
+      if (!('mode' in newApp)) {
+        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+        return
+      }
 
-            setActiveDialog(null)
-            toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-            getRedirection(newApp, push, {
-              currentUserId,
-              resourceMaintainer: newApp.maintainer ?? undefined,
-              workspacePermissionKeys,
-              isRbacEnabled,
-            })
-          },
-          onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
-        },
-      )
+      setActiveDialog(null)
+      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
+      getRedirection(newApp, push, {
+        currentUserId,
+        resourceMaintainer: newApp.maintainer ?? undefined,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      })
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
-    return Promise.resolve()
   }
 
   const onExport = async (include = false) => {
@@ -665,20 +665,28 @@ export function AppCardInteractions({
           onHide={() => setActiveDialog(null)}
         />
       )}
-      {activeDialog === 'duplicate' && (
-        <DuplicateAppModal
+      {hasActivatedDuplicateDialog && (
+        <DuplicateAppDialog
           appName={app.name}
           icon_type={appIconType}
           icon={app.icon ?? ''}
           icon_background={app.icon_background}
           icon_url={app.icon_url}
-          show
+          open={activeDialog === 'duplicate'}
           onConfirm={onCopy}
-          onHide={() => setActiveDialog(null)}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
         />
       )}
-      {activeDialog === 'switch' && (
-        <SwitchAppModal show sourceApp={app} onClose={() => setActiveDialog(null)} />
+      {hasActivatedSwitchDialog && (
+        <SwitchAppDialog
+          sourceApp={app}
+          open={activeDialog === 'switch'}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
+        />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>

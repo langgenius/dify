@@ -3,7 +3,7 @@ import type {
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoModalType } from './use-app-info-actions'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
+import type { DuplicateAppDialogProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import {
   AlertDialog,
@@ -23,15 +23,17 @@ import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
 
-const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
-  ssr: false,
-})
+const SwitchAppDialog = dynamic(
+  () => import('@/app/components/app/switch-app-modal').then((module) => module.SwitchAppDialog),
+  { ssr: false },
+)
 const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
 })
-const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
-  ssr: false,
-})
+const DuplicateAppDialog = dynamic(
+  () => import('@/app/components/app/duplicate-modal').then((module) => module.DuplicateAppDialog),
+  { ssr: false },
+)
 const UpdateDSLDialog = dynamic(
   () =>
     import('@/app/components/workflow/update-dsl-modal').then((module) => module.UpdateDSLDialog),
@@ -47,7 +49,7 @@ type AppInfoModalsProps = {
   secretEnvList: EnvironmentVariableItemResponse[]
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
-  onCopy: DuplicateAppModalProps['onConfirm']
+  onCopy: DuplicateAppDialogProps['onConfirm']
   onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
@@ -71,6 +73,15 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [hasActivatedDuplicateDialog, setHasActivatedDuplicateDialog] = useState(
+    () => activeModal === 'duplicate',
+  )
+  const [hasActivatedSwitchDialog, setHasActivatedSwitchDialog] = useState(
+    () => activeModal === 'switch',
+  )
+  if (activeModal === 'duplicate' && !hasActivatedDuplicateDialog)
+    setHasActivatedDuplicateDialog(true)
+  if (activeModal === 'switch' && !hasActivatedSwitchDialog) setHasActivatedSwitchDialog(true)
   const [hasActivatedImportDialog, setHasActivatedImportDialog] = useState(
     () => activeModal === 'importDSL',
   )
@@ -106,8 +117,14 @@ const AppInfoModals = ({
 
   return (
     <>
-      {activeModal === 'switch' && (
-        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
+      {hasActivatedSwitchDialog && (
+        <SwitchAppDialog
+          sourceApp={appDetail}
+          open={activeModal === 'switch'}
+          onOpenChange={(open) => {
+            if (!open) closeModal()
+          }}
+        />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -126,16 +143,18 @@ const AppInfoModals = ({
           onHide={closeModal}
         />
       )}
-      {activeModal === 'duplicate' && (
-        <DuplicateAppModal
+      {hasActivatedDuplicateDialog && (
+        <DuplicateAppDialog
           appName={appDetail.name}
           icon_type={appDetail.icon_type}
           icon={appDetail.icon}
           icon_background={appDetail.icon_background}
           icon_url={appDetail.icon_url}
-          show
+          open={activeModal === 'duplicate'}
           onConfirm={onCopy}
-          onHide={closeModal}
+          onOpenChange={(open) => {
+            if (!open) closeModal()
+          }}
         />
       )}
       <AlertDialog

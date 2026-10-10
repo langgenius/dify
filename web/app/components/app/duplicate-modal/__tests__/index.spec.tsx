@@ -1,14 +1,16 @@
 import type { ReactElement } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
+import { consoleBrowserLink } from '@/service/console/browser'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
   seedFeatures,
 } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
-import DuplicateAppModal from '../index'
+import { DuplicateAppDialog } from '../index'
 
 mockEmojiData()
 
@@ -34,7 +36,7 @@ function render(ui: ReactElement) {
   })
 }
 
-describe('DuplicateAppModal', () => {
+describe('DuplicateAppDialog', () => {
   const getIconButton = () =>
     screen.getByRole('button', {
       name: /operation\.edit.*appCustomize\.subTitle/,
@@ -55,12 +57,12 @@ describe('DuplicateAppModal', () => {
       const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       render(
-        <DuplicateAppModal
+        <DuplicateAppDialog
           appName="Copy"
           {...iconProps}
-          show
+          open
           onConfirm={onConfirm}
-          onHide={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -72,13 +74,13 @@ describe('DuplicateAppModal', () => {
 
   it('should render a named dialog', () => {
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Demo App"
         icon_type="emoji"
         icon="🤖"
-        show
+        open
         onConfirm={vi.fn()}
-        onHide={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -87,18 +89,18 @@ describe('DuplicateAppModal', () => {
 
   it('should validate the name before duplicating and update the input value', async () => {
     const onConfirm = vi.fn()
-    const onHide = vi.fn()
+    const onOpenChange = vi.fn()
     const user = userEvent.setup()
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="  "
         icon_type="emoji"
         icon="🤖"
         icon_background="#FFEAD5"
-        show
+        open
         onConfirm={onConfirm}
-        onHide={onHide}
+        onOpenChange={onOpenChange}
       />,
     )
 
@@ -115,23 +117,23 @@ describe('DuplicateAppModal', () => {
       expect.stringMatching(/(?:^|\.)appCustomize\.nameRequired(?=$|:)/),
     )
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(onHide).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it('keeps the picker independent of the name field and submits only its confirmed icon', async () => {
     const onConfirm = vi.fn()
-    const onHide = vi.fn()
+    const onOpenChange = vi.fn()
     const user = userEvent.setup()
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Demo App"
         icon_type="emoji"
         icon="🤖"
         icon_background="#FFEAD5"
-        show
+        open
         onConfirm={onConfirm}
-        onHide={onHide}
+        onOpenChange={onOpenChange}
       />,
     )
 
@@ -139,6 +141,9 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
+    await user.click(screen.getByPlaceholderText('app.iconPicker.search'))
+    await user.keyboard('{Enter}')
+    expect(onConfirm).not.toHaveBeenCalled()
     await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     await user.click(screen.getByRole('button', { name: /iconPicker\.ok/, hidden: true }))
     await waitFor(() => {
@@ -154,64 +159,64 @@ describe('DuplicateAppModal', () => {
       icon: '🤖',
       icon_background: '#F3FEE7',
     })
-    expect(onHide).toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
-  it('should call onHide when close button is clicked', async () => {
-    const onHide = vi.fn()
+  it('should call onOpenChange when close button is clicked', async () => {
+    const onOpenChange = vi.fn()
     const user = userEvent.setup()
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Demo App"
         icon_type="emoji"
         icon="🤖"
         icon_background="#FFEAD5"
-        show
+        open
         onConfirm={vi.fn()}
-        onHide={onHide}
+        onOpenChange={onOpenChange}
       />,
     )
 
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
-    expect(onHide).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onHide when Escape is pressed', async () => {
-    const onHide = vi.fn()
+  it('should call onOpenChange when Escape is pressed', async () => {
+    const onOpenChange = vi.fn()
     const user = userEvent.setup()
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Demo App"
         icon_type="emoji"
         icon="🤖"
-        show
+        open
         onConfirm={vi.fn()}
-        onHide={onHide}
+        onOpenChange={onOpenChange}
       />,
     )
 
     await user.keyboard('{Escape}')
 
-    expect(onHide).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
   it('should not submit with Enter when the app limit is reached', async () => {
     const onConfirm = vi.fn()
-    const onHide = vi.fn()
+    const onOpenChange = vi.fn()
     const user = userEvent.setup()
     mockAppQuota.size = 1
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Demo App"
         icon_type="emoji"
         icon="🤖"
-        show
+        open
         onConfirm={onConfirm}
-        onHide={onHide}
+        onOpenChange={onOpenChange}
       />,
     )
 
@@ -219,7 +224,7 @@ describe('DuplicateAppModal', () => {
     await user.keyboard('{Enter}')
 
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(onHide).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it('should preserve the current image icon when the picker closes without selecting', async () => {
@@ -227,14 +232,14 @@ describe('DuplicateAppModal', () => {
     const user = userEvent.setup()
 
     render(
-      <DuplicateAppModal
+      <DuplicateAppDialog
         appName="Image App"
         icon_type="image"
         icon="original-file"
         icon_url="https://example.com/original.png"
-        show
+        open
         onConfirm={onConfirm}
-        onHide={vi.fn()}
+        onOpenChange={vi.fn()}
       />,
     )
 
@@ -262,13 +267,13 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
   })
   const onConfirm = vi.fn()
   renderWithConsoleQuery(
-    <DuplicateAppModal
+    <DuplicateAppDialog
       appName="Existing"
       icon_type="emoji"
       icon="🤖"
-      show
+      open
       onConfirm={onConfirm}
-      onHide={vi.fn()}
+      onOpenChange={vi.fn()}
     />,
     { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
   )
@@ -281,4 +286,148 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
   await waitFor(() => expect(button).toBeEnabled())
   await userEvent.setup().click(button)
   expect(onConfirm).toHaveBeenCalledOnce()
+})
+
+it('waits for duplication, retains a failed draft and leaves successful closing to the caller', async () => {
+  let rejectCopy!: (error: Error) => void
+  let finishCopy!: () => void
+  const onConfirm = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectCopy = reject
+        }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCopy = resolve
+        }),
+    )
+  const onOpenChange = vi.fn()
+  const user = userEvent.setup()
+  render(
+    <DuplicateAppDialog
+      open
+      appName="Original"
+      icon_type="emoji"
+      icon="🤖"
+      onConfirm={onConfirm}
+      onOpenChange={onOpenChange}
+    />,
+  )
+  const name = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
+  await user.clear(name)
+  await user.type(name, 'Retry copy{Enter}')
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+  expect(name).toHaveAttribute('readonly')
+  const submit = screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ })
+  expect(submit).toHaveAttribute('aria-disabled', 'true')
+  const close = screen.getByRole('button', { name: /operation\.close/ })
+  const cancel = screen.getByRole('button', { name: /operation\.cancel/ })
+  expect(close).toBeDisabled()
+  expect(cancel).toBeDisabled()
+  expect(
+    screen.getByRole('button', { name: /operation\.edit.*appCustomize\.subTitle/ }),
+  ).toBeDisabled()
+  await user.keyboard('{Enter}{Escape}')
+  await user.click(close)
+  await user.click(cancel)
+  expect(onConfirm).toHaveBeenCalledOnce()
+  expect(onOpenChange).not.toHaveBeenCalled()
+
+  await act(async () => rejectCopy(new Error('Copy failed')))
+  await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+  expect(name).toHaveValue('Retry copy')
+  expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
+  await user.click(submit)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(2))
+  expect(onConfirm).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Retry copy' }))
+  await act(async () => finishCopy())
+  await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+  expect(onOpenChange).not.toHaveBeenCalled()
+  await user.click(cancel)
+  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+})
+
+it('discards name and confirmed icon drafts after closing and starts from the source when reopened', async () => {
+  mockAppQuota.size = 0
+  const onConfirm = vi.fn().mockResolvedValue(undefined)
+  const user = userEvent.setup()
+  function DuplicateSession() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open duplicate
+        </button>
+        <DuplicateAppDialog
+          open={open}
+          appName="Original"
+          icon_type="emoji"
+          icon="🤖"
+          icon_background="#FFEAD5"
+          onConfirm={onConfirm}
+          onOpenChange={setOpen}
+        />
+      </>
+    )
+  }
+  render(<DuplicateSession />)
+  await user.click(screen.getByRole('button', { name: 'Open duplicate' }))
+  const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
+  await user.clear(input)
+  await user.type(input, 'Unsaved name')
+  await user.click(screen.getByRole('button', { name: /operation\.edit.*appCustomize\.subTitle/ }))
+  await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+  await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument(),
+  )
+  await user.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(onConfirm).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Open duplicate' }))
+  expect(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })).toHaveValue('Original')
+  await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
+  expect(onConfirm).toHaveBeenCalledWith({
+    name: 'Original',
+    icon_type: 'emoji',
+    icon: '🤖',
+    icon_background: '#FFEAD5',
+  })
+})
+
+it('fetches Cloud quota only after its controlled root opens', async () => {
+  const queryClient = createConsoleQueryClient()
+  const fetchQuota = vi.spyOn(consoleBrowserLink, 'call').mockReturnValue(new Promise(() => {}))
+  const user = userEvent.setup()
+  function QuotaSession() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open duplicate
+        </button>
+        <DuplicateAppDialog
+          open={open}
+          appName="Original"
+          icon_type="emoji"
+          icon="🤖"
+          onConfirm={vi.fn()}
+          onOpenChange={setOpen}
+        />
+      </>
+    )
+  }
+  renderWithConsoleQuery(<QuotaSession />, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(fetchQuota).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Open duplicate' }))
+  await waitFor(() => expect(fetchQuota).toHaveBeenCalledOnce())
+  fetchQuota.mockRestore()
 })
