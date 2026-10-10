@@ -85,10 +85,10 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
+from services.rbac import contracts as rbac_contracts
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -447,11 +447,10 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
-    permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+    permissions = application_services().rbac.members.permissions(
         app_model.tenant_id,
         current_user.id,
         agent_id=agent.id,
-        session=session,
     )
     payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(agent.id, [])
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
@@ -464,7 +463,7 @@ def _serialize_agent_app_pagination(
     tenant_id: str,
     current_user: Account,
     publication_counts: AgentAppPublicationCounts,
-    agent_permissions: enterprise_rbac_service.ResourcePermissionSnapshot,
+    agent_permissions: rbac_contracts.ResourcePermissionSnapshot,
 ) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
@@ -656,16 +655,14 @@ class AgentAppListApi(Resource):
             agent_is_published=agent_is_published,
         )
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+        permissions = application_services().rbac.members.permissions(
             current_tenant_id,
             current_user.id,
-            session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_agent_access_filter(
                 current_tenant_id,
                 current_user.id,
-                session=session,
                 permissions=permissions,
             )
             access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
@@ -1103,15 +1100,13 @@ class AgentInviteOptionsApi(Resource):
     ):
         accessible_agent_ids = None
         if dify_config.RBAC_ENABLED:
-            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            permissions = application_services().rbac.members.permissions(
                 tenant_id,
                 current_user.id,
-                session=session,
             )
             access_filter = resolve_agent_access_filter(
                 tenant_id,
                 current_user.id,
-                session=session,
                 permissions=permissions,
             )
             if access_filter.accessible_agent_ids is not None:

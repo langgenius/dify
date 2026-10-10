@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass
 
-from sqlalchemy.orm import Session, sessionmaker
-
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -46,7 +44,6 @@ class WorkspaceServices:
 
 def build_workspace_membership_services(
     *,
-    database_client: sessionmaker[Session],
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
 ) -> tuple[WorkspaceMemberService, WorkspaceProvisioningService]:
@@ -54,12 +51,12 @@ def build_workspace_membership_services(
     members = WorkspaceMemberService(
         workspaces=workspaces,
         accounts=accounts,
-        access=DeploymentWorkspaceMemberAccessGateway(session_factory=database_client),
+        access=DeploymentWorkspaceMemberAccessGateway(),
     )
     provisioning = WorkspaceProvisioningService(
         owners=accounts,
         provisioning=workspaces,
-        effects=WorkspaceProvisioningEffectsGateway(session_factory=database_client),
+        effects=WorkspaceProvisioningEffectsGateway(),
         policies=DeploymentWorkspaceCreationPolicy(),
         memberships=workspaces,
         members=members,

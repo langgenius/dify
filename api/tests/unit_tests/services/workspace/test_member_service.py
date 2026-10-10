@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from contextlib import nullcontext
+from dataclasses import dataclass, field
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -16,7 +17,7 @@ from models.dataset import Dataset
 from models.model import App
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
-from services.enterprise.rbac_service import MemberRolesResponse, Paginated, RBACRole, RBACService
+from services.enterprise.rbac_service import RBACService
 from services.entities.account_entities import AccountSnapshot
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel
 from services.errors.base import NoPermissionError
@@ -34,6 +35,7 @@ from services.errors.workspace import (
     WorkspaceNotFoundError,
 )
 from services.feature_service import FeatureService
+from services.rbac.contracts import MemberRolesResponse, Paginated, RBACRole
 from services.system_feature_service import SystemFeatureService
 from services.workspace.contracts import OwnerTransferToken
 from services.workspace.gateways import (
@@ -165,15 +167,12 @@ def test_unchanged_role_does_not_sync(account_domain: AccountDomain, members: tu
 @pytest.mark.parametrize("role", ["invalid", "dataset_operator"])
 def test_role_policy_prevents_persistence_and_rbac_changes(
     account_domain: AccountDomain,
-    sqlite_session_factory: sessionmaker[Session],
     members: tuple[str, str, str],
     config_overrides: Callable[..., None],
     role: str,
 ) -> None:
     config_overrides(DATASET_OPERATOR_ENABLED=False)
-    account_domain.access.ensure_role_enabled.side_effect = DeploymentWorkspaceMemberAccessGateway(
-        session_factory=sqlite_session_factory
-    ).ensure_role_enabled
+    account_domain.access.ensure_role_enabled.side_effect = DeploymentWorkspaceMemberAccessGateway().ensure_role_enabled
     workspace_id, owner_id, member_id = members
 
     with pytest.raises(InvalidWorkspaceMemberRoleError):
@@ -525,15 +524,41 @@ def test_rbac_transfer_failure_leaves_local_owner_unchanged(
     assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
 
 
+@dataclass(frozen=True)
+class RoleAssignment:
+    tenant_id: str
+    account_id: str | None
+    member_account_id: str
+    role_ids: list[str]
+
+
+@dataclass
+class RecordedRoleAssignments:
+    calls: list[RoleAssignment] = field(default_factory=list)
+    failure: Exception | None = None
+    on_apply: Callable[..., None] | None = None
+
+    def __call__(
+        self, *, tenant_id: str, account_id: str | None, member_account_id: str, role_ids: list[str]
+    ) -> MemberRolesResponse:
+        self.calls.append(RoleAssignment(tenant_id, account_id, member_account_id, list(role_ids)))
+        if self.failure:
+            raise self.failure
+        if self.on_apply:
+            self.on_apply(
+                tenant_id=tenant_id, account_id=account_id, member_account_id=member_account_id, role_ids=role_ids
+            )
+        return MemberRolesResponse(account_id=member_account_id)
+
+
 @pytest.fixture
 def rbac_access(
-    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     members: tuple[str, str, str],
-) -> tuple[DeploymentWorkspaceMemberAccessGateway, Mock]:
+) -> tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments]:
     config_overrides(RBAC_ENABLED=True, DATASET_OPERATOR_ENABLED=True)
-    gateway = DeploymentWorkspaceMemberAccessGateway(session_factory=sqlite_session_factory)
+    gateway = DeploymentWorkspaceMemberAccessGateway()
     roles = [
         RBACRole(id=f"role-{tag}", name=tag, type="", category="global_system_default", role_tag=tag, is_builtin=True)
         for tag in [*(role.value for role in TenantAccountRole), "no_access"]
@@ -541,17 +566,15 @@ def rbac_access(
     _, owner_id, _ = members
     roles_by_tag = {role.role_tag: role for role in roles}
 
-    def get_roles(
-        tenant_id: str, account_id: str | None, member_account_id: str, *, session: Session
-    ) -> MemberRolesResponse:
-        del tenant_id, account_id, session
+    def get_roles(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
+        del tenant_id, account_id
         tag = "owner" if member_account_id == owner_id else "normal"
         return MemberRolesResponse(account_id=member_account_id, roles=[roles_by_tag[tag]])
 
-    monkeypatch.setattr(RBACService.Roles, "list", Mock(return_value=Paginated[RBACRole](data=roles)))
+    monkeypatch.setattr(RBACService.Roles, "list", lambda *_args, **_kwargs: Paginated[RBACRole](data=roles))
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
     monkeypatch.setattr(gateway, "permission_keys", lambda _workspace_id, _actor_id: {"workspace.role.manage"})
-    replace = create_autospec(RBACService.MemberRoles.replace, instance=True)
+    replace = RecordedRoleAssignments()
     monkeypatch.setattr(RBACService.MemberRoles, "replace", replace)
     return gateway, replace
 
@@ -571,7 +594,7 @@ def test_rbac_invitation_assigns_requested_role(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
     sqlite_session: Session,
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     monkeypatch: pytest.MonkeyPatch,
     status: AccountStatus | None,
     already_joined: bool,
@@ -590,7 +613,11 @@ def test_rbac_invitation_assigns_requested_role(
         sqlite_session.commit()
     access, replace = rbac_access
     monkeypatch.setattr(access, "permission_keys", lambda _workspace, _actor: {"workspace.member.manage"})
-    sync = create_autospec(sync_joined_workspace_member_rbac_access_task.delay, instance=True)
+    synced_members: list[tuple[str, str, str | None]] = []
+
+    def sync(tenant_id: str, member_account_id: str, operator_account_id: str | None = None) -> None:
+        synced_members.append((tenant_id, member_account_id, operator_account_id))
+
     monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
     member_service = WorkspaceMemberService(
         workspaces=account_domain.workspaces, accounts=account_domain.repository, access=access
@@ -614,22 +641,22 @@ def test_rbac_invitation_assigns_requested_role(
     assert invited is not None
     assert member_service.get_role(workspace_id, invited.id) == TenantAccountRole.NORMAL
     if status == AccountStatus.ACTIVE and already_joined:
-        replace.assert_not_called()
+        assert replace.calls == []
     else:
-        assignments = [item.kwargs for item in replace.call_args_list if item.kwargs["tenant_id"] == workspace_id]
+        assignments = [item for item in replace.calls if item.tenant_id == workspace_id]
         assert len(assignments) == 1
-        assert assignments[0]["account_id"] == owner_id
-        assert assignments[0]["member_account_id"] == invited.id
-        assert assignments[0]["role_ids"] == ["custom-role-id"]
+        assert assignments[0].account_id == owner_id
+        assert assignments[0].member_account_id == invited.id
+        assert assignments[0].role_ids == ["custom-role-id"]
         if status is None:
             # Registration also provisions the invitee's own workspace.
-            assert replace.call_count == 2
-            personal_workspace = replace.call_args_list[0].kwargs
-            assert personal_workspace["tenant_id"] != workspace_id
-            assert personal_workspace["member_account_id"] == invited.id
-            assert personal_workspace["role_ids"] == ["role-owner"]
+            assert len(replace.calls) == 2
+            personal_workspace = replace.calls[0]
+            assert personal_workspace.tenant_id != workspace_id
+            assert personal_workspace.member_account_id == invited.id
+            assert personal_workspace.role_ids == ["role-owner"]
         else:
-            replace.assert_called_once()
+            assert len(replace.calls) == 1
     if status == AccountStatus.ACTIVE:
         assert results[0].status == "already_member"
         account_domain.delivery.create.assert_not_called()
@@ -644,7 +671,9 @@ def test_rbac_invitation_assigns_requested_role(
         account_domain.delivery.send.assert_called_once_with(
             language="en-US", email=email, token="invitation-token", inviter_name="Owner", workspace_name="Workspace"
         )
-    assert sync.call_count == int(status == AccountStatus.ACTIVE and not already_joined)
+    assert synced_members == (
+        [(workspace_id, invited.id, owner_id)] if status == AccountStatus.ACTIVE and not already_joined else []
+    )
 
 
 @pytest.mark.parametrize(
@@ -659,7 +688,7 @@ def test_rbac_role_managers_cannot_demote_owner(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
     sqlite_session: Session,
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     operator_role: TenantAccountRole,
     new_role: TenantAccountRole,
 ) -> None:
@@ -676,7 +705,7 @@ def test_rbac_role_managers_cannot_demote_owner(
     with pytest.raises(NoPermissionError):
         service.update_role(workspace_id, owner_id, new_role.value, operator_id)
 
-    replace.assert_not_called()
+    assert replace.calls == []
     assert service.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
     assert service.get_role(workspace_id, operator_id) == operator_role
 
@@ -716,7 +745,7 @@ def test_rbac_normal_role_manager_can_update_another_non_owner(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
     sqlite_session: Session,
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
 ) -> None:
     workspace_id, owner_id, operator_id = members
     target = Account(name="Target", email="target@example.com")
@@ -731,9 +760,9 @@ def test_rbac_normal_role_manager_can_update_another_non_owner(
 
     service.update_role(workspace_id, target.id, "editor", operator_id)
 
-    replace.assert_called_once()
-    assert replace.call_args.kwargs["member_account_id"] == target.id
-    assert replace.call_args.kwargs["role_ids"] == ["role-editor"]
+    assert len(replace.calls) == 1
+    assert replace.calls[0].member_account_id == target.id
+    assert replace.calls[0].role_ids == ["role-editor"]
     assert service.get_role(workspace_id, target.id) == TenantAccountRole.EDITOR
     assert service.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
 
@@ -747,7 +776,7 @@ def test_rbac_role_update_assigns_requested_role_and_synchronizes_membership(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
     sqlite_session: Session,
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     role: TenantAccountRole,
     remote_fails: bool,
 ) -> None:
@@ -762,15 +791,15 @@ def test_rbac_role_update_assigns_requested_role_and_synchronizes_membership(
         workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
     )
     if remote_fails:
-        replace.side_effect = RuntimeError("RBAC unavailable")
+        replace.failure = RuntimeError("RBAC unavailable")
         with pytest.raises(RuntimeError, match="RBAC unavailable"):
             service.update_role(workspace_id, member_id, role.value, owner_id)
     else:
         service.update_role(workspace_id, member_id, role.value, owner_id)
 
-    replace.assert_called_once()
-    assert replace.call_args.kwargs["role_ids"] == [f"role-{role.value}"]
-    assert replace.call_args.kwargs["member_account_id"] == member_id
+    assert len(replace.calls) == 1
+    assert replace.calls[0].role_ids == [f"role-{role.value}"]
+    assert replace.calls[0].member_account_id == member_id
     assert service.get_role(workspace_id, member_id) == (previous if remote_fails else role)
     assert service.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
 
@@ -778,7 +807,7 @@ def test_rbac_role_update_assigns_requested_role_and_synchronizes_membership(
 def test_rbac_owner_transfer_preserves_other_roles_and_updates_both_memberships(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace_id, owner_id, member_id = members
@@ -799,10 +828,8 @@ def test_rbac_owner_transfer_preserves_other_roles_and_updates_both_memberships(
         ],
     )
 
-    def get_roles(
-        tenant_id: str, account_id: str | None, member_account_id: str, *, session: Session
-    ) -> MemberRolesResponse:
-        del tenant_id, account_id, session
+    def get_roles(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
+        del tenant_id, account_id
         return current_roles if member_account_id == owner_id else MemberRolesResponse(account_id=member_account_id)
 
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
@@ -812,7 +839,7 @@ def test_rbac_owner_transfer_preserves_other_roles_and_updates_both_memberships(
 
     service.update_role(workspace_id, member_id, "owner", owner_id)
 
-    assert [(call.kwargs["member_account_id"], call.kwargs["role_ids"]) for call in replace.call_args_list] == [
+    assert [(call.member_account_id, call.role_ids) for call in replace.calls] == [
         (owner_id, ["custom"]),
         (member_id, ["role-owner"]),
     ]
@@ -826,7 +853,7 @@ def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
     members: tuple[str, str, str],
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     monkeypatch: pytest.MonkeyPatch,
     operation: str,
 ) -> None:
@@ -847,16 +874,12 @@ def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
     remote_roles = {old_owner_id: [owner_role, custom_role], new_owner_id: [], third_member.id: []}
     roles_by_id = {role.id: role for role in [owner_role, custom_role]}
 
-    def get_roles(
-        tenant_id: str, account_id: str | None, member_account_id: str, *, session: Session
-    ) -> MemberRolesResponse:
-        del tenant_id, account_id, session
+    def get_roles(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
+        del tenant_id, account_id
         return MemberRolesResponse(account_id=member_account_id, roles=remote_roles[member_account_id])
 
-    def replace_roles(
-        *, tenant_id: str, account_id: str, member_account_id: str, role_ids: list[str], session: Session
-    ) -> None:
-        del tenant_id, account_id, session
+    def replace_roles(*, tenant_id: str, account_id: str, member_account_id: str, role_ids: list[str]) -> None:
+        del tenant_id, account_id
         remote_roles[member_account_id] = [
             roles_by_id.get(role_id, RBACRole(id=role_id, name=role_id, type="")) for role_id in role_ids
         ]
@@ -873,7 +896,7 @@ def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
             member_id for member_id, roles in remote_roles.items() if owner_role in roles
         ),
     )
-    replace.side_effect = replace_roles
+    replace.on_apply = replace_roles
     service = WorkspaceMemberService(
         workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
     )
@@ -889,13 +912,13 @@ def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
     assert remote_roles[new_owner_id] == [owner_role]
     assert service.get_role(workspace_id, old_owner_id) == TenantAccountRole.OWNER
     assert service.get_role(workspace_id, new_owner_id) == TenantAccountRole.NORMAL
-    replace.reset_mock()
+    replace.calls.clear()
 
     target_id, role = (new_owner_id, "editor") if operation == "demote_new_owner" else (third_member.id, "owner")
     with pytest.raises(NoPermissionError):
         service.update_role(workspace_id, target_id, role, old_owner_id)
 
-    replace.assert_not_called()
+    assert replace.calls == []
     assert remote_roles[old_owner_id] == [custom_role]
     assert remote_roles[new_owner_id] == [owner_role]
     assert remote_roles[third_member.id] == []
@@ -908,17 +931,15 @@ def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
 def test_rbac_owner_lookup_failure_prevents_role_changes(
     account_domain: AccountDomain,
     members: tuple[str, str, str],
-    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, Mock],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     monkeypatch: pytest.MonkeyPatch,
     new_role: str,
 ) -> None:
     workspace_id, owner_id, member_id = members
     gateway, replace = rbac_access
 
-    def get_roles(
-        tenant_id: str, account_id: str | None, member_account_id: str, *, session: Session
-    ) -> MemberRolesResponse:
-        del tenant_id, account_id, session
+    def get_roles(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
+        del tenant_id, account_id
         if new_role == "editor" or member_account_id == owner_id:
             raise RuntimeError("RBAC unavailable")
         return MemberRolesResponse(account_id=member_account_id)
@@ -931,6 +952,6 @@ def test_rbac_owner_lookup_failure_prevents_role_changes(
     with pytest.raises(RuntimeError, match="RBAC unavailable"):
         service.update_role(workspace_id, member_id, new_role, owner_id)
 
-    replace.assert_not_called()
+    assert replace.calls == []
     assert service.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
     assert service.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
