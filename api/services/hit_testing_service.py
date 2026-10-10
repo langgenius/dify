@@ -154,7 +154,7 @@ class HitTestingService:
             top_k=resolved_retrieval_model.get("top_k", 4),
             score_threshold=resolved_retrieval_model.get("score_threshold", 0.0)
             if resolved_retrieval_model["score_threshold_enabled"]
-            else 0.0,
+            else None,
             reranking_model=resolved_retrieval_model.get("reranking_model", None)
             if resolved_retrieval_model["reranking_enable"]
             else None,

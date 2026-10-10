@@ -75,7 +75,7 @@ class KnowledgeRetrievalRequest(BaseModel):
         default="disabled", description="Metadata filtering mode: 'disabled', 'automatic', or 'manual'"
     )
     top_k: int = Field(default=0, description="Number of top results to return")
-    score_threshold: float = Field(default=0.0, description="Minimum relevance score threshold")
+    score_threshold: float | None = Field(default=None, description="Minimum relevance score threshold")
     reranking_mode: str = Field(default="reranking_model", description="Reranking strategy")
     reranking_model: RerankingModelDict | None = Field(default=None, description="Reranking model configuration")
     weights: WeightsDict | None = Field(default=None, description="Weights for weighted score reranking")

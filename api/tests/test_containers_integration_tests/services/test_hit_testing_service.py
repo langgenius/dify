@@ -404,7 +404,7 @@ class TestHitTestingService:
             query="test query",
             attachment_ids=attachment_ids,
             top_k=4,
-            score_threshold=0.0,
+            score_threshold=None,
             reranking_model=None,
             reranking_mode="reranking_model",
             weights=None,
