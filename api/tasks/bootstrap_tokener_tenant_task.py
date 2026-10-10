@@ -8,7 +8,6 @@ from datetime import timedelta
 from typing import cast
 
 from celery import shared_task
-from services.model_provider.service import ModelProviderService
 from sqlalchemy import select
 
 from configs import dify_config
@@ -27,6 +26,7 @@ from models.model_billing import TenantModelBillingProfile
 from models.provider import Provider, ProviderCredential, ProviderType
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
+from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 

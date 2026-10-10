@@ -74,6 +74,9 @@ function renderOutput({ readOnly = false, onChange = vi.fn() } = {}) {
   client.setQueryData(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryOptions().queryKey,
     {
+      model_billing_source: 'legacy_message_credits',
+      model_billing_migration_status: 'none',
+      tokener_bootstrap_status: null,
       pool_type: 'trial',
       quota_limit: 200,
       quota_used: 0,

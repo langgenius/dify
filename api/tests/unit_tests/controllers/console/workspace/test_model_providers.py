@@ -312,9 +312,7 @@ class TestModelProviderCreditsApi:
             "tokener_metering": None,
         }
 
-    def test_get_tokener_metering_keeps_decimal_strings_and_nested_partial_status(
-        self, unbound_session: Session
-    ) -> None:
+    def test_get_tokener_metering_keeps_decimal_strings_and_nested_partial_status(self) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
         usage: TokenerTenantMeteringResponse = {
@@ -345,10 +343,10 @@ class TestModelProviderCreditsApi:
         )
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
-            return_value=credit_pool,
-        ):
-            result = method(api, unbound_session, VALID_UUID)
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            services.return_value.workspaces.management.get_model_provider_credits.return_value = credit_pool
+            result = method(api, VALID_UUID)
 
         assert result["model_billing_source"] == "tokener"
         assert result["is_exhausted"] is False

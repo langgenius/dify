@@ -4,6 +4,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from typing import Protocol
 
 from enums import CloudPlan
+from enums.model_billing import ModelBillingSource
 from machinery.context import RequestContext
 from services.errors.file import UnsupportedFileTypeError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
@@ -185,7 +186,11 @@ class WorkspaceService:
         # Preserve the existing workspace-wide privileged-member check.
         if features.can_replace_logo and workspace.has_privileged_member:
             info["custom_config"] = self._public_config(workspace)
-        if credits.plan is not None and credits.model_billing_migration_status not in {"processing", "active"}:
+        if (
+            credits.plan is not None
+            and credits.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
+            and credits.model_billing_migration_status not in {"processing", "active"}
+        ):
             info["next_credit_reset_date"] = credits.next_credit_reset_date
             if credits.quota_limit is not None:
                 info["trial_credits"] = credits.quota_limit

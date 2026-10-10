@@ -385,12 +385,12 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         return WorkspaceFeatures(can_replace_logo=features.can_replace_logo, credits=credits)
 
     @override
-    def get_effective_credit_pool(self, tenant_id: str) -> EffectiveCreditPool:
+    def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
         """Read display credits without crossing an already claimed legacy fence."""
         from core.model_invocation_routing import migration_display_status
 
-        migration_status = migration_display_status(tenant_id)
-        model_billing = ModelBillingProfileService.resolve(tenant_id)
+        migration_status = migration_display_status(workspace_id)
+        model_billing = ModelBillingProfileService.resolve(workspace_id)
         display_source = (
             ModelBillingSource.TOKENER if migration_status == "active" else model_billing.model_billing_source
         )
@@ -404,7 +404,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
                 tokener_bootstrap_status=tokener_bootstrap_status,
             )
 
-        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        billing_info = BillingService.get_info(workspace_id, exclude_vector_space=True)
         subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
 
         if migration_status in {"processing", "active"} or model_billing.uses_tokener:
@@ -420,7 +420,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             )
 
         return self._read_legacy_display_pool(
-            tenant_id,
+            workspace_id,
             context=EffectiveCreditPool(
                 model_billing_source=model_billing.model_billing_source,
                 model_billing_migration_status=migration_status,
@@ -432,7 +432,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
 
     def _read_legacy_display_pool(
         self,
-        tenant_id: str,
+        workspace_id: str,
         *,
         context: EffectiveCreditPool,
     ) -> EffectiveCreditPool:
@@ -443,19 +443,19 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         effective_pool_type: Literal["paid", "trial"] = "trial"
         try:
             if context.plan != CloudPlan.SANDBOX:
-                paid_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="paid")
+                paid_pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="paid")
                 if paid_pool is not None and (
                     paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used
                 ):
                     effective_pool = paid_pool
                     effective_pool_type = "paid"
             if effective_pool is None:
-                effective_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="trial")
+                effective_pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="trial")
         except LegacyCreditPoolManagedByTokenerError:
             # Claim can win after the initial display-state read. Refresh Core
             # authority only for this exact fence; never mask another 409/outage
             # or consult local/stale legacy balances as a fallback.
-            current_status = migration_display_status(tenant_id)
+            current_status = migration_display_status(workspace_id)
             if current_status not in {"processing", "active"}:
                 raise
             return replace(
@@ -486,15 +486,15 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         )
 
     @override
-    def get_model_provider_credits(self, tenant_id: str) -> EffectiveCreditPool:
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
         """Return legacy credits or enrich a ready Tokener cohort with metering usage."""
         from core.model_invocation_routing import migration_display_status
 
-        migration_status = migration_display_status(tenant_id)
+        migration_status = migration_display_status(workspace_id)
         if migration_status == "processing":
             # No old-credit zero/remaining value masquerading as the new wallet.
             return EffectiveCreditPool(model_billing_migration_status="processing")
-        credit_pool = self.get_effective_credit_pool(tenant_id)
+        credit_pool = self.get_effective_credit_pool(workspace_id)
         # The nested read may observe a later claim/activation. Never overwrite
         # that newer authority with the initial display snapshot.
         if (
@@ -506,9 +506,9 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             return credit_pool
 
         try:
-            tokener_metering = BillingService.get_tokener_metering(tenant_id)
+            tokener_metering = BillingService.get_tokener_metering(workspace_id)
         except BillingError:
-            logger.warning("Tokener metering usage is unavailable for tenant %s", tenant_id)
+            logger.warning("Tokener metering usage is unavailable for tenant %s", workspace_id)
             return credit_pool
         return replace(credit_pool, tokener_metering=tokener_metering)
 

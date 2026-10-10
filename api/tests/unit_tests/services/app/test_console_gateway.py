@@ -1,5 +1,6 @@
 """Policy and existing DSL adapters retain their domain-specific behavior."""
 
+import json
 from collections.abc import Callable, Generator, Iterator
 from typing import cast
 from unittest.mock import Mock
@@ -18,8 +19,21 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -39,6 +53,193 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
+
+
+@pytest.mark.parametrize(("mode", "include_inline"), [(AppMode.WORKFLOW, False), (AppMode.ADVANCED_CHAT, True)])
+def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
+    app_services: AppServices,
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    include_inline: bool,
+) -> None:
+    context, app_id = copy_source
+    tenant_id, actor_id = context.active_workspace_id, context.account_id
+    workflow_id, roster_id, roster_snapshot_id, inline_id, inline_snapshot_id = [str(uuid4()) for _ in range(5)]
+    node_ids = ["roster-1", "roster-2"] + (["inline"] if include_inline else [])
+    graph = {
+        "nodes": [
+            {
+                "id": node_id,
+                "data": {"type": "agent", "title": node_id, "version": "2", "agent_node_kind": "dify_agent"},
+            }
+            for node_id in node_ids
+        ],
+        "edges": list[dict[str, str]](),
+    }
+    with sqlite_session_factory.begin() as session:
+        source_app = session.get(App, app_id)
+        assert source_app is not None
+        source_app.mode = mode
+        source_workflow = Workflow(
+            id=workflow_id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=WorkflowType.from_app_mode(mode).value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(graph),
+            features=json.dumps({}),
+            environment_variables=[],
+            conversation_variables=[],
+            created_by=actor_id,
+        )
+        roster = Agent(
+            id=roster_id,
+            tenant_id=tenant_id,
+            name="Shared roster",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id=roster_snapshot_id,
+            active_config_is_published=True,
+        )
+        session.add_all(
+            [
+                source_workflow,
+                roster,
+                AgentConfigSnapshot(
+                    id=roster_snapshot_id,
+                    tenant_id=tenant_id,
+                    agent_id=roster_id,
+                    version=1,
+                    config_snapshot=AgentSoulConfig(config_note="Roster configuration"),
+                    created_by=actor_id,
+                ),
+                AgentConfigRevision(
+                    tenant_id=tenant_id,
+                    agent_id=roster_id,
+                    current_snapshot_id=roster_snapshot_id,
+                    revision=1,
+                    operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                    created_by=actor_id,
+                ),
+            ]
+        )
+        if include_inline:
+            session.add_all(
+                [
+                    Agent(
+                        id=inline_id,
+                        tenant_id=tenant_id,
+                        name="Owned inline",
+                        scope=AgentScope.WORKFLOW_ONLY,
+                        source=AgentSource.WORKFLOW,
+                        status=AgentStatus.ACTIVE,
+                        app_id=app_id,
+                        workflow_id=workflow_id,
+                        workflow_node_id="inline",
+                        active_config_snapshot_id=inline_snapshot_id,
+                    ),
+                    AgentConfigSnapshot(
+                        id=inline_snapshot_id,
+                        tenant_id=tenant_id,
+                        agent_id=inline_id,
+                        version=1,
+                        config_snapshot=AgentSoulConfig(config_note="Inline configuration"),
+                        created_by=actor_id,
+                    ),
+                ]
+            )
+        for node_id in node_ids:
+            is_inline = node_id == "inline"
+            session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_id=workflow_id,
+                    workflow_version=Workflow.VERSION_DRAFT,
+                    node_id=node_id,
+                    binding_type=(
+                        WorkflowAgentBindingType.INLINE_AGENT if is_inline else WorkflowAgentBindingType.ROSTER_AGENT
+                    ),
+                    agent_id=inline_id if is_inline else roster_id,
+                    current_snapshot_id=inline_snapshot_id if is_inline else roster_snapshot_id,
+                    node_job_config={
+                        "workflow_prompt": f"Task for {node_id}",
+                        "mode": "let_agent_figure_it_out",
+                        "output_routes": {"enabled": False, "routes": [{"id": "route-1", "name": "Continue"}]},
+                    },
+                    created_by=actor_id,
+                )
+            )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+    workflow_service = WorkflowService(session_maker=sqlite_session_factory)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+
+    exported = app_services.console.export(context, app_id, AppExportOptions(format="yaml"))
+    assert isinstance(exported, str)
+    portable = yaml.safe_load(exported)
+    assert all(
+        AGENT_PACKAGE_REF_KEY in node["data"]["agent_binding"] for node in portable["workflow"]["graph"]["nodes"]
+    )
+
+    result, copied = app_services.console.copy(context, app_id, CopyAppParams(name="Copy"))
+    assert result.status == ImportStatus.COMPLETED
+    assert copied is not None
+    assert copied.id != app_id
+    with sqlite_session_factory() as session:
+        copied_workflow = session.scalar(select(Workflow).where(Workflow.app_id == copied.id))
+        assert copied_workflow is not None
+        assert copied_workflow.version == Workflow.VERSION_DRAFT
+        bindings = {
+            binding.node_id: binding
+            for binding in session.scalars(
+                select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == copied_workflow.id)
+            )
+        }
+        assert set(bindings) == set(node_ids)
+        source_jobs = {
+            binding.node_id: binding.node_job_config_dict
+            for binding in session.scalars(
+                select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == workflow_id)
+            )
+        }
+        for node_id in ("roster-1", "roster-2"):
+            assert bindings[node_id].binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            assert bindings[node_id].agent_id == roster_id
+            assert bindings[node_id].current_snapshot_id == roster_snapshot_id
+        for node_id in node_ids:
+            assert bindings[node_id].node_job_config_dict == source_jobs[node_id]
+        if include_inline:
+            binding = bindings["inline"]
+            assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            assert binding.agent_id != inline_id
+            assert binding.current_snapshot_id != inline_snapshot_id
+            cloned_agent = session.get(Agent, binding.agent_id)
+            assert cloned_agent is not None
+            assert cloned_agent.scope == AgentScope.WORKFLOW_ONLY
+            assert cloned_agent.app_id == copied.id
+            assert cloned_agent.workflow_id == copied_workflow.id
+            cloned_snapshot = session.get(AgentConfigSnapshot, binding.current_snapshot_id)
+            assert cloned_snapshot is not None
+            assert cloned_snapshot.config_snapshot_dict["config_note"] == "Inline configuration"
+        assert len(list(session.scalars(select(Agent).where(Agent.scope == AgentScope.ROSTER)))) == 1
+        assert session.scalar(select(Workflow.graph).where(Workflow.id == workflow_id)) == source_workflow.graph
+        expected_app_ids = set(session.scalars(select(App.id)))
+        expected_workflow_ids = set(session.scalars(select(Workflow.id)))
+        source_agent = session.get(Agent, roster_id)
+        assert source_agent is not None
+        source_agent.tenant_id = str(uuid4())
+        session.commit()
+
+    failed, failed_copy = app_services.console.copy(context, app_id, CopyAppParams(name="Invalid copy"))
+    assert failed.status == ImportStatus.FAILED
+    assert failed_copy is None
+    with sqlite_session_factory() as session:
+        assert set(session.scalars(select(App.id))) == expected_app_ids
+        assert set(session.scalars(select(Workflow.id))) == expected_workflow_ids
 
 
 @pytest.fixture

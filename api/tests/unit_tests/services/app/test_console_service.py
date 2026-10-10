@@ -340,7 +340,7 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
     assert access.calls == [("inherit", "app", "app"), ("created_permissions", CONTEXT, "app")]
     assert apps.calls == [("get", CONTEXT, "app")]
     assert transfers.calls == [
-        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True)),
+        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True, preserve_agent_bindings=True)),
         (
             "import",
             CONTEXT,

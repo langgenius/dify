@@ -22,9 +22,9 @@ from core.model_manager import ModelInstance, QuotaManagedModelInstance, create_
 from enums import DeploymentEdition
 from events.event_handlers import update_provider_when_message_created as message_event
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.model import AppMode, Message
 from models.provider import ProviderType
+from tests.unit_tests.core.model_fixtures import make_model_config
 
 TENANT = "11111111-1111-4111-8111-111111111111"
 MESSAGE = "22222222-2222-4222-8222-222222222222"
@@ -69,8 +69,8 @@ def entity(agent=False, quota_type=ProviderQuotaType.PAID, tokener=False):
             ],
         ),
     )
-    llm = Mock(spec=LargeLanguageModel)
-    llm.model_type = ModelType.LLM
+    llm = make_model_config(provider=PROVIDER, model="gpt-4o", mode="chat").provider_model_bundle.model_type_instance
+    llm.invoke = Mock()
     bundle = SimpleNamespace(configuration=configuration, model_type_instance=llm)
     cls = AgentChatAppGenerateEntity if agent else ChatAppGenerateEntity
     return cls.model_construct(
