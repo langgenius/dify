@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from types import UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from core.workflow.human_input_adapter import DeliveryChannelConfig
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
@@ -88,11 +88,25 @@ def _sub_models(annotation: object) -> _SubModels:
     return _SubModels(value=_single_model(arms), item=_single_model(get_args(annotation)) if is_sequence else None)
 
 
-def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
-    # Some validators raise errors other than ValidationError on bad or newer values; filling must never fail an import.
+class NodeDataUnreadableError(ValueError):
+    """A validator raised something other than a ValidationError."""
+
+
+def validate_node_data[M: BaseModel](model: type[M], value: Mapping[str, Any]) -> M:
+    # Some graphon validators raise KeyError and the like on bad or newer values instead of a ValidationError.
     try:
-        filled = model.model_validate(value).model_dump(mode="json")
-    except Exception:
+        return model.model_validate(value)
+    except ValidationError:
+        raise
+    except Exception as error:
+        raise NodeDataUnreadableError(f"{type(error).__name__}: {error}") from error
+
+
+def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
+    # graph_diff fills stored graphs that were never validated; a sub-object its model refuses is kept as it is.
+    try:
+        filled = validate_node_data(model, value).model_dump(mode="json")
+    except (ValidationError, NodeDataUnreadableError):
         return dict(value)
     return {**filled, **value}
 
@@ -114,16 +128,29 @@ def complete_sub_models(model: type[BaseModel], data: Mapping[str, Any]) -> dict
     return completed
 
 
-def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
+def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Old shapes rewritten and the empty containers the editor reads added; keys already present win."""
     node_type = data.get("type")
     if not isinstance(node_type, str):
         return dict(data)
     normalize = _NORMALIZERS.get(node_type)
     if normalize is not None:
         data = normalize(data)
-    filled = {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
-    node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
-    return complete_sub_models(node_data_type(node_type, node_class), filled) if node_class else filled
+    return {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
+
+
+def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
+    filled = editor_defaults(data)
+    node_type = filled.get("type")
+    if not isinstance(node_type, str):
+        return filled
+    try:
+        node_class = resolve_workflow_node_class(
+            node_type=node_type, node_version=str(filled.get("version", "1")), node_data=filled
+        )
+    except ValueError:
+        return filled
+    return complete_sub_models(node_data_type(node_type, node_class), filled)
 
 
 def fill_graph(graph: Mapping[str, Any]) -> dict[str, Any]:

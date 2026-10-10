@@ -14,12 +14,20 @@ from sqlalchemy.orm import Session
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.branch_handles import SOURCE_HANDLE, branch_handles
-from services.workflow.node_defaults import fill_node_data, node_data_type
+from services.workflow.node_defaults import (
+    NodeDataUnreadableError,
+    complete_sub_models,
+    editor_defaults,
+    node_data_type,
+    validate_node_data,
+)
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -27,7 +35,6 @@ logger = logging.getLogger(__name__)
 GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 _CANVAS_NOTE_TYPE: Final = "custom-note"
-_ROOT_SELECTORS: Final = frozenset({"sys", "env", "conversation"})
 
 
 class IssueSeverity(StrEnum):
@@ -104,7 +111,6 @@ class _Node:
 
 @dataclass(frozen=True)
 class _Graph:
-    raw: Mapping[str, Any]
     nodes: Mapping[str, _Node]
     edges: Sequence[Mapping[str, Any]]
     mode: AppMode
@@ -119,44 +125,53 @@ def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *path)
 
 
-def _references(node_class: type, config: Mapping[str, Any], graph: Mapping[str, Any]) -> Mapping[str, Sequence[str]]:
-    """Best effort: a container reads its children's raw data too, and those are reported on their own."""
-    try:
-        return node_class.extract_variable_selector_to_variable_mapping(
-            graph_config=graph, config=NodeConfigDictAdapter.validate_python(config)
-        )
-    except Exception:
-        logger.debug("variable references of node %s could not be read", config.get("id"), exc_info=True)
-        return {}
+def _references(node_class: type[Node], config: Mapping[str, Any]) -> Mapping[str, Sequence[str]]:
+    """The node's own references; a container's children are read on their own, so it gets a graph of itself."""
+    return node_class.extract_variable_selector_to_variable_mapping(
+        graph_config={"nodes": [config], "edges": []}, config=NodeConfigDictAdapter.validate_python(config)
+    )
 
 
-def _read_node(node_id: str, raw: Mapping[str, Any], graph: Mapping[str, Any]) -> _Node:
-    data = fill_node_data(_raw_data(raw))
-    node_type = str(data.get("type", ""))
-    try:
-        node_class = resolve_workflow_node_class(
-            node_type=node_type, node_version=str(data.get("version", "1")), node_data=data
-        )
-    except ValueError:
-        issue = GraphIssue(
-            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, _data_loc(node_id, "type")
-        )
-        return _Node(node_id, data, (issue,))
+def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type[Node]) -> _Node:
+    data = editor_defaults(raw_data)
+    model = node_data_type(node_class.node_type, node_class)
     config = adapt_node_config_for_graph({"id": node_id, "data": data})
     try:
-        node_data_type(node_type, node_class).model_validate(config["data"])
+        validate_node_data(model, config["data"])
     except ValidationError as error:
         problems = error.errors(include_url=False, include_input=False, include_context=False)
         issues = tuple(
             GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"])) for p in problems
         )
         return _Node(node_id, data, issues)
-    except Exception as error:
-        # Some validators raise other errors on bad or newer values; this node is reported, the rest still checked.
+    except NodeDataUnreadableError as error:
         logger.warning("node %s data could not be validated", node_id, exc_info=True)
-        message = f"The node data could not be read ({type(error).__name__}: {error})"
+        message = f"The node data could not be read ({error})"
         return _Node(node_id, data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),))
-    return _Node(node_id, data, references=_references(node_class, config, graph))
+    return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))
+
+
+def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
+    raw_data = _raw_data(raw)
+    node_type = str(raw_data.get("type", ""))
+    try:
+        node_class = resolve_workflow_node_class(
+            node_type=node_type, node_version=str(raw_data.get("version", "1")), node_data=raw_data
+        )
+    except ValueError:
+        issue = GraphIssue(
+            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, _data_loc(node_id, "type")
+        )
+        return _Node(node_id, raw_data, (issue,))
+    try:
+        return _read_known_node(node_id, raw_data, node_class)
+    except Exception as error:
+        # A validator or reference reader can raise other errors on bad or newer data; report this node, check the rest.
+        logger.warning("node %s data could not be read", node_id, exc_info=True)
+        message = f"The node data could not be read ({type(error).__name__}: {error})"
+        return _Node(
+            node_id, raw_data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),)
+        )
 
 
 def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -248,7 +263,7 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
 def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
         for key, selector in node.references.items():
-            if selector and selector[0] not in _ROOT_SELECTORS and selector[0] not in graph.nodes:
+            if selector and selector[0] not in ROOT_VARIABLE_NODE_IDS and selector[0] not in graph.nodes:
                 yield GraphIssue(
                     IssueCode.REFERENCE_MISSING,
                     f"{key} reads node {selector[0]!r}, which is not in the graph",
@@ -273,8 +288,7 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
         return [GraphIssue(IssueCode.GRAPH_INVALID, "graph.nodes must be a list", None, ("nodes",))]
     raw_nodes = {str(n.get("id")): n for n in nodes if isinstance(n, Mapping) and n.get("type") != _CANVAS_NOTE_TYPE}
     view = _Graph(
-        raw=graph,
-        nodes={node_id: _read_node(node_id, raw, graph) for node_id, raw in raw_nodes.items()},
+        nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
         edges=[e for e in graph.get("edges") or [] if isinstance(e, Mapping)],
         mode=mode,
     )

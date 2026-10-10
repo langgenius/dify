@@ -9,12 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.enums import BuiltinNodeTypes
 from services.workflow.branch_handles import branch_handles
 
 logger = logging.getLogger(__name__)
 
-_RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversation", "start"})
+_RESERVED_SELECTOR_HEADS: frozenset[str] = ROOT_VARIABLE_NODE_IDS | {"start"}
 
 _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     {
