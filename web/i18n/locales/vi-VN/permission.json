@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Quyền truy cập",
   "accessRule.actions": "Hành động",
-  "accessRule.addMemberAria": "Thêm {{name}}",
   "accessRule.addMembersTitle": "Thêm thành viên",
   "accessRule.agentDescription": "Quản lý những ai có thể truy cập tác nhân này và quyền của họ.",
   "accessRule.agentTitle": "Bộ quyền tác nhân",

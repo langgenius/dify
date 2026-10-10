@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "アクセス権限",
   "accessRule.actions": "アクション",
-  "accessRule.addMemberAria": "{{name}} を追加",
   "accessRule.addMembersTitle": "メンバーを追加",
   "accessRule.agentDescription": "このエージェントにアクセスできるメンバーと権限を管理します。",
   "accessRule.agentTitle": "エージェント権限セット",

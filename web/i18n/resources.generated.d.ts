@@ -3661,7 +3661,6 @@ export default interface Resources {
   permission: {
     'accessRule.accessPermission': 'Access permission'
     'accessRule.actions': 'Actions'
-    'accessRule.addMemberAria': 'Add {{name}}'
     'accessRule.addMembersTitle': 'Add members'
     'accessRule.agentDescription': 'Manage who can access this agent and their permissions.'
     'accessRule.agentTitle': 'Agent Permission Set'

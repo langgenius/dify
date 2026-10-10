@@ -46,7 +46,7 @@ const numberFieldInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -98,7 +98,7 @@ function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUn
 }
 
 const numberFieldControlsVariants = cva(
-  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-s border-divider-subtle bg-transparent text-text-tertiary',
 )
 
 type NumberFieldControlsProps = React.ComponentProps<'div'>

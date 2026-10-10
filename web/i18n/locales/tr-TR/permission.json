@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Erişim izni",
   "accessRule.actions": "Eylemler",
-  "accessRule.addMemberAria": "{{name}} ekle",
   "accessRule.addMembersTitle": "Üye ekle",
   "accessRule.agentDescription": "Bu ajana kimlerin erişebileceğini ve izinlerini yönetin.",
   "accessRule.agentTitle": "Ajan izin kümesi",

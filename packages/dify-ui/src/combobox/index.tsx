@@ -108,18 +108,31 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   )
 }
 
-const comboboxInputGroupVariants = cva([textControlGroupClassName, 'group/combobox items-center'], {
-  variants: {
-    size: {
-      small: 'min-h-6 rounded-md',
-      medium: 'min-h-8 rounded-lg',
-      large: 'min-h-9 rounded-[10px]',
+const comboboxInputGroupVariants = cva(
+  [
+    textControlGroupClassName,
+    'group/combobox items-center',
+    // Inside the popup the group is the search box, laid out like `DropdownMenuInputGroup`: it
+    // lines up with the options on 4px gutters,
+    // hosts an inline icon, and takes over the horizontal padding from its input and controls.
+    // The popup marks itself with a data attribute because a `role="dialog"` ancestor could also be
+    // a Dialog hosting a field anchor.
+    'in-data-dify-combobox-popup:mx-1 in-data-dify-combobox-popup:mt-1 in-data-dify-combobox-popup:w-auto in-data-dify-combobox-popup:gap-0.5 in-data-dify-combobox-popup:px-2',
+    'in-data-dify-combobox-popup:[&>button]:me-0 in-data-dify-combobox-popup:[&>input]:px-1',
+  ],
+  {
+    variants: {
+      size: {
+        small: 'min-h-6 rounded-md',
+        medium: 'min-h-8 rounded-lg',
+        large: 'min-h-9 rounded-[10px]',
+      },
+    },
+    defaultVariants: {
+      size: 'medium',
     },
   },
-  defaultVariants: {
-    size: 'medium',
-  },
-})
+)
 
 type ComboboxInputGroupProps = BaseCombobox.InputGroup.Props &
   VariantProps<typeof comboboxInputGroupVariants>
@@ -140,7 +153,7 @@ const comboboxInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -200,6 +213,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
+// Same look as `DropdownMenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -297,6 +311,7 @@ type ComboboxPopupProps = BaseCombobox.Popup.Props
 function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
   return (
     <BaseCombobox.Popup
+      data-dify-combobox-popup=""
       className={(state) =>
         cn(
           comboboxPopupClassName,
@@ -393,6 +408,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
+// Same look as `DropdownMenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty

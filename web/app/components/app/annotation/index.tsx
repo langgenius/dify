@@ -215,7 +215,6 @@ const Annotation: FC<Props> = (props) => {
                         )
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
-                        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       }
                     }}
                   ></Switch>

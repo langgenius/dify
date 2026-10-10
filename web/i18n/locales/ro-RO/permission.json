@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Permisiune de acces",
   "accessRule.actions": "Acțiuni",
-  "accessRule.addMemberAria": "Adaugă {{name}}",
   "accessRule.addMembersTitle": "Adaugă membri",
   "accessRule.agentDescription": "Gestionează cine poate accesa acest agent și permisiunile acestora.",
   "accessRule.agentTitle": "Set de permisiuni pentru agent",

@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Giriş icazəsi",
   "accessRule.actions": "Əməliyyatlar",
-  "accessRule.addMemberAria": "{{name}} adlı üzvü əlavə et",
   "accessRule.addMembersTitle": "Üzvlərin əlavə edilməsi",
   "accessRule.agentDescription": "Bu agentə kimin daxil ola biləcəyini və onların icazələrini idarə edin.",
   "accessRule.agentTitle": "Agentin icazə dəsti",
