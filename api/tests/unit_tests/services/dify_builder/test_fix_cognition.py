@@ -131,6 +131,100 @@ def test_propose_config_fix_auto_applies_low_risk():
     assert risk.level == "low"
 
 
+@pytest.mark.parametrize("switch_model", [True, False], ids=["model-switch-needs-approval", "prompt-auto-applies"])
+def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, switch_model):
+    """Dropping deterministic risk shaping would write a model switch before approval."""
+    from datetime import datetime
+
+    from core.dify_builder.handlers_fix import fix_registry
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.node_defaults import default_config
+    from core.dify_builder.runner import Env, Runner
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    data = default_config("llm")
+    data.update(
+        type="llm",
+        title="LLM",
+        model={"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+        prompt_template=[{"role": "user", "text": "old prompt"}],
+    )
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "llm", "data": data},
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-llm", "source": "start", "target": "llm"},
+            {"id": "llm-end", "source": "llm", "target": "end"},
+        ],
+    }
+    value = {**data["model"], "name": "model-b"} if switch_model else [{"role": "user", "text": "fixed prompt"}]
+    path = "model" if switch_model else "prompt_template"
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": path, "value": value}}],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"llm","root_cause":"bad config","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    original = Run(id="failed-run", kind="original-failed", status="failed", immutable=True)
+    repo.create_session(session, DifyBuilderContext(failed_run_id=original.id), [])
+    repo.save_run(session.id, original)
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    if switch_model:
+        assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+        assert port.graph == graph
+        assert port.applied == []
+        out = runner.advance(session.id, Turn(actor=actor))
+        assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+        assert port.graph == graph
+        out = runner.advance(
+            session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor)
+        )
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    assert port.graph["nodes"][1]["data"][path] == value
+    assert port.graph["nodes"][1]["data"]["model"]["provider"] == "provider-a"
+    assert repo.get_run(original.id) == original
+
+
+def test_invalid_model_replacement_still_fails_native_preflight():
+    from core.dify_builder.node_defaults import default_config
+
+    data = {**default_config("llm"), "type": "llm", "title": "LLM"}
+    graph = {"nodes": [{"id": "llm", "data": data}], "edges": []}
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": "model", "value": "invalid"}}],
+            "risk": {"level": "low"},
+        }
+    )
+
+    intents, risk = fix.propose_repair(_FakeInstance([payload, payload]), Diagnosis(culprit_node_id="llm"), graph)
+
+    assert intents == []
+    assert risk.level == "high"
+
+
 # Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
 # written.
 _HTTP_GRAPH = {
