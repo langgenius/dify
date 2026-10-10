@@ -1,7 +1,8 @@
-"""Parse bounded CSV imports and publish owned jobs after database admission."""
+"""Admit CSV imports, execute detached batches and track owned jobs."""
 
 import logging
 import time
+from collections.abc import Sequence
 from csv import Error as CSVError
 from dataclasses import dataclass
 from typing import IO, Literal, Protocol, TypedDict
@@ -10,6 +11,7 @@ from uuid import uuid4
 import pandas as pd
 
 from services.annotation_query import AnnotationAppQuery
+from services.annotation_reply_service import AnnotationIndexBinding, AnnotationIndexEntry, AnnotationReplyRevision
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +28,55 @@ class AnnotationImportJobNotFoundError(Exception):
     """The job is absent or cannot be verified as belonging to this workspace and app."""
 
 
+class AnnotationImportChangedError(Exception):
+    """The import's index configuration or previously committed batch has changed."""
+
+
 class AnnotationImportRecord(TypedDict):
     question: str
     answer: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationImportEntry:
+    id: str
+    question: str
+    answer: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationImportPlan:
+    tenant_id: str
+    app_id: str
+    account_id: str
+    # Both are None when annotation reply was disabled at preparation time.
+    revision: AnnotationReplyRevision | None
+    binding: AnnotationIndexBinding | None
+    entries: tuple[AnnotationImportEntry, ...]
+
+
+class AnnotationImportStore(AnnotationAppQuery, Protocol):
+    def prepare_import(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        job_id: str,
+        account_id: str,
+        records: Sequence[AnnotationImportRecord],
+    ) -> AnnotationImportPlan | None:
+        """Return detached batch inputs, or None if this batch was already committed."""
+        ...
+
+    def complete_import(self, *, plan: AnnotationImportPlan) -> None:
+        """Recheck app ownership and index identity, then atomically insert the batch."""
+        ...
+
+
+class AnnotationImportIndex(Protocol):
+    def add(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
+    ) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +128,10 @@ class AnnotationImportJobStore(Protocol):
     def create(self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int) -> None: ...
 
     def release(self, *, tenant_id: str, job_id: str) -> None: ...
+
+    def finish(self, *, tenant_id: str, app_id: str, job_id: str, error: str | None) -> None:
+        """Publish success when error is None, otherwise failure; release this job's slot."""
+        ...
 
     def get(self, *, tenant_id: str, app_id: str, job_id: str) -> AnnotationImportJob | None:
         """Return an owned job's state; absent or unverifiable jobs return None."""
@@ -152,20 +204,22 @@ class AnnotationImportService:
     def __init__(
         self,
         *,
-        apps: AnnotationAppQuery,
+        annotations: AnnotationImportStore,
+        index: AnnotationImportIndex,
         jobs: AnnotationImportJobStore,
         publish: PublishAnnotationImport,
         quota: AnnotationImportQuotaQuery,
         limits: AnnotationImportLimits,
     ) -> None:
-        self._apps = apps
+        self._annotations = annotations
+        self._index = index
         self._jobs = jobs
         self._publish = publish
         self._quota = quota
         self._limits = limits
 
     def import_csv(self, *, tenant_id: str, app_id: str, account_id: str, stream: IO[bytes]) -> AnnotationImportResult:
-        self._apps.require_app(tenant_id=tenant_id, app_id=app_id)
+        self._annotations.require_app(tenant_id=tenant_id, app_id=app_id)
         self._check_limits(tenant_id=tenant_id)
         records = parse_annotation_csv(
             stream, min_records=self._limits.min_records, max_records=self._limits.max_records
@@ -187,11 +241,42 @@ class AnnotationImportService:
         return AnnotationImportResult(job_id=job_id, job_status="waiting", record_count=len(records))
 
     def get_status(self, *, tenant_id: str, app_id: str, job_id: str) -> AnnotationImportJob:
-        self._apps.require_app(tenant_id=tenant_id, app_id=app_id)
+        self._annotations.require_app(tenant_id=tenant_id, app_id=app_id)
         job = self._jobs.get(tenant_id=tenant_id, app_id=app_id, job_id=job_id)
         if job is None:
             raise AnnotationImportJobNotFoundError(f"Annotation import job {job_id} is unavailable for app {app_id}")
         return job
+
+    def execute_import(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        job_id: str,
+        account_id: str,
+        records: Sequence[AnnotationImportRecord],
+    ) -> None:
+        plan = self._annotations.prepare_import(
+            tenant_id=tenant_id, app_id=app_id, job_id=job_id, account_id=account_id, records=records
+        )
+        if plan is None:
+            return
+        if plan.binding is not None and plan.entries:
+            self._index.add(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                binding=plan.binding,
+                entries=tuple(AnnotationIndexEntry(id=entry.id, question=entry.question) for entry in plan.entries),
+            )
+        # Preserve rollback semantics: indexing failure never commits annotations.
+        # Stable IDs deduplicate committed SQL batches, but SQL and vector writes
+        # are not atomic. Partial vector failures still need backend-specific
+        # recovery; do not delete/recreate their IDs while another delivery may run.
+        self._annotations.complete_import(plan=plan)
+
+    def complete_job(self, *, tenant_id: str, app_id: str, job_id: str, error: str | None) -> None:
+        """Publish the outcome even when the app was deleted; None means successful execution."""
+        self._jobs.finish(tenant_id=tenant_id, app_id=app_id, job_id=job_id, error=error)
 
     def _check_limits(self, *, tenant_id: str) -> None:
         now_ms = int(time.time() * 1000)

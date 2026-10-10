@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from itertools import batched
 from typing import override
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,6 +20,13 @@ from services.annotation_command_service import (
     AnnotationSettingNotFoundError,
     AnnotationWriteResult,
     AnnotationWriteStore,
+)
+from services.annotation_import_service import (
+    AnnotationImportChangedError,
+    AnnotationImportEntry,
+    AnnotationImportPlan,
+    AnnotationImportRecord,
+    AnnotationImportStore,
 )
 from services.annotation_query import (
     AnnotationAppNotFoundError,
@@ -43,7 +50,7 @@ from services.annotation_reply_service import (
 from services.errors.message import MessageNotExistsError
 
 
-class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationReplyStore):
+class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationReplyStore, AnnotationImportStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -404,6 +411,94 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
             )
             if setting is not None:
                 session.delete(setting)
+
+    @override
+    def prepare_import(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        job_id: str,
+        account_id: str,
+        records: Sequence[AnnotationImportRecord],
+    ) -> AnnotationImportPlan | None:
+        entries = tuple(
+            AnnotationImportEntry(
+                id=str(uuid5(NAMESPACE_URL, f"dify/annotation-import/{tenant_id}/{app_id}/{job_id}/{index}")),
+                question=record["question"],
+                answer=record["answer"],
+            )
+            for index, record in enumerate(records)
+        )
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            if self._import_already_completed(session, app_id=app_id, account_id=account_id, entries=entries):
+                return None
+            setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1))
+            binding = None
+            if setting is not None:
+                binding = self._annotation_binding(session, binding_id=setting.collection_binding_id)
+                if binding is None:
+                    raise AnnotationSettingNotFoundError(
+                        f"Annotation collection binding {setting.collection_binding_id} is unavailable for app {app_id}"
+                    )
+            return AnnotationImportPlan(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                account_id=account_id,
+                revision=self._reply_revision(setting) if setting is not None else None,
+                binding=self._index_binding(binding) if binding is not None else None,
+                entries=entries,
+            )
+
+    @override
+    def complete_import(self, *, plan: AnnotationImportPlan) -> None:
+        with self._session_factory.begin() as session:
+            self._lock_app(session, tenant_id=plan.tenant_id, app_id=plan.app_id)
+            if self._import_already_completed(
+                session, app_id=plan.app_id, account_id=plan.account_id, entries=plan.entries
+            ):
+                return
+            try:
+                self._require_reply_revision(session, app_id=plan.app_id, revision=plan.revision, allow_missing=False)
+            except AnnotationReplyChangedError as error:
+                raise AnnotationImportChangedError(str(error)) from error
+            if plan.binding is not None:
+                binding = self._annotation_binding(session, binding_id=plan.binding.id)
+                if binding is None or self._index_binding(binding) != plan.binding:
+                    raise AnnotationImportChangedError(
+                        f"Annotation collection binding {plan.binding.id} changed during import"
+                    )
+            for entry in plan.entries:
+                annotation = MessageAnnotation(
+                    app_id=plan.app_id,
+                    account_id=plan.account_id,
+                    question=entry.question,
+                    content=entry.answer,
+                )
+                annotation.id = entry.id
+                session.add(annotation)
+
+    @staticmethod
+    def _import_already_completed(
+        session: Session, *, app_id: str, account_id: str, entries: Sequence[AnnotationImportEntry]
+    ) -> bool:
+        # The row IDs survive a lost Redis completion acknowledgement. Do not
+        # compare content: users may have edited successfully imported rows.
+        # TODO: A durable job receipt is needed to distinguish a new batch from
+        # a completed batch whose rows have all subsequently been deleted.
+        found = 0
+        for batch in batched(tuple(entry.id for entry in entries), 500):
+            annotations = session.execute(
+                select(MessageAnnotation.app_id, MessageAnnotation.account_id).where(MessageAnnotation.id.in_(batch))
+            )
+            for annotation in annotations:
+                if annotation.app_id != app_id or annotation.account_id != account_id:
+                    raise AnnotationImportChangedError(f"Imported annotations have changed ownership for app {app_id}")
+                found += 1
+        if found and found != len(entries):
+            raise AnnotationImportChangedError(f"Some imported annotations have been removed from app {app_id}")
+        return bool(entries) and found == len(entries)
 
     @staticmethod
     def _index_binding(binding: DatasetCollectionBinding) -> AnnotationIndexBinding:

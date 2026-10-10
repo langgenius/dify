@@ -25,6 +25,20 @@ class AnnotationVectorIndex:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def add(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
+    ) -> None:
+        self._vector(tenant_id=tenant_id, app_id=app_id, binding=binding).create(
+            [
+                Document(
+                    page_content=entry.question,
+                    metadata={"annotation_id": entry.id, "app_id": app_id, "doc_id": entry.id},
+                )
+                for entry in entries
+            ],
+            duplicate_check=True,
+        )
+
     def rebuild(
         self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
     ) -> None:

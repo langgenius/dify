@@ -525,6 +525,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     annotations = AnnotationRepository(session_factory=database_client)
+    annotation_index = AnnotationVectorIndex(session_factory=database_client)
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -534,7 +535,8 @@ def build_application_services(
         ),
         annotation_queries=annotations,
         annotation_imports=AnnotationImportService(
-            apps=annotations,
+            annotations=annotations,
+            index=annotation_index,
             jobs=RedisAnnotationImportJobRepository(redis=redis),
             publish=batch_import_annotations_task.delay,
             quota=_get_annotation_import_quota,
@@ -548,7 +550,7 @@ def build_application_services(
         ),
         annotation_reply=AnnotationReplyService(
             annotations=annotations,
-            index=AnnotationVectorIndex(session_factory=database_client),
+            index=annotation_index,
             jobs=RedisAnnotationReplyJobRepository(redis=redis),
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,
