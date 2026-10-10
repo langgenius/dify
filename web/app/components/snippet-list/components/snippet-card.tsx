@@ -112,7 +112,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.deleted))
           setIsDeleteDialogOpen(false)
           onRefresh?.()
         },

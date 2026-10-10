@@ -69,7 +69,6 @@
   "skillManagement.detail.deleteFileSuccess": "Файл видалено.",
   "skillManagement.detail.deleteVersionConfirm": "Видалити цю версію?",
   "skillManagement.detail.deleteVersionFailed": "Не вдалося видалити версію.",
-  "skillManagement.detail.deleteVersionSuccess": "Версія видалена.",
   "skillManagement.detail.downloadFile": "Завантажити файл",
   "skillManagement.detail.draft": "Чернетка",
   "skillManagement.detail.editVersionInfo": "Редагувати інформацію про версію",

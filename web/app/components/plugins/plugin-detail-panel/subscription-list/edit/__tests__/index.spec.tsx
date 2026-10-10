@@ -550,17 +550,16 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Update Callbacks', () => {
-      it('should show success toast and call onClose on success', async () => {
+      it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+          expect(onClose).toHaveBeenCalled()
         })
         expect(mockRefetch).toHaveBeenCalled()
-        expect(onClose).toHaveBeenCalled()
       })
 
       it('should show error toast with Error message on failure', async () => {
@@ -847,16 +846,15 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Update Callbacks', () => {
-      it('should show success toast and call onClose on success', async () => {
+      it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<OAuthEditModal {...createProps({ onClose })} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+          expect(onClose).toHaveBeenCalled()
         })
-        expect(onClose).toHaveBeenCalled()
       })
 
       it('should show error toast on failure', async () => {
@@ -1304,7 +1302,7 @@ describe('Edit Modal Components', () => {
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
 
-      it('should show success toast and close on successful update', async () => {
+      it('should close on successful update', async () => {
         formValuesMap.set('basic', {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
@@ -1319,14 +1317,6 @@ describe('Edit Modal Components', () => {
         })
 
         fireEvent.click(getConfirmButton())
-        await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(
-            expect.objectContaining({
-              type: 'success',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.success',
-            }),
-          )
-        })
         expect(mockRefetch).toHaveBeenCalled()
         expect(onClose).toHaveBeenCalled()
       })

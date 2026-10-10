@@ -68,7 +68,6 @@
   "skillManagement.detail.deleteFileSuccess": "Fișier șters.",
   "skillManagement.detail.deleteVersionConfirm": "Ștergeți această versiune?",
   "skillManagement.detail.deleteVersionFailed": "Versiunea a eșuat.",
-  "skillManagement.detail.deleteVersionSuccess": "Versiune ștearsă.",
   "skillManagement.detail.downloadFile": "Descărcați fișierul",
   "skillManagement.detail.draft": "Ciornă",
   "skillManagement.detail.editVersionInfo": "Editează informațiile versiunii",

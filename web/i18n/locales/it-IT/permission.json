@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "In base ai permessi di ruolo",
   "accessRule.deleteDescription": "Questa regola di accesso verrà eliminata definitivamente e rimossa dall'elenco delle autorizzazioni della risorsa.",
   "accessRule.deleteTitle": "Eliminare \"{{name}}\"?",
-  "accessRule.deleted": "Regola di accesso eliminata con successo",
   "accessRule.exceptionPermissionFor": "Permesso di eccezione per {{name}}",
   "accessRule.expandSection": "Espandi {{title}}",
   "accessRule.maintainer": "Manutentore",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" è assegnato a {{count}} membri. Vuoi che la copia del nuovo ruolo includa gli stessi membri?",
   "role.copyMembersLoading": "Caricamento delle assegnazioni dei membri...",
   "role.copyMembersTitle": "Copiare le assegnazioni dei membri?",
-  "role.created": "Ruolo creato con successo",
   "role.deleteDescription": "Questo ruolo verrà eliminato definitivamente e rimosso da tutti i membri o le regole di accesso che lo utilizzano.",
   "role.deleteTitle": "Eliminare \"{{name}}\"?",
-  "role.deleted": "Ruolo eliminato con successo",
-  "role.duplicated": "Ruolo duplicato con successo",
   "role.groups.builtin": "Ruoli di sistema",
   "role.groups.custom": "Ruoli personalizzati",
   "role.loading": "Caricamento dei ruoli...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Nessuna descrizione",
   "role.noMatchingRoles": "Nessun ruolo corrispondente",
   "role.searchPlaceholder": "Cerca ruoli...",
-  "role.updated": "Ruolo aggiornato con successo",
   "role.workspaceRoles.description": "Crea ruoli e definisci cosa può fare ciascun ruolo in questo workspace.",
   "role.workspaceRoles.title": "Ruoli del workspace"
 }

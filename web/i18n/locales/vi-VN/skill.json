@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "Tập tin đã bị xóa.",
   "skillManagement.detail.deleteVersionConfirm": "Xóa phiên bản này?",
   "skillManagement.detail.deleteVersionFailed": "Không xóa được phiên bản.",
-  "skillManagement.detail.deleteVersionSuccess": "Phiên bản đã bị xóa.",
   "skillManagement.detail.downloadFile": "Tải tập tin xuống",
   "skillManagement.detail.draft": "Bản nháp",
   "skillManagement.detail.editVersionInfo": "Chỉnh sửa thông tin phiên bản",

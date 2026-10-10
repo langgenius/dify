@@ -3,7 +3,6 @@ import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
@@ -181,6 +180,5 @@ describe('MemberMenu', () => {
       })
     })
     expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
-    expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
   })
 })

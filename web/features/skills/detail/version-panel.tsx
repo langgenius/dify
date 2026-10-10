@@ -313,7 +313,6 @@ function VersionRow({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.deleteVersionSuccess']))
           setDeleteOpen(false)
           invalidateVersions()
           onSelect(null)

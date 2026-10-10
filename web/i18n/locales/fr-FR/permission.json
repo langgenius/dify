@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Selon les autorisations de rôle",
   "accessRule.deleteDescription": "Cette règle d'accès sera définitivement supprimée et retirée de la liste d'autorisation de la ressource.",
   "accessRule.deleteTitle": "Supprimer \"{{name}}\" ?",
-  "accessRule.deleted": "Règle d'accès supprimée avec succès",
   "accessRule.exceptionPermissionFor": "Autorisation d'exception pour {{name}}",
   "accessRule.expandSection": "Développer {{title}}",
   "accessRule.maintainer": "Mainteneur",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" est attribué à {{count}} membres. Voulez-vous que la copie du nouveau rôle inclue les mêmes membres ?",
   "role.copyMembersLoading": "Chargement des attributions de membres...",
   "role.copyMembersTitle": "Copier les attributions de membres ?",
-  "role.created": "Rôle créé avec succès",
   "role.deleteDescription": "Ce rôle sera définitivement supprimé et retiré de tous les membres ou règles d'accès qui l'utilisent.",
   "role.deleteTitle": "Supprimer \"{{name}}\" ?",
-  "role.deleted": "Rôle supprimé avec succès",
-  "role.duplicated": "Rôle dupliqué avec succès",
   "role.groups.builtin": "Rôles système",
   "role.groups.custom": "Rôles personnalisés",
   "role.loading": "Chargement des rôles...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Aucune description",
   "role.noMatchingRoles": "Aucun rôle correspondant",
   "role.searchPlaceholder": "Rechercher des rôles...",
-  "role.updated": "Rôle mis à jour avec succès",
   "role.workspaceRoles.description": "Créez des rôles et définissez ce que chaque rôle peut faire dans cet espace de travail.",
   "role.workspaceRoles.title": "Rôles de l'espace de travail"
 }

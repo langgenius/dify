@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "ファイルが削除されました。",
   "skillManagement.detail.deleteVersionConfirm": "このバージョンを削除しますか?",
   "skillManagement.detail.deleteVersionFailed": "",
-  "skillManagement.detail.deleteVersionSuccess": "バージョンが削除されました。",
   "skillManagement.detail.downloadFile": "ファイルをダウンロードする",
   "skillManagement.detail.draft": "ドラフト",
   "skillManagement.detail.editVersionInfo": "バージョン情報を編集",

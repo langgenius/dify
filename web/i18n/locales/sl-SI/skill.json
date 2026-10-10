@@ -69,7 +69,6 @@
   "skillManagement.detail.deleteFileSuccess": "Datoteka izbrisana.",
   "skillManagement.detail.deleteVersionConfirm": "Želite izbrisati to različico?",
   "skillManagement.detail.deleteVersionFailed": "Brisanje različice ni uspelo.",
-  "skillManagement.detail.deleteVersionSuccess": "Različica izbrisana.",
   "skillManagement.detail.downloadFile": "Prenesi datoteko",
   "skillManagement.detail.draft": "Osnutek",
   "skillManagement.detail.editVersionInfo": "Uredi informacije o različici",

@@ -68,7 +68,6 @@
   "skillManagement.detail.deleteFileSuccess": "Arquivo excluído.",
   "skillManagement.detail.deleteVersionConfirm": "Excluir esta versão?",
   "skillManagement.detail.deleteVersionFailed": "Falha ao excluir a versão.",
-  "skillManagement.detail.deleteVersionSuccess": "Versão excluída.",
   "skillManagement.detail.downloadFile": "Baixar arquivo",
   "skillManagement.detail.draft": "Rascunho",
   "skillManagement.detail.editVersionInfo": "Editar informações da versão",

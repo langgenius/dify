@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "فایل حذف شد",
   "skillManagement.detail.deleteVersionConfirm": "این نسخه حذف شود؟",
   "skillManagement.detail.deleteVersionFailed": "نسخه حذف نشد.",
-  "skillManagement.detail.deleteVersionSuccess": "نسخه حذف شد",
   "skillManagement.detail.downloadFile": "دانلود فایل",
   "skillManagement.detail.draft": "پیش‌نویس",
   "skillManagement.detail.editVersionInfo": "ویرایش اطلاعات نسخه",

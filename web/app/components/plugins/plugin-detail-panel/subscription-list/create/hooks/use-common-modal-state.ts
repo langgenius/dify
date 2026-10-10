@@ -294,7 +294,6 @@ export const useCommonModalState = ({
 
     buildSubscription(params, {
       onSuccess: () => {
-        toast.success(t(($) => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
         onClose()
         refetch?.()
       },

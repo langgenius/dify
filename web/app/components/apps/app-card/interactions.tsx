@@ -323,7 +323,6 @@ export function AppCardInteractions({
         { params: { app_id: app.id } },
         {
           onSuccess: () => {
-            toast.success(t(($) => $.appDeleted, { ns: 'app' }))
             setActiveDialog(null)
             setConfirmDeleteInput('')
           },
@@ -453,7 +452,6 @@ export function AppCardInteractions({
             }
 
             setActiveDialog(null)
-            toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
             getRedirection(newApp, push, {
               currentUserId,
               resourceMaintainer: newApp.maintainer ?? undefined,

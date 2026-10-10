@@ -67,7 +67,6 @@
   "skillManagement.detail.deleteFileSuccess": "ลบไฟล์แล้ว",
   "skillManagement.detail.deleteVersionConfirm": "ลบเวอร์ชันนี้ใช่ไหม",
   "skillManagement.detail.deleteVersionFailed": "ลบเวอร์ชันไม่สำเร็จ",
-  "skillManagement.detail.deleteVersionSuccess": "ลบเวอร์ชันแล้ว",
   "skillManagement.detail.downloadFile": "ดาวน์โหลดไฟล์",
   "skillManagement.detail.draft": "ฉบับร่าง",
   "skillManagement.detail.editVersionInfo": "แก้ไขข้อมูลเวอร์ชัน",

@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Simpan token akses ini di tempat yang aman; Anda tidak dapat melihatnya lagi nanti. Siapa pun yang memilikinya dapat memakai Difyctl untuk menemukan dan mengakses sumber daya yang diizinkan. Jika hilang, buat token baru dan cabut token lama.",
   "resourceAccessToken.deleteDescription": "Token akses akan langsung dinonaktifkan. Permintaan yang memakai token ini akan ditolak sehingga tugas yang sedang berjalan dapat terhenti atau gagal. Setelah dihapus, token tidak dapat dilihat atau diubah lagi.",
   "resourceAccessToken.deleteTitle": "Hapus token akses?",
-  "resourceAccessToken.deleted": "Token akses dihapus",
   "resourceAccessToken.done": "Selesai",
   "resourceAccessToken.editTitle": "Edit token akses",
   "resourceAccessToken.empty": "Belum ada token akses",

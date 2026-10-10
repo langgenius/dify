@@ -184,10 +184,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const handleAdd = useCallback(
     async (data: BuiltInMetadataItem) => {
       await onAdd(data)
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       setOpen(false)
     },
-    [onAdd, t],
+    [onAdd],
   )
 
   const handleRenamed = useCallback(async () => {
