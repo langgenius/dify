@@ -64,7 +64,13 @@ from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
-from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, publication_decision, result_card
+from core.dify_builder.verification import (
+    SUCCESS_REPLY,
+    has_output_blocker,
+    is_execution_policy_blocker,
+    publication_decision,
+    result_card,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -806,6 +812,20 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     progress.activate("fix-load-failure")
     fc.checkpoint_seq = fc.next_seq
     failed = env.repo.get_run(fc.failed_run_id)
+    if is_execution_policy_blocker(failed):
+        fc.diagnosis = None
+        fc.staged_repair = []
+        card = result_card(failed)
+        items = append_card(fc, card)
+        items += append_assistant(
+            env,
+            s,
+            fc,
+            card.failure_reason or "Review execution policy and test inputs.",
+            execution=progress.finish(),
+            cards=["test_result"],
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     progress.activate("fix-inspect-workflow")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     outputs = env.dify.node_outputs(s.app_id, turn.actor, failed.dify_run_id)
@@ -1119,6 +1139,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     # runner's generic write-back stays consistent (a no-op, since the id
     # already matches).
     run = Run(
+        execution_refusal=result.execution_refusal if result else None,
         id=str(uuid.uuid4()),
         session_id=s.id,
         verification=result.verification,
@@ -1132,6 +1153,23 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     )
 
     fc.verify_run_id = run.id
+
+    if is_execution_policy_blocker(run):
+        fc.diagnosis = None
+        fc.staged_repair = []
+        card = result_card(run)
+        items = append_card(fc, card)
+        execution = progress.finish()
+        items += append_assistant(
+            env,
+            s,
+            fc,
+            card.failure_reason or "Review execution policy and test inputs.",
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
+        )
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items, run=run, run_id_sink=[run.id])
 
     if result.status == "running":
         # Stream truncated: the run's outcome is genuinely unknown, NOT a

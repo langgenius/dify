@@ -17,7 +17,12 @@ from core.dify_builder.models import (
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeEditDifyPort,
+    InMemoryRepository,
+    StubAgent,
+    successful_verification,
+)
 
 
 def _actor() -> Actor:
@@ -375,10 +380,8 @@ def test_edit_test_run_draft_raises_captures_error_on_run():
     assert "kaboom-provider" in (result.run.error or "")
 
 
-def test_edit_test_run_draft_raises_input_error_routes_to_testdata_gate():
-    """A launch-time exception whose message is an input-validation error must
-    route back to the testdata gate, and the real error must be captured on
-    the run."""
+def test_edit_launch_input_error_without_proof_stops_at_review():
+    """Unproven launch errors retain inputs for review without diagnosis."""
     from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import TestInput
 
@@ -390,8 +393,8 @@ def test_edit_test_run_draft_raises_input_error_routes_to_testdata_gate():
 
     result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
 
-    assert result.next == PcState.EDIT_AWAIT_TESTDATA
-    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.context.test_input_ref == "ti-1"  # Missing proof retains inputs for review.
     assert result.run is not None
     assert "in input form" in (result.run.error or "")
 
@@ -1012,10 +1015,8 @@ def test_revert_then_retry_after_revert_reapprove_is_idempotent():
     assert len(dify.graph["nodes"]) == 4
 
 
-def test_a_launch_error_frame_is_diagnosed_not_bounced_as_unknown():
-    """Edit discarded ``Run.error`` exactly like Build did. With the port now
-    reporting the ESQ1-302 error frame as a failed Run, the failure must reach
-    diagnose and the repair gate, carrying its error."""
+def test_edit_launch_error_is_preserved_at_unknown_review_gate():
+    """Launch errors retain their text but lack execution proof for diagnosis."""
     from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import Run, TestInput
 
@@ -1126,6 +1127,7 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
         kind="verify",
         immutable=True,
         dify_run_id="run-e",
+        verification=successful_verification(dify, no_output=True),
         status="succeeded",
         per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
     )
@@ -1139,11 +1141,11 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
     assert res.context.staged_repair == []
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "reached no End node" in test_result.payload["failure_reason"]
+    assert "produced no terminal output" in test_result.payload["failure_reason"]
     assert res.run.culprit_node_id == "node2"
 
 
-def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
+def test_each_unknown_outcome_stops_at_the_edit_gate():
     from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import Diagnosis, Run, TestInput
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
@@ -1163,14 +1165,17 @@ def test_a_second_consecutive_unknown_outcome_stops_at_the_edit_gate():
     )
 
     first = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
-    assert first.next == PcState.EDIT_APPLY_CHANGES
+    assert first.next == PcState.EDIT_AWAIT_REPAIR
     second = handle_test_affected_paths(env, Turn(actor=_actor()), s, first.context)
 
     assert second.next == PcState.EDIT_AWAIT_REPAIR
-    assert second.context.unknown_outcome_count == 2
+    assert second.context.unknown_outcome_count == 0
     assert second.context.staged_repair == []
     assert second.context.diagnosis is None
-    assert "twice in a row" in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert (
+        "Execution safety requires review"
+        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
 def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repeat():

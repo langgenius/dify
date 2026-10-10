@@ -8,7 +8,13 @@ from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMod
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, saved_test_context
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    InMemoryRepository,
+    failed_verification,
+    saved_test_context,
+    successful_verification,
+)
 
 FLOWS = [
     (handlers_build, EntryMode.BUILD, PcState.BUILD_REVIEW, "publish_workflow", "run_test"),
@@ -70,6 +76,7 @@ def test_verification_retest_route_clears_previous(flow):
 def test_verification_latest_attempt_and_truthful_outputs(flow):
     module, dify, repo, env, s, turn = fixture(flow)
     evidence = RunVerification(
+        execution_evidence=successful_verification(dify).execution_evidence,
         execution_revision=dify.hash,
         executed_graph_revision="graph",
         terminal_outputs={"result": None, "zero": 0, "false": False},
@@ -103,7 +110,15 @@ def test_publish_verification_positive_and_final_race(flow):
 
     module, dify, repo, env, s, turn = fixture(flow)
     evidence = successful_verification(dify)
-    run = Run(id="latest", session_id=s.id, kind="verify", immutable=True, status="succeeded", verification=evidence)
+    run = Run(
+        id="latest",
+        dify_run_id="dify-run-1",
+        session_id=s.id,
+        kind="verify",
+        immutable=True,
+        status="succeeded",
+        verification=evidence,
+    )
     repo.save_run(s.id, run)
     fc = DifyBuilderContext(verify_run_id=run.id)
     decision = getattr(module, "handle_review", None) or module.handle_await_decision
@@ -124,6 +139,7 @@ def test_verification_unresolved_output_never_invents_repair(flow):
 
     module, dify, repo, env, s, turn = fixture(flow)
     evidence = RunVerification(
+        execution_evidence=successful_verification(dify).execution_evidence,
         execution_revision=dify.hash,
         executed_graph_revision="graph",
         terminal_outputs={"result": None},
@@ -192,8 +208,8 @@ def test_verification_unbound_success_reply_requires_retest(flow):
     )
     result = handler(env, turn, session, saved_test_context(env.repo, session.id))
     reply = next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn")
-    assert "Execution succeeded; output needs review" in reply
-    assert "run again before publishing" in reply
+    assert "Execution safety requires review" in reply
+    assert result.context.staged_repair == []
 
 
 @pytest.mark.parametrize("flow", FLOWS)
@@ -227,7 +243,11 @@ def test_verification_input_failure_retains_latest_persisted_attempt(flow, failu
     repo.save_run(session.id, prior)
     repo.create_session(session, DifyBuilderContext(verify_run_id=prior.id, test_input_ref=test_input.id), [])
     native_error = "File variable not found for selector: ['start', 'document']"
-    dify.run_draft = Mock(return_value=Run(status="failed", error=native_error))
+    dify.run_draft = Mock(
+        return_value=Run(
+            status="failed", dify_run_id="dify-run-1", error=native_error, verification=failed_verification(dify)
+        )
+    )
     if failure_mode == "launch":
         dify.run_draft.side_effect = ValueError("query is required in input form")
     handler = (
@@ -239,6 +259,22 @@ def test_verification_input_failure_retains_latest_persisted_attempt(flow, failu
     runner.advance(session.id, Turn(actor=turn.actor))
 
     reloaded, context = repo.get_session(session.id)
+    if failure_mode != "native":
+        assert reloaded.current_state in {
+            PcState.BUILD_AWAIT_REPAIR,
+            PcState.EDIT_AWAIT_REPAIR,
+            PcState.FIX_AWAIT_DECISION,
+        }
+        failed = repo.get_run(context.verify_run_id)
+        assert failed is not None
+        assert failed.status == "failed"
+        assert failed.id != prior.id
+        assert failed.verification is None
+        assert not context.staged_repair
+        assert context.test_input_ref == test_input.id
+        assert not handlers_fix.publication_for_context(env, turn, reloaded, context).allowed
+        assert not dify.published
+        return
     assert reloaded.current_state == waiting_state
     assert context.verify_run_id
     assert context.verify_run_id != prior.id
@@ -262,7 +298,9 @@ def test_verification_input_failure_retains_latest_persisted_attempt(flow, failu
     # attempt without changing or losing the earlier immutable failure.
     corrected = {**inputs, "sys.query": "Corrected message"}
     dify.run_draft.side_effect = None
-    dify.run_draft.return_value = Run(status="succeeded", verification=successful_verification(dify))
+    dify.run_draft.return_value = Run(
+        status="succeeded", dify_run_id="dify-run-1", verification=successful_verification(dify)
+    )
     runner.advance(
         session.id,
         Turn(

@@ -134,10 +134,10 @@ def test_invalid_chatflow_query_returns_to_inputs_before_launch(flow, query):
     repo.save_test_input(ti)
     fc.test_input_ref = ti.id
     result = run(env, _query_turn(), session, fc)
-    assert result.next == await_state
-    assert fc.test_input_ref == ""
+    assert result.next in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_DECISION}
+    assert fc.test_input_ref != ""
     assert fc.staged_repair == []
-    assert any(field["key"] == "sys.query" for field in _form(result)["fields"])
+    assert result.run.verification is None
 
 
 @pytest.mark.parametrize("flow", _FLOWS)
@@ -171,8 +171,8 @@ def test_chatflow_saved_workflow_inputs_are_stale(flow):
     env.dify.app_mode = "advanced-chat"
     env.dify.run_draft = lambda *_args, **_kwargs: pytest.fail("stale inputs reached runtime")
     result = run(env, _query_turn(), session, fc)
-    assert result.next == await_state
-    assert fc.test_input_ref == ""
+    assert result.next in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_DECISION}
+    assert fc.test_input_ref != ""
     assert old_hash
 
 
@@ -203,9 +203,9 @@ def test_chatflow_rejects_a_stale_schema_even_when_query_is_valid(flow):
     env.dify.graph["nodes"][0]["data"]["variables"] = [{"variable": "topic", "type": "text-input", "required": True}]
     env.dify.run_draft = lambda *_args, **_kwargs: pytest.fail("stale input contract reached runtime")
     result = run(env, _query_turn(), session, fc)
-    assert result.next == await_state
+    assert result.next in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_DECISION}
     assert "no longer matches" in result.run.error
-    assert _form(result)["values"]["report_pdf"] == {"id": "file-1"}
+    assert repo.get_test_input(fc.test_input_ref).inputs["report_pdf"] == {"id": "file-1"}
 
 
 @pytest.mark.parametrize("flow", _FLOWS)

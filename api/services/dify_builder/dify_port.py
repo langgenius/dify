@@ -44,9 +44,11 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
+import logging
+import threading
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -60,8 +62,10 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
     BuilderExecutionRefusal,
+    ExecutionEvidenceSummary,
     HttpFixtureSetV1,
     HttpResponseFixtureV1,
+    TrustedExecutionCompletion,
     admit_restricted_workflow,
     admitted_node_bindings,
     scalar_inputs_digest,
@@ -97,7 +101,6 @@ from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
-    error_from_stream_chunk,
     is_unfinished_run_status,
     map_error_frame_run,
     map_run_result,
@@ -105,7 +108,6 @@ from services.dify_builder.run_mapping import (
     node_event_from_stream_chunk,
     run_id_from_stream_chunk,
     run_result_data_from_run_row,
-    run_result_data_from_terminal_chunk,
     stream_chunk_as_mapping,
 )
 from services.errors.app import WorkflowHashNotEqualError
@@ -212,9 +214,99 @@ class _BuilderExecutionLaunch:
     context: BuilderExecutionContext
     recorder: BuilderExecutionRecorder | None = None
     refusal: BuilderExecutionPolicyError | None = None
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _launch_thread: threading.Thread = field(default_factory=threading.current_thread, init=False)
+    _preworker_refusal: BuilderExecutionPolicyError | None = field(default=None, init=False)
+    _claim: tuple[str, str] | None = field(default=None, init=False)
+    _candidate: tuple[threading.Thread, str, str, Literal["returned", "policy_refused", "stopped", "failed"]] | None = (
+        field(default=None, init=False)
+    )
+    _invalid: bool = field(default=False, init=False)
+    _completion: TrustedExecutionCompletion | None = field(default=None, init=False)
+    finalization_closed: bool = field(default=False, init=False)
 
-    def on_refusal(self, error: BuilderExecutionPolicyError) -> None:
-        self.refusal = error
+    def on_worker_finished(
+        self,
+        *,
+        context: BuilderExecutionContext,
+        native_run_id: str,
+        task_id: str,
+        recorder: BuilderExecutionRecorder | None,
+        worker_thread: threading.Thread,
+        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"],
+    ) -> None:
+        with self._lock:
+            try:
+                if (
+                    context != self.context
+                    or worker_thread is not threading.current_thread()
+                    or recorder is not self.recorder
+                    or (self._claim is not None and self._claim != (native_run_id, task_id))
+                    or self._preworker_refusal is not None
+                    or exit_kind not in {"returned", "policy_refused", "stopped", "failed"}
+                ):
+                    raise BuilderExecutionPolicyError("invalid_worker_completion")
+                candidate = (worker_thread, native_run_id, task_id, exit_kind)
+                if self._candidate is not None and self._candidate != candidate:
+                    raise BuilderExecutionPolicyError("conflicting_worker_completion")
+                if not self.finalization_closed:
+                    self._candidate = candidate
+            except BaseException:
+                self._invalid = True
+                raise
+
+    def finish(
+        self, *, response_completed: bool, setup_refusal: BuilderExecutionPolicyError | None = None
+    ) -> TrustedExecutionCompletion:
+        """One nonblocking snapshot after the native response's existing close/join."""
+        with self._lock:
+            if self._completion is not None:
+                return self._completion
+            self.finalization_closed = True
+            candidate = self._candidate
+            finished = candidate is not None and not self._invalid and not candidate[0].is_alive()
+            preworker = (
+                self._preworker_refusal is not None
+                and self._preworker_refusal is self.refusal
+                and not self._invalid
+                and self._claim is None
+                and self.recorder is None
+                and candidate is None
+            )
+            self._completion = TrustedExecutionCompletion(
+                context=self.context,
+                native_run_id=self._claim[0] if self._claim else None,
+                task_id=self._claim[1] if self._claim else None,
+                worker_finished=finished,
+                worker_exit=candidate[3] if candidate is not None else "not_observed",
+                recorder_healthy=self.recorder is not None and self.recorder.healthy and not self._invalid,
+                response_completed=(
+                    response_completed if setup_refusal is None else preworker and self.refusal is setup_refusal
+                ),
+                preworker_refusal=preworker,
+                refusal=BuilderExecutionRefusal(reason_code=self.refusal.reason_code) if self.refusal else None,
+            )
+            return self._completion
+
+    def on_refusal(self, error: BuilderExecutionPolicyError, *, preworker: bool = False) -> None:
+        with self._lock:
+            if preworker and (
+                threading.current_thread() is not self._launch_thread
+                or self._claim is not None
+                or self.recorder is not None
+                or self._candidate is not None
+                or self._invalid
+                or self.finalization_closed
+                or (self.refusal is not None and self.refusal is not error)
+            ):
+                self._invalid = True
+                raise BuilderExecutionPolicyError("invalid_preworker_refusal")
+            if self._preworker_refusal is not None and self._preworker_refusal is not error:
+                self._invalid = True
+            if not self.finalization_closed:
+                self.refusal = error
+                if preworker:
+                    self._preworker_refusal = error
 
     def admit_raw(self, workflow: Workflow, app: App) -> None:
         admit_restricted_workflow(self.context, restricted_admission_snapshot(workflow, app))
@@ -255,14 +347,20 @@ class _BuilderExecutionLaunch:
                 native_run_id=entity.workflow_execution_id,
                 task_id=entity.task_id,
             )
-            self.recorder = self.service.recorder(
+            with self._lock:
+                if self._preworker_refusal is not None:
+                    self._invalid = True
+                self._claim = (entity.workflow_execution_id, entity.task_id)
+            recorder = self.service.recorder(
                 context=self.context,
                 native_run_id=entity.workflow_execution_id,
                 task_id=entity.task_id,
             )
-            return self.recorder
+            with self._lock:
+                self.recorder = recorder
+            return recorder
         except BuilderExecutionPolicyError as error:
-            self.refusal = error
+            self.on_refusal(error)
             raise
 
 
@@ -520,8 +618,6 @@ class WorkflowServiceDifyPort:
                     submitted_inputs=inputs,
                     effective_inputs=effective_inputs,
                 )
-                before_revision = context.execution_revision
-                before_graph_revision = context.graph_revision
                 launch = _BuilderExecutionLaunch(policy, context)
                 set_login_user(account)
                 response = AppGenerateService.generate(
@@ -536,68 +632,112 @@ class WorkflowServiceDifyPort:
                     builder_execution_admit=launch,
                 )
         except BuilderExecutionPolicyError as error:
-            return _unsupported_run(error)
+            if launch is None:
+                return _unsupported_run(error)
+            launch.on_refusal(error)
+            return self._finalize_launch(launch, actor, response_completed=False, setup_refusal=error)
+        except BaseException:
+            if launch is not None:
+                self._close_failed_launch(launch)
+            raise
 
-        final: dict[str, Any] = {}
-        stream_run_id = ""
-        # The first explicit ``event: error`` frame, if any. It is NOT a
-        # terminal frame (no run status), so it is only consulted when no
-        # terminal frame arrives -- see ``_finish_run``.
-        error_frame: dict[str, str] | None = None
-
-        # A completed mapping response carries terminal data directly. Iterating
-        # its keys as stream chunks would lose the run ID and final status.
-        if isinstance(response, Mapping):
-            final = dict(response.get("data") or {})
-            if not final.get("id"):
-                final["id"] = str(response.get("workflow_run_id") or "")
-            return self._bind_run(
-                self._finish_run(tenant_id, app_id, final, stream_run_id=""),
-                app_id,
-                actor,
-                before_revision,
-                before_graph_revision,
-                execution_recorder=launch.recorder,
-            )
-
+        completed = False
+        primary: BaseException | None = None
+        candidate_ids: set[str] = set()
         try:
-            for chunk in response:
-                # Streaming yields SSE-formatted strings ("data: {...}" events
-                # and "event: ping" keep-alives), not dicts.
-                payload = stream_chunk_as_mapping(chunk)
-                if payload is None:
-                    continue
-                if on_workflow_event is not None:
-                    on_workflow_event(payload)
-                # Lifecycle events identify the run before its terminal frame
-                # arrives; Chatflow message events may omit the run ID.
-                stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
-                node_event = node_event_from_stream_chunk(payload)
-                if node_event is not None:
-                    on_event(node_event)
-                    continue
-                terminal = run_result_data_from_terminal_chunk(payload)
-                if terminal is not None:
-                    final = terminal
-                error_frame = error_frame or error_from_stream_chunk(payload)
+            if isinstance(response, Mapping):
+                candidate = str((response.get("data") or {}).get("id") or response.get("workflow_run_id") or "")
+                if candidate:
+                    candidate_ids.add(candidate)
+            else:
+                for chunk in response:
+                    payload = stream_chunk_as_mapping(chunk)
+                    if payload is None:
+                        continue
+                    if on_workflow_event is not None:
+                        on_workflow_event(payload)
+                    candidate = run_id_from_stream_chunk(payload)
+                    if candidate:
+                        candidate_ids.add(candidate)
+                    node_event = node_event_from_stream_chunk(payload)
+                    if node_event is not None:
+                        on_event(node_event)
+            completed = True
+        except BaseException as error:
+            primary = error
+            raise
         finally:
-            # In streaming mode ``_run_with_guardrails`` does NOT release the
-            # app's rate-limit slot; only closing the generator does. Normal
-            # exhaustion self-closes, so this only matters when ``on_event``
-            # raises -- but a leaked slot blocks every later test run.
-            close = getattr(response, "close", None)
-            if callable(close):
-                close()
+            try:
+                close = getattr(response, "close", None)
+                if callable(close):
+                    close()
+            except BaseException:
+                completed = False
+                if primary is None:
+                    self._close_failed_launch(launch)
+                    raise
+                logging.getLogger(__name__).warning("Builder response close failed after primary failure")
+            finally:
+                if primary is not None:
+                    self._close_failed_launch(launch)
+        return self._finalize_launch(launch, actor, response_completed=completed, candidate_ids=candidate_ids)
 
-        if launch.refusal is not None and not stream_run_id:
-            return _unsupported_run(launch.refusal)
+    @staticmethod
+    def _close_failed_launch(launch: _BuilderExecutionLaunch) -> None:
+        try:
+            launch.service.seal(
+                request_id=launch.context.request_id, completion=launch.finish(response_completed=False)
+            )
+        except Exception:
+            logging.getLogger(__name__).warning("Builder incomplete execution could not be sealed")
+
+    def _finalize_launch(
+        self,
+        launch: _BuilderExecutionLaunch,
+        actor: Actor,
+        *,
+        response_completed: bool,
+        candidate_ids: set[str] | None = None,
+        setup_refusal: BuilderExecutionPolicyError | None = None,
+    ) -> Run:
+        completion = launch.finish(response_completed=response_completed, setup_refusal=setup_refusal)
+        if candidate_ids and candidate_ids != {completion.native_run_id}:
+            completion = completion.model_copy(update={"response_completed": False})
+        try:
+            summary = launch.service.seal(request_id=launch.context.request_id, completion=completion)
+        except Exception:
+            logging.getLogger(__name__).warning("Builder execution seal unavailable")
+            summary = ExecutionEvidenceSummary(
+                request_id=launch.context.request_id,
+                mode=launch.context.mode,
+                sealed=False,
+                safety_outcome="execution_evidence_unknown",
+                sandbox_profile=launch.context.sandbox_profile,
+                fixture_digest=launch.context.fixture_digest,
+            )
+        # SQL status/outputs are authoritative; terminal SSE is only a consistency candidate.
+        result = self._finish_run(launch.context.tenant_id, launch.context.app_id, {}, summary.native_run_id or "")
+        run, _ = result
+        if run.verification is None:
+            from core.dify_builder.models import RunVerification
+
+            run.verification = RunVerification(
+                execution_revision="",
+                executed_graph_revision="",
+                terminal_outputs=None,
+                output_findings=[],
+                executed_node_ids=[],
+                no_output_dead_branch=False,
+            )
+        run.verification.execution_evidence = summary
+        if completion.refusal is not None:
+            run.execution_refusal = completion.refusal
+            if not summary.native_run_id:
+                run.error = ""
+                if summary.safety_outcome == "unsupported_safe_execution":
+                    run.status = "failed"
         return self._bind_run(
-            self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame),
-            app_id,
-            actor,
-            before_revision,
-            before_graph_revision,
-            execution_recorder=launch.recorder,
+            result, launch.context.app_id, actor, launch.context.execution_revision, launch.context.graph_revision
         )
 
     def graph_revision(self, graph: Graph) -> str:

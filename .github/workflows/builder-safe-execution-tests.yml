@@ -1,0 +1,55 @@
+name: Builder safe execution
+on:
+  push:
+    branches: [build/dify-builder]
+    paths:
+      - 'api/core/dify_builder/**'
+      - 'api/services/dify_builder/**'
+      - 'api/services/app_generate_service.py'
+      - 'api/tasks/workflow_execute_task.py'
+      - 'api/pyproject.toml'
+      - 'api/uv.lock'
+      - 'api/core/app/**'
+      - 'api/core/workflow/**'
+      - 'api/core/repositories/**'
+      - 'api/models/dify_builder.py'
+      - 'api/migrations/versions/*builder*'
+      - 'api/tests/**/dify_builder/**'
+      - 'api/tests/**/test_builder*'
+      - 'api/tests/fixtures/workflow/builder_restricted/**'
+      - '.github/workflows/builder-safe-execution-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: builder-safe-execution-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      STORAGE_TYPE: opendal
+      OPENDAL_SCHEME: fs
+      OPENDAL_FS_ROOT: /tmp/dify-builder-storage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Real native persistence, PostgreSQL races and migration gate
+        run: >-
+          uv run --project api --no-sync pytest -p no:benchmark --no-cov --timeout=360
+          api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py
+          api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py
+          --junitxml=builder-safe-execution.xml
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-safe-execution-native-postgres
+          path: builder-safe-execution.xml

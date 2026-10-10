@@ -626,6 +626,20 @@ class TestResultCard(_Card):
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
     review_note: str | None = None
+    execution_mode: Literal["restricted", "mock"] | None = None
+    safety_outcome: (
+        Literal[
+            "unsupported_safe_execution",
+            "execution_blocked",
+            "simulation_completed",
+            "restricted_execution_completed",
+            "execution_evidence_unknown",
+            "native_failed",
+        ]
+        | None
+    ) = None
+    simulated_node_ids: list[str] = field(default_factory=list)
+    blocked_node_ids: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

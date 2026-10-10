@@ -293,6 +293,11 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(owned, m
     secret.assert_not_called()
     assert launch.recorder is None
     assert launch.refusal is queue.publish_error.call_args.args[0]
+    completion = launch.finish(response_completed=True)
+    assert completion.worker_finished
+    assert completion.worker_exit == "policy_refused"
+    assert not completion.preworker_refusal
+    assert completion.native_run_id is None
 
 
 def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(owned, monkeypatch):
@@ -397,3 +402,59 @@ def test_resume_marker_refused_before_restore_trace_or_cancellation_reset(monkey
     restore.assert_not_called()
     reset.assert_not_called()
     repo.resume_workflow_pause.assert_not_called()
+
+
+def test_native_worker_outer_finally_acknowledges_context_entry_failure(owned, monkeypatch):
+    import contextvars
+    import threading
+    from contextlib import contextmanager
+    from typing import cast
+
+    from flask import current_app
+    from werkzeug.local import LocalProxy
+
+    import core.app.apps.workflow.app_generator as module
+    from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+    from services.dify_builder.dify_port import _BuilderExecutionLaunch
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
+
+    marker = prepare_inputs(owned)
+    launch = _BuilderExecutionLaunch(service_module().BuilderExecutionPolicyService(owned[0]), marker)
+
+    @contextmanager
+    def broken_context(*_args, **_kwargs):
+        raise RuntimeError("context entry failed")
+        yield
+
+    monkeypatch.setattr(module, "preserve_flask_contexts", broken_context)
+    entity = WorkflowAppGenerateEntity.model_construct(
+        builder_execution=marker, workflow_execution_id="allocated", task_id="task"
+    )
+    app = cast(LocalProxy, current_app)._get_current_object()
+    errors = []
+
+    def target():
+        try:
+            module.WorkflowAppGenerator()._generate_worker(
+                flask_app=app,
+                application_generate_entity=entity,
+                queue_manager=MagicMock(),
+                context=contextvars.copy_context(),
+                variable_loader=MagicMock(),
+                workflow_execution_repository=MagicMock(),
+                workflow_node_execution_repository=MagicMock(),
+                builder_execution_admit=launch,
+            )
+        except RuntimeError as error:
+            errors.append(str(error))
+
+    thread = threading.Thread(target=target)
+    thread.start()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == ["context entry failed"]
+    completion = launch.finish(response_completed=False)
+    assert completion.worker_finished
+    assert completion.worker_exit == "failed"
+    assert not completion.recorder_healthy
+    assert completion.native_run_id is None

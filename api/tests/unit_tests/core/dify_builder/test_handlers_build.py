@@ -19,7 +19,13 @@ from core.dify_builder.models import (
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeBuildDifyPort,
+    FakeDifyPort,
+    InMemoryRepository,
+    failed_verification,
+    successful_verification,
+)
 
 
 def _actor() -> Actor:
@@ -878,11 +884,8 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair():
     assert "model" in assistant.payload["reply_text"].lower()
 
 
-def test_test_and_repair_running_status_is_not_treated_as_failure():
-    """A truncated-stream run (status="running" -- the outcome is genuinely
-    unknown, per Run.status's third value) must NOT be diagnosed or repaired:
-    it returns to build.execution (re-runnable) with a neutral notice
-    instead of the failure path."""
+def test_missing_proof_running_result_stops_at_review():
+    """A truncated verify result requires review and never enters diagnosis."""
     from core.dify_builder.handlers_build import handle_test_and_repair
     from core.dify_builder.models import Run
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
@@ -903,7 +906,7 @@ def test_test_and_repair_running_status_is_not_treated_as_failure():
 
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
 
-    assert result.next == PcState.BUILD_EXECUTION
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
     assert result.run is not None
     assert result.run.status == "running"
     assert not diagnose_calls  # diagnose must NOT be called for an unknown outcome
@@ -911,11 +914,11 @@ def test_test_and_repair_running_status_is_not_treated_as_failure():
     assert result.context.diagnosis is None
     kinds = [i.kind for i in result.items]
     assert "notice" not in kinds
-    assert "test_result" not in kinds  # not labeled pass/fail
+    assert "test_result" in kinds
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == []
-    assert "outcome couldn't be determined" in assistant.payload["reply_text"]
+    assert assistant.payload["cards"] == ["test_result"]
+    assert "Execution safety requires review" in assistant.payload["reply_text"]
 
 
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
@@ -958,11 +961,8 @@ def test_test_and_repair_run_draft_raises_captures_error_on_run():
     assert "kaboom-provider" in (result.run.error or "")
 
 
-def test_test_and_repair_run_draft_raises_input_error_routes_to_testdata_gate():
-    """A launch-time exception whose message is an input-validation error
-    (stale test inputs no longer match the current start node) must route back
-    to the testdata gate -- not the blind config-repair loop -- and the real
-    error must be captured on the run."""
+def test_launch_input_error_without_proof_stops_at_review():
+    """Launch error text is preserved, but cannot authorize diagnosis or automatic retry."""
     from core.dify_builder.handlers_build import handle_test_and_repair
     from core.dify_builder.models import TestInput
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -976,8 +976,8 @@ def test_test_and_repair_run_draft_raises_input_error_routes_to_testdata_gate():
 
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
 
-    assert result.next == PcState.BUILD_AWAIT_TESTDATA
-    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.test_input_ref == "ti-1"  # Missing proof retains inputs for review.
     assert result.run is not None
     assert "in input form" in (result.run.error or "")
 
@@ -1784,11 +1784,15 @@ def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate():
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, mocked.context)
 
     assert engine.seen_inputs == [{"topic": "quarterly report"}]
-    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
     assert result.run is not None
     assert "h_url is required in input form" in (result.run.error or "")
-    form = next(i for i in result.items if i.kind == "form")
-    assert "h_url" in [f["key"] for f in form.payload["fields"]]
+    assert result.context is not None
+    assert result.context.staged_repair == []
+    assert (
+        next(i for i in result.items if i.kind == "test_result").payload["safety_outcome"]
+        == "execution_evidence_unknown"
+    )
 
 
 def test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form():
@@ -1809,7 +1813,7 @@ def test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form():
     assert engine.seen_inputs == [{"topic": "quarterly report"}]
     assert result.run is not None
     assert env.repo.get_test_input(result.run.inputs_ref).inputs == {"topic": "quarterly report"}
-    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
 
 
 def test_build_await_testdata_is_waiting_and_projected():
@@ -2321,6 +2325,7 @@ def _failed_run(node_id: str, error: str, launch_error: str = ""):
 
     return Run(
         id="r-1",
+        verification=failed_verification(FakeBuildDifyPort()),
         status="failed",
         per_node=[NodeOutput(node_id=node_id, status="failed", error=error)] if node_id else [],
         error=launch_error,
@@ -2530,11 +2535,8 @@ def _esq1_302_launch_failed_run(*_a, **_k):
     )
 
 
-def test_a_launch_error_frame_reaches_diagnose_and_trips_the_breaker_on_the_third_repeat():
-    """THE ESQ1-302 regression, driven through the real handler with the Run the
-    port now produces for the trace's error frame. Before this fix the handler
-    threw ``Run.error`` away (``run_error = ""``), so a launch failure had no
-    signature and the breaker could never fire on it."""
+def test_launch_error_without_native_proof_never_stages_repair():
+    """Repeated launch errors retain their text and stay at review without diagnosis."""
     from core.dify_builder.handlers_build import _MAX_REPEATED_REPAIRS, _failure_signature, handle_test_and_repair
     from core.dify_builder.models import TestInput
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
@@ -2560,12 +2562,15 @@ def test_a_launch_error_frame_reaches_diagnose_and_trips_the_breaker_on_the_thir
         assert res.next == PcState.BUILD_AWAIT_REPAIR
         assert res.run.error == _ESQ1_302_LAUNCH_ERROR  # kept on the persisted Run
         assert "notice" not in [i.kind for i in res.items]  # NOT the unknown-outcome bounce
-        assert staged == 1  # diagnosed, a repair staged at the gate
-        assert last == signature
-    assert [attempts for attempts, _, _ in snapshots] == [0, 1, 2]
+        assert staged == 0  # Missing native proof cannot authorize repair.
+        assert last == ""
+    assert [attempts for attempts, _, _ in snapshots] == [0, 0, 0]
     final = results[-1]
     assert final.context.staged_repair == []
-    assert "stopped retrying" in next(i for i in final.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert (
+        "Execution safety requires review"
+        in next(i for i in final.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
 def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing():
@@ -2682,6 +2687,7 @@ def _succeeded_run(per_node_ids: list[str]):
             kind="verify",
             immutable=True,
             dify_run_id="run-303",
+            verification=successful_verification(FakeBuildDifyPort(), no_output=per_node_ids == ["node1", "node2"]),
             status="succeeded",
             per_node=[NodeOutput(node_id=i, status="succeeded", outputs={}) for i in per_node_ids],
         )
@@ -2710,7 +2716,7 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass():
     assert res.context.staged_repair == []  # nothing to diagnose: the engine reported no error
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "reached no End node" in test_result.payload["failure_reason"]
+    assert "produced no terminal output" in test_result.payload["failure_reason"]
     assert res.run.culprit_node_id == "node2"  # the branch node that routed nowhere
     assert "All checks passed" not in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
     assert {"event": "mark_test_error", "dify_run_id": "run-303"} in events
@@ -2825,10 +2831,8 @@ def _unknown_outcome_run(*_a, **_k):
     )
 
 
-def test_an_unknown_outcome_is_re_runnable_once_and_capped_on_the_second():
-    """The unknown-outcome branch returned to build.execution with no limit: a
-    stream that keeps ending early could be re-run forever. The second
-    consecutive unknown outcome now stops at the gate."""
+def test_unknown_outcome_requires_review_on_every_attempt():
+    """Missing execution proof stops immediately at review on each attempt."""
     from core.dify_builder.handlers_build import handle_test_and_repair
     from core.dify_builder.handlers_fix import MAX_UNKNOWN_OUTCOMES
     from core.dify_builder.models import TestInput
@@ -2843,18 +2847,21 @@ def test_an_unknown_outcome_is_re_runnable_once_and_capped_on_the_second():
     fc = DifyBuilderContext(test_input_ref="ti-1")
 
     first = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
-    assert first.next == PcState.BUILD_EXECUTION  # unchanged: one unknown outcome is re-runnable
-    assert first.context.unknown_outcome_count == 1
+    assert first.next == PcState.BUILD_AWAIT_REPAIR  # Missing proof stops immediately.
+    assert first.context.unknown_outcome_count == 0
     assert (
-        "outcome couldn't be determined"
+        "Execution safety requires review"
         in next(i for i in first.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
     second = handle_test_and_repair(env, Turn(actor=_actor()), s, first.context)
     assert second.next == PcState.BUILD_AWAIT_REPAIR
-    assert second.context.unknown_outcome_count == 2
+    assert second.context.unknown_outcome_count == 0
     assert second.context.staged_repair == []
-    assert "twice in a row" in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert (
+        "Execution safety requires review"
+        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
 def test_a_determinate_outcome_resets_the_unknown_outcome_count():
