@@ -5,11 +5,12 @@ from collections.abc import Callable, Iterator
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.datasource.graph.graph_base import StoredChunkLink, StoredRelation
+from core.rag.datasource.graph.graph_base import StoredChunkLink, StoredEntity, StoredRelation
+from core.rag.datasource.graph.graph_factory import GraphStore
 from core.rag.datasource.graph.postgres.postgres_graph_store import PostgresGraphStore
 from core.rag.datasource.keyword.jieba import jieba_keyword_table_handler as jieba_handler_module
 from core.rag.graph import graph_retrieval as graph_retrieval_module
-from core.rag.graph.entities import ChunkGraph, GraphEntity, GraphExtraction, GraphRelation
+from core.rag.graph.entities import ChunkGraph, GraphEntity, GraphExtraction, GraphIndexSetting, GraphRelation
 from core.rag.graph.graph_retrieval import GraphRetrieval, extract_query_keywords
 from models.dataset import Dataset, DocumentSegment
 from models.enums import SegmentStatus
@@ -844,3 +845,33 @@ class TestScoreChunksDirectly:
 
         assert scores == {"node-1": 1.0, "node-2": 0.5}
         assert paths["node-1"].seed_entity == "Acme"
+
+
+class TestWalkDirectly:
+    def test_an_edge_off_the_frontier_is_not_walked(self, session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        dataset = _dataset(max_depth=1)
+        store = GraphStore(dataset)
+        seed = StoredEntity(id="acme", name="acme", display_name="Acme", entity_type="ORGANIZATION")
+        # The store is asked for edges touching the frontier; one that touches
+        # neither end has no parent to inherit a score from.
+        monkeypatch.setattr(
+            store, "get_relations", lambda *_args, **_kwargs: [_stored_relation("relation-1", "initech", "hooli")]
+        )
+        monkeypatch.setattr(store, "get_entities_by_ids", lambda *_args, **_kwargs: [])
+        setting = GraphIndexSetting.model_validate(dataset.graph_index_setting)
+
+        entity_hits, relation_hits = GraphRetrieval._walk(store, [seed], setting, session=session)
+
+        assert list(entity_hits) == ["acme"]
+        assert relation_hits == {}
+
+
+class TestResolveSegmentsDirectly:
+    def test_a_segment_without_a_node_id_is_never_cited(self, session: Session) -> None:
+        _segment(session, "", "doc-1", "A chunk that was never given a node id.")
+        _segment(session, "node-1", "doc-1", "Acme ships widgets.")
+
+        segments = GraphRetrieval._resolve_segments(_dataset(), {"", "node-1"}, session=session)
+
+        # A result is cited by its node id; one without an id cannot be cited.
+        assert list(segments) == ["node-1"]

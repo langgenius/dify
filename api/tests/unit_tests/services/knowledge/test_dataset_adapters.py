@@ -11,6 +11,7 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
+from core.rag.datasource.graph.graph_base import StoredEntity, StoredRelation
 from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
@@ -481,3 +482,35 @@ def test_retry_is_a_no_op_while_the_graph_is_off(operations: SQLAlchemyDatasetOp
         operations.retry_graph(REF)
 
     task.delay.assert_not_called()
+
+
+def test_graph_returns_the_explored_subgraph_as_plain_payloads(
+    operations: SQLAlchemyDatasetOperations, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    explored: list[tuple[str, str | None, int]] = []
+
+    def explore(
+        dataset: Dataset, query: str | None, limit: int, **_kwargs: object
+    ) -> tuple[list[StoredEntity], list[StoredRelation]]:
+        explored.append((dataset.id, query, limit))
+        return (
+            [StoredEntity(id="e1", name="acme", display_name="Acme", entity_type="organization")],
+            [StoredRelation(id="r1", source_entity_id="e1", target_entity_id="e1", predicate="owns")],
+        )
+
+    monkeypatch.setattr(dataset_adapters.GraphIndexService, "explore", explore)
+
+    result = operations.graph(REF, query="acme", limit=25)
+
+    assert explored == [("dataset", "acme", 25)]
+    assert result["entities"] == [
+        {
+            "id": "e1",
+            "name": "acme",
+            "display_name": "Acme",
+            "entity_type": "organization",
+            "description": "",
+            "frequency": 1,
+        }
+    ]
+    assert result["relations"][0]["predicate"] == "owns"

@@ -114,18 +114,15 @@ class GraphRetrieval:
         if not seeds:
             return []
 
+        # The seeds are always hits themselves, so there is always something to
+        # look up provenance for.
         entity_hits, relation_hits = cls._walk(store, seeds, setting, session=session, document_ids=document_ids_filter)
-        if not entity_hits and not relation_hits:
-            return []
-
         links = store.get_chunk_links(
             list(entity_hits.keys()),
             list(relation_hits.keys()),
             session=session,
             document_ids=document_ids_filter,
         )
-        if not links:
-            return []
 
         # Resolve the segments first: a disabled or still-indexing chunk must not
         # even contribute to the scores of the chunks it is ranked against.
@@ -139,9 +136,6 @@ class GraphRetrieval:
             return []
 
         chunk_scores, chunk_paths = cls._score_chunks(links, entity_hits, relation_hits, visible=segments.keys())
-        if not chunk_scores:
-            return []
-
         return cls._build_documents(chunk_scores, chunk_paths, segments, top_k)
 
     @staticmethod
@@ -284,8 +278,10 @@ class GraphRetrieval:
                         path_relations=path_relations,
                     )
 
-                existing_entity_hit = entity_hits.get(child_id)
-                if existing_entity_hit is None:
+                # Every seed starts at 1.0 and hop_decay is at most 1, so a
+                # breadth-first walk reaches each entity at its best score
+                # first; a later visit can only tie or score lower.
+                if child_id not in entity_hits:
                     entity_hits[child_id] = _EntityHit(
                         entity_id=child_id,
                         score=score,
@@ -295,12 +291,6 @@ class GraphRetrieval:
                         path_relations=path_relations,
                     )
                     next_frontier.append(child_id)
-                elif score > existing_entity_hit.score:
-                    existing_entity_hit.score = score
-                    existing_entity_hit.hop = hop
-                    existing_entity_hit.seed_display_name = parent_hit.seed_display_name
-                    existing_entity_hit.path_entities = path_entities
-                    existing_entity_hit.path_relations = path_relations
 
             frontier = next_frontier
 
@@ -432,14 +422,15 @@ class GraphRetrieval:
         segments: dict[str, DocumentSegment],
         top_k: int,
     ) -> list[Document]:
-        """Turn scored chunk ids into documents, preserving citation metadata."""
+        """Turn scored chunk ids into documents, preserving citation metadata.
+
+        Only chunks in ``segments`` are ever scored, so each ranked id has one.
+        """
         ranked_node_ids = sorted(chunk_scores, key=lambda node_id: chunk_scores[node_id], reverse=True)[:top_k]
 
         documents: list[Document] = []
         for node_id in ranked_node_ids:
-            segment = segments.get(node_id)
-            if not segment:
-                continue
+            segment = segments[node_id]
             path = chunk_paths.get(node_id)
             documents.append(
                 Document(

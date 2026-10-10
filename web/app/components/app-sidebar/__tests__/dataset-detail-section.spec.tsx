@@ -160,4 +160,31 @@ describe('DatasetDetailSection', () => {
       screen.queryByRole('link', { name: 'common.datasetMenus.hitTesting' }),
     ).not.toBeInTheDocument()
   })
+
+  it('should link to the knowledge graph once the dataset has opted into it', () => {
+    mockDataset = createDataset({ graph_index_setting: { enabled: true } })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(
+      screen.getByRole('link', { name: 'common.datasetMenus.knowledgeGraph' }),
+    ).toHaveAttribute('href', '/datasets/dataset-1/graph')
+  })
+
+  it.each([
+    ['the graph is off', createDataset({ graph_index_setting: { enabled: false } })],
+    // External knowledge bases are retrieved elsewhere and never have a graph.
+    [
+      'the dataset is external',
+      createDataset({ provider: 'external', graph_index_setting: { enabled: true } }),
+    ],
+  ])('should hide the knowledge graph when %s', (_case, dataset) => {
+    mockDataset = dataset
+
+    render(<DatasetDetailSection expand />)
+
+    expect(
+      screen.queryByRole('link', { name: 'common.datasetMenus.knowledgeGraph' }),
+    ).not.toBeInTheDocument()
+  })
 })

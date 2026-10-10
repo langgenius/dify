@@ -431,6 +431,69 @@ class TestRetrievalServiceInternals:
         # The leg cannot reach that shared list even by accident.
         assert "exceptions" not in inspect.signature(RetrievalService.graph_search).parameters
 
+    @patch("core.rag.datasource.retrieval_service.GraphRetrieval")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", return_value=None)
+    def test_graph_search_skips_a_dataset_deleted_mid_query(
+        self, mock_get_dataset, mock_graph_retrieval, internal_flask_app
+    ):
+        all_documents: list[Document] = []
+
+        RetrievalService.graph_search(
+            flask_app=internal_flask_app,
+            dataset_id="deleted-dataset",
+            query="query",
+            top_k=5,
+            all_documents=all_documents,
+        )
+
+        # Like any other graph failure, the leg is dropped rather than failing
+        # the query the other legs can still answer.
+        mock_graph_retrieval.retrieve.assert_not_called()
+        assert all_documents == []
+
+    @pytest.mark.parametrize(("graph_enabled", "expected_calls"), [(True, 1), (False, 0)])
+    def test_retrieve_internal_runs_the_graph_leg_only_for_graph_enabled_datasets(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        internal_dataset,
+        internal_flask_app,
+        graph_enabled: bool,
+        expected_calls: int,
+    ):
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+        internal_dataset.graph_index_setting = {"enabled": graph_enabled}
+        graph_doc = create_mock_document("graph", "graph-doc", 0.7)
+
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search"),
+            patch("core.rag.datasource.retrieval_service.RetrievalService.graph_search") as mock_graph_search,
+        ):
+            mock_graph_search.side_effect = lambda **kwargs: kwargs["all_documents"].append(graph_doc)
+            all_documents: list[Document] = []
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
+                dataset=internal_dataset,
+                all_documents=all_documents,
+                exceptions=[],
+                query="query",
+                top_k=3,
+                document_ids_filter=["doc-1"],
+            )
+
+        assert mock_graph_search.call_count == expected_calls
+        if graph_enabled:
+            assert mock_graph_search.call_args.kwargs["document_ids_filter"] == ["doc-1"]
+            assert all_documents == [graph_doc]
+        else:
+            assert all_documents == []
+
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_embedding_search_text_without_reranking(

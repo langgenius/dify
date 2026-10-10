@@ -5,7 +5,7 @@ entities, relations, and the chunk provenance links that keep graph hits
 citable back to ``document_segments``.
 
 Revision ID: c7a41f0b9d52
-Revises: e7b2a9c4d601
+Revises: a8c9e2f1b704
 Create Date: 2026-09-30 12:00:00.000000
 
 """
@@ -17,7 +17,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "c7a41f0b9d52"
-down_revision = "e7b2a9c4d601"
+down_revision = "a8c9e2f1b704"
 branch_labels = None
 depends_on = None
 
@@ -42,9 +42,7 @@ def upgrade():
         batch_op.create_index("dataset_graph_entity_tenant_idx", ["tenant_id"], unique=False)
         batch_op.create_index("dataset_graph_entity_dataset_idx", ["dataset_id"], unique=False)
         batch_op.create_index("dataset_graph_entity_dataset_type_idx", ["dataset_id", "entity_type"], unique=False)
-        batch_op.create_index(
-            "dataset_graph_entity_dataset_frequency_idx", ["dataset_id", "frequency"], unique=False
-        )
+        batch_op.create_index("dataset_graph_entity_dataset_frequency_idx", ["dataset_id", "frequency"], unique=False)
 
     op.create_table(
         "dataset_graph_relations",

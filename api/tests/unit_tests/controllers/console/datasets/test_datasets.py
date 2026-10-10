@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
@@ -17,6 +18,10 @@ from controllers.console.datasets.datasets import (
     DatasetAutoDisableLogApi,
     DatasetEnableApiApi,
     DatasetErrorDocs,
+    DatasetGraphApi,
+    DatasetGraphQuery,
+    DatasetGraphRetryApi,
+    DatasetGraphStatsApi,
     DatasetIndexingEstimateApi,
     DatasetIndexingStatusApi,
     DatasetListApi,
@@ -85,6 +90,7 @@ def datasets(monkeypatch):
         (DatasetErrorDocs, lambda service: service.error_documents),
         (DatasetPermissionUserListApi, lambda service: service.partial_members),
         (DatasetAutoDisableLogApi, lambda service: service.auto_disable_logs),
+        (DatasetGraphStatsApi, lambda service: service.graph_stats),
     ],
 )
 @pytest.mark.parametrize(
@@ -324,3 +330,71 @@ def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, loca
     assert check.scene is scene
     assert isinstance(check.locator, locator_type)
     estimates.estimate_new_sources.assert_not_called()
+
+
+def test_graph_stats_report_the_failure_summary_and_build_state(datasets):
+    failed_at = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
+    datasets.graph_stats.return_value = {
+        "entity_count": 3,
+        "relation_count": 2,
+        "entity_types": {"ORGANIZATION": 3},
+        "failed_chunk_count": 1,
+        "last_error": "503 UNAVAILABLE",
+        "last_failed_at": failed_at,
+        "building": True,
+    }
+
+    result, status = unwrap(DatasetGraphStatsApi.get)(DatasetGraphStatsApi(), CONTEXT, DATASET_ID)
+
+    assert status == 200
+    assert result["failed_chunk_count"] == 1
+    assert result["last_error"] == "503 UNAVAILABLE"
+    # The console renders timestamps, not datetimes.
+    assert result["last_failed_at"] == int(failed_at.timestamp())
+    assert result["building"] is True
+
+
+def test_graph_forwards_the_query_and_serializes_the_subgraph(datasets):
+    datasets.graph.return_value = {
+        "entities": [
+            {
+                "id": "e1",
+                "name": "acme",
+                "display_name": "Acme",
+                "entity_type": "ORGANIZATION",
+                "description": "",
+                "frequency": 1,
+            }
+        ],
+        "relations": [],
+    }
+
+    result, status = unwrap(DatasetGraphApi.get)(
+        DatasetGraphApi(), DatasetGraphQuery(query="acme", limit=10), CONTEXT, DATASET_ID
+    )
+
+    datasets.graph.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), query="acme", limit=10)
+    assert status == 200
+    assert [entity["display_name"] for entity in result["entities"]] == ["Acme"]
+
+
+def test_graph_maps_access_errors(datasets):
+    datasets.graph.side_effect = DatasetNotFoundError()
+
+    with pytest.raises(NotFound):
+        unwrap(DatasetGraphApi.get)(DatasetGraphApi(), DatasetGraphQuery(), CONTEXT, DATASET_ID)
+
+
+def test_graph_retry_queues_the_failed_chunks(datasets):
+    assert unwrap(DatasetGraphRetryApi.post)(DatasetGraphRetryApi(), CONTEXT, DATASET_ID) == (
+        {"result": "success"},
+        200,
+    )
+    datasets.retry_graph.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
+
+
+def test_graph_retry_maps_access_errors(datasets):
+    datasets.retry_graph.side_effect = DatasetAccessDeniedError()
+
+    with pytest.raises(Forbidden):
+        unwrap(DatasetGraphRetryApi.post)(DatasetGraphRetryApi(), CONTEXT, DATASET_ID)

@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.datasource.graph.postgres.postgres_graph_store import PostgresGraphStore
@@ -400,3 +400,107 @@ class TestQueries:
 
         assert [link.index_node_id for link in links] == ["node-1"]
         assert links[0].document_id == "doc-1"
+
+
+class TestMergeEdgeCases:
+    def test_a_chunk_that_extracted_nothing_writes_nothing(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [])], session=session)
+
+        assert _count(session, DatasetGraphEntity) == 0
+        assert _count(session, DatasetGraphChunkLink) == 0
+
+    def test_an_entity_listed_twice_in_one_chunk_is_linked_once(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme"), _entity("acme")])], session=session)
+
+        # One chunk supports the entity once, however often the model repeats it.
+        assert _count(session, DatasetGraphChunkLink) == 1
+        assert session.scalars(select(DatasetGraphEntity)).one().frequency == 1
+
+    def test_a_relation_listed_twice_in_one_chunk_is_linked_once(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        relation = GraphRelation(source="acme", target="globex", predicate="acquired")
+        store.add_chunk_graphs(
+            [_chunk_graph("node-1", "doc-1", [_entity("acme"), _entity("globex")], [relation, relation])],
+            session=session,
+        )
+
+        assert session.scalars(select(DatasetGraphRelation)).one().weight == 1.0
+        relation_links = session.scalars(
+            select(DatasetGraphChunkLink).where(DatasetGraphChunkLink.relation_id.is_not(None))
+        ).all()
+        assert len(relation_links) == 1
+
+    def test_a_row_the_caller_already_loaded_shows_the_recomputed_counters(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+        acme = session.scalars(select(DatasetGraphEntity)).one()
+        assert acme.frequency == 1
+
+        store.add_chunk_graphs([_chunk_graph("node-2", "doc-2", [_entity("acme")])], session=session)
+
+        # The counters are rewritten by a bulk UPDATE, which the identity map does
+        # not see; a row held across the merge must not keep its old value.
+        assert acme.frequency == 2
+
+    def test_unknown_type_is_upgraded_within_one_batch(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs(
+            [
+                _chunk_graph("node-1", "doc-1", [_entity("acme", entity_type="UNKNOWN")]),
+                _chunk_graph("node-2", "doc-1", [_entity("acme", entity_type="ORGANIZATION")]),
+            ],
+            session=session,
+        )
+
+        assert session.scalars(select(DatasetGraphEntity)).one().entity_type == "ORGANIZATION"
+
+    def test_the_indexing_runs_own_rows_are_left_loaded(self, store: PostgresGraphStore, session: Session) -> None:
+        dataset = _dataset()
+        session.add(dataset)
+        session.flush()
+
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+
+        # Only graph rows go stale under the counter UPDATE; expiring the rest of
+        # the shared session would force the caller to reload what it holds.
+        assert not inspect(dataset).expired_attributes
+
+    def test_a_description_arriving_later_fills_an_empty_one(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+        store.add_chunk_graphs(
+            [_chunk_graph("node-2", "doc-1", [_entity("acme", description="Maker of widgets.")])], session=session
+        )
+
+        assert session.scalars(select(DatasetGraphEntity)).one().description == "Maker of widgets."
+
+    def test_re_extracting_a_known_description_does_not_repeat_it(
+        self, store: PostgresGraphStore, session: Session
+    ) -> None:
+        acme = _entity("acme", description="Maker of widgets.")
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [acme])], session=session)
+        store.add_chunk_graphs([_chunk_graph("node-2", "doc-1", [acme])], session=session)
+
+        assert session.scalars(select(DatasetGraphEntity)).one().description == "Maker of widgets."
+
+
+class TestEmptyRequests:
+    """Callers pass whatever a batch produced, which can be nothing at all."""
+
+    def test_deleting_no_documents_or_chunks_keeps_the_graph(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+
+        store.delete_by_document_ids([], session=session)
+        store.delete_by_index_node_ids([], session=session)
+
+        assert _count(session, DatasetGraphEntity) == 1
+        assert _count(session, DatasetGraphChunkLink) == 1
+
+    def test_lookups_without_ids_or_names_find_nothing(self, store: PostgresGraphStore, session: Session) -> None:
+        store.add_chunk_graphs([_chunk_graph("node-1", "doc-1", [_entity("acme")])], session=session)
+
+        assert store.get_entities_by_ids([], session=session) == []
+        assert store.get_entities_by_names([], session=session) == []
+        assert store.get_relations([], 10, session=session) == []

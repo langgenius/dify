@@ -10,9 +10,16 @@ from core.rag.datasource.graph.graph_lock import GraphIndexLockError, graph_inde
 
 
 class _FakeLock:
-    def __init__(self, *, acquired: bool = True, extend_error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        acquired: bool = True,
+        extend_error: Exception | None = None,
+        release_error: Exception | None = None,
+    ) -> None:
         self._acquired = acquired
         self._extend_error = extend_error
+        self._release_error = release_error
         self.released = False
         self.extensions: list[tuple[float, bool]] = []
 
@@ -26,6 +33,8 @@ class _FakeLock:
 
     def release(self) -> None:
         self.released = True
+        if self._release_error:
+            raise self._release_error
 
 
 class _FakeRedis:
@@ -113,3 +122,18 @@ def test_renewal_replaces_the_ttl_rather_than_stacking_it(
         (dify_config.KNOWLEDGE_GRAPH_INDEX_LOCK_TIMEOUT, True),
         (dify_config.KNOWLEDGE_GRAPH_INDEX_LOCK_TIMEOUT, True),
     ]
+
+
+def test_an_expired_lease_does_not_fail_the_finished_merge(
+    install_lock: Callable[[_FakeLock], _FakeRedis], caplog: pytest.LogCaptureFixture
+) -> None:
+    lock = _FakeLock(release_error=RuntimeError("cannot release an unlocked lock"))
+    install_lock(lock)
+
+    # The merge already committed; a lease that timed out on the way is gone and
+    # must not turn a successful write into a failed indexing run.
+    with graph_index_lock("dataset-1"):
+        pass
+
+    assert lock.released
+    assert "Failed to release the knowledge-graph merge lease of dataset dataset-1" in caplog.text

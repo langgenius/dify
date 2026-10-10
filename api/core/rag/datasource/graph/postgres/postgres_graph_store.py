@@ -201,7 +201,9 @@ class PostgresGraphStore(BaseGraphStore):
         """Record which chunk each node and edge came from.
 
         Links for the incoming chunks are cleared first so re-indexing a document
-        replaces its provenance instead of duplicating it.
+        replaces its provenance instead of duplicating it. ``entity_ids`` and
+        ``relation_ids`` come from merging this same batch, so every entity and
+        every relation with resolvable endpoints has an id.
         """
         index_node_ids = [chunk_graph.index_node_id for chunk_graph in chunk_graphs]
         self._delete_links_by_index_node_ids(index_node_ids, session=session)
@@ -209,9 +211,7 @@ class PostgresGraphStore(BaseGraphStore):
         seen: set[tuple[str, str | None, str | None]] = set()
         for chunk_graph in chunk_graphs:
             for entity in chunk_graph.extraction.entities:
-                entity_id = entity_ids.get(entity.name)
-                if not entity_id:
-                    continue
+                entity_id = entity_ids[entity.name]
                 key: tuple[str, str | None, str | None] = (chunk_graph.index_node_id, entity_id, None)
                 if key in seen:
                     continue
@@ -230,9 +230,7 @@ class PostgresGraphStore(BaseGraphStore):
                 target_id = entity_ids.get(relation.target)
                 if not source_id or not target_id:
                     continue
-                relation_id = relation_ids.get((source_id, target_id, relation.predicate))
-                if not relation_id:
-                    continue
+                relation_id = relation_ids[(source_id, target_id, relation.predicate)]
                 key = (chunk_graph.index_node_id, None, relation_id)
                 if key in seen:
                     continue

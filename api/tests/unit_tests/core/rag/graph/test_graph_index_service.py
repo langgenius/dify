@@ -274,6 +274,32 @@ class TestBuildForDocuments:
 
         assert _graph_row_count(session) == 0
 
+    def test_a_failed_graph_write_does_not_abort_indexing(
+        self,
+        session: Session,
+        extractor: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        extractor(result=[_chunk_graph("node-1", "doc-1")])
+
+        class _UnwritableStore:
+            def __init__(self, dataset: Dataset) -> None:
+                self.dataset = dataset
+
+            def add_chunk_graphs(self, *_args: object, **_kwargs: object) -> None:
+                raise RuntimeError("the graph backend is unreachable")
+
+        monkeypatch.setattr(graph_index_service_module, "GraphStore", _UnwritableStore)
+
+        # Extraction succeeded and the chunk is already searchable; losing the
+        # merge must not fail the indexing run that triggered it.
+        GraphIndexService.build_for_documents(
+            _dataset(_CONFIGURED), [Document(page_content="Acme ships widgets.")], session=session
+        )
+
+        assert f"Failed to build the knowledge graph for dataset {DATASET_ID}" in caplog.text
+
 
 class TestTargetedDeletion:
     def test_deleting_a_chunk_drops_the_facts_it_sourced(self, session: Session) -> None:

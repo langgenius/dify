@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from core.rag.graph.entities import DEFAULT_ENTITY_TYPES, GraphIndexSetting
 
 
@@ -52,3 +55,9 @@ class TestGraphIndexSettingNullTolerance:
         assert setting.max_seed_entities == 8
         assert setting.max_neighbors_per_hop == 64
         assert setting.hop_decay == 0.5
+
+    def test_a_non_object_setting_is_still_rejected(self) -> None:
+        # Only nulls inside an object fall back to defaults; a corrupted column
+        # holding something else must fail loudly instead of reading as "off".
+        with pytest.raises(ValidationError):
+            GraphIndexSetting.model_validate("enabled")

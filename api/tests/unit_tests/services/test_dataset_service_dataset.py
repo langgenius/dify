@@ -249,6 +249,16 @@ class TestDatasetServiceValidation:
                 "provider setup",
             ),
             (DatasetService.check_reranking_model_setting, LLMBadRequestError(), "No Rerank Model available"),
+            (
+                DatasetService.check_graph_extraction_model_setting,
+                LLMBadRequestError(),
+                "No LLM available for knowledge graph extraction",
+            ),
+            (
+                DatasetService.check_graph_extraction_model_setting,
+                ProviderTokenNotInitError("provider setup"),
+                "provider setup",
+            ),
         ],
     )
     def test_direct_model_setting_checks_wrap_runtime_errors(
@@ -258,6 +268,20 @@ class TestDatasetServiceValidation:
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
             with pytest.raises(ValueError, match=message):
                 method("tenant-1", "provider", "model")
+
+    def test_graph_extraction_requires_an_llm(self) -> None:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
+            DatasetService.check_graph_extraction_model_setting("tenant-1", "provider", "model")
+
+        # Extraction prompts a chat model; an embedding or rerank model of the
+        # same name must not pass the check.
+        model_manager_cls.for_tenant.assert_called_once_with(tenant_id="tenant-1")
+        model_manager_cls.for_tenant.return_value.get_model_instance.assert_called_once_with(
+            tenant_id="tenant-1",
+            provider="provider",
+            model_type=ModelType.LLM,
+            model="model",
+        )
 
 
 class TestDatasetServiceRetrieval:

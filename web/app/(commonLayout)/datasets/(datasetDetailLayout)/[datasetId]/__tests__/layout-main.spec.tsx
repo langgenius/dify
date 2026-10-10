@@ -97,6 +97,7 @@ describe('DatasetDetailLayout', () => {
       ['/datasets/dataset-1/documents/create', 'datasetPipeline.addDocuments.title'],
       ['/datasets/dataset-1/documents/create-from-pipeline', 'datasetPipeline.addDocuments.title'],
       ['/datasets/dataset-1/pipeline', 'common.datasetMenus.pipeline'],
+      ['/datasets/dataset-1/graph', 'common.datasetMenus.knowledgeGraph'],
       ['/datasets/dataset-1/hitTesting', 'common.datasetMenus.hitTesting'],
       ['/datasets/dataset-1/settings', 'common.datasetMenus.settings'],
       ['/datasets/dataset-1/access-config', 'navigation.settings.resourceAccess'],
