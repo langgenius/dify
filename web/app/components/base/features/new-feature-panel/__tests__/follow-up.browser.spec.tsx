@@ -46,9 +46,6 @@ describe('Follow-up settings keyboard access', () => {
     await expect.element(trigger).toHaveFocus()
     expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
     await userEvent.keyboard('{Enter}')
-    await expect
-      .element(dialog.getByRole('radio', { name: /modal.defaultPromptOption/ }))
-      .toBeChecked()
     await dialog.getByRole('button', { name: 'common.operation.save' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()

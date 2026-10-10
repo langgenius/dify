@@ -3,7 +3,6 @@
   "action.delete": "إزالة الإضافة",
   "action.deleteContentLeft": "هل ترغب في إزالة ",
   "action.deleteContentRight": " الإضافة؟",
-  "action.deleteSuccess": "تم حذف الإضافة بنجاح",
   "action.pluginInfo": "معلومات الإضافة",
   "allCategories": "جميع الفئات",
   "auth.addApi": "إضافة مفتاح API",

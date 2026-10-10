@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "ตามสิทธิ์บทบาท",
   "accessRule.deleteDescription": "กฎการเข้าถึงนี้จะถูกลบอย่างถาวรและนําออกจากรายการการอนุญาตทรัพยากร",
   "accessRule.deleteTitle": "ลบ \"{{name}}\" หรือไม่",
-  "accessRule.deleted": "ลบกฎการเข้าถึงสําเร็จ",
   "accessRule.exceptionPermissionFor": "สิทธิ์ข้อยกเว้นสําหรับ {{name}}",
   "accessRule.expandSection": "ขยาย {{title}}",
   "accessRule.maintainer": "ผู้ดูแล",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" ถูกกําหนดให้กับสมาชิก {{count}} คน คุณต้องการให้สําเนาบทบาทใหม่รวมสมาชิกคนเดียวกันหรือไม่",
   "role.copyMembersLoading": "กําลังโหลดการกําหนดสมาชิก...",
   "role.copyMembersTitle": "คัดลอกการกําหนดสมาชิกหรือไม่",
-  "role.created": "สร้างบทบาทสําเร็จ",
   "role.deleteDescription": "บทบาทนี้จะถูกลบอย่างถาวรและนําออกจากสมาชิกหรือกฎการเข้าถึงใด ๆ ที่ใช้บทบาทนี้",
   "role.deleteTitle": "ลบ \"{{name}}\" หรือไม่",
-  "role.deleted": "ลบบทบาทสําเร็จ",
-  "role.duplicated": "ทําซ้ําบทบาทสําเร็จ",
   "role.groups.builtin": "บทบาทระบบ",
   "role.groups.custom": "บทบาทที่กําหนดเอง",
   "role.loading": "กําลังโหลดบทบาท...",
@@ -103,7 +99,6 @@
   "role.noDescription": "ไม่มีคําอธิบาย",
   "role.noMatchingRoles": "ไม่มีบทบาทที่ตรงกัน",
   "role.searchPlaceholder": "ค้นหาบทบาท...",
-  "role.updated": "อัปเดตบทบาทสําเร็จ",
   "role.workspaceRoles.description": "สร้างบทบาทและกําหนดว่าแต่ละบทบาททําอะไรได้บ้างในพื้นที่ทํางานนี้",
   "role.workspaceRoles.title": "บทบาทของพื้นที่ทํางาน"
 }

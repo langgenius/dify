@@ -245,6 +245,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon_background=params.icon_background,
                 app_id=params.app_id,
                 package=package,
+                preserve_agent_bindings=as_copy,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
                 session.rollback()
@@ -329,6 +330,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 include_secret=options.include_secret,
                 workflow_id=options.workflow_id,
                 version_id=options.version_id,
+                preserve_agent_bindings=options.preserve_agent_bindings,
             )
         return dsl.serialize_export_data(prepared)
 

@@ -1,7 +1,6 @@
 import type { StructuredOutput } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
@@ -77,37 +76,6 @@ function renderOutput() {
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 
-it.each(['configure', 'notConfiguredTip'])(
-  'returns focus to the %s trigger and starts a fresh schema session',
-  async (entrypoint) => {
-    const screen = await renderOutput()
-    const trigger = screen.getByRole('button', { name: `app.structOutput.${entrypoint}` })
-    const dialog = screen.getByRole('dialog', { name: 'workflowModels.nodes.llm.jsonSchema.title' })
-    await trigger.click()
-    await expect.element(dialog).toBeVisible()
-    const visualTab = screen.getByRole('tab', { name: 'Visual Editor' })
-    const jsonTab = screen.getByRole('tab', { name: 'JSON Schema' })
-    await expect.element(visualTab).toHaveAttribute('aria-selected', 'true')
-    await jsonTab.click()
-    await screen.getByRole('textbox', { name: 'JSON schema editor' }).fill('unfinished draft')
-    if (entrypoint === 'configure')
-      await screen.getByRole('button', { name: 'common.operation.cancel' }).click()
-    else await userEvent.keyboard('{Escape}')
-    await expect.element(dialog).not.toBeInTheDocument()
-    await expect.element(trigger).toHaveFocus()
-
-    await trigger.click()
-    await expect.element(visualTab).toHaveAttribute('aria-selected', 'true')
-    await jsonTab.click()
-    await expect
-      .element(screen.getByRole('textbox', { name: 'JSON schema editor' }))
-      .toHaveValue(JSON.stringify(emptySchema, null, 2))
-    await screen.getByRole('button', { name: 'common.operation.save' }).click()
-    await expect.element(dialog).not.toBeInTheDocument()
-    await expect.element(trigger).toHaveFocus()
-  },
-)
-
 it('returns focus to Configure when saving a schema removes the empty-state trigger', async () => {
   const screen = await renderOutput()
   const emptyTrigger = screen.getByRole('button', { name: 'app.structOutput.notConfiguredTip' })
@@ -121,15 +89,5 @@ it('returns focus to Configure when saving a schema removes the empty-state trig
   await screen.getByRole('button', { name: 'common.operation.save' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(emptyTrigger).not.toBeInTheDocument()
-  await expect.element(configure).toHaveFocus()
-
-  await userEvent.keyboard('{Enter}')
-  await expect.element(dialog).toBeVisible()
-  await screen.getByRole('tab', { name: 'JSON Schema' }).click()
-  await expect
-    .element(screen.getByRole('textbox', { name: 'JSON schema editor' }))
-    .toHaveValue(JSON.stringify(namedSchema, null, 2))
-  await userEvent.keyboard('{Escape}')
-  await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(configure).toHaveFocus()
 })

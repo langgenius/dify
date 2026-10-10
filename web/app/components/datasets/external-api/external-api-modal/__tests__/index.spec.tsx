@@ -190,10 +190,6 @@ describe('AddExternalAPIModal', () => {
             settings: { endpoint: 'https://test.com', api_key: 'key12345' },
           },
         })
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'External API saved successfully',
-        })
         expect(onSave).toHaveBeenCalledWith(mockResponse)
         expect(onCancel).toHaveBeenCalled()
       })
@@ -335,10 +331,6 @@ describe('AddExternalAPIModal', () => {
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
       fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
-      })
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {

@@ -774,7 +774,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.createSuccess')
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -851,7 +850,6 @@ describe('SkillsPage', () => {
           expect.anything(),
         )
       })
-      expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({
@@ -1194,7 +1192,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
     expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
   })
 
@@ -1301,7 +1298,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {

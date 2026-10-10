@@ -3,7 +3,6 @@
   "action.delete": "Eklentiyi kaldır",
   "action.deleteContentLeft": "Kaldırmak ister misiniz",
   "action.deleteContentRight": "eklenti?",
-  "action.deleteSuccess": "Eklenti başarıyla kaldırıldı",
   "action.pluginInfo": "Eklenti bilgisi",
   "allCategories": "Tüm Kategoriler",
   "auth.addApi": "API Anahtarını Ekle",

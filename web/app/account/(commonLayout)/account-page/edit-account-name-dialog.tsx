@@ -68,7 +68,6 @@ export function EditAccountNameDialog({ name }: { name: string }) {
   const handleSave = async (name: string) => {
     try {
       await updateProfile.mutateAsync({ body: { name } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully']))
       actionsRef.current?.close()
     } catch (error) {
       // The request layer already reports every error the server answered with.

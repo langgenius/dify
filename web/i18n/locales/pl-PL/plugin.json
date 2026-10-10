@@ -3,7 +3,6 @@
   "action.delete": "Usuń wtyczkę",
   "action.deleteContentLeft": "Czy chcesz usunąć",
   "action.deleteContentRight": "wtyczka?",
-  "action.deleteSuccess": "Wtyczka została pomyślnie usunięta",
   "action.pluginInfo": "Informacje o wtyczce",
   "allCategories": "Wszystkie kategorie",
   "auth.addApi": "Dodaj klucz API",
