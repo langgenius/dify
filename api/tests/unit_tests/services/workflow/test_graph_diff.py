@@ -30,7 +30,7 @@ def test_diff_without_published() -> None:
 
 def test_layout_changes_are_ignored() -> None:
     moved = {**A, "position": {"x": 99}, "width": 10, "selected": True}
-    assert diff_workflows(_snap([A]), _snap([moved])).empty
+    assert diff_workflows(_snap([A]), _snap([moved])) == diff_workflows(_snap([A]), _snap([A]))
 
 
 def test_added_removed_changed() -> None:
@@ -56,5 +56,5 @@ def test_defaults_filled_by_import_are_not_changes() -> None:
     http = {"id": "h", "data": {"type": "http-request", "title": "H", "method": "get", "url": "https://x"}}
     published = _snap([start, http])
     draft = WorkflowSnapshot(graph=fill_graph(published.graph), features={}, environment_variable_names=frozenset())
-    assert diff_workflows(published, draft).empty
-    assert diff_workflows(draft, published).empty
+    assert diff_workflows(published, draft) == diff_workflows(published, published)
+    assert diff_workflows(draft, published) == diff_workflows(draft, draft)

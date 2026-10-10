@@ -1,37 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from http import HTTPStatus
-from typing import Final
 
 from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._models import (
-    DraftChanges,
+    DslIssueRow,
     Hint,
     ReleaseCheckName,
     ReleaseCheckResponse,
     ReleaseCheckRow,
     ReleaseState,
 )
-from controllers.openapi.app_dsl import AppDslExportApi, issue_row, node_credential_check
-from controllers.openapi.app_run import _RUN_ROUTES, require_mode
-from controllers.openapi.app_workflow import GRAPH_MODES, VERSION_READ_GUARDS, require_draft
+from controllers.openapi.app_dsl import AppDslExportApi
+from controllers.openapi.app_run import DRAFT_TEST_OPS
+from controllers.openapi.app_workflow import VERSION_READ_GUARDS, require_draft
 from controllers.openapi.auth.context import Context
-from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models import AppMode, WorkflowRunTriggeredFrom
 from models.workflow import Workflow
-from services.workflow.graph_check import check_graph
+from services.workflow.graph_check import check_graph, credential_check
 from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, same_graph
 from services.workflow_service import WorkflowService
-
-_DRAFT_TEST_OPS: Final = {
-    mode: route.op for route in _RUN_ROUTES if route.invoke_from is InvokeFrom.DEBUGGER for mode in route.modes
-}
 
 
 def _snapshot(workflow: Workflow) -> WorkflowSnapshot:
@@ -53,7 +46,6 @@ class ReleaseCheckApi(Resource):
         returns=(HTTPStatus.OK, ReleaseCheckResponse, "Release check"),
     )
     def get(self, ctx: Context, app_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         draft = require_draft(ctx)
         mode = AppMode(ctx.app.mode)
         service = WorkflowService()
@@ -61,7 +53,7 @@ class ReleaseCheckApi(Resource):
         issues = check_graph(
             draft.graph_dict,
             mode=mode,
-            resources=node_credential_check(ctx.workspace.id, environment, ctx.session),
+            resources=credential_check(ctx.workspace.id, environment, ctx.session),
         )
         runs = (
             application_services()
@@ -108,15 +100,15 @@ class ReleaseCheckApi(Resource):
             hints.append(
                 Hint(
                     summary="Run the draft on the acceptance cases",
-                    op=_DRAFT_TEST_OPS[mode],
+                    op=DRAFT_TEST_OPS[mode],
                     input={"app_id": ctx.app.id},
                 )
             )
         return ReleaseCheckResponse(
             ready=all(c.passed for c in checks),
             checks=checks,
-            issues=[issue_row(i) for i in issues],
+            issues=[DslIssueRow.of(i) for i in issues],
             state=ReleaseState(service_api_enabled=ctx.app.enable_api, webapp_enabled=ctx.app.enable_site),
-            changes=DraftChanges.model_validate(asdict(diff)),
+            changes=diff,
             hints=hints,
         )

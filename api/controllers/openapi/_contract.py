@@ -26,7 +26,7 @@ from pydantic import BaseModel, ValidationError
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
-from controllers.openapi._hints import next_page_hint
+from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
@@ -53,7 +53,8 @@ def paginated(op: str) -> Callable:
             if not isinstance(result, PaginationEnvelope) or any(h.op == op for h in result.hints):
                 return result
             path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
-            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
+            page = page_after(page=result.page, limit=result.limit, has_more=result.has_more)
+            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), page=page)
             if hint is not None:
                 result.hints = [*result.hints, hint]
             return result

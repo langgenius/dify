@@ -13,9 +13,9 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi import app_run
+from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
@@ -155,7 +155,7 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        with pytest.raises(UnprocessableEntity, match="app_mode_mismatch"):
+        with pytest.raises(AppModeMismatch):
             api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
     generate_mock.assert_not_called()
 

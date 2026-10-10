@@ -17,7 +17,7 @@ from controllers.openapi._models import (
     KnowledgeRetrievalFragment,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import workspace_read
+from controllers.openapi.auth.requirements import WORKSPACE_READ_GUARDS
 from extensions.ext_application_services import application_services
 from services.knowledge.datasets.application import DatasetListFilter
 
@@ -42,7 +42,7 @@ class KnowledgeBasesApi(Resource):
         kind=Kind.LIST,
         summary="Knowledge bases you can use, each with the knowledge-retrieval node data to paste",
         examples=(Example(title="Find product docs", input={"query": "product"}),),
-        requirements=workspace_read(),
+        requirements=WORKSPACE_READ_GUARDS,
         query=KnowledgeBaseListQuery,
         returns=(HTTPStatus.OK, KnowledgeBaseListResponse, "Knowledge bases"),
     )

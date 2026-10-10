@@ -5,12 +5,8 @@ from collections.abc import Iterator, Mapping
 
 from pydantic import BaseModel
 
-from controllers.openapi._hints import attach_stream_hints, next_page_hint
-from controllers.openapi._models import Hint, PageQuery, PaginationEnvelope
-
-
-class _Envelope(PaginationEnvelope[str]):
-    pass
+from controllers.openapi._hints import attach_stream_hints, next_page_hint, page_after
+from controllers.openapi._models import Hint, PageQuery
 
 
 class _Query(PageQuery):
@@ -22,13 +18,13 @@ def test_next_page_hint_copies_path_and_query_and_bumps_page() -> None:
         op="thing.list",
         path_args={"workspace_id": "ws-1"},
         query=_Query(page=2, name="x"),
-        envelope=_Envelope.build(page=2, limit=20, total=100, items=[]),
+        page=page_after(page=2, limit=20, has_more=True),
     )
     assert hint == Hint(
         summary="Next page", op="thing.list", input={"workspace_id": "ws-1", "name": "x", "page": 3, "limit": 20}
     )
-    last = _Envelope.build(page=5, limit=20, total=100, items=[])
-    assert next_page_hint(op="thing.list", path_args={}, query=None, envelope=last) is None
+    last = page_after(page=5, limit=20, has_more=False)
+    assert next_page_hint(op="thing.list", path_args={}, query=None, page=last) is None
 
 
 def _sse(event: Mapping[str, object]) -> str:

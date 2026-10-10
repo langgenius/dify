@@ -16,7 +16,7 @@ from typing import Any, Final, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ValidationError
 
-from controllers.openapi._models import Hint, Hinted, PageQuery, PaginationEnvelope
+from controllers.openapi._models import Hint, Hinted, PageQuery
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +32,26 @@ class _ClosableStream(Protocol):
     def close(self) -> None: ...
 
 
+def page_after(*, page: int, limit: int, has_more: bool) -> dict[str, Any] | None:
+    """The page-number input of the next page, or None on the last one."""
+    return PageQuery(page=page + 1, limit=limit).model_dump() if has_more else None
+
+
+def cursor_after(*, last_id: str | None, has_more: bool) -> dict[str, Any] | None:
+    """The cursor input of the next page, or None on the last one."""
+    return {"last_id": last_id} if has_more and last_id else None
+
+
 def next_page_hint(
-    *, op: str, path_args: Mapping[str, Any], query: BaseModel | None, envelope: PaginationEnvelope[Any]
+    *, op: str, path_args: Mapping[str, Any], query: BaseModel | None, page: Mapping[str, Any] | None
 ) -> Hint | None:
-    if not envelope.has_more:
+    """The call's own input with `page` (from `page_after` or `cursor_after`) on top."""
+    if page is None:
         return None
     params: dict[str, Any] = dict(path_args)
     if query is not None:
         params |= query.model_dump(exclude_none=True)
-    params |= PageQuery(page=envelope.page + 1, limit=envelope.limit).model_dump()
-    return Hint(summary="Next page", op=op, input=params)
+    return Hint(summary="Next page", op=op, input=params | dict(page))
 
 
 def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:

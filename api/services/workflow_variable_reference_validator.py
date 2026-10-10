@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
-from graphon.enums import BuiltinNodeTypes, ErrorStrategy
+from graphon.enums import BuiltinNodeTypes
+from services.workflow.branch_handles import branch_handles
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,6 @@ _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     {
         BuiltinNodeTypes.VARIABLE_AGGREGATOR,
         BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR,
-    }
-)
-
-_BRANCH_NODE_TYPES: frozenset[str] = frozenset(
-    {
-        BuiltinNodeTypes.IF_ELSE,
-        BuiltinNodeTypes.QUESTION_CLASSIFIER,
-        BuiltinNodeTypes.HUMAN_INPUT,
     }
 )
 
@@ -100,26 +92,10 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
         if node_parent[nid] is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
     ]
     reachable = _reachable_from(entries, successors)
-    exclusive = {
-        nid
-        for nid in node_ids
-        if node_type[nid] in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
-    }
+    handles_by_node = {nid: handles for nid in node_ids if (handles := branch_handles(node_data[nid])) is not None}
+    exclusive = set(handles_by_node)
     # A selectable handle can be unwired. It still lets the branch skip a producer.
-    for nid in exclusive:
-        data = node_data[nid]
-        handles: list[str] = []
-        if node_type[nid] == BuiltinNodeTypes.IF_ELSE:
-            cases = data.get("cases")
-            handles = [case["case_id"] for case in cases] if isinstance(cases, list) else ["true"]
-            handles.append("false")
-        elif node_type[nid] == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            handles = [item["id"] for item in data.get("classes", [])]
-        elif node_type[nid] == BuiltinNodeTypes.HUMAN_INPUT:
-            handles = [action["id"] for action in data.get("user_actions", [])]
-            handles.append(TIMEOUT_HANDLE)
-        if data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH:
-            handles.extend(["source", "fail-branch"])
+    for nid, handles in handles_by_node.items():
         for handle in handles:
             out_targets_by_handle[nid].setdefault(handle, [])
 

@@ -16,7 +16,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
@@ -29,13 +29,13 @@ from controllers.openapi._errors import (
     VersionNotRestorable,
 )
 from controllers.openapi._files import end_read_transaction, merge_files
+from controllers.openapi._hints import cursor_after, next_page_hint, page_after
 from controllers.openapi._models import (
     AdvancedChatNodeRunPayload,
     EnvVariableListResponse,
     EnvVariableRow,
     EnvVariableSetPayload,
     EnvVariableValueType,
-    Hint,
     NodeRunPayload,
     PublishPayload,
     PublishResponse,
@@ -47,13 +47,11 @@ from controllers.openapi._models import (
     VersionRow,
 )
 from controllers.openapi._upload import UploadParts
-from controllers.openapi.app_run import _DRAFT_RUN_GUARDS, require_mode
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import CheckAppMode, account_app_guards
+from controllers.openapi.auth.requirements import EDITOR_ROLES, Requirement, account_app_guards
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import environment_variable_value_type
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from factories import variable_factory
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
@@ -63,31 +61,31 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
-from graphon.enums import BuiltinNodeTypes
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.helper import to_timestamp
 from models import AppMode, WorkflowRunTriggeredFrom
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.workflow.dsl_import import stored_secret_ids
+from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
 from services.workflow_run_service import WorkflowRunListArgs
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
-GRAPH_MODES: Final = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
-_RUN_LIST_OP: Final = "get.run"
-_VERSION_LIST_OP: Final = "get.console_app.version"
-
 _RUN_READ_GUARDS: Final = account_app_guards(
-    RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, editor=False
+    RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, roles=None, modes=GRAPH_MODES
 )
-VERSION_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, editor=True)
+VERSION_READ_GUARDS: Final = account_app_guards(
+    RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, roles=EDITOR_ROLES, modes=GRAPH_MODES
+)
 _RELEASE_GUARDS: Final = account_app_guards(
-    RBACPermission.APP_RELEASE_AND_VERSION, scope=Scope.WORKSPACE_WRITE, editor=True
+    RBACPermission.APP_RELEASE_AND_VERSION, scope=Scope.WORKSPACE_WRITE, roles=EDITOR_ROLES, modes=GRAPH_MODES
 )
-_ENV_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_VIEW_LAYOUT, scope=Scope.APPS_READ, editor=True)
-_ENV_WRITE_GUARDS: Final = account_app_guards(RBACPermission.APP_EDIT, scope=Scope.WORKSPACE_WRITE, editor=True)
+_ENV_WRITE_GUARDS: Final = account_app_guards(
+    RBACPermission.APP_EDIT, scope=Scope.WORKSPACE_WRITE, roles=EDITOR_ROLES, modes=GRAPH_MODES
+)
 
 
 def _require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
@@ -108,17 +106,10 @@ def _require_run(ctx: Context, run_id: str) -> WorkflowRun:
     return run
 
 
-def with_next_cursor(page: RunListResponse, *, op: str, app_id: str, query: RunListQuery) -> RunListResponse:
-    if page.has_more and page.data:
-        next_input = {"app_id": app_id, **query.model_dump(exclude_none=True), "last_id": page.data[-1].id}
-        page.hints = [Hint(summary="Next page", op=op, input=next_input)]
-    return page
-
-
 @openapi_ns.route("/apps/<string:app_id>/runs")
 class AppRunListApi(Resource):
     @endpoint(
-        op=_RUN_LIST_OP,
+        op="get.run",
         kind=Kind.OBJECT,
         summary="List runs of a workflow or advanced-chat app, newest first",
         examples=(
@@ -136,7 +127,6 @@ class AppRunListApi(Resource):
         returns=(HTTPStatus.OK, RunListResponse, "Run list"),
     )
     def get(self, ctx: Context, app_id: str, *, query: RunListQuery):
-        require_mode(ctx.app, *GRAPH_MODES)
         args: WorkflowRunListArgs = {"limit": query.limit}
         if query.last_id is not None:
             args["last_id"] = query.last_id
@@ -149,7 +139,14 @@ class AppRunListApi(Resource):
             triggered_from=WorkflowRunTriggeredFrom(query.triggered_from or WorkflowRunTriggeredFrom.DEBUGGING),
         )
         page = RunListResponse.model_validate(workflow_run_pagination_response_source(pagination, session=ctx.session))
-        return with_next_cursor(page, op=_RUN_LIST_OP, app_id=ctx.app.id, query=query)
+        hint = next_page_hint(
+            op=op_of(AppRunListApi.get),
+            path_args={"app_id": ctx.app.id},
+            query=query,
+            page=cursor_after(last_id=page.data[-1].id if page.data else None, has_more=page.has_more),
+        )
+        page.hints = [hint] if hint else []
+        return page
 
 
 @openapi_ns.route("/apps/<string:app_id>/runs/<string:run_id>")
@@ -163,7 +160,6 @@ class AppRunDescribeApi(Resource):
         returns=(HTTPStatus.OK, WorkflowRunDetailResponse, "Run detail"),
     )
     def get(self, ctx: Context, app_id: str, run_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         run = _require_run(ctx, run_id)
         return WorkflowRunDetailResponse.model_validate(workflow_run_response_source(run, session=ctx.session))
 
@@ -179,7 +175,6 @@ class AppRunNodeListApi(Resource):
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionListResponse, "Node steps"),
     )
     def get(self, ctx: Context, app_id: str, run_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         run = _require_run(ctx, run_id)
         steps = application_services().workflow_runs.get_workflow_run_node_executions(
             ctx.request_context, app_id=ctx.app.id, run_id=run.id
@@ -205,7 +200,6 @@ class AppPublishApi(Resource):
         returns=(HTTPStatus.OK, PublishResponse, "Published"),
     )
     def post(self, ctx: Context, app_id: str, *, body: PublishPayload):
-        require_mode(ctx.app, *GRAPH_MODES)
         try:
             workflow = WorkflowService().publish_app_workflow(
                 session=ctx.session,
@@ -226,7 +220,7 @@ class AppPublishApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/versions")
 class AppVersionListApi(Resource):
     @endpoint(
-        op=_VERSION_LIST_OP,
+        op="get.console_app.version",
         kind=Kind.OBJECT,
         summary="List published versions, newest first",
         examples=(
@@ -238,7 +232,6 @@ class AppVersionListApi(Resource):
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
     )
     def get(self, ctx: Context, app_id: str, *, query: VersionListQuery):
-        require_mode(ctx.app, *GRAPH_MODES)
         workflows, has_more = WorkflowService().get_all_published_workflow(
             session=ctx.session,
             app_model=ctx.app,
@@ -257,9 +250,13 @@ class AppVersionListApi(Resource):
                 for workflow in workflows
             ],
         )
-        if has_more:
-            next_input = {"app_id": ctx.app.id, **query.model_dump(), "page": query.page + 1}
-            page.hints = [Hint(summary="Next page", op=_VERSION_LIST_OP, input=next_input)]
+        hint = next_page_hint(
+            op=op_of(AppVersionListApi.get),
+            path_args={"app_id": ctx.app.id},
+            query=query,
+            page=page_after(page=query.page, limit=query.limit, has_more=has_more),
+        )
+        page.hints = [hint] if hint else []
         return page
 
 
@@ -276,11 +273,10 @@ class AppVersionRestoreApi(Resource):
         returns=(HTTPStatus.OK, RestoreResponse, "Restored into the draft"),
     )
     def post(self, ctx: Context, app_id: str, version_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         version_id = _require_uuid(version_id, not_found=VersionNotFound)
         try:
             draft = WorkflowService().restore_published_workflow_to_draft(
-                app_model=ctx.app, workflow_id=version_id, account=ctx.account, session=db.session()
+                app_model=ctx.app, workflow_id=version_id, account=ctx.account, session=ctx.session
             )
         except IsDraftWorkflowError as exc:
             raise VersionNotRestorable() from exc
@@ -313,10 +309,6 @@ def require_draft(ctx: Context) -> Workflow:
     return draft
 
 
-def stored_secret_ids(draft: Workflow) -> set[str]:
-    return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
-
-
 def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str]) -> None:
     try:
         WorkflowService().patch_draft_workflow_environment_variables(
@@ -324,7 +316,7 @@ def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str
             environment_variables=upserts,
             deleted_environment_variable_ids=deletions,
             account=ctx.account,
-            session=db.session(),
+            session=ctx.session,
         )
     except ValueError as exc:
         raise BadRequest(str(exc)) from exc
@@ -338,11 +330,10 @@ class AppEnvListApi(Resource):
         summary="Environment variables of the draft. Each has an id, which set and delete take, "
         "and a name, which nodes use. Secrets with a value are masked; empty secrets read as empty",
         examples=(Example(title="List environment variables", input={"app_id": "<app_id>"}),),
-        requirements=_ENV_READ_GUARDS,
+        requirements=VERSION_READ_GUARDS,
         returns=(HTTPStatus.OK, EnvVariableListResponse, "Environment variables"),
     )
     def get(self, ctx: Context, app_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         return EnvVariableListResponse(data=env_variable_rows(require_draft(ctx).environment_variables))
 
 
@@ -370,7 +361,6 @@ class AppEnvItemApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "Variable set"),
     )
     def put(self, ctx: Context, app_id: str, env_id: str, *, body: EnvVariableSetPayload):
-        require_mode(ctx.app, *GRAPH_MODES)
         draft = require_draft(ctx)
         if body.value == encrypter.full_mask_token() and body.value_type != EnvVariableValueType.SECRET:
             raise SecretMaskNotSecret()
@@ -394,14 +384,14 @@ class AppEnvItemApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "Variable removed"),
     )
     def delete(self, ctx: Context, app_id: str, env_id: str):
-        require_mode(ctx.app, *GRAPH_MODES)
         if all(variable.id != env_id for variable in require_draft(ctx).environment_variables):
             raise EnvVariableNotFound()
         _patch_env(ctx, upserts=[], deletions=[env_id])
         return SimpleResultResponse(result="success")
 
 
-_CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION})
+def _node_run_guards(mode: AppMode) -> tuple[Requirement, ...]:
+    return account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=(mode,))
 
 
 def run_draft_node(
@@ -409,10 +399,13 @@ def run_draft_node(
 ) -> WorkflowRunNodeExecutionResponse:
     workflow_service = WorkflowService()
     draft = require_draft(ctx)
-    node = next((node for node in draft.graph_dict.get("nodes", []) if node.get("id") == node_id), None)
-    if node is None:
-        raise NodeNotFound()
-    if node.get("data", {}).get("type") in _CONTAINER_NODE_TYPES:
+    try:
+        node = draft.get_node_config_by_id(node_id)
+    except WorkflowDataError as exc:
+        raise NodeNotFound() from exc
+    except ValueError as exc:
+        raise BadRequest(str(exc)) from exc
+    if Workflow.get_node_type_from_node_config(node) in CONTAINER_NODE_TYPES:
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
     if files:
         end_read_transaction(ctx.session)
@@ -446,7 +439,7 @@ class WorkflowDraftNodeRunApi(Resource):
                 input={"app_id": "<app_id>", "node_id": "<node_id>", "inputs": {"#llm.text#": "Hello"}},
             ),
         ),
-        requirements=(*_DRAFT_RUN_GUARDS, CheckAppMode(AppMode.WORKFLOW)),
+        requirements=_node_run_guards(AppMode.WORKFLOW),
         body=NodeRunPayload,
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
     )
@@ -461,7 +454,7 @@ class AdvancedChatDraftNodeRunApi(Resource):
         kind=Kind.OBJECT,
         summary="Test one node of an advanced-chat draft, reusing what the last draft run saved",
         examples=(Example(title="Test a node", input={"app_id": "<app_id>", "node_id": "<node_id>", "query": "Hi"}),),
-        requirements=(*_DRAFT_RUN_GUARDS, CheckAppMode(AppMode.ADVANCED_CHAT)),
+        requirements=_node_run_guards(AppMode.ADVANCED_CHAT),
         body=AdvancedChatNodeRunPayload,
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionResponse, "Node execution"),
     )

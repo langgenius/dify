@@ -1143,6 +1143,7 @@ _REQ_RELEASE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
+    CheckAppMode(AppMode.WORKFLOW, AppMode.ADVANCED_CHAT),
     CheckScope(Scope.WORKSPACE_WRITE),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp())),
     CheckWorkspaceRole(_EDITOR_UP),
@@ -1151,6 +1152,7 @@ _REQ_VERSION_READ = (
     CheckSubject(allowed=_ACCOUNT),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
+    CheckAppMode(AppMode.WORKFLOW, AppMode.ADVANCED_CHAT),
     CheckScope(Scope.APPS_READ),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())),
     CheckWorkspaceRole(_EDITOR_UP),
@@ -1159,6 +1161,7 @@ _REQ_ENV_WRITE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
+    CheckAppMode(AppMode.WORKFLOW, AppMode.ADVANCED_CHAT),
     CheckScope(Scope.WORKSPACE_WRITE),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_EDIT, PlainApp())),
     CheckWorkspaceRole(_EDITOR_UP),
@@ -1167,6 +1170,7 @@ _REQ_RUN_HISTORY = (
     CheckSubject(allowed=_ACCOUNT),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
+    CheckAppMode(AppMode.WORKFLOW, AppMode.ADVANCED_CHAT),
     CheckScope(Scope.APPS_READ),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())),
 )
@@ -1178,6 +1182,12 @@ _REQ_DRAFT_RUN = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckWorkspaceRole(_EDITOR_UP),
 )
+
+
+def _node_run_req(mode: AppMode) -> tuple[Requirement, ...]:
+    return (*_REQ_DRAFT_RUN[:3], CheckAppMode(mode), *_REQ_DRAFT_RUN[3:])
+
+
 _REQ_NODE_TYPES: tuple[Requirement, ...] = ()
 _REQ_APP_CREATE = (
     CheckSubject(allowed=_ACCOUNT),
@@ -1306,8 +1316,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "node_types.describe": _REQ_NODE_TYPES,
     "app_create.workflow": _REQ_APP_CREATE,
     "app_create.advanced_chat": _REQ_APP_CREATE,
-    "app_workflow.node_run.workflow": (*_REQ_DRAFT_RUN, CheckAppMode(AppMode.WORKFLOW)),
-    "app_workflow.node_run.advanced_chat": (*_REQ_DRAFT_RUN, CheckAppMode(AppMode.ADVANCED_CHAT)),
+    "app_workflow.node_run.workflow": _node_run_req(AppMode.WORKFLOW),
+    "app_workflow.node_run.advanced_chat": _node_run_req(AppMode.ADVANCED_CHAT),
     "app_info.describe.workflow": _settings_req(
         (AppMode.WORKFLOW,), RBACPermission.APP_VIEW_LAYOUT, PlainApp(), Scope.APPS_READ, None
     ),

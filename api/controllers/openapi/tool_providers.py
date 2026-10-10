@@ -33,7 +33,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import admin_write, workspace_read
+from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
 from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -47,7 +47,6 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
-_READ: Final = workspace_read()
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _PROVIDER_PATH: Final = "/workspaces/<string:workspace_id>/tool-providers/<path:provider>"
 
@@ -197,7 +196,7 @@ class ToolsApi(Resource):
             Example(title="Find GitHub tools", input={"query": "github"}),
             Example(title="Workflows published as tools", input={"provider_type": "workflow"}),
         ),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         query=ToolListQuery,
         returns=(HTTPStatus.OK, ToolListResponse, "Tools"),
     )
@@ -225,7 +224,7 @@ class ToolProviderApi(Resource):
         kind=Kind.OBJECT,
         summary="One tool provider with its API-key form and saved credentials (names only)",
         examples=(Example(title="Tavily", input={"provider": _PROVIDER_EXAMPLE}),),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         returns=(HTTPStatus.OK, ToolProviderDetailResponse, "Tool provider"),
     )
     def get(self, ctx: Context, workspace_id: str, provider: str):
@@ -284,7 +283,7 @@ class ToolProviderCredentialsApi(Resource):
                 input={"provider": _PROVIDER_EXAMPLE, "credentials": {"tavily_api_key": "<from the user>"}},
             ),
         ),
-        requirements=admin_write(RBACPermission.CREDENTIAL_CREATE),
+        requirements=workspace_write_guards(RBACPermission.CREDENTIAL_CREATE, roles=ADMIN_ROLES),
         body=ToolCredentialCreatePayload,
         returns=(HTTPStatus.CREATED, CredentialWriteResponse, "Credential saved"),
     )
@@ -319,7 +318,7 @@ class ToolProviderCredentialApi(Resource):
                 },
             ),
         ),
-        requirements=admin_write(RBACPermission.CREDENTIAL_MANAGE),
+        requirements=workspace_write_guards(RBACPermission.CREDENTIAL_MANAGE, roles=ADMIN_ROLES),
         body=ToolCredentialUpdatePayload,
         returns=(HTTPStatus.OK, CredentialWriteResponse, "Credential replaced"),
     )

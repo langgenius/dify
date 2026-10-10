@@ -31,8 +31,7 @@ _INFO_READ: Final = RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())
 _INFO_WRITE: Final = RBACCheck(RBACPermission.APP_EDIT, PlainApp())
 _AGENT_INFO_READ: Final = RBACCheck(RBACPermission.AGENT_PREVIEW, AgentBehindApp())
 _AGENT_INFO_WRITE: Final = RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
-_API_READ: Final = RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp())
-_API_WRITE: Final = RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp())
+_API: Final = RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp())
 _AGENT_API_READ: Final = RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp())
 _AGENT_API_WRITE: Final = RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp())
 
@@ -226,7 +225,7 @@ class ServiceApiApi(Resource):
         summary="Whether an app's Service API is on, and its base URL (agent apps: describe.service_api.agent)",
         examples=(_API_EXAMPLE,),
         requirements=account_settings_guards(
-            _API_READ, scope=Scope.APPS_READ, modes=settings.REGULAR_MODES, roles=EDITOR_ROLES
+            _API, scope=Scope.APPS_READ, modes=settings.REGULAR_MODES, roles=EDITOR_ROLES
         ),
         returns=(HTTPStatus.OK, ServiceApi, "Service API"),
     )
@@ -239,7 +238,7 @@ class ServiceApiApi(Resource):
         summary="Turn an app's Service API on or off (agent apps: set.service_api.agent)",
         examples=(_API_ON_EXAMPLE,),
         requirements=account_settings_guards(
-            _API_WRITE, scope=Scope.WORKSPACE_WRITE, modes=settings.REGULAR_MODES, roles=ADMIN_ROLES
+            _API, scope=Scope.WORKSPACE_WRITE, modes=settings.REGULAR_MODES, roles=ADMIN_ROLES
         ),
         body=ServiceApiPatch,
         returns=(HTTPStatus.OK, ServiceApi, "Service API"),

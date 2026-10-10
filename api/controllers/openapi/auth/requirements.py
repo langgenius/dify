@@ -9,19 +9,20 @@ Per-request caching belongs in `loaders.py`, which stores into `Context`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from enum import IntEnum
 from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, UnprocessableEntity
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
+    AppModeMismatch,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
@@ -180,7 +181,7 @@ class CheckAppMode(Requirement):
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if load_app(ctx).mode not in self.modes:
-            raise UnprocessableEntity("app_mode_mismatch")
+            raise AppModeMismatch()
 
 
 class CheckWebAppAuthEnterprise(Requirement):
@@ -297,43 +298,57 @@ class ResolveCaller(Requirement):
         load_caller(ctx)
 
 
-def account_app_guards(permission: RBACPermission, *, scope: Scope, editor: bool) -> tuple[Requirement, ...]:
-    """Guards for an account-only op on one app; `editor` adds the pre-RBAC editor-role gate."""
-    guards: tuple[Requirement, ...] = (
-        CheckSubject(allowed=(AccountSubject,)),
-        CheckAppApiEnabled(),
-        CheckWorkspaceMember(),
-        CheckScope(scope),
-        CheckRBACPermission(RBACCheck(permission, PlainApp())),
-    )
-    return (*guards, CheckWorkspaceRole(EDITOR_ROLES)) if editor else guards
+Roles = frozenset[TenantAccountRole] | None
+"""The pre-RBAC workspace-role gate; None declares none."""
+
+WORKSPACE_READ_GUARDS: Final[tuple[Requirement, ...]] = (
+    CheckSubject(allowed=(AccountSubject,)),
+    CheckScope(Scope.WORKSPACE_READ),
+    CheckWorkspaceMember(),
+)
 
 
-def workspace_read() -> tuple[Requirement, ...]:
-    """Guards for a workspace read any member may make."""
-    return (CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ), CheckWorkspaceMember())
+def _role_gate(roles: Roles) -> tuple[Requirement, ...]:
+    return (CheckWorkspaceRole(roles),) if roles is not None else ()
 
 
-def admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
-    """Guards for a workspace write the console gates with `is_admin_or_owner_required` and one RBAC permission."""
+def workspace_write_guards(
+    permission: RBACPermission, *, roles: Roles, extra: tuple[Requirement, ...] = ()
+) -> tuple[Requirement, ...]:
+    """Guards for an account-only write to the workspace."""
     return (
         CheckSubject(allowed=(AccountSubject,)),
         CheckScope(Scope.WORKSPACE_WRITE),
         CheckWorkspaceMember(),
         CheckRBACPermission(RBACCheck(permission, Workspace())),
-        CheckWorkspaceRole(ADMIN_ROLES),
+        *_role_gate(roles),
+        *extra,
     )
+
+
+def _app_guards(
+    head: tuple[Requirement, ...], check: RBACCheck, *, scope: Scope, modes: Collection[AppMode], roles: Roles
+) -> tuple[Requirement, ...]:
+    return (
+        *head,
+        *((CheckAppMode(*modes),) if modes else ()),
+        CheckScope(scope),
+        CheckRBACPermission(check),
+        *_role_gate(roles),
+    )
+
+
+def account_app_guards(
+    permission: RBACPermission, *, scope: Scope, roles: Roles, modes: Collection[AppMode] = ()
+) -> tuple[Requirement, ...]:
+    """Guards for an account-only op on one app; `modes` limits it to apps of those modes."""
+    head = (CheckSubject(allowed=(AccountSubject,)), CheckAppApiEnabled(), CheckWorkspaceMember())
+    return _app_guards(head, RBACCheck(permission, PlainApp()), scope=scope, modes=modes, roles=roles)
 
 
 def account_settings_guards(
-    check: RBACCheck, *, scope: Scope, modes: tuple[AppMode, ...], roles: frozenset[TenantAccountRole] | None
+    check: RBACCheck, *, scope: Scope, modes: Collection[AppMode], roles: Roles
 ) -> tuple[Requirement, ...]:
     """App-settings guards. No `CheckAppApiEnabled`, so an admin can always switch the Service API back on."""
-    guards: tuple[Requirement, ...] = (
-        CheckSubject(allowed=(AccountSubject,)),
-        CheckWorkspaceMember(),
-        CheckAppMode(*modes),
-        CheckScope(scope),
-        CheckRBACPermission(check),
-    )
-    return (*guards, CheckWorkspaceRole(roles)) if roles is not None else guards
+    head = (CheckSubject(allowed=(AccountSubject,)), CheckWorkspaceMember())
+    return _app_guards(head, check, scope=scope, modes=modes, roles=roles)

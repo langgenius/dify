@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Final
+
+from pydantic import BaseModel, Field
 
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
@@ -22,17 +24,15 @@ class WorkflowSnapshot:
     environment_variable_names: frozenset[str]
 
 
-@dataclass(frozen=True)
-class NodeChange:
+class NodeChange(BaseModel):
     id: str
     type: str
     title: str
-    fields: list[str] = field(default_factory=list)
+    fields: list[str] = Field(default_factory=list)
 
 
-@dataclass(frozen=True)
-class WorkflowDiff:
-    published: bool
+class WorkflowDiff(BaseModel):
+    published: bool = Field(description="false when the app was never published; then everything counts as added")
     nodes_added: list[NodeChange]
     nodes_removed: list[NodeChange]
     nodes_changed: list[NodeChange]
@@ -41,19 +41,6 @@ class WorkflowDiff:
     features_changed: bool
     env_added: list[str]
     env_removed: list[str]
-
-    @property
-    def empty(self) -> bool:
-        return not (
-            self.nodes_added
-            or self.nodes_removed
-            or self.nodes_changed
-            or self.edges_added
-            or self.edges_removed
-            or self.features_changed
-            or self.env_added
-            or self.env_removed
-        )
 
 
 def _nodes(graph: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
@@ -70,7 +57,9 @@ def _data(node: Mapping[str, Any]) -> dict[str, Any]:
 
 def _change(node: Mapping[str, Any], fields: list[str] | None = None) -> NodeChange:
     data = _data(node)
-    return NodeChange(str(node.get("id")), str(data.get("type", "")), str(data.get("title", "")), fields or [])
+    return NodeChange(
+        id=str(node.get("id")), type=str(data.get("type", "")), title=str(data.get("title", "")), fields=fields or []
+    )
 
 
 def _edges(graph: Mapping[str, Any]) -> set[str]:

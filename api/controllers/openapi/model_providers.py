@@ -34,7 +34,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import admin_write, workspace_read
+from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.entities.provider_entities import CustomModelConfiguration
 from extensions.ext_application_services import application_services
@@ -45,10 +45,8 @@ from services.entities.model_provider_entities import CustomConfigurationStatus,
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider.service import ModelProviderService
 
-_READ: Final = workspace_read()
-_CREATE: Final = admin_write(RBACPermission.CREDENTIAL_CREATE)
-_MANAGE: Final = admin_write(RBACPermission.CREDENTIAL_MANAGE)
-_PREFERENCES: Final = admin_write(RBACPermission.PLUGIN_PREFERENCES)
+_CREATE: Final = workspace_write_guards(RBACPermission.CREDENTIAL_CREATE, roles=ADMIN_ROLES)
+_MANAGE: Final = workspace_write_guards(RBACPermission.CREDENTIAL_MANAGE, roles=ADMIN_ROLES)
 
 _PROVIDER_EXAMPLE: Final = "langgenius/openai/openai"
 _OLLAMA_EXAMPLE: Final = "langgenius/ollama/ollama"
@@ -209,7 +207,7 @@ class ModelProviderApi(Resource):
         kind=Kind.OBJECT,
         summary="One model provider with its credential form and saved credentials (names only)",
         examples=(Example(title="OpenAI", input={"provider": _PROVIDER_EXAMPLE}),),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         returns=(HTTPStatus.OK, ModelProviderDetailResponse, "Model provider"),
     )
     def get(self, ctx: Context, workspace_id: str, provider: str):
@@ -341,7 +339,7 @@ class ModelsApi(Resource):
             Example(title="LLMs", input={"model_type": "llm"}),
             Example(title="OpenAI models", input={"provider": _PROVIDER_EXAMPLE}),
         ),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         query=ModelListQuery,
         returns=(HTTPStatus.OK, ModelListResponse, "Models"),
     )

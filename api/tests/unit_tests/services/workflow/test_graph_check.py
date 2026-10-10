@@ -1,10 +1,7 @@
 from collections.abc import Mapping
 
-import pytest
-
 from models import AppMode
-from services.workflow import graph_check
-from services.workflow.graph_check import GraphIssue, IssueCode, IssueSeverity, check_graph
+from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph
 
 
 def _node(node_id: str, data: dict[str, object]) -> dict[str, object]:
@@ -115,16 +112,6 @@ def test_scalar_branch_lists_are_reported_not_raised() -> None:
     ]
     issues = check_graph({"nodes": [START, if_else, classifier], "edges": edges}, mode=AppMode.WORKFLOW)
     assert {i.node_id for i in issues if i.code is IssueCode.NODE_DATA_INVALID} == {"if", "qc"}
-
-
-def test_a_failing_check_becomes_a_graph_issue(monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken(_graph: object) -> list[GraphIssue]:
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(graph_check, "_CHECKS", {"broken": broken})
-    issues = check_graph({"nodes": [START], "edges": []}, mode=AppMode.WORKFLOW)
-    assert [i.code for i in issues] == [IssueCode.GRAPH_INVALID]
-    assert "broken" in issues[0].message
 
 
 def test_unexpected_node_validation_error_is_located_and_later_nodes_are_checked() -> None:

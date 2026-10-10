@@ -12,8 +12,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
-from constants.oauth_bearer import Scope
-from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
@@ -41,15 +40,11 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
+    WORKSPACE_READ_GUARDS,
     CheckPluginInstallSetting,
-    CheckRBACPermission,
-    CheckScope,
-    CheckSubject,
-    CheckWorkspaceMember,
     Requirement,
-    workspace_read,
+    workspace_write_guards,
 )
-from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import ModelProviderApi
 from controllers.openapi.tool_providers import ToolProviderApi
 from core.helper.marketplace import search_plugins
@@ -61,20 +56,11 @@ from services.errors.plugin import PluginInstallationForbiddenError
 
 _IN_FLIGHT: Final = frozenset({PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running})
 
-_READ: Final = workspace_read()
+_TASK_READ: Final = (*WORKSPACE_READ_GUARDS, CheckPluginInstallSetting())
 
 
 def _write(permission: RBACPermission) -> tuple[Requirement, ...]:
-    return (
-        CheckSubject(allowed=(AccountSubject,)),
-        CheckScope(Scope.WORKSPACE_WRITE),
-        CheckWorkspaceMember(),
-        CheckRBACPermission(RBACCheck(permission, Workspace())),
-        CheckPluginInstallSetting(),
-    )
-
-
-_TASK_READ: Final = (*workspace_read(), CheckPluginInstallSetting())
+    return workspace_write_guards(permission, roles=None, extra=(CheckPluginInstallSetting(),))
 
 
 @contextmanager
@@ -173,7 +159,7 @@ class MarketplacePluginsApi(Resource):
             Example(title="Find model plugins for OpenAI", input={"query": "openai", "category": "model"}),
             Example(title="Most installed tool plugins", input={"category": "tool"}),
         ),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         query=MarketplacePluginQuery,
         returns=(HTTPStatus.OK, MarketplacePluginListResponse, "Marketplace plugins"),
     )
@@ -215,7 +201,7 @@ class PluginsApi(Resource):
         kind=Kind.OBJECT,
         summary="Plugins installed in the workspace, with the provider ids each one adds",
         examples=(Example(title="Installed model plugins", input={"category": "model"}),),
-        requirements=_READ,
+        requirements=WORKSPACE_READ_GUARDS,
         query=PluginListQuery,
         returns=(HTTPStatus.OK, PluginListResponse, "Installed plugins"),
     )

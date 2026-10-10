@@ -16,13 +16,13 @@ from controllers.openapi._errors import (
     SecretMaskUnknownId,
     VersionNotFound,
 )
+from controllers.openapi._hints import cursor_after, next_page_hint
 from controllers.openapi._models import (
     AdvancedChatNodeRunPayload,
     EnvVariableSetPayload,
     NodeRunPayload,
     RestoreResponse,
     RunListQuery,
-    RunListResponse,
     VersionListQuery,
 )
 from controllers.openapi._upload import file_fields
@@ -33,7 +33,6 @@ from controllers.openapi.app_workflow import (
     AppVersionRestoreApi,
     env_variable_rows,
     run_draft_node,
-    with_next_cursor,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
@@ -79,9 +78,14 @@ def test_env_variable_view_masks_only_secrets_that_have_a_value() -> None:
 
 
 def test_run_list_hints_the_next_cursor() -> None:
-    page = RunListResponse.model_validate({"limit": 1, "has_more": True, "data": [{"id": "run-1"}]})
-    hinted = with_next_cursor(page, op="get.run", app_id="app-1", query=RunListQuery(limit=1))
-    assert hinted.hints[0].input == {"app_id": "app-1", "limit": 1, "last_id": "run-1"}
+    hint = next_page_hint(
+        op="get.run",
+        path_args={"app_id": "app-1"},
+        query=RunListQuery(limit=1),
+        page=cursor_after(last_id="run-1", has_more=True),
+    )
+    assert hint is not None
+    assert hint.input == {"app_id": "app-1", "limit": 1, "last_id": "run-1"}
 
 
 def test_set_env_rejects_mask_for_unknown_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -214,7 +218,6 @@ def test_restore_returns_the_hash_an_import_checks(app: Flask, monkeypatch: pyte
     service = _fake_workflow_service(monkeypatch)
     service.restore_published_workflow_to_draft.return_value = SimpleNamespace(token="whole-draft-hash")
     monkeypatch.setattr(app_workflow, "draft_token", lambda draft: draft.token)
-    monkeypatch.setattr(app_workflow.db, "session", lambda: None)
     version_id = "11111111-1111-4111-8111-111111111111"
 
     api = AppVersionRestoreApi()
@@ -248,9 +251,14 @@ def test_node_run_payload_accepts_files_and_forbids_attachments(payload_cls: typ
         payload_cls.model_validate({"attachments": []})
 
 
+def _draft_with_node(node_id: str) -> SimpleNamespace:
+    node = {"id": node_id, "data": SimpleNamespace(type="code")}
+    return SimpleNamespace(get_node_config_by_id=lambda _node_id: node)
+
+
 def test_run_draft_node_merges_local_files_into_the_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(graph_dict={"nodes": [{"id": "n1", "data": {}}]})
+    service.get_draft_workflow.return_value = _draft_with_node("n1")
     merge = Mock(return_value={"x": 1, "doc": {"id": "file-1"}})
     monkeypatch.setattr(app_workflow, "merge_files", merge)
     monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
@@ -274,7 +282,7 @@ def test_run_draft_node_ends_the_read_transaction_before_uploading(
     monkeypatch: pytest.MonkeyPatch, files: dict[str, Mock] | None, ends_transaction: bool
 ) -> None:
     service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(graph_dict={"nodes": [{"id": "n1", "data": {}}]})
+    service.get_draft_workflow.return_value = _draft_with_node("n1")
     calls = Mock()
     monkeypatch.setattr(app_workflow, "end_read_transaction", calls.end)
     monkeypatch.setattr(app_workflow, "merge_files", calls.merge)

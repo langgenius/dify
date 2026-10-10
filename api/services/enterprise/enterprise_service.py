@@ -312,8 +312,14 @@ class EnterpriseService:
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-            if access_mode not in set(WebAppAccessMode):
-                raise ValueError(f"access_mode must be one of: {', '.join(WebAppAccessMode)}")
+            allowed = {
+                WebAppAccessMode.PUBLIC,
+                WebAppAccessMode.PRIVATE,
+                WebAppAccessMode.PRIVATE_ALL,
+                WebAppAccessMode.SSO_VERIFIED,
+            }
+            if access_mode not in allowed:
+                raise ValueError(f"access_mode must be one of: {', '.join(m.value for m in allowed)}")
 
             data = {"appId": app_id, "accessMode": access_mode}
 

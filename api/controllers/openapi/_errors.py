@@ -93,6 +93,7 @@ class OpenApiErrorCode(StrEnum):
     PLUGIN_SERVICE_UNAVAILABLE = "plugin_service_unavailable"
     DSL_INVALID = "dsl_invalid"
     DRAFT_CHANGED = "draft_changed"
+    APP_MODE_MISMATCH = "app_mode_mismatch"
 
 
 class ErrorDetail(BaseModel):
@@ -447,3 +448,10 @@ class DraftChanged(OpenApiError):  # noqa: N818
     code = 409
     error_code = OpenApiErrorCode.DRAFT_CHANGED
     description = "The draft changed after it was exported. Export it again and reapply your edits."
+
+
+class AppModeMismatch(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.APP_MODE_MISMATCH
+    description = "This op does not serve apps of this mode."
+    hint = "describe.console_app shows the app's mode."

@@ -7,33 +7,18 @@ from typing import Final, Literal
 
 from flask_restx import Resource
 
-from constants.oauth_bearer import Scope
-from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import CreateAppPayload, CreatedAppResponse
-from controllers.openapi.auth.requirements import (
-    EDITOR_ROLES,
-    CheckAppQuota,
-    CheckRBACPermission,
-    CheckScope,
-    CheckSubject,
-    CheckWorkspaceMember,
-    CheckWorkspaceRole,
-)
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.requirements import EDITOR_ROLES, CheckAppQuota, workspace_write_guards
 from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from models import AppMode
 from services.entities.app_entities import CreateAppParams
 
-_CREATE_GUARDS: Final = (
-    CheckSubject(allowed=(AccountSubject,)),
-    CheckScope(Scope.WORKSPACE_WRITE),
-    CheckWorkspaceMember(),
-    CheckRBACPermission(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace())),
-    CheckWorkspaceRole(EDITOR_ROLES),
-    CheckAppQuota(),
+_CREATE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.APP_CREATE_AND_MANAGEMENT, roles=EDITOR_ROLES, extra=(CheckAppQuota(),)
 )
 
 

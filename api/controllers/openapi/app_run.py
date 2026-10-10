@@ -16,7 +16,6 @@ from werkzeug.exceptions import (
     InternalServerError,
     NotFound,
     TooManyRequests,
-    UnprocessableEntity,
 )
 
 import services
@@ -26,6 +25,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -40,6 +40,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
+    EDITOR_ROLES,
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
@@ -143,7 +144,7 @@ _RUN_GUARDS: Final = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
-_DRAFT_RUN_GUARDS: Final = account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, editor=True)
+_DRAFT_RUN_GUARDS: Final = account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES)
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
 _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
@@ -174,9 +175,10 @@ def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
         return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
 
-def require_mode(app: App, *modes: AppMode) -> None:
+def _require_mode(app: App, *modes: AppMode) -> None:
+    """In the handler, not a guard: an external caller the access check refuses must not learn the app's mode."""
     if app.mode not in modes:
-        raise UnprocessableEntity("app_mode_mismatch")
+        raise AppModeMismatch()
 
 
 def _respond(ctx: Context, stream: Any):
@@ -389,6 +391,10 @@ _RUN_ROUTES: Final = (
     ),
 )
 
+DRAFT_TEST_OPS: Final = {
+    mode: route.op for route in _RUN_ROUTES if route.invoke_from is InvokeFrom.DEBUGGER for mode in route.modes
+}
+
 
 def _run_api(route: _RunRoute) -> type[Resource]:
     @endpoint(
@@ -401,7 +407,7 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         returns=_STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
-        require_mode(ctx.app, *route.modes)
+        _require_mode(ctx.app, *route.modes)
         stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)

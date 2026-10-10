@@ -9,25 +9,25 @@ from enum import StrEnum
 from typing import Any, Final
 
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import resolve_workflow_node_class
-from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, ErrorStrategy
-from graphon.nodes.base.node import Node
+from graphon.enums import BuiltinNodeTypes
+from graphon.variables import VariableBase
 from models import AppMode
+from services.workflow.branch_handles import SOURCE_HANDLE, branch_handles
 from services.workflow.node_defaults import fill_node_data, node_data_type
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-_SOURCE_HANDLE: Final = "source"
-_ELSE_HANDLE: Final = "false"
-_LEGACY_IF_HANDLE: Final = "true"
+GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
+CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 _CANVAS_NOTE_TYPE: Final = "custom-note"
 _ROOT_SELECTORS: Final = frozenset({"sys", "env", "conversation"})
-_CONTAINER_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 
 
 class IssueSeverity(StrEnum):
@@ -73,102 +73,115 @@ def refused_node_types(mode: AppMode) -> frozenset[str]:
     return frozenset({BuiltinNodeTypes.ANSWER})
 
 
+def credential_check(workspace_id: str, environment: Mapping[str, VariableBase], session: Session) -> ResourceCheck:
+    """A `ResourceCheck` reporting what publish's credential check would refuse for one node."""
+    service = WorkflowService()
+
+    def check(node: Mapping[str, Any]) -> str | None:
+        try:
+            service.validate_node_credentials(workspace_id, node, environment, session=session)
+        except ValueError as error:
+            return str(error)
+        return None
+
+    return check
+
+
+@dataclass(frozen=True)
+class _Node:
+    """One node read once: its data with editor defaults filled, what reading it found wrong,
+    and the variables it references (empty when its data could not be read)."""
+
+    id: str
+    data: Mapping[str, Any]
+    issues: tuple[GraphIssue, ...] = ()
+    references: Mapping[str, Sequence[str]] = field(default_factory=dict)
+
+    @property
+    def type(self) -> str:
+        return str(self.data.get("type", ""))
+
+
 @dataclass(frozen=True)
 class _Graph:
     raw: Mapping[str, Any]
-    nodes: Mapping[str, Mapping[str, Any]]
+    nodes: Mapping[str, _Node]
     edges: Sequence[Mapping[str, Any]]
     mode: AppMode
 
 
-def _data(node: Mapping[str, Any]) -> Mapping[str, Any]:
+def _raw_data(node: Mapping[str, Any]) -> Mapping[str, Any]:
     data = node.get("data")
     return data if isinstance(data, Mapping) else {}
 
 
-def _node_class(data: Mapping[str, Any]) -> type[Node]:
-    return resolve_workflow_node_class(
-        node_type=str(data.get("type", "")), node_version=str(data.get("version", "1")), node_data=data
-    )
+def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
+    return ("nodes", node_id, "data", *path)
+
+
+def _references(node_class: type, config: Mapping[str, Any], graph: Mapping[str, Any]) -> Mapping[str, Sequence[str]]:
+    """Best effort: a container reads its children's raw data too, and those are reported on their own."""
+    try:
+        return node_class.extract_variable_selector_to_variable_mapping(
+            graph_config=graph, config=NodeConfigDictAdapter.validate_python(config)
+        )
+    except Exception:
+        logger.debug("variable references of node %s could not be read", config.get("id"), exc_info=True)
+        return {}
+
+
+def _read_node(node_id: str, raw: Mapping[str, Any], graph: Mapping[str, Any]) -> _Node:
+    data = fill_node_data(_raw_data(raw))
+    node_type = str(data.get("type", ""))
+    try:
+        node_class = resolve_workflow_node_class(
+            node_type=node_type, node_version=str(data.get("version", "1")), node_data=data
+        )
+    except ValueError:
+        issue = GraphIssue(
+            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, _data_loc(node_id, "type")
+        )
+        return _Node(node_id, data, (issue,))
+    config = adapt_node_config_for_graph({"id": node_id, "data": data})
+    try:
+        node_data_type(node_type, node_class).model_validate(config["data"])
+    except ValidationError as error:
+        problems = error.errors(include_url=False, include_input=False, include_context=False)
+        issues = tuple(
+            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"])) for p in problems
+        )
+        return _Node(node_id, data, issues)
+    except Exception as error:
+        # Some validators raise other errors on bad or newer values; this node is reported, the rest still checked.
+        logger.warning("node %s data could not be validated", node_id, exc_info=True)
+        message = f"The node data could not be read ({type(error).__name__}: {error})"
+        return _Node(node_id, data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),))
+    return _Node(node_id, data, references=_references(node_class, config, graph))
 
 
 def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
     refused = refused_node_types(graph.mode)
-    for node_id, node in graph.nodes.items():
-        node_type = _data(node).get("type")
-        if node_type in refused:
+    for node in graph.nodes.values():
+        if node.type in refused:
             yield GraphIssue(
                 IssueCode.MODE_INCOMPATIBLE,
-                f"A {graph.mode} app can't hold a {node_type} node",
-                node_id,
-                ("nodes", node_id, "data", "type"),
+                f"A {graph.mode} app can't hold a {node.type} node",
+                node.id,
+                _data_loc(node.id, "type"),
             )
 
 
 def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
-    for node_id, node in graph.nodes.items():
-        data = fill_node_data(_data(node))
-        node_type = str(data.get("type", ""))
-        try:
-            node_class = _node_class(data)
-        except ValueError:
-            yield GraphIssue(
-                IssueCode.UNKNOWN_NODE_TYPE,
-                f"Unknown node type {node_type!r}",
-                node_id,
-                ("nodes", node_id, "data", "type"),
-            )
-            continue
-        try:
-            adapted = adapt_node_config_for_graph({"id": node_id, "data": data})["data"]
-            node_data_type(node_type, node_class).model_validate(adapted)
-        except ValidationError as error:
-            for problem in error.errors(include_url=False, include_input=False, include_context=False):
-                yield GraphIssue(
-                    IssueCode.NODE_DATA_INVALID, problem["msg"], node_id, ("nodes", node_id, "data", *problem["loc"])
-                )
-        except Exception as error:
-            # Some validators raise other errors on bad or newer values; report this node and check the rest.
-            logger.warning("node %s data could not be validated", node_id, exc_info=True)
-            yield GraphIssue(
-                IssueCode.NODE_DATA_INVALID,
-                f"The node data could not be read ({type(error).__name__}: {error})",
-                node_id,
-                ("nodes", node_id, "data"),
-            )
-        start = data.get("start_node_id")
-        if node_type in _CONTAINER_TYPES and start and start not in graph.nodes:
+    for node in graph.nodes.values():
+        yield from node.issues
+        start = node.data.get("start_node_id")
+        if node.type in CONTAINER_NODE_TYPES and start and start not in graph.nodes:
             yield GraphIssue(
                 IssueCode.CONTAINER_START_MISSING,
                 f"start_node_id {start!r} is not in the graph",
-                node_id,
-                ("nodes", node_id, "data", "start_node_id"),
+                node.id,
+                _data_loc(node.id, "start_node_id"),
             )
-
-
-def _handles(data: Mapping[str, Any]) -> frozenset[str] | None:
-    """Valid source handles for nodes whose handles carry meaning; None means not checked."""
-    extra = {ErrorStrategy.FAIL_BRANCH.value} if data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH else set()
-    match data.get("type"):
-        case BuiltinNodeTypes.IF_ELSE:
-            cases = data.get("cases")
-            if cases is None:
-                return frozenset({_LEGACY_IF_HANDLE, _ELSE_HANDLE} | extra)
-            if not isinstance(cases, list):
-                return None
-            return frozenset({str(c.get("case_id")) for c in cases if isinstance(c, Mapping)} | {_ELSE_HANDLE} | extra)
-        case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            classes = data.get("classes") or []
-            if not isinstance(classes, list):
-                return None
-            return frozenset({str(c.get("id")) for c in classes if isinstance(c, Mapping)} | extra)
-        case BuiltinNodeTypes.HUMAN_INPUT:
-            actions = data.get("user_actions") or []
-            if not isinstance(actions, list):
-                return None
-            return frozenset({str(a.get("id")) for a in actions if isinstance(a, Mapping)} | {TIMEOUT_HANDLE} | extra)
-        case _:
-            return None
 
 
 def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -183,8 +196,8 @@ def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
                     ("edges", edge_id, end),
                 )
         source = graph.nodes.get(str(edge.get("source")))
-        valid = _handles(_data(source)) if source else None
-        handle = str(edge.get("sourceHandle", _SOURCE_HANDLE))
+        valid = branch_handles(source.data) if source else None
+        handle = str(edge.get("sourceHandle", SOURCE_HANDLE))
         if valid is not None and handle not in valid:
             yield GraphIssue(
                 IssueCode.BRANCH_HANDLE_INVALID,
@@ -195,32 +208,31 @@ def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
 
 
 def _unconnected_branch_issues(graph: _Graph) -> Iterable[GraphIssue]:
-    for node_id, node in graph.nodes.items():
-        handles = _handles(_data(node))
+    for node in graph.nodes.values():
+        handles = branch_handles(node.data)
         if handles is None:
             continue
-        used = {str(e.get("sourceHandle", _SOURCE_HANDLE)) for e in graph.edges if e.get("source") == node_id}
+        used = {str(e.get("sourceHandle", SOURCE_HANDLE)) for e in graph.edges if e.get("source") == node.id}
         for handle in sorted(handles - used):
             yield GraphIssue(
                 IssueCode.BRANCH_UNCONNECTED,
-                f"Branch {handle!r} of {node_id!r} has no edge; a run that takes it stops there",
-                node_id,
-                ("nodes", node_id),
+                f"Branch {handle!r} of {node.id!r} has no edge; a run that takes it stops there",
+                node.id,
+                ("nodes", node.id),
             )
 
 
 def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
     """End nodes share one set of workflow outputs, so the console refuses to publish a name used twice."""
     places: dict[str, list[tuple[str, int]]] = {}
-    for node_id, node in graph.nodes.items():
-        data = _data(node)
-        outputs = data.get("outputs")
-        if data.get("type") != BuiltinNodeTypes.END or not isinstance(outputs, list):
+    for node in graph.nodes.values():
+        outputs = node.data.get("outputs")
+        if node.type != BuiltinNodeTypes.END or not isinstance(outputs, list):
             continue
         for index, output in enumerate(outputs):
             name = str(output.get("variable") or "").strip() if isinstance(output, Mapping) else ""
             if name:
-                places.setdefault(name, []).append((node_id, index))
+                places.setdefault(name, []).append((node.id, index))
     for name, found in places.items():
         if len(found) < 2:
             continue
@@ -229,66 +241,47 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.OUTPUT_NAME_DUPLICATE,
                 f"Output {name!r} is used by more than one End node output; output names must be unique",
                 node_id,
-                ("nodes", node_id, "data", "outputs", index, "variable"),
+                _data_loc(node_id, "outputs", index, "variable"),
             )
 
 
 def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
-    for node_id, node in graph.nodes.items():
-        data = fill_node_data(_data(node))
-        try:
-            config = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph({"id": node_id, "data": data}))
-            mapping = _node_class(data).extract_variable_selector_to_variable_mapping(
-                graph_config=graph.raw, config=config
-            )
-        except Exception:
-            # Unknown or invalid nodes are already reported by _node_issues.
-            continue
-        for key, selector in mapping.items():
+    for node in graph.nodes.values():
+        for key, selector in node.references.items():
             if selector and selector[0] not in _ROOT_SELECTORS and selector[0] not in graph.nodes:
                 yield GraphIssue(
                     IssueCode.REFERENCE_MISSING,
                     f"{key} reads node {selector[0]!r}, which is not in the graph",
-                    node_id,
-                    ("nodes", node_id, "data"),
+                    node.id,
+                    _data_loc(node.id),
                 )
 
 
-_CHECKS: Final[Mapping[str, Callable[[_Graph], Iterable[GraphIssue]]]] = {
-    "app mode": _mode_issues,
-    "node data": _node_issues,
-    "edge": _edge_issues,
-    "branch": _unconnected_branch_issues,
-    "output name": _output_name_issues,
-    "reference": _reference_issues,
-}
+_CHECKS: Final[tuple[Callable[[_Graph], Iterable[GraphIssue]], ...]] = (
+    _mode_issues,
+    _node_issues,
+    _edge_issues,
+    _unconnected_branch_issues,
+    _output_name_issues,
+    _reference_issues,
+)
 
 
 def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceCheck | None = None) -> list[GraphIssue]:
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
         return [GraphIssue(IssueCode.GRAPH_INVALID, "graph.nodes must be a list", None, ("nodes",))]
-    edges = graph.get("edges") or []
+    raw_nodes = {str(n.get("id")): n for n in nodes if isinstance(n, Mapping) and n.get("type") != _CANVAS_NOTE_TYPE}
     view = _Graph(
         raw=graph,
-        nodes={str(n.get("id")): n for n in nodes if isinstance(n, Mapping) and n.get("type") != _CANVAS_NOTE_TYPE},
-        edges=[e for e in edges if isinstance(e, Mapping)],
+        nodes={node_id: _read_node(node_id, raw, graph) for node_id, raw in raw_nodes.items()},
+        edges=[e for e in graph.get("edges") or [] if isinstance(e, Mapping)],
         mode=mode,
     )
-    issues: list[GraphIssue] = []
-    for name, check in _CHECKS.items():
-        try:
-            issues.extend(check(view))
-        except Exception:
-            logger.exception("graph check %s failed", name)
-            issues.append(
-                GraphIssue(
-                    IssueCode.GRAPH_INVALID, f"The {name} check failed, so the graph is not fully checked", None, ()
-                )
-            )
+    issues = [issue for check in _CHECKS for issue in check(view)]
     if resources is not None:
-        for node_id, node in view.nodes.items():
-            problem = resources(node)
+        for node_id, raw in raw_nodes.items():
+            problem = resources(raw)
             if problem:
                 issues.append(GraphIssue(IssueCode.RESOURCE_UNAVAILABLE, problem, node_id, ("nodes", node_id)))
     return issues

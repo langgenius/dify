@@ -25,13 +25,13 @@ from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslI
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import Subject
-from extensions.ext_database import db
 from machinery.context import RequestContext
 from models.model import App, AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.base import NoPermissionError
+from services.workflow import dsl_import, graph_check
 from services.workflow.graph_check import IssueCode, IssueSeverity
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
@@ -145,7 +145,6 @@ def test_export_reads_draft_hash_before_building_dsl(app: Flask, monkeypatch: py
     monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
     monkeypatch.setattr(app_dsl, "WorkflowService", lambda: service)
     monkeypatch.setattr(app_dsl, "draft_token", lambda draft: draft.token)
-    monkeypatch.setattr(db, "session", lambda: None)
 
     ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})
     ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
@@ -186,10 +185,10 @@ class _Credentials:
 
 @pytest.fixture
 def credentials(monkeypatch: pytest.MonkeyPatch) -> Callable[[str | None], None]:
-    monkeypatch.setattr(app_dsl, "session_factory", SimpleNamespace(create_session=nullcontext))
+    monkeypatch.setattr(dsl_import, "session_factory", SimpleNamespace(create_session=nullcontext))
 
     def set_problem(problem: str | None) -> None:
-        monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _Credentials(problem))
+        monkeypatch.setattr(graph_check, "WorkflowService", lambda: _Credentials(problem))
 
     set_problem(None)
     return set_problem
@@ -265,14 +264,8 @@ def test_check_reports_credential_problems_as_warnings(app: Flask, credentials: 
 
 
 @pytest.mark.usefixtures("credentials")
-def test_check_uses_the_overwritten_apps_mode(
-    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        app_query_services.apps.console,
-        "get",
-        lambda *_args: SimpleNamespace(mode_compatible_with_agent=AppMode.ADVANCED_CHAT),
-    )
+def test_check_uses_the_overwritten_apps_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dsl_import, "require_console_app", lambda *_args: SimpleNamespace(mode=AppMode.ADVANCED_CHAT))
 
     response = _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START, _END), app_id="app-1"))
 
@@ -281,13 +274,11 @@ def test_check_uses_the_overwritten_apps_mode(
 
 
 @pytest.mark.usefixtures("credentials")
-def test_check_answers_404_for_an_app_outside_the_workspace(
-    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_check_answers_404_for_an_app_outside_the_workspace(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     def missing(*_args: object) -> None:
         raise ConsoleAppNotFoundError("App not found")
 
-    monkeypatch.setattr(app_query_services.apps.console, "get", missing)
+    monkeypatch.setattr(dsl_import, "require_console_app", missing)
 
     with pytest.raises(NotFound):
         _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START), app_id="app-1"))

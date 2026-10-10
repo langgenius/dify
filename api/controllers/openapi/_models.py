@@ -23,6 +23,8 @@ from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_va
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import
 from services.entities.dsl_entities import CheckDependenciesResult
+from services.workflow.graph_check import GraphIssue
+from services.workflow.graph_diff import WorkflowDiff
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 100
@@ -661,6 +663,16 @@ class DslIssueRow(BaseModel):
     loc: list[str | int]
     message: str
 
+    @classmethod
+    def of(cls, issue: GraphIssue) -> DslIssueRow:
+        return cls(
+            code=issue.code,
+            severity=issue.code.severity,
+            node_id=issue.node_id,
+            loc=list(issue.loc),
+            message=issue.message,
+        )
+
 
 class DslCheckResponse(Hinted):
     valid: bool = Field(description="No error-severity issues")
@@ -678,25 +690,6 @@ class ReleaseCheckRow(BaseModel):
     detail: str
 
 
-class NodeChangeRow(BaseModel):
-    id: str
-    type: str
-    title: str
-    fields: list[str]
-
-
-class DraftChanges(BaseModel):
-    published: bool = Field(description="false when the app was never published; then everything counts as added")
-    nodes_added: list[NodeChangeRow]
-    nodes_removed: list[NodeChangeRow]
-    nodes_changed: list[NodeChangeRow]
-    edges_added: list[str]
-    edges_removed: list[str]
-    features_changed: bool
-    env_added: list[str]
-    env_removed: list[str]
-
-
 class ReleaseState(BaseModel):
     service_api_enabled: bool
     webapp_enabled: bool
@@ -707,7 +700,7 @@ class ReleaseCheckResponse(Hinted):
     checks: list[ReleaseCheckRow]
     issues: list[DslIssueRow]
     state: ReleaseState
-    changes: DraftChanges
+    changes: WorkflowDiff
 
 
 class FormSubmitResponse(BaseModel):
