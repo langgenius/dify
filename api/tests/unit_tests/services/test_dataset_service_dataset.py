@@ -249,6 +249,16 @@ class TestDatasetServiceValidation:
                 "provider setup",
             ),
             (DatasetService.check_reranking_model_setting, LLMBadRequestError(), "No Rerank Model available"),
+            (
+                DatasetService.check_graph_extraction_model_setting,
+                LLMBadRequestError(),
+                "No LLM available for knowledge graph extraction",
+            ),
+            (
+                DatasetService.check_graph_extraction_model_setting,
+                ProviderTokenNotInitError("provider setup"),
+                "provider setup",
+            ),
         ],
     )
     def test_direct_model_setting_checks_wrap_runtime_errors(
@@ -258,6 +268,20 @@ class TestDatasetServiceValidation:
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
             with pytest.raises(ValueError, match=message):
                 method("tenant-1", "provider", "model")
+
+    def test_graph_extraction_requires_an_llm(self) -> None:
+        with patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls:
+            DatasetService.check_graph_extraction_model_setting("tenant-1", "provider", "model")
+
+        # Extraction prompts a chat model; an embedding or rerank model of the
+        # same name must not pass the check.
+        model_manager_cls.for_tenant.assert_called_once_with(tenant_id="tenant-1")
+        model_manager_cls.for_tenant.return_value.get_model_instance.assert_called_once_with(
+            tenant_id="tenant-1",
+            provider="provider",
+            model_type=ModelType.LLM,
+            model="model",
+        )
 
 
 class TestDatasetServiceRetrieval:
@@ -884,6 +908,154 @@ class TestDatasetServiceEmbeddingSettings:
 
         data = {} if summary_setting is None else {"summary_index_setting": summary_setting}
         assert DatasetService._check_summary_index_setting_model_changed(dataset, data) is expected
+
+
+class TestDatasetServiceGraphIndexSetting:
+    """`validate_graph_index_setting` is the only writer of `graph_index_setting`."""
+
+    @staticmethod
+    def _validate(dataset: Dataset, incoming: dict[str, object]) -> dict[str, object]:
+        with patch.object(DatasetService, "check_graph_extraction_model_setting"):
+            return DatasetService.validate_graph_index_setting(dataset, incoming)
+
+    def test_console_save_keeps_fields_the_form_never_sends(self) -> None:
+        dataset = _dataset()
+        dataset.graph_index_setting = {
+            "enabled": True,
+            "model_provider_name": "openai",
+            "model_name": "gpt-4",
+            "hop_decay": 0.9,
+            "extract_prompt": "custom",
+        }
+
+        # What the settings form round-trips: the five fields it knows about.
+        stored = self._validate(
+            dataset,
+            {
+                "enabled": True,
+                "model_provider_name": "openai",
+                "model_name": "gpt-4",
+                "entity_types": ["PERSON"],
+                "max_depth": 3,
+            },
+        )
+
+        assert stored["max_depth"] == 3
+        # Server-side tuning the console cannot see must survive its save.
+        assert stored["hop_decay"] == 0.9
+        assert stored["extract_prompt"] == "custom"
+
+    def test_null_from_the_response_contract_does_not_erase_a_field(self) -> None:
+        dataset = _dataset()
+        dataset.graph_index_setting = {"enabled": False, "hop_decay": 0.9}
+
+        # The detail response serializes untouched keys as null; that comes back
+        # on save and must read as "not sent", not as "clear it".
+        stored = self._validate(dataset, {"enabled": False, "hop_decay": None})
+
+        assert stored["hop_decay"] == 0.9
+
+    def test_enabling_without_an_extraction_model_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="extraction model"):
+            self._validate(_dataset(), {"enabled": True})
+
+    def test_out_of_range_values_are_rejected(self) -> None:
+        # max_depth is bounded at 4; storing 99 would only surface as a runaway
+        # traversal at query time.
+        with pytest.raises(ValueError, match="graph_index_setting"):
+            self._validate(_dataset(), {"enabled": False, "max_depth": 99})
+
+    def test_the_extraction_model_is_checked_against_the_tenant(self) -> None:
+        dataset = _dataset()
+
+        with patch.object(DatasetService, "check_graph_extraction_model_setting") as check:
+            DatasetService.validate_graph_index_setting(
+                dataset,
+                {"enabled": True, "model_provider_name": "openai", "model_name": "gpt-4"},
+            )
+
+        check.assert_called_once_with(dataset.tenant_id, "openai", "gpt-4")
+
+    def test_a_disabled_setting_needs_no_model(self) -> None:
+        with patch.object(DatasetService, "check_graph_extraction_model_setting") as check:
+            stored = DatasetService.validate_graph_index_setting(_dataset(), {"enabled": False})
+
+        assert stored["enabled"] is False
+        check.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("previous", "current", "expected"),
+        [
+            # Creating a knowledge base indexes its first documents before the
+            # graph can be enabled, so turning it on must cover them.
+            ({}, {"enabled": True, "model_provider_name": "p", "model_name": "m"}, True),
+            ({"enabled": False}, {"enabled": True, "model_provider_name": "p", "model_name": "m"}, True),
+            # A new extraction model changes what every existing chunk yields.
+            (
+                {"enabled": True, "model_provider_name": "p", "model_name": "m"},
+                {"enabled": True, "model_provider_name": "p", "model_name": "other"},
+                True,
+            ),
+            # Retrieval tuning applies on the next query; re-extracting would
+            # only spend model calls.
+            (
+                {"enabled": True, "model_provider_name": "p", "model_name": "m", "max_depth": 2},
+                {"enabled": True, "model_provider_name": "p", "model_name": "m", "max_depth": 3},
+                False,
+            ),
+            ({"enabled": True, "model_provider_name": "p", "model_name": "m"}, {"enabled": False}, False),
+        ],
+    )
+    def test_backfill_runs_only_when_extraction_inputs_change(
+        self, previous: dict[str, object], current: dict[str, object], expected: bool
+    ) -> None:
+        assert DatasetService._graph_needs_backfill(previous, current) is expected
+
+    def test_enabling_the_graph_queues_a_backfill_only_after_commit(self, sqlite_session: Session) -> None:
+        dataset = _dataset()
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "check_graph_extraction_model_setting"),
+            patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+        ):
+            DatasetService._update_internal_dataset(
+                dataset,
+                {"graph_index_setting": {"enabled": True, "model_provider_name": "p", "model_name": "m"}},
+                _account(),
+                sqlite_session,
+            )
+            # The task reads the setting back; before the commit it would see
+            # the graph still disabled and do nothing.
+            task.delay.assert_not_called()
+            sqlite_session.commit()
+
+        task.delay.assert_called_once_with(dataset.id, dataset.tenant_id, only_failed=False)
+
+    def test_a_rolled_back_setting_change_queues_nothing(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with (
+            sqlite_session_factory() as session,
+            patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+        ):
+            session.execute(select(Dataset))
+            DatasetService._build_graph_after_commit(session, "dataset-1", "tenant-1")
+            session.rollback()
+            session.execute(select(Dataset))
+            session.commit()
+
+        task.delay.assert_not_called()
+
+    def test_external_datasets_reject_graph_indexing(self, unbound_session: Session) -> None:
+        dataset = _dataset(provider="external")
+
+        with pytest.raises(ValueError, match="external knowledge bases"):
+            DatasetService._update_external_dataset(
+                dataset,
+                {"graph_index_setting": {"enabled": True}},
+                _account(),
+                unbound_session,
+            )
 
 
 class TestDatasetServiceRagPipelineSettings:

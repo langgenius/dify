@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary
@@ -98,6 +99,11 @@ def clean_document_indexes(
             lock=redis_client.lock(f"keyword_indexing_lock_{dataset_id}", timeout=600),
             deleted_ids=body_node_ids,
         )
+
+    # The graph service swallows its own failures, so give it a transaction of
+    # its own: an aborted statement must not poison the row deletes below.
+    with new_session() as session, session.begin():
+        GraphIndexService.delete_by_document_ids(dataset, list(document_ids), session=session)
 
     with new_session() as session, session.begin():
         if summary_ids:

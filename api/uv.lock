@@ -1504,6 +1504,9 @@ dev = [
     { name = "types-ujson" },
     { name = "xinference-client" },
 ]
+graph-neo4j = [
+    { name = "neo4j" },
+]
 kms = [
     { name = "azure-keyvault-keys" },
 ]
@@ -1794,6 +1797,7 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
     { name = "xinference-client", specifier = ">=2.7.0" },
 ]
+graph-neo4j = [{ name = "neo4j", specifier = ">=5.28.0,<6.0.0" }]
 kms = [{ name = "azure-keyvault-keys", specifier = ">=4.11.2,<5.0.0" }]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.31.0,<13.0.0" },
@@ -4243,6 +4247,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/5a/ffc4663fb061f612b6efe2afc3b1c94cec4de86af8b4736935010c159263/mysql_connector_python-26.7.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:ec8fe2f5af701d3146a6e31ef2fce293f2418c148a99df7c9917f87cfcdaea93", size = 21746465, upload-time = "2026-07-29T10:18:31.331Z" },
     { url = "https://files.pythonhosted.org/packages/78/68/1ee48a7c2c1104e6fe6cf8a98d6fbdba547d72331a3d1352fe2443e3cf95/mysql_connector_python-26.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:fd10764bd6dadb0ad44475126a87d184dac519712874459ab5f3976c23314f22", size = 17682618, upload-time = "2026-07-29T10:18:33.684Z" },
     { url = "https://files.pythonhosted.org/packages/ff/01/07efeb3e3fc730f945af40ddf1f4c879c13945b193a94eba8e642c0d4176/mysql_connector_python-26.7.0-py2.py3-none-any.whl", hash = "sha256:43ee453b53556f690e4f4b795d3f17a1c6d4b45f729657bb0d999c8dfc9261d5", size = 480733, upload-time = "2026-07-29T10:18:49.777Z" },
+]
+
+[[package]]
+name = "neo4j"
+version = "5.28.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/fc/56d23ba3eed18ad3cfece6fadc52a2386d16627e8d96554f43b14984e857/neo4j-5.28.5.tar.gz", hash = "sha256:22c17254dc99cded006ff8d1904fe4c8a09d2b67f4e02709bfeca95786b1b58d", size = 232775, upload-time = "2026-08-28T10:26:35.047Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/fc/4e379b0bdecf3a22ec4581a594349f88546ee0a6e0d3cbd8941013e1411a/neo4j-5.28.5-py3-none-any.whl", hash = "sha256:b5a919bb7be2dd0ccb72acd52724964b73f1bb5f5c753a031af84dbbe170fbf3", size = 313920, upload-time = "2026-08-28T10:26:32.667Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/9b/ecd432ccda4c4a1015e46a19645922cad7304cf37012982b22b2777a29c2/neo4j-5.28.5.0-py3-none-any.whl", hash = "sha256:c8ab75a72d54f2aceea35a22d1cd39203f754777c6ec8ccb3d9e6d4d8b8bdd4e", size = 313958, upload-time = "2026-08-31T08:45:18.428Z" },
 ]
 
 [[package]]

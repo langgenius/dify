@@ -70,6 +70,9 @@ class DatasetOperations(Protocol):
     def error_documents(self, ref: DatasetRef) -> dict[str, Any]: ...
     def partial_members(self, ref: DatasetRef) -> list[str]: ...
     def auto_disable_logs(self, ref: DatasetRef) -> dict[str, Any]: ...
+    def graph_stats(self, ref: DatasetRef) -> dict[str, Any]: ...
+    def graph(self, ref: DatasetRef, *, query: str | None, limit: int) -> dict[str, Any]: ...
+    def retry_graph(self, ref: DatasetRef) -> None: ...
     def set_api_enabled(self, context: RequestContext, ref: DatasetRef, enabled: bool) -> None: ...
 
 
@@ -152,6 +155,15 @@ class DatasetApplicationService:
 
     def auto_disable_logs(self, context: RequestContext, *, dataset_id: str) -> dict[str, Any]:
         return self._operations.auto_disable_logs(self._dataset(context, dataset_id))
+
+    def graph_stats(self, context: RequestContext, *, dataset_id: str) -> dict[str, Any]:
+        return self._operations.graph_stats(self._dataset(context, dataset_id))
+
+    def graph(self, context: RequestContext, *, dataset_id: str, query: str | None, limit: int) -> dict[str, Any]:
+        return self._operations.graph(self._dataset(context, dataset_id), query=query, limit=limit)
+
+    def retry_graph(self, context: RequestContext, *, dataset_id: str) -> None:
+        self._operations.retry_graph(self._dataset(context, dataset_id))
 
     def set_api_enabled(self, context: RequestContext, *, dataset_id: str, status: str) -> None:
         self._operations.set_api_enabled(context, self._dataset(context, dataset_id), status == "enable")

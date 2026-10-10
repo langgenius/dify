@@ -212,6 +212,25 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
 })
 
 /**
+ * DatasetGraphIndexSettingResponse
+ *
+ * Knowledge-graph configuration of a dataset.
+ */
+export const zDatasetGraphIndexSettingResponse = z.object({
+  enabled: z.boolean().nullish(),
+  entity_types: z.array(z.string()).nullish(),
+  extract_prompt: z.string().nullish(),
+  hop_decay: z.number().nullish(),
+  llm_query_fallback: z.boolean().nullish(),
+  max_depth: z.int().nullish(),
+  max_entities_per_chunk: z.int().nullish(),
+  max_neighbors_per_hop: z.int().nullish(),
+  max_seed_entities: z.int().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
+})
+
+/**
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
@@ -644,6 +663,7 @@ export const zDatasetDetailResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),

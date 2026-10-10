@@ -5,14 +5,15 @@ import logging
 import secrets
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import replace
 from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
+from pydantic import ValidationError
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, case, delete, exists, func, select, tuple_, update
+from sqlalchemy import ColumnElement, case, delete, event, exists, func, select, tuple_, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -21,6 +22,7 @@ from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
+from core.rag.graph.entities import GraphIndexSetting
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -91,6 +93,7 @@ from services.knowledge.entities.knowledge_entities import (
 )
 from services.knowledge.entities.segments import SegmentUpdateArgs
 from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.graph_build_state import mark_graph_build_active
 from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.segments.application import (
     ChildChunkDeleteIndexApplicationError,
@@ -106,6 +109,7 @@ from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
+from tasks.build_dataset_graph_task import build_dataset_graph_task
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_index_update_task import deal_dataset_index_update_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -529,6 +533,53 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
+    def check_graph_extraction_model_setting(tenant_id: str, model_provider: str, model: str):
+        try:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                provider=model_provider,
+                model_type=ModelType.LLM,
+                model=model,
+            )
+        except LLMBadRequestError:
+            raise ValueError(
+                "No LLM available for knowledge graph extraction."
+                " Please configure a valid provider in the Settings -> Model Provider."
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ValueError(ex.description)
+
+    @staticmethod
+    def validate_graph_index_setting(dataset: Dataset, incoming: dict[str, Any]) -> dict[str, Any]:
+        """Validate a graph-setting update and merge it over what is already stored.
+
+        The console form only knows a handful of the fields, so replacing the
+        stored object wholesale would silently drop server-side tuning
+        (``extract_prompt``, ``hop_decay``, ``max_neighbors_per_hop``, ...) every
+        time somebody pressed save. Merging keeps unknown fields, and validating
+        through :class:`GraphIndexSetting` rejects out-of-range values instead of
+        storing them for retrieval to trip over later.
+        """
+        stored = dataset.graph_index_setting or {}
+        # `None` means "not sent": the dataset-detail response serializes every
+        # key, so an untouched field comes back as null rather than absent.
+        merged = {**stored, **{key: value for key, value in incoming.items() if value is not None}}
+        try:
+            setting = GraphIndexSetting.model_validate(merged)
+        except ValidationError as e:
+            raise ValueError(f"Invalid graph_index_setting: {e}") from e
+        if setting.enabled:
+            # Extraction cannot run without a model, and a graph that silently
+            # indexes nothing looks broken rather than unconfigured.
+            if not setting.model_provider_name or not setting.model_name:
+                raise ValueError("An extraction model is required to enable the knowledge graph.")
+            DatasetService.check_graph_extraction_model_setting(
+                dataset.tenant_id, setting.model_provider_name, setting.model_name
+            )
+        return setting.model_dump()
+
+    @staticmethod
     def update_dataset(dataset_id, data, user, *, session: Session):
         """
         Update dataset configuration and settings.
@@ -603,6 +654,13 @@ class DatasetService:
         summary_index_setting = data.get("summary_index_setting", None)
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
+
+        # An external knowledge base has no documents of its own to extract a
+        # graph from, so accepting the setting here would only produce a control
+        # that never does anything.
+        graph_index_setting = data.pop("graph_index_setting", None)
+        if graph_index_setting and graph_index_setting.get("enabled"):
+            raise ValueError("Knowledge graph indexing is not available for external knowledge bases.")
 
         # Update basic dataset properties
         dataset.name = data.get("name", dataset.name)
@@ -705,6 +763,18 @@ class DatasetService:
         # update summary index setting
         if data.get("summary_index_setting"):
             filtered_data["summary_index_setting"] = data.get("summary_index_setting")
+        # update knowledge graph index setting
+        build_graph = False
+        if data.get("graph_index_setting") is not None:
+            previous_graph_setting = dataset.graph_index_setting or {}
+            # `{}` goes through the merge too, rather than replacing the stored
+            # configuration with nothing.
+            filtered_data["graph_index_setting"] = DatasetService.validate_graph_index_setting(
+                dataset, data["graph_index_setting"]
+            )
+            build_graph = DatasetService._graph_needs_backfill(
+                previous_graph_setting, filtered_data["graph_index_setting"]
+            )
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
@@ -736,12 +806,53 @@ class DatasetService:
                     regenerate_vectors_only=True,
                 )
 
+        if build_graph:
+            DatasetService._build_graph_after_commit(session, dataset.id, dataset.tenant_id)
+
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
         # 1. New documents added after the setting change
         # 2. Manual summary generation requests
 
         return dataset
+
+    @staticmethod
+    def _graph_needs_backfill(previous: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+        """Whether saving this graph setting should extract already indexed chunks.
+
+        Enabling the graph or switching its extraction model changes what
+        existing chunks contribute; the other fields only shape retrieval and
+        apply on the next query.
+        """
+        if not current.get("enabled"):
+            return False
+        return (
+            not previous.get("enabled")
+            or previous.get("model_provider_name") != current.get("model_provider_name")
+            or previous.get("model_name") != current.get("model_name")
+        )
+
+    @staticmethod
+    def _build_graph_after_commit(session: Session, dataset_id: str, tenant_id: str) -> None:
+        """Queue the graph backfill once the new setting is committed.
+
+        The task reads the setting back from the database, so dispatching before
+        the commit could let it see the old, disabled value and do nothing.
+        """
+        cancelled = False
+
+        def cancel_on_rollback(_session: Session) -> None:
+            nonlocal cancelled
+            cancelled = True
+
+        def dispatch_after_commit(_session: Session) -> None:
+            if not cancelled:
+                # Mark before queueing so the console never sees an idle gap.
+                mark_graph_build_active(dataset_id)
+                build_dataset_graph_task.delay(dataset_id, tenant_id, only_failed=False)
+
+        event.listen(session, "after_rollback", cancel_on_rollback, once=True)
+        event.listen(session, "after_commit", dispatch_after_commit, once=True)
 
     @staticmethod
     def _update_pipeline_knowledge_base_node_data(dataset: Dataset, updata_user_id: str, session: Session):

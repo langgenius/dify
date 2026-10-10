@@ -126,6 +126,52 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
+class GraphStoreConfig(BaseSettings):
+    GRAPH_STORE: str = Field(
+        description="Backend storing the knowledge graph built from knowledge-base documents."
+        " Default is 'postgres', which reuses the metadata database and needs no extra service.",
+        default="postgres",
+    )
+
+    KNOWLEDGE_GRAPH_EXTRACTION_WORKERS: PositiveInt = Field(
+        description="Number of chunks whose entities/relations are extracted concurrently during indexing."
+        " This is a per-process budget: it caps concurrent extraction LLM calls across every indexing task"
+        " running in one worker, so total spend scales with the number of deployed workers, not with batch size.",
+        default=5,
+    )
+
+    KNOWLEDGE_GRAPH_INDEX_LOCK_TIMEOUT: PositiveInt = Field(
+        description="Seconds a worker may hold the per-dataset graph merge lease before it expires."
+        " The lease is renewed between merge phases, so this only has to cover a single phase.",
+        default=600,
+    )
+
+    KNOWLEDGE_GRAPH_INDEX_LOCK_WAIT: PositiveInt = Field(
+        description="Seconds a worker waits for another worker's graph merge lease before giving up.",
+        default=60,
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_URI: str = Field(
+        description="Bolt URI of the Neo4j instance used when GRAPH_STORE is 'neo4j'.",
+        default="bolt://localhost:7687",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_USER: str = Field(
+        description="Neo4j username used when GRAPH_STORE is 'neo4j'.",
+        default="neo4j",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_PASSWORD: str = Field(
+        description="Neo4j password used when GRAPH_STORE is 'neo4j'.",
+        default="",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_DATABASE: str = Field(
+        description="Neo4j database name used when GRAPH_STORE is 'neo4j'.",
+        default="neo4j",
+    )
+
+
 class SQLAlchemyEngineOptionsDict(TypedDict):
     pool_size: int
     max_overflow: int
@@ -357,6 +403,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
+    GraphStoreConfig,
     KeywordStoreConfig,
     RedisConfig,
     RedisPubSubConfig,

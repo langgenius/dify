@@ -1575,6 +1575,55 @@ def test_batch_index_materializes_ordered_documents_before_one_vector_write(
     assert not probe.active_transactions
 
 
+def _record_graph_extraction(probe: VectorProbe, monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ...]]:
+    # Manually added chunks used to reach graph extraction through the index
+    # processors' load(); the gateway indexes them itself and must keep that.
+    from services.knowledge.segments import indexing as indexing_module
+
+    extracted: list[tuple[str, ...]] = []
+
+    def build(dataset: Dataset, documents: list[IndexDocument], *, session: Session) -> None:
+        assert dataset.id == "dataset-1"
+        # Extraction calls the model; no transaction may be held across it.
+        assert not probe.active_transactions
+        assert not session.in_transaction()
+        assert all(document.metadata["document_id"] == "document-1" for document in documents)
+        extracted.append(tuple(document.page_content for document in documents))
+
+    monkeypatch.setattr(indexing_module.GraphIndexService, "build_for_documents", build)
+    return extracted
+
+
+def test_created_segment_extracts_knowledge_graph_without_open_transactions(
+    indexing_probe: IndexingProbe, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, _, probe = indexing_probe
+    extracted = _record_graph_extraction(probe, monkeypatch)
+
+    app.create_segment(
+        RequestContext("request", None, "author", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "manual"},
+    )
+
+    assert extracted == [("manual",)]
+
+
+def test_batch_index_extracts_knowledge_graph_once_for_the_batch(
+    indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, _, probe = indexing_probe
+    extracted = _record_graph_extraction(probe, monkeypatch)
+    _persist_index_batch(sqlite_session_factory)
+
+    app.mutations.index_segments(
+        DatasetRef("workspace-1", "dataset-1").document("document-1"), segment_ids=["second", "first"]
+    )
+
+    assert extracted == [("second", "first")]
+
+
 def test_batch_index_failure_persists_errors_on_every_committed_segment(
     indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session]
 ) -> None:

@@ -65,6 +65,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "embedding_available": vars(dataset).get("embedding_available"),
         "retrieval_model_dict": dataset.retrieval_model_dict,
         "summary_index_setting": dataset.summary_index_setting,
+        "graph_index_setting": dataset.graph_index_setting,
         "tags": [{"id": tag.id, "name": tag.name, "type": tag.type} for tag in prefetch.tags.get(owner, [])],
         "doc_form": dataset.chunk_structure or prefetch.doc_forms.get(owner),
         "external_knowledge_info": prefetch.external_knowledge_infos.get(owner)

@@ -8,7 +8,7 @@ import pytest
 
 @pytest.mark.parametrize(
     ("filename", "count"),
-    [("data_source.py", 7), ("datasets.py", 20), ("datasets_document.py", 24), ("external.py", 8)],
+    [("data_source.py", 7), ("datasets.py", 23), ("datasets_document.py", 24), ("external.py", 8)],
 )
 def test_every_endpoint_declares_admission_context_and_application_service(filename: str, count: int) -> None:
     root = Path(__file__).resolve().parents[5]

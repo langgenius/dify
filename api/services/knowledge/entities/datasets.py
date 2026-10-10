@@ -39,6 +39,7 @@ class DatasetDetailRecord(TypedDict):
     embedding_available: bool | None
     retrieval_model_dict: Mapping[str, JsonValue]
     summary_index_setting: Mapping[str, JsonValue] | None
+    graph_index_setting: Mapping[str, JsonValue] | None
     tags: list[DatasetTagRecord]
     doc_form: str | None
     external_knowledge_info: Mapping[str, JsonValue] | None

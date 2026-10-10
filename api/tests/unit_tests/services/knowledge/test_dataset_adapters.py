@@ -11,6 +11,7 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
+from core.rag.datasource.graph.graph_base import StoredEntity, StoredRelation
 from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
@@ -25,6 +26,7 @@ from models.dataset import (
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
+from services.knowledge.datasets import adapters as dataset_adapters
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
@@ -152,6 +154,23 @@ def test_listing_filters_tags_within_workspace(
     assert response.total == (0 if foreign_tag else 1)
 
 
+def test_detail_carries_graph_index_setting(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    # The console gates the graph page and settings toggle on this field, so a
+    # detail payload that drops it silently hides the whole feature.
+    with sqlite_session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.graph_index_setting = {"enabled": True, "model_name": "model", "model_provider_name": "provider"}
+
+    response = DatasetDetailResponse.model_validate(operations.get_dataset(CONTEXT, REF)).model_dump(mode="json")
+
+    assert response["graph_index_setting"]["enabled"] is True
+    assert response["graph_index_setting"]["model_name"] == "model"
+    assert response["graph_index_setting"]["model_provider_name"] == "provider"
+
+
 @pytest.mark.parametrize(("ids", "own"), [([], False), (["dataset"], False)])
 def test_list_visibility_restricts_even_requested_ids(
     operations: SQLAlchemyDatasetOperations, ids: list[str], own: bool, monkeypatch: pytest.MonkeyPatch
@@ -171,6 +190,9 @@ def test_list_visibility_restricts_even_requested_ids(
         "indexing_status",
         "error_documents",
         "partial_members",
+        "graph_stats",
+        "graph",
+        "retry_graph",
         "update_dataset",
         "delete_dataset",
         "set_api_enabled",
@@ -185,7 +207,9 @@ def test_wrong_tenant_ref_cannot_read_or_write(operations: SQLAlchemyDatasetOper
         args.append({"name": "changed"})
     if method == "set_api_enabled":
         args.append(True)
-    extra: dict[str, int] = {"page": 1, "limit": 20} if method == "queries" else {}
+    extra: dict[str, object] = {"page": 1, "limit": 20} if method == "queries" else {}
+    if method == "graph":
+        extra = {"query": None, "limit": 50}
     methods: dict[str, Callable[..., object]] = {
         "get_dataset": operations.get_dataset,
         "is_in_use": operations.is_in_use,
@@ -194,6 +218,9 @@ def test_wrong_tenant_ref_cannot_read_or_write(operations: SQLAlchemyDatasetOper
         "indexing_status": operations.indexing_status,
         "error_documents": operations.error_documents,
         "partial_members": operations.partial_members,
+        "graph_stats": operations.graph_stats,
+        "graph": operations.graph,
+        "retry_graph": operations.retry_graph,
         "update_dataset": operations.update_dataset,
         "delete_dataset": operations.delete_dataset,
         "set_api_enabled": operations.set_api_enabled,
@@ -218,6 +245,22 @@ def test_create_update_and_api_status_commit_owned_changes(
         assert row.name == "Renamed"
         assert row.enable_api is True
         assert session.get(Dataset, created["id"]) is not None
+
+
+def test_console_save_enabling_the_graph_queues_the_backfill(operations: SQLAlchemyDatasetOperations) -> None:
+    # The settings page saves through this adapter; the backfill must survive
+    # its commit so documents indexed before the graph was on get extracted.
+    with (
+        patch("services.knowledge.dataset_service.DatasetService.check_graph_extraction_model_setting"),
+        patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+    ):
+        operations.update_dataset(
+            CONTEXT,
+            REF,
+            {"graph_index_setting": {"enabled": True, "model_provider_name": "provider", "model_name": "model"}},
+        )
+
+    task.delay.assert_called_once_with("dataset", "tenant", only_failed=False)
 
 
 @pytest.mark.parametrize("entry_point", ["empty", "documents"])
@@ -376,3 +419,97 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+_GRAPH_ON = {"enabled": True, "model_provider_name": "provider", "model_name": "model"}
+
+
+def _enable_graph(session_factory: sessionmaker[Session]) -> None:
+    with session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.graph_index_setting = _GRAPH_ON
+
+
+@pytest.mark.parametrize(
+    ("status", "rebuild_active", "expected"),
+    [
+        # Extraction runs inside document indexing.
+        (IndexingStatus.INDEXING, False, True),
+        (IndexingStatus.WAITING, False, True),
+        # A queued or running rebuild after indexing finished.
+        (IndexingStatus.COMPLETED, True, True),
+        (IndexingStatus.COMPLETED, False, False),
+        (IndexingStatus.ERROR, False, False),
+    ],
+)
+def test_graph_stats_report_building_while_extraction_can_still_run(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    status: IndexingStatus,
+    rebuild_active: bool,
+    expected: bool,
+) -> None:
+    _enable_graph(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add(document(indexing_status=status))
+    monkeypatch.setattr(dataset_adapters, "is_graph_build_active", lambda _dataset_id: rebuild_active)
+
+    assert operations.graph_stats(REF)["building"] is expected
+
+
+def test_retry_queues_only_failed_chunks_and_marks_the_build(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _enable_graph(sqlite_session_factory)
+    marked: list[str] = []
+    monkeypatch.setattr(dataset_adapters, "mark_graph_build_active", marked.append)
+
+    with patch.object(dataset_adapters, "build_dataset_graph_task") as task:
+        operations.retry_graph(REF)
+
+    # Marked before queueing, so the page polls instead of flashing "no graph".
+    assert marked == ["dataset"]
+    task.delay.assert_called_once_with("dataset", "tenant", only_failed=True)
+
+
+def test_retry_is_a_no_op_while_the_graph_is_off(operations: SQLAlchemyDatasetOperations) -> None:
+    with patch.object(dataset_adapters, "build_dataset_graph_task") as task:
+        operations.retry_graph(REF)
+
+    task.delay.assert_not_called()
+
+
+def test_graph_returns_the_explored_subgraph_as_plain_payloads(
+    operations: SQLAlchemyDatasetOperations, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    explored: list[tuple[str, str | None, int]] = []
+
+    def explore(
+        dataset: Dataset, query: str | None, limit: int, **_kwargs: object
+    ) -> tuple[list[StoredEntity], list[StoredRelation]]:
+        explored.append((dataset.id, query, limit))
+        return (
+            [StoredEntity(id="e1", name="acme", display_name="Acme", entity_type="organization")],
+            [StoredRelation(id="r1", source_entity_id="e1", target_entity_id="e1", predicate="owns")],
+        )
+
+    monkeypatch.setattr(dataset_adapters.GraphIndexService, "explore", explore)
+
+    result = operations.graph(REF, query="acme", limit=25)
+
+    assert explored == [("dataset", "acme", 25)]
+    assert result["entities"] == [
+        {
+            "id": "e1",
+            "name": "acme",
+            "display_name": "Acme",
+            "entity_type": "organization",
+            "description": "",
+            "frequency": 1,
+        }
+    ]
+    assert result["relations"][0]["predicate"] == "owns"

@@ -212,6 +212,27 @@ def test_cleanup_keeps_other_documents_and_datasets(
         assert sqlite_session.get(DocumentSegmentSummary, record.id) is not None
 
 
+def test_cleanup_drops_the_documents_knowledge_graph_facts(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Document deletion used to drop graph facts through the index processors'
+    # clean(); this path skips them, so without the call the facts outlive
+    # their chunks and retrieval keeps citing deleted text.
+    dataset, document, _, _, _ = graph
+    monkeypatch.setattr(cleanup, "Vector", MagicMock())
+    graph_service = MagicMock()
+    monkeypatch.setattr(cleanup, "GraphIndexService", graph_service)
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id, document_ids=[document.id], doc_form="text_model", new_session=sqlite_session_factory
+    )
+    graph_service.delete_by_document_ids.assert_called_once()
+    (owner, document_ids), _ = graph_service.delete_by_document_ids.call_args
+    assert owner.id == dataset.id
+    assert document_ids == [document.id]
+
+
 def test_economy_cleanup_preserves_unrelated_keyword_entries(
     graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
     sqlite_session: Session,
