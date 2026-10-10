@@ -4,10 +4,12 @@ from core.workflow.system_variables import (
     build_system_variables,
     default_system_variables,
     get_node_creation_preload_selectors,
+    inject_default_system_variable_mappings,
     system_variables_to_mapping,
 )
+from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.llm.entities import LLMNodeData
 
 
 def test_build_system_variables_normalizes_workflow_execution_id():
@@ -81,3 +83,63 @@ def test_get_node_creation_preload_selectors_skips_non_memory_nodes():
     )
 
     assert selectors == ()
+
+
+def test_inject_default_system_variable_mappings_skips_phantom_sys_query():
+    node_data = LLMNodeData.model_validate(
+        {
+            "title": "LLM",
+            "type": "llm",
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {},
+            },
+            "prompt_template": [{"text": "hello", "role": "user", "edition_type": "basic"}],
+            "memory": {"window": {"enabled": False, "size": 10}},
+            "context": {"enabled": False, "variable_selector": []},
+            "vision": {"enabled": False},
+        }
+    )
+
+    mapping = inject_default_system_variable_mappings(
+        node_id="llm_test",
+        node_type=BuiltinNodeTypes.LLM,
+        node_data=node_data,
+        variable_mapping={},
+    )
+
+    assert mapping == {}
+
+
+def test_inject_default_system_variable_mappings_preserves_graphon_sys_query_mapping():
+    node_data = LLMNodeData.model_validate(
+        {
+            "title": "LLM",
+            "type": "llm",
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {},
+            },
+            "prompt_template": [{"text": "hello", "role": "user", "edition_type": "basic"}],
+            "memory": {
+                "window": {"enabled": False, "size": 10},
+                "query_prompt_template": "Repeat {{#sys.query#}}",
+            },
+            "context": {"enabled": False, "variable_selector": []},
+            "vision": {"enabled": False},
+        }
+    )
+    existing_mapping = {"llm_test.#sys.query#": ("sys", "query")}
+
+    mapping = inject_default_system_variable_mappings(
+        node_id="llm_test",
+        node_type=BuiltinNodeTypes.LLM,
+        node_data=node_data,
+        variable_mapping=existing_mapping,
+    )
+
+    assert mapping == existing_mapping
