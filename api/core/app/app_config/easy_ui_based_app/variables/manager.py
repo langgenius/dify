@@ -189,8 +189,8 @@ class BasicVariablesConfigManager:
                 raise ValueError("external_data_tools[].type is required")
 
             typ = tool["type"]
-            config = tool["config"]
+            tool_config = tool["config"]
 
-            ExternalDataToolFactory.validate_config(name=typ, tenant_id=tenant_id, config=config)
+            ExternalDataToolFactory.validate_config(name=typ, tenant_id=tenant_id, config=tool_config)
 
         return config, ["external_data_tools"]
