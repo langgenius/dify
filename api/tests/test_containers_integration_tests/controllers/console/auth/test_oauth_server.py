@@ -1,5 +1,6 @@
 """Controller integration tests for console OAuth server routes."""
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -259,6 +260,7 @@ def test_oauth_account_successful_retrieval(
         avatar=None,
         interface_language=None,
         timezone=None,
+        created_at=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC),
     )
 
     with patch(
@@ -279,6 +281,7 @@ def test_oauth_account_successful_retrieval(
         "avatar": None,
         "interface_language": None,
         "timezone": None,
+        "created_at": 1704164645,
     }
 
 
