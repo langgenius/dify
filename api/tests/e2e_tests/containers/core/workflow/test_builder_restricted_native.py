@@ -15,7 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.dify_builder.execution_policy import HttpResponseFixtureV1
+from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+from core.dify_builder.execution_policy import (
+    BuilderExecutionObservation,
+    ExecutionEvidenceSummary,
+    HttpResponseFixtureV1,
+    TrustedExecutionCompletion,
+    scalar_inputs_digest,
+)
 from core.dify_builder.models import Actor
 from core.dify_builder.verification import is_execution_policy_blocker
 from extensions.ext_database import db
@@ -25,7 +32,7 @@ from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-from services.dify_builder.revision import execution_revision
+from services.dify_builder.revision import executable_graph_revision, execution_revision
 
 FIXTURES = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted"
 
@@ -182,7 +189,17 @@ def run_port(owner, inputs):
         ("http_default_output.yml", False, "partial-succeeded", "native_failed"),
     ],
 )
-def test_actual_native_port_to_persistence(native_owner, name, fixture, status, outcome):
+def test_actual_native_port_to_persistence(native_owner, monkeypatch, name, fixture, status, outcome):
+    completions: list[TrustedExecutionCompletion] = []
+    real_seal = BuilderExecutionPolicyService.seal
+
+    def observe_seal(
+        service: BuilderExecutionPolicyService, *, request_id: str, completion: TrustedExecutionCompletion
+    ) -> ExecutionEvidenceSummary:
+        completions.append(completion)
+        return real_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", observe_seal)
     assert dify_config.CORE_WORKFLOW_EXECUTION_REPOSITORY.endswith("SQLAlchemyWorkflowExecutionRepository")
     assert dify_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY.endswith("SQLAlchemyWorkflowNodeExecutionRepository")
     inputs = configure(native_owner, name, fixture=fixture)
@@ -191,7 +208,85 @@ def test_actual_native_port_to_persistence(native_owner, name, fixture, status, 
     assert result.verification.execution_evidence is not None
     summary = result.verification.execution_evidence
     assert summary.sealed
-    assert summary.safety_outcome == outcome
+    diagnostic: dict[str, object] = {}
+    if summary.safety_outcome != outcome:
+        # Observe only; never reseal, wait, write, or expose graph/input/output payloads.
+        diagnostic["completion_count"] = len(completions)
+        diagnostic["completions"] = [
+            {
+                "native_run_id": c.native_run_id,
+                "task_id": c.task_id,
+                "worker_finished": c.worker_finished,
+                "worker_exit": c.worker_exit,
+                "recorder_healthy": c.recorder_healthy,
+                "response_completed": c.response_completed,
+                "preworker_refusal": c.preworker_refusal,
+                "refusal_reason": c.refusal.reason_code if c.refusal else None,
+            }
+            for c in completions[:2]
+        ]
+        diagnostic["summary_native_run_id"] = summary.native_run_id
+        try:
+            factory, _, _, _, _, _ = native_owner
+            with factory() as session:
+                request = session.get(DifyBuilderExecutionRequest, summary.request_id)
+                assert request is not None
+                diagnostic["request"] = {
+                    "state": request.state,
+                    "native_run_id": request.native_run_id,
+                    "task_id": request.task_id,
+                    "observation_count": len(request.observations),
+                }
+                native = session.get(WorkflowRun, request.native_run_id) if request.native_run_id else None
+                diagnostic["native_present"] = native is not None
+                if native is not None and completions:
+                    context = completions[-1].context
+                    nodes = list(
+                        session.scalars(
+                            select(WorkflowNodeExecutionModel)
+                            .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                            .order_by(WorkflowNodeExecutionModel.index)
+                        )
+                    )
+                    diagnostic["native"] = {
+                        "status": native.status,
+                        "finished": native.finished_at is not None,
+                        "total_steps": native.total_steps,
+                        "exceptions_count": native.exceptions_count,
+                        "owner_matches": (native.tenant_id, native.app_id, native.workflow_id, native.created_by)
+                        == (context.tenant_id, context.app_id, context.workflow_id, context.actor_id),
+                        "graph_matches": executable_graph_revision(native.graph_dict) == context.graph_revision,
+                        "effective_inputs_match": scalar_inputs_digest(
+                            {k: v for k, v in native.inputs_dict.items() if not k.startswith("sys.")}
+                        )
+                        == context.effective_inputs_digest,
+                    }
+                    diagnostic["node_count"] = len(nodes)
+                    diagnostic["nodes"] = [
+                        {
+                            "node_id": n.node_id,
+                            "node_execution_id": n.node_execution_id,
+                            "type": n.node_type,
+                            "status": n.status,
+                            "index": n.index,
+                            "predecessor": n.predecessor_node_id,
+                            "finished": n.finished_at is not None,
+                            "owner_matches": (n.tenant_id, n.app_id, n.workflow_id, n.created_by)
+                            == (context.tenant_id, context.app_id, context.workflow_id, context.actor_id),
+                            "retry_count": len(n.process_data_dict.get(RETRY_HISTORY_PROCESS_DATA_KEY, [])),
+                        }
+                        for n in nodes[:16]
+                    ]
+                    diagnostic["post_seal_native_proof"] = BuilderExecutionPolicyService._native_proof(
+                        context,
+                        native,
+                        nodes,
+                        [BuilderExecutionObservation.model_validate(o) for o in request.observations],
+                    )
+        except Exception as error:
+            # Diagnostic failures cannot replace the original outcome assertion.
+            diagnostic["diagnostic_error_type"] = type(error).__name__
+    assert summary.safety_outcome == outcome, json.dumps(diagnostic, sort_keys=True, indent=2)
     factory, actor, app, workflow, sid, tid = native_owner
     with factory() as session:
         native = session.get(WorkflowRun, result.dify_run_id)
