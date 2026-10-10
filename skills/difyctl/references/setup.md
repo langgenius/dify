@@ -6,7 +6,7 @@
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
-**Server.** Always pass `--server <url>`. Without it, difyctl logs in to Dify Cloud. If the user has not named a server, ask which one before you log in. Never guess one.
+**Server.** Always pass `--server <url>`; `login` fails with `usage_missing_arg` without it. If the user has not named a server, ask which one. Never guess one.
 
 Log in only this way:
 
