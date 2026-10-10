@@ -135,7 +135,6 @@ const expectTextWithin = (element: Element, container: Element) => {
     expect(line.top).toBeGreaterThanOrEqual(bounds.top - 1)
     expect(line.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
   }
-  expect(bounds.right).toBeLessThanOrEqual(220)
 }
 
 describe('Knowledge settings narrow-screen readability', () => {

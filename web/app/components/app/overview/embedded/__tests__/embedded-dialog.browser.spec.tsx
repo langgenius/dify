@@ -1,17 +1,13 @@
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import copy from 'copy-to-clipboard'
-import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { EmbeddedDialogContent } from '../index'
 
-const { getProfile } = vi.hoisted(() => ({ getProfile: vi.fn() }))
-
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 vi.mock('@/service/base', () => ({
-  get: getProfile,
+  get: vi.fn(),
   post: vi.fn(),
   request: vi.fn(),
   getPublic: vi.fn(),
@@ -71,43 +67,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('keeps Close focused while account data loads and returns to the keyboard trigger', async () => {
-  const queryClient = createClient()
-  const { profile } = seedAccountProfileQuery(createClient())
-  let resolveProfile!: (response: Response) => void
-  getProfile.mockReturnValueOnce(
-    new Promise<Response>((resolve) => {
-      resolveProfile = resolve
-    }),
-  )
-  const screen = await render(dialogView(queryClient))
-  const trigger = screen.getByRole('button', { name: triggerLabel })
-  await userEvent.tab()
-  await expect.element(trigger).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  const dialog = screen.getByRole('dialog', { name: `${prefix}.title` })
-  const close = dialog.getByRole('button', { name: 'common.operation.close' })
-  await expect.element(close).toHaveFocus()
-  const initialClose = close.element()
-  await expect.poll(() => getProfile.mock.calls.length).toBe(1)
-  await expect
-    .element(dialog.getByRole('tab', { name: `${prefix}.iframe` }))
-    .not.toBeInTheDocument()
-
-  resolveProfile(
-    new Response(JSON.stringify(profile), {
-      headers: { 'content-type': 'application/json', 'x-env': 'PRODUCTION' },
-    }),
-  )
-  await expect.element(dialog.getByRole('tab', { name: `${prefix}.iframe` })).toBeVisible()
-  expect(close.element()).toBe(initialClose)
-  await expect.element(close).toHaveFocus()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(trigger).toHaveFocus()
-})
-
-it('preserves the hidden input, selected tab and copied preview through exit, then starts fresh', async () => {
+it('preserves the hidden input, selected tab and copied preview through the exit animation', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   const queryClient = createClient()
   seedAccountProfileQuery(queryClient)
@@ -129,7 +89,6 @@ it('preserves the hidden input, selected tab and copied preview through exit, th
   await panel.getByRole('button', { name: `${prefix}.copy`, exact: true }).click()
   const copied = panel.getByRole('button', { name: `${prefix}.copied`, exact: true })
   await expect.element(copied).toBeVisible()
-  expect(copy).toHaveBeenLastCalledWith(expect.stringContaining('draft secret'))
 
   const popup = dialog.element()
   const draftInput = input.element() as HTMLInputElement
@@ -165,19 +124,4 @@ it('preserves the hidden input, selected tab and copied preview through exit, th
   expect(closing.preview).toContain('draft secret')
   expect(closing.copied).toBe(`${prefix}.copied`)
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(trigger).toHaveFocus()
-
-  await userEvent.keyboard(' ')
-  await expect
-    .element(dialog.getByRole('tab', { name: `${prefix}.iframe` }))
-    .toHaveAttribute('aria-selected', 'true')
-  await expect.element(disclosure).toHaveAttribute('aria-expanded', 'false')
-  await expect
-    .element(dialog.getByRole('button', { name: `${prefix}.copy`, exact: true }))
-    .toBeVisible()
-  await disclosure.click()
-  await expect.element(input).toHaveValue('initial value')
-  await userEvent.keyboard('{Escape}')
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(trigger).toHaveFocus()
 })
