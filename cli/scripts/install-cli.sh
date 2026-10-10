@@ -28,6 +28,10 @@ err() { printf '%s\n' "install-cli: $*" >&2; }
 die() { err "$*"; rm -f "$FETCH_ERR_FILE"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 re_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
+print_skill_hint() {
+  printf '%s\n' 'AI agents: run `difyctl install skills <your skills root>` to load the difyctl skill.'
+  printf '%s\n' 'Run it again after each difyctl upgrade; the skill ships inside the binary.'
+}
 
 detect_target() {
     case "$(uname -s)" in
@@ -229,15 +233,18 @@ main() {
 
     case ":${PATH}:" in
         *":${bin_dir}:"*)
-            "$target_bin" version >/dev/null 2>&1 \
-                && printf 'verify: run "difyctl version"\n' \
-                || err "binary present but failed to execute; check ${target_bin}"
+            if ! "$target_bin" version >/dev/null 2>&1; then
+                err "binary present but failed to execute; check ${target_bin}"
+                return 0
+            fi
+            printf 'verify: run "difyctl version"\n'
             ;;
         *)
             printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"
             printf '  export PATH="%s:$PATH"\n' "$bin_dir"
             ;;
     esac
+    print_skill_hint
 }
 
 if [ "${DIFYCTL_INSTALL_LIB:-0}" != "1" ]; then
