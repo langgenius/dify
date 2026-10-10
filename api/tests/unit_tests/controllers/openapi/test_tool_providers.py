@@ -2,20 +2,12 @@ import pytest
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest
 
-from controllers.openapi._errors import CredentialInvalid
 from controllers.openapi._models import PageQuery, ToolListQuery, ToolListResponse
 from controllers.openapi.tool_providers import _credential_write_errors, tool_rows
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.errors import ToolProviderCredentialValidationError
-
-
-def test_rejected_credentials_are_credential_invalid() -> None:
-    with pytest.raises(CredentialInvalid):
-        with _credential_write_errors():
-            raise ToolProviderCredentialValidationError("Invalid credentials")
 
 
 @pytest.mark.parametrize(

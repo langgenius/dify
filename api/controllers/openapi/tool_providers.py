@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import CredentialInvalid, CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
+from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
@@ -40,10 +40,11 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
-from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
+from services.openapi.tool_credentials import add_api_key_credential
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -79,11 +80,10 @@ def _provider_not_found_errors() -> Generator[None, None, None]:
 
 @contextmanager
 def _credential_write_errors() -> Generator[None, None, None]:
-    """Maps what the builtin tool service raises for a credential write."""
+    """Maps what the builtin tool service raises for a credential write; it wraps every failure, a rejected key
+    included, in a ValueError."""
     try:
         yield
-    except ToolProviderCredentialValidationError as error:
-        raise CredentialInvalid(str(error)) from error
     except ValueError as error:
         raise BadRequest(str(error)) from error
 
@@ -291,10 +291,9 @@ class ToolProviderCredentialsApi(Resource):
         if not _api_key_supported(_controller(ctx.workspace.id, provider)):
             raise CredentialOAuthOnly()
         with _credential_write_errors():
-            credential_id = BuiltinToolManageService.add_builtin_tool_provider(
+            credential_id = add_api_key_credential(
                 user_id=ctx.account.id,
-                api_type=CredentialType.API_KEY,
-                tenant_id=ctx.workspace.id,
+                workspace_id=ctx.workspace.id,
                 provider=provider,
                 credentials=body.credentials,
                 name=body.name,

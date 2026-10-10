@@ -581,7 +581,7 @@ class TestModelProviderServiceConfiguration:
         assert len(result) == 2
         assert result[0].model == "gpt-4o"
         assert result[1].provider.provider == "openai"
-        provider_configurations.get_models.assert_called_once_with(provider="openai", model_type=None)
+        provider_configurations.get_models.assert_called_once_with(provider="openai")
 
 
 class TestModelProviderServiceDelegation:

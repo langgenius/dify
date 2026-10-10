@@ -21,8 +21,8 @@ from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.branch_handles import SOURCE_HANDLE, branch_handles
+from services.workflow.node_credentials import check_node_credentials
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
-from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +76,10 @@ def refused_node_types(mode: AppMode) -> frozenset[str]:
 
 def credential_check(workspace_id: str, environment: Mapping[str, VariableBase], session: Session) -> ResourceCheck:
     """A `ResourceCheck` reporting what publish's credential check would refuse for one node."""
-    service = WorkflowService()
 
     def check(node: Mapping[str, Any]) -> str | None:
         try:
-            service.validate_node_credentials(workspace_id, node, environment, session=session)
+            check_node_credentials(workspace_id, node, environment, session=session)
         except ValueError as error:
             return str(error)
         return None

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import logging
 import re
 from collections import defaultdict, deque
 from collections.abc import Iterator, Mapping, Sequence
@@ -9,18 +7,23 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
-from graphon.enums import BuiltinNodeTypes
-from services.workflow.branch_handles import branch_handles
+from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 
-logger = logging.getLogger(__name__)
-
-_RESERVED_SELECTOR_HEADS: frozenset[str] = ROOT_VARIABLE_NODE_IDS | {"start"}
+_RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversation", "start"})
 
 _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     {
         BuiltinNodeTypes.VARIABLE_AGGREGATOR,
         BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR,
+    }
+)
+
+_BRANCH_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        BuiltinNodeTypes.IF_ELSE,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.HUMAN_INPUT,
     }
 )
 
@@ -93,10 +96,26 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
         if node_parent[nid] is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
     ]
     reachable = _reachable_from(entries, successors)
-    handles_by_node = {nid: handles for nid in node_ids if (handles := branch_handles(node_data[nid])) is not None}
-    exclusive = set(handles_by_node)
+    exclusive = {
+        nid
+        for nid in node_ids
+        if node_type[nid] in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
+    }
     # A selectable handle can be unwired. It still lets the branch skip a producer.
-    for nid, handles in handles_by_node.items():
+    for nid in exclusive:
+        data = node_data[nid]
+        handles: list[str] = []
+        if node_type[nid] == BuiltinNodeTypes.IF_ELSE:
+            cases = data.get("cases")
+            handles = [case["case_id"] for case in cases] if isinstance(cases, list) else ["true"]
+            handles.append("false")
+        elif node_type[nid] == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+            handles = [item["id"] for item in data.get("classes", [])]
+        elif node_type[nid] == BuiltinNodeTypes.HUMAN_INPUT:
+            handles = [action["id"] for action in data.get("user_actions", [])]
+            handles.append(TIMEOUT_HANDLE)
+        if data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH:
+            handles.extend(["source", "fail-branch"])
         for handle in handles:
             out_targets_by_handle[nid].setdefault(handle, [])
 
@@ -148,21 +167,6 @@ def format_variable_reference_errors(issues: Sequence[VariableReferenceIssue]) -
         f"{count} variable reference{'s' if count != 1 else ''} may read a skipped branch "
         f"output. Use a Variable Aggregator or a default value — {pairs}."
     )
-
-
-def advisory_variable_reference_warning(graph_text: str | None) -> str | None:
-    """Return a non-blocking publish warning. A checker failure must not fail publish."""
-    if not graph_text:
-        return None
-    try:
-        graph = json.loads(graph_text)
-        if not isinstance(graph, dict):
-            return None
-        issues = validate_variable_references(graph)
-        return format_variable_reference_errors(issues) if issues else None
-    except Exception:
-        logger.warning("Skipped advisory variable reference check", exc_info=True)
-        return None
 
 
 def _reachable_from(starts: Sequence[str], successors: Mapping[str, list[str]]) -> set[str]:

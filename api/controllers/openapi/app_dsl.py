@@ -30,7 +30,7 @@ from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
-from services.app_dsl_service import AppDslService, YamlUrlFetchError
+from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
@@ -38,6 +38,7 @@ from services.workflow.dsl_import import (
     DraftChangedError,
     DslNotCheckableError,
     DslRefusedError,
+    YamlUrlFetchError,
     check_dsl,
     prepare_import,
 )

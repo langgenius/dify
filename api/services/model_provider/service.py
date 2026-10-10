@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from services.credentials.query import CredentialQuery
 
 if TYPE_CHECKING:
-    from core.entities.provider_configuration import ProviderConfiguration
     from models.account import Account
 
 from configs import dify_config
@@ -142,69 +141,68 @@ class ModelProviderService:
                 if model_type_entity not in provider_configuration.provider.supported_model_types:
                     continue
 
-            provider_responses.append(self._provider_response(tenant_id, provider_configuration))
+            provider_config = provider_configuration.custom_configuration.provider
+            models = provider_configuration.custom_configuration.models
+            can_added_models = provider_configuration.custom_configuration.can_added_models
+
+            # IMPORTANT: Never expose decrypted credentials in the provider list API.
+            # Sanitize custom model configurations by dropping the credentials payload.
+            sanitized_model_config = []
+            if models:
+                from core.entities.provider_entities import CustomModelConfiguration  # local import to avoid cycles
+
+                for model in models:
+                    sanitized_model_config.append(
+                        CustomModelConfiguration(
+                            model=model.model,
+                            model_type=model.model_type,
+                            credentials=None,  # strip secrets from list view
+                            current_credential_id=model.current_credential_id,
+                            current_credential_name=model.current_credential_name,
+                            available_model_credentials=model.available_model_credentials,
+                            unadded_to_model_list=model.unadded_to_model_list,
+                        )
+                    )
+
+            provider_response = ProviderResponse(
+                tenant_id=tenant_id,
+                provider=provider_configuration.provider.provider,
+                label=provider_configuration.provider.label,
+                description=provider_configuration.provider.description,
+                icon_small=provider_configuration.provider.icon_small,
+                icon_small_dark=provider_configuration.provider.icon_small_dark,
+                background=provider_configuration.provider.background,
+                help=provider_configuration.provider.help,
+                supported_model_types=provider_configuration.provider.supported_model_types,
+                configurate_methods=provider_configuration.provider.configurate_methods,
+                provider_credential_schema=provider_configuration.provider.provider_credential_schema,
+                model_credential_schema=provider_configuration.provider.model_credential_schema,
+                preferred_provider_type=provider_configuration.preferred_provider_type,
+                custom_configuration=CustomConfigurationResponse(
+                    status=CustomConfigurationStatus.ACTIVE
+                    if provider_configuration.is_custom_configuration_available()
+                    else CustomConfigurationStatus.NO_CONFIGURE,
+                    current_credential_id=getattr(provider_config, "current_credential_id", None),
+                    current_credential_name=getattr(provider_config, "current_credential_name", None),
+                    available_credentials=getattr(provider_config, "available_credentials", []),
+                    custom_models=sanitized_model_config,
+                    can_added_models=can_added_models,
+                ),
+                system_configuration=SystemConfigurationResponse(
+                    enabled=provider_configuration.system_configuration.enabled,
+                    current_quota_type=provider_configuration.system_configuration.current_quota_type,
+                    quota_configurations=provider_configuration.system_configuration.quota_configurations,
+                ),
+            )
+
+            provider_responses.append(provider_response)
 
         return provider_responses
 
     def get_provider(self, tenant_id: str, provider: str) -> ProviderResponse:
         """One provider as `get_provider_list` lists it; raises ProviderNotFoundError."""
-        return self._provider_response(tenant_id, self._get_provider_configuration(tenant_id, provider))
-
-    @staticmethod
-    def _provider_response(tenant_id: str, provider_configuration: "ProviderConfiguration") -> ProviderResponse:
-        provider_config = provider_configuration.custom_configuration.provider
-        models = provider_configuration.custom_configuration.models
-        can_added_models = provider_configuration.custom_configuration.can_added_models
-
-        # IMPORTANT: Never expose decrypted credentials in the provider list API.
-        # Sanitize custom model configurations by dropping the credentials payload.
-        sanitized_model_config = []
-        if models:
-            from core.entities.provider_entities import CustomModelConfiguration  # local import to avoid cycles
-
-            for model in models:
-                sanitized_model_config.append(
-                    CustomModelConfiguration(
-                        model=model.model,
-                        model_type=model.model_type,
-                        credentials=None,  # strip secrets from list view
-                        current_credential_id=model.current_credential_id,
-                        current_credential_name=model.current_credential_name,
-                        available_model_credentials=model.available_model_credentials,
-                        unadded_to_model_list=model.unadded_to_model_list,
-                    )
-                )
-
-        return ProviderResponse(
-            tenant_id=tenant_id,
-            provider=provider_configuration.provider.provider,
-            label=provider_configuration.provider.label,
-            description=provider_configuration.provider.description,
-            icon_small=provider_configuration.provider.icon_small,
-            icon_small_dark=provider_configuration.provider.icon_small_dark,
-            background=provider_configuration.provider.background,
-            help=provider_configuration.provider.help,
-            supported_model_types=provider_configuration.provider.supported_model_types,
-            configurate_methods=provider_configuration.provider.configurate_methods,
-            provider_credential_schema=provider_configuration.provider.provider_credential_schema,
-            model_credential_schema=provider_configuration.provider.model_credential_schema,
-            preferred_provider_type=provider_configuration.preferred_provider_type,
-            custom_configuration=CustomConfigurationResponse(
-                status=CustomConfigurationStatus.ACTIVE
-                if provider_configuration.is_custom_configuration_available()
-                else CustomConfigurationStatus.NO_CONFIGURE,
-                current_credential_id=getattr(provider_config, "current_credential_id", None),
-                current_credential_name=getattr(provider_config, "current_credential_name", None),
-                available_credentials=getattr(provider_config, "available_credentials", []),
-                custom_models=sanitized_model_config,
-                can_added_models=can_added_models,
-            ),
-            system_configuration=SystemConfigurationResponse(
-                enabled=provider_configuration.system_configuration.enabled,
-                current_quota_type=provider_configuration.system_configuration.current_quota_type,
-                quota_configurations=provider_configuration.system_configuration.quota_configurations,
-            ),
-        )
+        name = self._get_provider_configuration(tenant_id, provider).provider.provider
+        return next(response for response in self.get_provider_list(tenant_id) if response.provider == name)
 
     @staticmethod
     def _load_provider_summary_states(tenant_id: str) -> dict[str, _ProviderSummaryState]:
@@ -461,10 +459,18 @@ class ModelProviderService:
         get provider models.
         For the model provider page,
         only supports passing in a single provider to query the list of supported models.
+
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :return:
         """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+
+        # Get provider available models
         return [
             ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
-            for model in self.list_models(tenant_id, provider=provider)
+            for model in provider_configurations.get_models(provider=provider)
         ]
 
     def get_provider_available_credentials(
@@ -631,16 +637,15 @@ class ModelProviderService:
         :param model: model name
         :param credentials: model credentials dict
         :param credential_name: credential name
-        :return: the new credential's id
+        :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        credential_id = provider_configuration.create_custom_model_credential(
+        return provider_configuration.create_custom_model_credential(
             model_type=ModelType(model_type),
             model=model,
             credentials=credentials,
             credential_name=credential_name,
         )
-        return credential_id
 
     def activate_model_credential_if_none(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str

@@ -174,21 +174,16 @@ def _dsl(mode: str, *nodes: Mapping[str, object]) -> str:
     )
 
 
-class _Credentials:
-    def __init__(self, problem: str | None) -> None:
-        self._problem = problem
-
-    def validate_node_credentials(self, *_args: object, **_kwargs: object) -> None:
-        if self._problem:
-            raise ValueError(self._problem)
-
-
 @pytest.fixture
 def credentials(monkeypatch: pytest.MonkeyPatch) -> Callable[[str | None], None]:
     monkeypatch.setattr(dsl_import, "session_factory", SimpleNamespace(create_session=nullcontext))
 
     def set_problem(problem: str | None) -> None:
-        monkeypatch.setattr(graph_check, "WorkflowService", lambda: _Credentials(problem))
+        def check_node_credentials(*_args: object, **_kwargs: object) -> None:
+            if problem:
+                raise ValueError(problem)
+
+        monkeypatch.setattr(graph_check, "check_node_credentials", check_node_credentials)
 
     set_problem(None)
     return set_problem

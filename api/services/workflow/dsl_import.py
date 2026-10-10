@@ -8,19 +8,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.db.session_factory import session_factory
+from core.file import remote_fetcher
 from factories import variable_factory
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
 from models import App, AppMode, Workflow
 from repositories.app.console_repository import require_console_app
-from services.app_dsl_service import fetch_yaml_url
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.entities.dsl_entities import ImportMode
 from services.workflow.graph_check import (
     GRAPH_MODES,
@@ -38,6 +40,10 @@ class DslNotCheckableError(ValueError):
     pass
 
 
+class YamlUrlFetchError(ValueError):
+    pass
+
+
 class DraftChangedError(Exception):
     """The draft changed after the export the import is based on."""
 
@@ -50,6 +56,33 @@ class DslRefusedError(Exception):
 
 def stored_secret_ids(draft: Workflow) -> set[str]:
     return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
+
+
+def fetch_yaml_url(yaml_url: str) -> str:
+    """The YAML text at a URL, fetched as AppDslService.import_app does; a GitHub blob link reads its raw file."""
+    try:
+        parsed_url = urlparse(yaml_url)
+        if (
+            parsed_url.scheme == "https"
+            and parsed_url.netloc == "github.com"
+            and parsed_url.path.endswith((".yml", ".yaml"))
+            and "/blob/" in parsed_url.path
+        ):
+            yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
+            yaml_url = yaml_url.replace("/blob/", "/")
+        response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+        response.raise_for_status()
+        raw_content = response.content
+        if dsl_content_size(raw_content) > DSL_MAX_SIZE:
+            raise YamlUrlFetchError("File size exceeds the limit of 10MB")
+        content = raw_content.decode("utf-8")
+    except YamlUrlFetchError:
+        raise
+    except Exception as e:
+        raise YamlUrlFetchError(f"Error fetching YAML from URL: {str(e)}") from e
+    if not content:
+        raise YamlUrlFetchError("Empty content from url")
+    return content
 
 
 def _parse(yaml_content: str) -> dict[str, Any]:

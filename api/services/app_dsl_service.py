@@ -80,7 +80,6 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.workflow.graph_check import refused_node_types
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -106,37 +105,6 @@ def missing_app_section_error(top_level_keys: list[str]) -> str:
         "Not a valid Dify app DSL: the top-level 'app' section is required "
         f"(found: {found or 'none'})."
     )
-
-
-class YamlUrlFetchError(ValueError):
-    pass
-
-
-def fetch_yaml_url(yaml_url: str) -> str:
-    """The YAML text at a URL; a GitHub blob link is read from its raw file."""
-    try:
-        parsed_url = urlparse(yaml_url)
-        if (
-            parsed_url.scheme == "https"
-            and parsed_url.netloc == "github.com"
-            and parsed_url.path.endswith((".yml", ".yaml"))
-            and "/blob/" in parsed_url.path
-        ):
-            yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-            yaml_url = yaml_url.replace("/blob/", "/")
-        response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
-        response.raise_for_status()
-        raw_content = response.content
-        if dsl_content_size(raw_content) > DSL_MAX_SIZE:
-            raise YamlUrlFetchError("File size exceeds the limit of 10MB")
-        content = raw_content.decode("utf-8")
-    except YamlUrlFetchError:
-        raise
-    except Exception as e:
-        raise YamlUrlFetchError(f"Error fetching YAML from URL: {str(e)}") from e
-    if not content:
-        raise YamlUrlFetchError("Empty content from url")
-    return content
 
 
 class PendingData(PendingImportOwner):
@@ -199,9 +167,39 @@ class AppDslService:
                     error="yaml_url is required when import_mode is yaml-url",
                 )
             try:
-                content = fetch_yaml_url(yaml_url)
-            except YamlUrlFetchError as e:
-                return Import(id=import_id, status=ImportStatus.FAILED, error=str(e))
+                parsed_url = urlparse(yaml_url)
+                if (
+                    parsed_url.scheme == "https"
+                    and parsed_url.netloc == "github.com"
+                    and parsed_url.path.endswith((".yml", ".yaml"))
+                    and "/blob/" in parsed_url.path
+                ):
+                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
+                    yaml_url = yaml_url.replace("/blob/", "/")
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response.raise_for_status()
+                raw_content = response.content
+
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
+                    return Import(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error="File size exceeds the limit of 10MB",
+                    )
+
+                content = raw_content.decode("utf-8")
+                if not content:
+                    return Import(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error="Empty content from url",
+                    )
+            except Exception as e:
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error=f"Error fetching YAML from URL: {str(e)}",
+                )
         elif mode == ImportMode.YAML_CONTENT:
             if not yaml_content:
                 return Import(
@@ -573,7 +571,11 @@ class AppDslService:
         }:
             raise ValueError("Only workflow or advanced chat DSLs can overwrite workflow Apps")
         # Package uploads cannot run the editor's YAML node checks before import.
-        invalid_types = refused_node_types(AppMode(app.mode))
+        invalid_types = (
+            {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
+            if app.mode == AppMode.ADVANCED_CHAT
+            else {BuiltinNodeTypes.ANSWER}
+        )
         nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
         if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
             raise ValueError("Workflow contains node types incompatible with the target App")

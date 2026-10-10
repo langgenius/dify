@@ -212,10 +212,8 @@ class BuiltinToolManageService:
                 # Visibility is immutable after creation — no update path. To change scope,
                 # create a new credential. partial-member access is handled by RBAC.
 
-            except ValueError:
-                raise
             except Exception as e:
-                raise ValueError(str(e)) from e
+                raise ValueError(str(e))
         return {"result": "success"}
 
     @staticmethod
@@ -228,9 +226,9 @@ class BuiltinToolManageService:
         expires_at: int = -1,
         name: str | None = None,
         visibility: str | None = None,
-    ) -> str:
+    ):
         """
-        add builtin tool provider; returns the new credential's id
+        add builtin tool provider
         """
         with sessionmaker(bind=db.engine).begin() as session:
             try:
@@ -305,13 +303,10 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
-                    new_credential_id = db_provider.id
-            except ValueError:
-                raise
             except Exception as e:
-                raise ValueError(str(e)) from e
+                raise ValueError(str(e))
 
-        return new_credential_id
+        return {"result": "success"}
 
     @staticmethod
     def create_tool_encrypter(

@@ -22,6 +22,7 @@ from configs import dify_config
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Account, ApiToken, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ApiTokenType
 from models.model import App
@@ -714,13 +715,16 @@ class MigrationImportService:
                 raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
             if account_in_session is None:
                 raise MigrationDataError(f"Operator account not found: {account.id}")
-            workflow_service.publish_app_workflow(
+            workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_in_session,
                 account=account_in_session,
                 marked_name="Migration import",
                 marked_comment="Published automatically for workflow tool import.",
             )
+            app_in_session.workflow_id = workflow.id
+            app_in_session.updated_by = account.id
+            app_in_session.updated_at = naive_utc_now()
 
     def _import_mcp_tools(
         self,

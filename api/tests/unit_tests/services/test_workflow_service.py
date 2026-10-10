@@ -2632,7 +2632,7 @@ class TestWorkflowServiceCredentialValidation:
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow.tenant_id, node_data, "node-1", session=sqlite_session)
+        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
         self, service: WorkflowService, sqlite_session: Session
@@ -2643,9 +2643,7 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(
-                workflow.tenant_id, node_data, "node-1", session=sqlite_session
-            )
+            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
         self, service: WorkflowService, sqlite_session: Session
@@ -2665,9 +2663,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(
-                    workflow.tenant_id, node_data, "node-1", session=sqlite_session
-                )
+                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================
