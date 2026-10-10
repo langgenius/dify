@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { parseCatalog } from '@/plugins/catalog'
 import { Command } from '@/plugins/commands/command'
 import { propertiesOf } from '@/protocol/shape'
+import { SKILL_NOTICE } from './help'
 import { commands, runPipeline } from './index'
 
 // What the mock serves by default, so an op's descriptor and its errors can be compared.
@@ -67,7 +68,7 @@ it('the map with no server known is the static half and says so on stderr', asyn
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf()).toMatch(/log in to list server operations/)
+  expect(w.io.errBuf()).toMatch(/not logged in: run difyctl login --help/)
   expect(w.mock.requestCount).toBe(0)
 })
 
@@ -78,8 +79,10 @@ it('the map still prints the static half when the catalog cannot be fetched', as
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
-  expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
+  const [couldNotList, notice, ...rest] = w.io.errBuf().trim().split('\n')
+  expect(couldNotList).toMatch(/^could not list server operations: failed to fetch the catalog: /)
+  expect(notice).toBe(SKILL_NOTICE)
+  expect(rest).toEqual([])
 })
 
 it('help accepts a dotted id and prints the same descriptor as the spaced path', async () => {
@@ -145,11 +148,10 @@ it('help routes a word to a namespace listing or a search, and --full is the fla
   const c = await world(true, ['help', 'get'])
   await (await c.ctx.get(commands)).run()
   const ids = JSON.parse(c.io.outBuf()).entries.map((e: { id: string }) => e.id)
-  expect(ids).toContain('get skills')
   expect(ids).toContain('get workspace member')
   expect(ids).toEqual([...ids].sort())
 
-  const d = await world(true, ['help', 'chatbot'])
+  const d = await world(true, ['help', 'chatbot', 'streams'])
   await (await d.ctx.get(commands)).run()
   expect(JSON.parse(d.io.outBuf()).entries[0]).toMatchObject({
     id: 'run console_app chat',
@@ -255,17 +257,17 @@ it('a command word may be spelled with dashes where the op id has underscores', 
 })
 
 it('an unknown path refetches the catalog once before giving up', async () => {
-  const w = await world(true, ['get', 'nope'])
+  const w = await world(true, ['get', 'qqqq'])
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unknown command: get nope',
+    message: 'unknown command: get qqqq',
     hint: 'run difyctl help',
   })
   expect(w.mock.requestCount).toBe(2) // the cached catalog, then one refetch
 
   const typo = await world(true, ['get', 'consol_app'])
   await expect((await typo.ctx.get(commands)).run()).rejects.toMatchObject({
-    hint: 'did you mean: get console_app',
+    hint: 'did you mean: get console_app, get console_app version',
   })
 })
 

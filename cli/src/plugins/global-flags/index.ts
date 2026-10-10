@@ -4,6 +4,7 @@ import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
 import { argv } from '@/plugins/argv'
 import { inputSchema, parseArgv, partitionArgv } from '@/plugins/argv/parse'
+import { flagToken } from '@/util/flag-name'
 
 export const GLOBAL_INPUT = z.object({
   verbose: z.boolean().default(false).describe('Keep the raw server response in error envelopes'),
@@ -21,7 +22,7 @@ const NO_POSITIONALS: readonly string[] = []
 
 function invalidGlobalFlags(error: z.ZodError): BaseError {
   const message = error.issues
-    .map((issue) => `--${issue.path.join('.')}: ${issue.message}`)
+    .map((issue) => `${flagToken(issue.path.join('.'))}: ${issue.message}`)
     .join('; ')
   return new BaseError({ code: ErrorCode.UsageInvalidFlag, message, cause: error })
 }
