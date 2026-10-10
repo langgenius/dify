@@ -177,7 +177,7 @@ class TestAgentChatAppGeneratorGenerate:
             return_value=["file-obj"],
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.ConversationService.get_conversation",
+            "core.app.apps.agent_chat.app_generator.ConversationService.try_get_conversation",
             return_value=_conversation(),
         )
         mocker.patch(

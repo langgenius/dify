@@ -264,7 +264,7 @@ class TestGenerateSuccess:
         generator._prepare_user_inputs = mocker.MagicMock(return_value={})
         generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
         generator._handle_response = mocker.MagicMock(return_value="raw")
-        get_conv = mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=_conversation())
+        get_conv = mocker.patch(f"{MODULE}.ConversationService.try_get_conversation", return_value=_conversation())
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
@@ -533,7 +533,7 @@ class TestResumeAfterFormSubmission:
         generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
         generator._handle_response = mocker.MagicMock(return_value=None)
         get_conversation = mocker.patch(
-            f"{MODULE}.ConversationService.get_conversation",
+            f"{MODULE}.ConversationService.try_get_conversation",
             return_value=_conversation(),
         )
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
@@ -601,7 +601,7 @@ class TestResumeAfterFormSubmission:
     def test_resume_uses_build_draft_for_debugger_conversation(self, generator, mocker: MockerFixture):
         self._wire(generator, mocker)
         conversation = _conversation(invoke_from=InvokeFrom.DEBUGGER)
-        mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
+        mocker.patch(f"{MODULE}.ConversationService.try_get_conversation", return_value=conversation)
         generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
         account_user = Account(name="Test Account", email="test@example.com")
         account_user.id = "user"

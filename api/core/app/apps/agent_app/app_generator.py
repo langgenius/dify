@@ -96,7 +96,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation = ConversationService.get_conversation(
+            conversation = ConversationService.try_get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
 
@@ -180,6 +180,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             application_generate_entity,
             conversation,
             session=session,
+            provided_conversation_id=conversation_id if conversation is None else None,
         )
 
         queue_manager = MessageBasedAppQueueManager(
@@ -311,6 +312,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             application_generate_entity,
             conversation,
             session=session,
+            provided_conversation_id=conversation_id if conversation is None else None,
         )
 
         queue_manager = MessageBasedAppQueueManager(
