@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Toegangsrecht",
   "accessRule.actions": "Acties",
-  "accessRule.addMemberAria": "{{name}} toevoegen",
   "accessRule.addMembersTitle": "Leden toevoegen",
   "accessRule.agentDescription": "Beheer wie toegang heeft tot deze agent en welke rechten zij hebben.",
   "accessRule.agentTitle": "Agent-rechtenset",

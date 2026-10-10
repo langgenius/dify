@@ -12,7 +12,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE_OPTIONS } from '@/service/access-control/constants'
-import AddAccessSubjectPopover from './add-access-subject-popover'
+import AddAccessSubjectMenu from './add-access-subject-menu'
 import AutomaticIncludeWorkspaceMembersSection from './automatic-include-workspace-members-section'
 import AccessRulesBatchAction from './batch-action'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
@@ -231,7 +231,7 @@ function AccessRulesEditor({
           </span>
         </div>
         {onAddAccessSubject ? (
-          <AddAccessSubjectPopover
+          <AddAccessSubjectMenu
             disabled={areMembershipChangesDisabled}
             existingAccountIds={existingOrProtectedAccountIds}
             updatingAccountId={updatingAccountId}

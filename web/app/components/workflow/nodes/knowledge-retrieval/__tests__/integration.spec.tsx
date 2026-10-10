@@ -575,7 +575,7 @@ describe('knowledge-retrieval path', () => {
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
     })
 
-    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+    it('should call handleAddCondition with the chosen metadata item', async () => {
       const user = userEvent.setup()
       const handleAddCondition = vi.fn()
       const permissionMetadata = createMetadata({
@@ -601,7 +601,7 @@ describe('knowledge-retrieval path', () => {
           name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.add/i,
         }),
       )
-      await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
+      await user.click(await screen.findByRole('menuitem', { name: /^permission/ }))
 
       expect(handleAddCondition).toHaveBeenCalledTimes(1)
       expect(handleAddCondition).toHaveBeenCalledWith(

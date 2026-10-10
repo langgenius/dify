@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Разрешение на доступ",
   "accessRule.actions": "Действия",
-  "accessRule.addMemberAria": "Добавить {{name}}",
   "accessRule.addMembersTitle": "Добавить участников",
   "accessRule.agentDescription": "Управляйте доступом к этому агенту и правами пользователей.",
   "accessRule.agentTitle": "Набор прав агента",

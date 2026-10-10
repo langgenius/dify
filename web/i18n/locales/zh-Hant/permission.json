@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "存取權限",
   "accessRule.actions": "操作",
-  "accessRule.addMemberAria": "新增 {{name}}",
   "accessRule.addMembersTitle": "新增成員",
   "accessRule.agentDescription": "管理可存取此 Agent 的成員及其權限。",
   "accessRule.agentTitle": "Agent 權限集",
