@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 import hashlib
 import json
 import logging
-from typing import cast
+from typing import cast, override
 
 import httpx
 from pydantic_ai import RunContext, Tool
@@ -72,6 +72,7 @@ class Capability(AbstractCapability[Deps]):
         self.name = name
         self._injected = False
 
+    @override
     def get_toolset(self) -> FunctionToolset[Deps]:
         return _KnowledgeTools(self.name)
 
@@ -80,10 +81,12 @@ class Capability(AbstractCapability[Deps]):
         config = Config.model_validate(deps.layers[self.name]["config"])
         return any(knowledge_set.query.mode == "user_query" for knowledge_set in config.sets)
 
+    @override
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         await _KnowledgeOperations(self.name, ctx.deps)._refresh_eager_results_if_needed()
         return await handler()
 
+    @override
     async def before_model_request(
         self, ctx: RunContext[Deps], request_context: ModelRequestContext
     ) -> ModelRequestContext:
@@ -102,6 +105,7 @@ class _KnowledgeTools(FunctionToolset[Deps]):
         self.name = name
         self._loaded = False
 
+    @override
     async def get_tools(self, ctx: RunContext[Deps]):
         if not self._loaded:
             for tool in await _KnowledgeOperations(self.name, ctx.deps).build_tools(

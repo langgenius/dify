@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import ClassVar, NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import ClassVar, NotRequired, Protocol, TypedDict, override, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import RunContext
@@ -206,9 +206,11 @@ class Capability(AbstractCapability[Deps]):
         self.id = name
         self.name = name
 
+    @override
     def get_ordering(self) -> CapabilityOrdering:
         return CapabilityOrdering(wrapped_by=[RuntimeCapability], requires=[RuntimeCapability])
 
+    @override
     def get_instructions(self):
         return self._instructions
 
@@ -216,6 +218,7 @@ class Capability(AbstractCapability[Deps]):
         session = ctx.deps.resources.shells[self.name]
         return f"{session.build_prefix_prompt()}\n\n{_SHELL_LAYER_SUFFIX_PROMPT}"
 
+    @override
     def get_toolset(self) -> FunctionToolset[Deps]:
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
@@ -249,6 +252,7 @@ class Capability(AbstractCapability[Deps]):
 
         return toolset
 
+    @override
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         session = ShellSession(self.name, ctx.deps)
         ctx.deps.resources.shells[self.name] = session

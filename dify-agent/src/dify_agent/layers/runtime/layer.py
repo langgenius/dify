@@ -1,5 +1,7 @@
 """Acquire an operation lease without owning Binding or Workspace retirement."""
 
+from typing import override
+
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability
@@ -24,6 +26,7 @@ class Capability(AbstractCapability[Deps]):
         self.id = name
         self.name = name
 
+    @override
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         config = Config.model_validate(ctx.deps.layers[self.name]["config"])
         profile = ctx.deps.services.runtime_backend_profile

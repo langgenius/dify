@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import shlex
 from dataclasses import dataclass
+from typing import override
 
 
 from pydantic_ai import RunContext
@@ -79,9 +80,11 @@ class Capability(AbstractCapability[Deps]):
         self.id = name
         self.name = name
 
+    @override
     def get_ordering(self) -> CapabilityOrdering:
         return CapabilityOrdering(wrapped_by=[ShellCapability], requires=[ShellCapability])
 
+    @override
     def get_instructions(self):
         return self._instructions
 
@@ -95,6 +98,7 @@ class Capability(AbstractCapability[Deps]):
             config, State.model_validate(deps.layers[self.name]["state"]), deps.resources.shells[config.shell]
         )
 
+    @override
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         context = self._context(ctx.deps)
         try:

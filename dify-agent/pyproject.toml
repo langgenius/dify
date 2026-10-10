@@ -48,6 +48,7 @@ project-excludes = [".venv", "tests/"]
 search-path = ["src", "examples/dify_agent"]
 python-platform = "linux"
 python-version = "3.13.0"
+errors = { missing-override-decorator = "error" }
 
 [tool.pytest.ini_options]
 # Several test modules share a basename across directories (test_layer.py,
