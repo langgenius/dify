@@ -32,6 +32,8 @@
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "Yerləşdirilməyib",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING": "Yerləşdirmə ləğv edilir",
   "status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "Naməlum",
+  "studio.accessControl.addressCount_one": "{{count}} ünvan",
+  "studio.accessControl.addressCount_other": "{{count}} ünvan",
   "studio.accessPoint.apiDescription": "Tətbiqi HTTP vasitəsilə xidmətlərinizə inteqrasiya edin",
   "studio.accessPoint.description": "Bu tətbiqə çıxışın bütün yolları. Giriş nöqtələri yalnız işləyən versiyaya uyğundur.",
   "studio.accessPoint.embedIntoSite": "Sayta yerləşdir",

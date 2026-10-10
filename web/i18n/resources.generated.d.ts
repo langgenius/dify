@@ -2992,7 +2992,7 @@ export default interface Resources {
     'status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed'
     'status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING': 'Undeploying'
     'status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED': 'Unknown'
-    'studio.accessControl.addressCount': '{{count}} addresses'
+    'studio.accessControl.addressCount': '{{count}} address' | '{{count}} addresses'
     'studio.accessControl.applyTo': 'Apply to'
     'studio.accessControl.applyToHelp': 'Choose which access points this policy protects.'
     'studio.accessControl.applyToHelpSelected': 'Choose which access points this policy protects.'
