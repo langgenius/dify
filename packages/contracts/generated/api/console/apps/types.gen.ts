@@ -4870,7 +4870,10 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
+  400: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionResponses = {
@@ -4892,7 +4895,9 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
+  400: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
@@ -4953,9 +4958,7 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdAnnotationsResponse =
@@ -5017,8 +5020,10 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
   400: unknown
   403: unknown
+  404: unknown
   413: unknown
   429: unknown
+  500: unknown
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportResponses = {
@@ -5040,6 +5045,8 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
@@ -5096,9 +5103,7 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse =

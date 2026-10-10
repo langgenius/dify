@@ -1125,3 +1125,17 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:service-api-app-access-boundary]
+name = Service API app access is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.service_api_access_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug

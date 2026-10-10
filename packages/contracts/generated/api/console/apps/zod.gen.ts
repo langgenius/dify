@@ -5910,9 +5910,9 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
 })
 
 /**
- * Success
+ * Annotations deleted successfully
  */
-export const zDeleteAppsByAppIdAnnotationsResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdAnnotationsResponse = z.void()
 
 export const zGetAppsByAppIdAnnotationsPath = z.object({
   app_id: z.uuid(),
@@ -5945,7 +5945,7 @@ export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
 })
 
 /**
- * Batch import started successfully
+ * Import started, or CSV/subscription validation failed (error_msg)
  */
 export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationBatchImportResponse
 
@@ -5984,9 +5984,9 @@ export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Success
+ * Annotation deleted successfully
  */
-export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.void()
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdBody = zUpdateAnnotationPayload
 

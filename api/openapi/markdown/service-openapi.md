@@ -158,8 +158,11 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 400 | `invalid_param` : Invalid action. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : App no longer exists. |  |
+| 422 | `unprocessable_entity` : Invalid annotation reply payload. |  |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -178,9 +181,10 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
-| 400 | `invalid_param` : The specified job does not exist. |  |
+| 400 | `invalid_param` : Invalid action. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : The specified job does not belong to this app or no longer exists. |  |
 
 ### [GET] /apps/annotations
 **List Annotations**
