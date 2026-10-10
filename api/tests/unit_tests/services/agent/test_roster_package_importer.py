@@ -703,22 +703,22 @@ def test_import_materializes_agent_resources_and_unpublished_draft(
         assert _count(session, AgentDebugConversation) == 1
 
 
-def test_import_rejects_binary_dependencies_before_side_effects(
+def test_import_ignores_unknown_resource_metadata(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     storage = _MemoryStorage()
     importer = RosterAgentPackageImporter(storage_backend=storage)
 
-    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
-        importer.import_package(
-            source=io.BytesIO(_package(binary_dependency=True)),
-            tenant_id="tenant-1",
-            account=_account(),
-        )
+    result = importer.import_package(
+        source=io.BytesIO(_package(binary_dependency=True)),
+        tenant_id="tenant-1",
+        account=_account(),
+    )
 
-    assert storage.files == {}
+    assert len(storage.files) == 4
     with sqlite_session_factory() as session:
-        assert _count(session, App) == 0
+        assert session.get(App, result.app_id) is not None
+        assert _count(session, App) == 1
 
 
 def test_import_marks_unavailable_knowledge_for_rebinding(
