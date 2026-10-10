@@ -1878,7 +1878,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:
     closed: list[bool] = []
 
-    def generate_response() -> Generator[str, None, None]:
+    def generate_response() -> Generator[str]:
         try:
             yield "event: ping\n\n"
             yield 'data: {"event":"message","answer":"working"}\n\n'

@@ -1,5 +1,4 @@
 import contextvars
-import json
 import logging
 import time
 import uuid
@@ -10,6 +9,7 @@ from typing import Any
 import click
 from celery import shared_task  # type: ignore
 from flask import current_app, g
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -31,6 +31,9 @@ from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
 
+# Each entry is validated into RagPipelineInvokeEntity inside the worker.
+_INVOKE_ENTITIES_ADAPTER = TypeAdapter(list[dict[str, Any]])
+
 
 @shared_task(queue="priority_pipeline")
 def priority_rag_pipeline_run_task(
@@ -50,7 +53,7 @@ def priority_rag_pipeline_run_task(
         rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
             rag_pipeline_invoke_entities_file_id
         )
-        rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
+        rag_pipeline_invoke_entities = _INVOKE_ENTITIES_ADAPTER.validate_json(rag_pipeline_invoke_entities_content)
 
         logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 

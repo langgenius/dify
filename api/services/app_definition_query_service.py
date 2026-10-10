@@ -62,7 +62,7 @@ class AppSiteConfiguration(NamedTuple):
 class AppDefinitionQuery(Protocol):
     def get_mode(self, app_id: str) -> str | None: ...
 
-    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None: ...
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None: ...
 
     def has_service_api_owner(self, tenant_id: str) -> bool: ...
 
@@ -101,15 +101,17 @@ class AppDefinitionQueryService:
         self._definitions = definitions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
 
-    def get_service_api_app(self, app_id: str | None) -> ServiceApiAppRecord:
+    def get_service_api_app(self, app_id: str | None, *, tenant_id: str | None = None) -> ServiceApiAppRecord:
         """Return an app admitted for Service API access, or raise a domain error.
 
         ``None`` means the API token no longer references an app. The repository
         closes its read session before this policy runs or an end user is provisioned.
+        Resource-token grants provide ``tenant_id`` to constrain the lookup to their
+        workspace; ``None`` retains legacy app tokens' app-ID-only lookup.
         """
         if app_id is None:
             raise AppDefinitionUnavailableError("The app no longer exists.")
-        app = self._definitions.get_service_api_record(app_id)
+        app = self._definitions.get_service_api_record(app_id, tenant_id=tenant_id)
         if app is None:
             raise AppDefinitionUnavailableError("The app no longer exists.")
         if app.status != "normal":

@@ -160,7 +160,7 @@ class RedisSubscriptionBase(Subscription):
                     continue
         return
 
-    def _message_iterator(self) -> Generator[bytes, None, None]:
+    def _message_iterator(self) -> Generator[bytes]:
         """Iterator for consuming messages from the subscription."""
         while not self._closed.is_set():
             try:

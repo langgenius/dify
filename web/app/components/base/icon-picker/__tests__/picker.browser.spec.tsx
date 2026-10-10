@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { IconPickerDialog } from '..'
 import { emojiCatalogOptions } from '../emoji-data'
+import { IconPickerDialog } from './harness'
 
 const { uploadImage } = vi.hoisted(() => ({
   uploadImage: vi.fn<() => Promise<PostFilesUploadResponse>>(),
@@ -44,18 +44,13 @@ const emojis = [
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
 
 function Harness() {
-  const [open, setOpen] = useState(false)
   const [value, setValue] = useState(initial)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>
-        Choose
-      </button>
       <output aria-label="Saved icon">{value.icon}</output>
       <IconPickerDialog
-        open={open}
-        onOpenChange={setOpen}
-        defaultValue={value}
+        aria-label="Choose"
+        value={value}
         onConfirm={(next) => {
           if (next.type === 'emoji') setValue(next)
         }}
@@ -158,17 +153,17 @@ it('focuses the visible image action when reopening an existing image icon', asy
   await render(
     <QueryClientProvider client={client}>
       <IconPickerDialog
-        open
-        defaultValue={{
+        aria-label="Choose image"
+        value={{
           type: 'image',
           fileId: 'image-id',
           url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
         }}
-        onOpenChange={() => {}}
         onConfirm={() => {}}
       />
     </QueryClientProvider>,
   )
+  await page.getByRole('button', { name: 'Choose image' }).click()
   await expect
     .element(page.getByRole('tab', { name: 'app.iconPicker.image' }))
     .toHaveAttribute('aria-selected', 'true')

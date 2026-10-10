@@ -44,7 +44,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: Literal[True],
         *,
         session: Session,
-    ) -> Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Generator[str | Mapping[str, Any]]: ...
 
     @overload
     def generate(
@@ -68,7 +68,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = False,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]: ...
 
     def generate(
         self,
@@ -79,7 +79,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -190,7 +190,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         *,
         session_factory: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """Persist prepared completion records before starting provider work.
 
         Preparation owns configuration, inputs and files. This path preserves
@@ -209,7 +209,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         conversation: Conversation,
         message: Message,
-    ) -> AppBlockingResponse | Generator[AppStreamResponse, None, None]:
+    ) -> AppBlockingResponse | Generator[AppStreamResponse]:
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,

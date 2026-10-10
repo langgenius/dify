@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from warnings import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -21,7 +22,6 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.environment_variables import load_environment_variables
@@ -475,9 +475,7 @@ class Workflow(Base):  # bug
 
         return features
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         """
         Walk through the workflow nodes, yield each node configuration.
 

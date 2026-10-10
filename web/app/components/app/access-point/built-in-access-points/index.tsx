@@ -5,11 +5,11 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
@@ -35,7 +35,9 @@ export function BuiltInAccessPoints({
 }: BuiltInAccessPointsProps) {
   const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
   const {

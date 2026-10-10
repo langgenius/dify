@@ -15,7 +15,7 @@ _BASE: dict[str, object] = {"id": "run-1", "tenant_id": "tenant-1", "app_id": "a
 
 
 @pytest.fixture
-def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     """Run the host clock in UTC+05:30 so local-time conversions become observable."""
     monkeypatch.setenv("TZ", "Asia/Kolkata")
     time.tzset()

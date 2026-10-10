@@ -254,7 +254,7 @@ it('keeps the current paid plan billing action available while education loads o
     queries: { retry: false, retryOnMount: false, staleTime: Infinity },
   })
   seedFeatures(queryClient, {
-    billing: { subscription: { plan: 'professional' } },
+    billing: { subscription: { plan: 'professional', interval: 'month' } },
     education: { enabled: true },
   })
   let rejectEducation!: (error: Error) => void
@@ -306,6 +306,58 @@ it('uses the visible billing label to name and toggle the switch', async () => {
   expect(screen.getByText('$59')).toBeVisible()
 })
 
+it.each([
+  ['professional', 'month', 'year'],
+  ['professional', 'year', 'month'],
+  ['team', 'month', 'year'],
+  ['team', 'year', 'month'],
+] as const)(
+  'checks out %s when changing from %s to %s',
+  async (plan, currentInterval, selectedInterval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan, interval: currentInterval } },
+    })
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    const fetchCheckout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://checkout.example.com' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    show()
+    if (selectedInterval === 'year') await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://checkout.example.com'))
+    const request = fetchCheckout.mock.calls[0]?.[0]
+    const requestUrl = request instanceof Request ? request.url : String(request)
+    expect(requestUrl).toContain('/billing/subscription')
+    expect(requestUrl).toContain(`plan=${plan}`)
+    expect(requestUrl).toContain(`interval=${selectedInterval}`)
+    expect(openBillingWindow).not.toHaveBeenCalled()
+  },
+)
+
+it.each(['month', 'year'] as const)(
+  'opens the portal for the current %s subscription',
+  async (interval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'professional', interval } },
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
+    show()
+    if (interval === 'year') await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+  },
+)
 it('includes the marketplace in the Premium purchase link name', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()

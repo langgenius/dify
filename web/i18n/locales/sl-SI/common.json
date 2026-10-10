@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Generirano neuspešno",
   "actionMsg.modifiedSuccessfully": "Spremenjeno uspešno",
   "actionMsg.modifiedUnsuccessfully": "Spremenjeno neuspešno",
-  "actionMsg.noModification": "Trenutno ni sprememb.",
   "actionMsg.payCancelled": "Plačilo preklicano",
   "actionMsg.paySucceeded": "Plačilo je uspelo",
   "agentStrategyPage.description": "Določite, kako vaš AI Agent razmišlja in sprejema odločitve — vključno z izbiro orodij, obdelavo rezultatov in samostojnim reševanjem težav.",

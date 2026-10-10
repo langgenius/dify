@@ -113,7 +113,7 @@ test:
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
 			--ignore=api/tests/unit_tests/controllers; \
-		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
 			api/tests/unit_tests/controllers; \
 	fi
 	@echo "✅ Unit tests complete"
@@ -131,7 +131,7 @@ test-all:
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
 			--ignore=api/tests/unit_tests/controllers; \
-		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
 			api/tests/unit_tests/controllers; \
 		echo "Running backend integration tests"; \
 		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \

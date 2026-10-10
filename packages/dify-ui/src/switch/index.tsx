@@ -6,13 +6,16 @@ import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { checkedControlFocusClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-const switchRootStateClassName =
-  'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
-
 const switchRootVariants = cva(
-  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center outline-hidden transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none ${switchRootStateClassName}`,
+  [
+    'group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out motion-reduce:transition-none',
+    checkedControlFocusClassName,
+    'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover',
+    'data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled',
+  ],
   {
     variants: {
       size: {
