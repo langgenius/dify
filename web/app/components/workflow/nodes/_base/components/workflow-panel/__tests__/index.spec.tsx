@@ -28,6 +28,7 @@ let mockBuiltInTools = [
   {
     id: 'provider/tool',
     name: 'Tool',
+    label: { en_US: 'Localized tool provider', zh_Hans: '本地化工具提供方' },
     type: 'builtin',
     allow_delete: true,
   },
@@ -259,9 +260,12 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   }) => (
     <div>
       {nodeAuth && (
-        <button onClick={() => nodeAuth.onAuthorizationItemClick('credential-1')}>
-          authorized-in-node
-        </button>
+        <>
+          <span>{nodeAuth.providerName}</span>
+          <button onClick={() => nodeAuth.onAuthorizationItemClick('credential-1')}>
+            authorized-in-node
+          </button>
+        </>
       )}
       {authorizedFooter}
     </div>
@@ -429,6 +433,7 @@ describe('workflow-panel index', () => {
       {
         id: 'provider/tool',
         name: 'Tool',
+        label: { en_US: 'Localized tool provider', zh_Hans: '本地化工具提供方' },
         type: 'builtin',
         allow_delete: true,
       },
@@ -537,6 +542,7 @@ describe('workflow-panel index', () => {
 
     expect(screen.getByText('panel-child')).toBeInTheDocument()
     expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
+    expect(screen.getByText('Localized tool provider')).toBeInTheDocument()
 
     fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
     fireEvent.change(screen.getByDisplayValue('Node description'), {

@@ -2,34 +2,16 @@ import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { Credential, PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { AvatarFallback, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
+import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { memo, useEffect, useId, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -39,11 +21,13 @@ import ApiKeyModal from '../authorize/api-key-modal'
 import OAuthClientSettings from '../authorize/oauth-client-settings'
 import OAuthVisibilityDialog from '../authorize/oauth-visibility-dialog'
 import { CredentialTypeEnum } from '../types'
+import ConnectionActions, { ConnectionActionsTrigger } from './connection-actions'
 
 export type ConnectionSelectorProps = {
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
   credentialId?: string
+  providerName?: string
   onAuthorizationItemClick: (id: string) => void
   onDefaultCredentialChange?: (id?: string) => void
 }
@@ -52,10 +36,11 @@ const ConnectionSelector = ({
   pluginPayload,
   authorization,
   credentialId,
+  providerName,
   onAuthorizationItemClick,
   onDefaultCredentialChange,
 }: ConnectionSelectorProps) => {
-  const { t } = useTranslation(['common', 'plugin', 'datasetSettings', 'datasetDocuments'])
+  const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
   const renderI18nObject = useRenderI18nObject()
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const {
@@ -82,40 +67,13 @@ const ConnectionSelector = ({
     }),
   )
   const [open, setOpen] = useState(false)
-  const [renameCredential, setRenameCredential] = useState<Credential | null>(null)
-  const [renameOpen, setRenameOpen] = useState(false)
-  const [renameValue, setRenameValue] = useState('')
-  const [deleteCredential, setDeleteCredential] = useState<Credential | null>(null)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [apiKeySession, setApiKeySession] = useState<{
-    key: number
-    credential?: Credential
-  } | null>(null)
+  const [connectionActionsHandle] = useState(() => createDropdownMenuHandle<Credential>())
+  const [apiKeySession, setApiKeySession] = useState<{ key: number } | null>(null)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const [oauthSettingsSession, setOauthSettingsSession] = useState(0)
   const [oauthSettingsOpen, setOauthSettingsOpen] = useState(false)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
   const [visibility, setVisibility] = useState<CredentialPermission>(PermissionLevel.onlyMe)
-  const renameInputId = useId()
-
-  const updateCredential = useMutation(
-    providerApi.update.post.mutationOptions({
-      onSuccess: () => {
-        invalidPluginCredentialInfo()
-        setRenameOpen(false)
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    }),
-  )
-  const removeCredential = useMutation(
-    providerApi.delete.post.mutationOptions({
-      onSuccess: () => {
-        invalidPluginCredentialInfo()
-        setDeleteOpen(false)
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    }),
-  )
   const oauthAuthorization = useMutation(
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
       onSuccess: ({ authorization_url }) => {
@@ -301,13 +259,6 @@ const ConnectionSelector = ({
                   <div className="space-y-0.5">
                     {group.items.map((credential) => {
                       const isSelected = selectedCredential?.id === credential.id
-                      const canManage =
-                        canManageCredential &&
-                        !credential.from_enterprise &&
-                        !credential.from_other_member
-                      const canEdit = canManage && !credential.not_allowed_to_use
-                      const canFollowDefault =
-                        credential.is_default && canUseCredential && !credential.not_allowed_to_use
                       return (
                         <div
                           key={credential.id}
@@ -322,7 +273,9 @@ const ConnectionSelector = ({
                             // Match the connection row's 8px spacing rather than a compact action label.
                             className="h-auto min-w-0 grow justify-start gap-2 p-2 text-left hover:bg-transparent"
                             disabled={!canUseCredential || credential.not_allowed_to_use}
-                            onClick={() => selectCredential(credential.id)}
+                            onClick={() =>
+                              selectCredential(credential.is_default ? '' : credential.id)
+                            }
                           >
                             <span
                               aria-hidden
@@ -358,73 +311,10 @@ const ConnectionSelector = ({
                               </TooltipContent>
                             </Tooltip>
                           )}
-                          {(canManage || canFollowDefault) && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <IconButton
-                                    size="xs"
-                                    aria-label={t(($) => $['operation.moreActionsFor'], {
-                                      ns: 'common',
-                                      name: credential.name,
-                                    })}
-                                  >
-                                    <span
-                                      aria-hidden
-                                      className="i-ri-more-fill size-4 text-text-tertiary"
-                                    />
-                                  </IconButton>
-                                }
-                              />
-                              <DropdownMenuContent placement="bottom-end" className="min-w-40">
-                                {canFollowDefault && (
-                                  <DropdownMenuItem onClick={() => selectCredential('')}>
-                                    {t(($) => $['auth.workspaceDefault'], { ns: 'plugin' })}
-                                  </DropdownMenuItem>
-                                )}
-                                {canEdit &&
-                                  credential.credential_type === CredentialTypeEnum.OAUTH2 && (
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setOpen(false)
-                                        setRenameCredential(credential)
-                                        setRenameValue(credential.name)
-                                        setRenameOpen(true)
-                                      }}
-                                    >
-                                      {t(($) => $['operation.rename'], { ns: 'common' })}
-                                    </DropdownMenuItem>
-                                  )}
-                                {canEdit &&
-                                  credential.credential_type === CredentialTypeEnum.API_KEY && (
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setOpen(false)
-                                        setApiKeySession((session) => ({
-                                          key: (session?.key || 0) + 1,
-                                          credential,
-                                        }))
-                                        setApiKeyOpen(true)
-                                      }}
-                                    >
-                                      {t(($) => $['operation.edit'], { ns: 'common' })}
-                                    </DropdownMenuItem>
-                                  )}
-                                {canManage && (
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setOpen(false)
-                                      setDeleteCredential(credential)
-                                      setDeleteOpen(true)
-                                    }}
-                                  >
-                                    {t(($) => $['operation.delete'], { ns: 'common' })}
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                          <ConnectionActionsTrigger
+                            handle={connectionActionsHandle}
+                            credential={credential}
+                          />
                         </div>
                       )
                     })}
@@ -473,111 +363,21 @@ const ConnectionSelector = ({
           )}
         </PopoverContent>
       </Popover>
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
-          <DialogTitle className="title-lg-semi-bold mb-4 text-text-primary">
-            {t(($) => $['operation.rename'], { ns: 'common' })}
-          </DialogTitle>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (
-                !canManageCredential ||
-                !renameCredential ||
-                !renameValue.trim() ||
-                updateCredential.isPending
-              )
-                return
-              updateCredential.mutate({
-                params,
-                body: { credential_id: renameCredential.id, name: renameValue.trim() },
-              })
-            }}
-          >
-            <label
-              htmlFor={renameInputId}
-              className="mb-1 block system-sm-medium text-text-secondary"
-            >
-              {t(($) => $['auth.authorizationName'], { ns: 'plugin' })}
-            </label>
-            <Input
-              id={renameInputId}
-              value={renameValue}
-              onValueChange={setRenameValue}
-              disabled={updateCredential.isPending}
-              required
-            />
-            <div className="mt-6 flex justify-end gap-2">
-              <DialogClose
-                render={
-                  <Button disabled={updateCredential.isPending}>
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </Button>
-                }
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={!canManageCredential || !renameValue.trim()}
-                loading={updateCredential.isPending}
-              >
-                {t(($) => $['operation.save'], { ns: 'common' })}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <div className="p-6 pb-0">
-            <AlertDialogTitle className="title-lg-semi-bold text-text-primary">
-              {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-secondary">
-              {deleteCredential?.name}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton disabled={removeCredential.isPending}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={removeCredential.isPending}
-              disabled={!canManageCredential}
-              onClick={() => {
-                if (!canManageCredential || !deleteCredential || removeCredential.isPending) return
-                removeCredential.mutate({ params, body: { credential_id: deleteCredential.id } })
-              }}
-            >
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConnectionActions
+        handle={connectionActionsHandle}
+        pluginPayload={pluginPayload}
+        providerName={providerName}
+        onAction={() => setOpen(false)}
+        onUpdate={invalidPluginCredentialInfo}
+      />
       {apiKeySession && (
         <ApiKeyModal
           key={apiKeySession.key}
           open={apiKeyOpen}
           onOpenChange={setApiKeyOpen}
           pluginPayload={pluginPayload}
-          editValues={
-            apiKeySession.credential
-              ? {
-                  ...apiKeySession.credential.credentials,
-                  __name__: apiKeySession.credential.name,
-                  __credential_id__: apiKeySession.credential.id,
-                  __visibility__: apiKeySession.credential.visibility,
-                }
-              : undefined
-          }
-          disabled={apiKeySession.credential ? !canManageCredential : !canCreateCredential}
+          disabled={!canCreateCredential}
           onUpdate={invalidPluginCredentialInfo}
-          onRemove={() => {
-            if (!canManageCredential || !apiKeySession.credential) return
-            setApiKeyOpen(false)
-            setDeleteCredential(apiKeySession.credential)
-            setDeleteOpen(true)
-          }}
         />
       )}
       {oauthSettingsSession > 0 && (

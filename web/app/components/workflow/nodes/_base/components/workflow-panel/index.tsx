@@ -700,6 +700,8 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   className="px-4 pb-2"
                   authorizedFooter={<div className="px-4">{panelTabs}</div>}
                   nodeAuth={{
+                    providerName:
+                      currToolCollection?.label[language] || currToolCollection?.label.en_US,
                     credentialId: data.credential_id,
                     onAuthorizationItemClick: handleAuthorizationItemClick,
                   }}

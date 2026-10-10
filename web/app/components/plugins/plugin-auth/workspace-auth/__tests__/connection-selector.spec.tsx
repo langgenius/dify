@@ -1,6 +1,7 @@
 import type { usePluginAuth } from '../../hooks/use-plugin-auth'
 import type { Credential } from '../../types'
 import type { ConnectionSelectorProps } from '../connection-selector'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -136,12 +137,14 @@ const renderSelector = (
   )
 
   return renderWithConsoleQuery(
-    <ConnectionSelector
-      pluginPayload={pluginPayload}
-      authorization={createAuthorization()}
-      onAuthorizationItemClick={vi.fn()}
-      {...props}
-    />,
+    <TooltipProvider delay={0} closeDelay={0}>
+      <ConnectionSelector
+        pluginPayload={pluginPayload}
+        authorization={createAuthorization()}
+        onAuthorizationItemClick={vi.fn()}
+        {...props}
+      />
+    </TooltipProvider>,
     { queryClient, accountProfile: { id: 'current-user' }, workspacePermissionKeys },
   )
 }
@@ -213,25 +216,28 @@ describe('ConnectionSelector', () => {
     })
   })
 
-  it('clears the node override when following the workspace default connection', async () => {
-    const user = userEvent.setup()
-    const onAuthorizationItemClick = vi.fn()
-    renderSelector({ credentialId: 'personal-oauth', onAuthorizationItemClick })
-    await user.click(screen.getByRole('button', { name: /Personal OAuth connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Team API connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'plugin.auth.workspaceDefault' }))
+  it.each([false, true])(
+    'follows the default connection when its row is selected with default tracking %s',
+    async (trackDefault) => {
+      const user = userEvent.setup()
+      const onAuthorizationItemClick = vi.fn()
+      renderSelector({
+        credentialId: 'personal-oauth',
+        onAuthorizationItemClick,
+        onDefaultCredentialChange: trackDefault ? vi.fn() : undefined,
+      })
+      await user.click(screen.getByRole('button', { name: /Personal OAuth connection/ }))
+      const workspaceGroup = screen.getByRole('group', { name: 'common.userProfile.workspace' })
+      await user.click(within(workspaceGroup).getByRole('button', { name: /^Team API connection/ }))
 
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('')
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
-      ).not.toBeInTheDocument()
-    })
-  })
+      expect(onAuthorizationItemClick).toHaveBeenCalledWith(trackDefault ? 'workspace-api' : '')
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
+        ).not.toBeInTheDocument()
+      })
+    },
+  )
 
   it('keeps credential management unavailable without manage permission', async () => {
     const user = userEvent.setup()
@@ -244,28 +250,7 @@ describe('ConnectionSelector', () => {
       screen.getByRole('button', { name: 'plugin.auth.connection.oauthClientSettings' }),
     ).toBeDisabled()
     expect(
-      screen.queryByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Personal OAuth connection/,
-      }),
-    ).not.toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Team API connection/,
-      }),
-    )
-
-    expect(
-      screen.getByRole('menuitem', { name: 'plugin.auth.workspaceDefault' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'common.operation.edit' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'common.operation.rename' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+      screen.queryByRole('button', { name: /common\.operation\.moreActionsFor/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -328,142 +313,59 @@ describe('ConnectionSelector', () => {
     },
   )
 
-  it('keeps the API edit dialog usable after closing the popup and discards canceled changes', async () => {
-    const user = userEvent.setup()
-    renderSelector()
-    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Team API connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
-    const nameInput = within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
-    expect(nameInput).toHaveValue('Team API connection')
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Updated API connection')
-    expect(dialog).toBeVisible()
-    expect(
-      screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
-    ).not.toBeInTheDocument()
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'plugin.auth.useApiAuth' }),
-      ).not.toBeInTheDocument(),
-    )
-    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Team API connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-
-    const reopenedDialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
-    expect(
-      within(reopenedDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
-    ).toHaveValue('Team API connection')
-  })
-
-  it('opens deletion confirmation from the API edit dialog Remove action', async () => {
-    const user = userEvent.setup()
-    renderSelector()
-    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Team API connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-
-    const editDialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
-    await user.click(within(editDialog).getByRole('button', { name: 'common.operation.remove' }))
-
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: 'datasetDocuments.list.delete.title',
-    })
-    expect(confirmation).toHaveTextContent('Team API connection')
-    expect(screen.queryByRole('dialog', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
-    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
-
-    await waitFor(() => {
-      expect(mocks.consoleCall).toHaveBeenCalledWith(
-        ['workspaces', 'current', 'toolProvider', 'builtin', 'byProvider', 'delete', 'post'],
-        { params: { provider: pluginPayload.provider }, body: { credential_id: 'workspace-api' } },
-        expect.anything(),
+  it.each([
+    {
+      name: 'Team API connection',
+      action: 'plugin.auth.connection.edit',
+      role: 'dialog',
+      title: 'plugin.auth.connection.save',
+      field: 'plugin.auth.connection.name',
+    },
+    {
+      name: 'Personal OAuth connection',
+      action: 'plugin.auth.connection.edit',
+      role: 'dialog',
+      title: 'plugin.auth.connection.save',
+      field: 'plugin.auth.connection.name',
+    },
+    {
+      name: 'Team API connection',
+      action: 'plugin.auth.connection.replaceApiKey',
+      role: 'dialog',
+      title: 'plugin.auth.useApiAuth',
+      field: 'plugin.auth.authorizationName',
+    },
+    {
+      name: 'Personal OAuth connection',
+      action: 'common.operation.remove',
+      role: 'alertdialog',
+      title: 'datasetDocuments.list.delete.title',
+    },
+  ])(
+    'keeps $action for $name open after closing the connection popup',
+    async ({ name, action, role, title, field }) => {
+      const user = userEvent.setup()
+      renderSelector()
+      await user.click(screen.getByRole('button', { name: /Team API connection/ }))
+      await user.click(
+        screen.getByRole('button', {
+          name: `common.operation.moreActionsFor:${JSON.stringify({ name })}`,
+        }),
       )
-    })
-  })
+      await user.click(screen.getByRole('menuitem', { name: action }))
 
-  it('renames an OAuth connection through the generated mutation after closing the popup', async () => {
-    const user = userEvent.setup()
-    const authorization = createAuthorization()
-    renderSelector({ authorization })
-    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Personal OAuth connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.rename' }))
+      const dialog = await screen.findByRole(role, { name: title })
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
+        ).not.toBeInTheDocument()
+      })
+      expect(dialog).toBeVisible()
+      if (field) expect(within(dialog).getByRole('textbox', { name: field })).toHaveValue(name)
+      else expect(dialog).toHaveTextContent(name)
 
-    const dialog = await screen.findByRole('dialog', { name: 'common.operation.rename' })
-    const nameInput = within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Updated OAuth connection')
-    expect(
-      screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
-    ).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    await waitFor(() => {
-      expect(mocks.consoleCall).toHaveBeenCalledWith(
-        ['workspaces', 'current', 'toolProvider', 'builtin', 'byProvider', 'update', 'post'],
-        {
-          params: { provider: pluginPayload.provider },
-          body: { credential_id: 'personal-oauth', name: 'Updated OAuth connection' },
-        },
-        expect.anything(),
-      )
-    })
-    expect(authorization.invalidPluginCredentialInfo).toHaveBeenCalled()
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'common.operation.rename' }),
-      ).not.toBeInTheDocument(),
-    )
-  })
-
-  it('deletes a connection only after confirmation through the generated mutation', async () => {
-    const user = userEvent.setup()
-    const authorization = createAuthorization()
-    renderSelector({ authorization })
-    await user.click(screen.getByRole('button', { name: /Team API connection/ }))
-    await user.click(
-      screen.getByRole('button', {
-        name: /common\.operation\.moreActionsFor.*Personal OAuth connection/,
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
-
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'datasetDocuments.list.delete.title',
-    })
-    expect(dialog).toHaveTextContent('Personal OAuth connection')
-    expect(mocks.consoleCall.mock.calls.some(([path]) => path.at(-2) === 'delete')).toBe(false)
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
-
-    await waitFor(() => {
-      expect(mocks.consoleCall).toHaveBeenCalledWith(
-        ['workspaces', 'current', 'toolProvider', 'builtin', 'byProvider', 'delete', 'post'],
-        { params: { provider: pluginPayload.provider }, body: { credential_id: 'personal-oauth' } },
-        expect.anything(),
-      )
-    })
-    expect(authorization.invalidPluginCredentialInfo).toHaveBeenCalled()
-  })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    },
+  )
 })
