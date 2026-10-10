@@ -1,7 +1,7 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -152,6 +152,33 @@ describe('MemberMenu', () => {
       },
       expect.any(Object),
     )
+  })
+
+  it('immediately closes the chooser while the role request remains pending', async () => {
+    const user = userEvent.setup()
+    let resolveRequest!: () => void
+    const request = new Promise<void>((resolve) => {
+      resolveRequest = resolve
+    })
+    mockUpdateRolesOfMember.mockImplementationOnce(async (_payload, options) => {
+      await request
+      options?.onSuccess?.()
+    })
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />)
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Second role/ }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledExactlyOnceWith(
+      { memberId: member.id, roleIds: ['role-1', 'role-2'] },
+      expect.any(Object),
+    )
+    expect(toast.success).not.toHaveBeenCalled()
+    await act(async () => {
+      resolveRequest()
+    })
+    expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
   })
 
   it('should require confirmation before removing a member', async () => {

@@ -1,11 +1,11 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import MemberDetailsModal from '../index'
+import { MemberDetailsModal } from '../index'
 
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/access-control/use-workspace-roles')
@@ -77,10 +77,11 @@ describe('MemberDetailsModal', () => {
     it('should render edit role action when multiple roles are disabled', () => {
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -98,9 +99,10 @@ describe('MemberDetailsModal', () => {
     it('should render singular assigned role label when there is one role', () => {
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -121,9 +123,10 @@ describe('MemberDetailsModal', () => {
 
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -143,10 +146,11 @@ describe('MemberDetailsModal', () => {
 
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -163,9 +167,10 @@ describe('MemberDetailsModal', () => {
     it('should not show role removal controls when role assignment is not allowed', () => {
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -194,9 +199,10 @@ describe('MemberDetailsModal', () => {
 
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={handleAssignSubmit}
         />,
       )
@@ -220,9 +226,10 @@ describe('MemberDetailsModal', () => {
 
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={handleAssignSubmit}
         />,
       )
@@ -247,10 +254,11 @@ describe('MemberDetailsModal', () => {
 
       render(
         <MemberDetailsModal
+          open
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onAssignSubmit={handleAssignSubmit}
         />,
       )
@@ -263,6 +271,95 @@ describe('MemberDetailsModal', () => {
       expect(handleAssignSubmit).toHaveBeenCalledWith([
         expect.objectContaining({ id: 'role-2', name: 'Second role' }),
       ])
+    })
+  })
+  describe('Dialog sessions', () => {
+    it('loads member roles only when its popup opens', () => {
+      const props = { member, onOpenChange: vi.fn() }
+      const { rerender } = render(<MemberDetailsModal {...props} open={false} />)
+      expect(useRolesOfMember).not.toHaveBeenCalled()
+      expect(useWorkspaceRoleList).not.toHaveBeenCalled()
+
+      rerender(<MemberDetailsModal {...props} open />)
+      expect(useRolesOfMember).toHaveBeenCalled()
+      expect(useWorkspaceRoleList).not.toHaveBeenCalled()
+    })
+
+    it('discards a canceled nested selection without submitting or closing member details', async () => {
+      const user = userEvent.setup()
+      const onAssignSubmit = vi.fn()
+      const onOpenChange = vi.fn()
+      render(
+        <MemberDetailsModal
+          open
+          member={member}
+          canAssignRoles
+          onOpenChange={onOpenChange}
+          onAssignSubmit={onAssignSubmit}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: /members.memberDetails.assign/i }))
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() =>
+        expect(screen.queryByRole('checkbox', { name: /Second role/i })).not.toBeInTheDocument(),
+      )
+
+      expect(onAssignSubmit).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Second role' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Custom role' })).toBeInTheDocument()
+    })
+
+    it('discards the parent draft on cancel and initializes a new session from member roles', async () => {
+      const user = userEvent.setup()
+      const props = { member, canAssignRoles: true, onOpenChange: vi.fn(), onAssignSubmit: vi.fn() }
+      const { rerender } = render(<MemberDetailsModal {...props} open />)
+      await user.click(screen.getByRole('button', { name: /members.memberDetails.assign/i }))
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await waitFor(() =>
+        expect(screen.queryByRole('checkbox', { name: /Second role/i })).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole('button', { name: 'Second role' })).toBeInTheDocument()
+      expect(props.onAssignSubmit).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      rerender(<MemberDetailsModal {...props} open={false} />)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      rerender(<MemberDetailsModal {...props} open />)
+      expect(screen.queryByRole('button', { name: 'Second role' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Custom role' })).toBeInTheDocument()
+      expect(props.onAssignSubmit).not.toHaveBeenCalled()
+    })
+
+    it('saves once and immediately requests close without waiting for its callback', async () => {
+      const user = userEvent.setup()
+      let finishSave: () => void = () => {}
+      const onAssignSubmit = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSave = resolve
+          }),
+      )
+      const onOpenChange = vi.fn()
+      render(
+        <MemberDetailsModal
+          open
+          member={member}
+          canAssignRoles
+          onOpenChange={onOpenChange}
+          onAssignSubmit={onAssignSubmit}
+        />,
+      )
+      const dialog = screen.getByRole('dialog')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onAssignSubmit).toHaveBeenCalledExactlyOnceWith([
+        expect.objectContaining({ id: 'role-1' }),
+      ])
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+      finishSave()
     })
   })
 })

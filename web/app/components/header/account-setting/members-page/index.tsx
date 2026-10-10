@@ -22,7 +22,7 @@ import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceDialog } from './edit-workspace-modal'
 import { InviteModal } from './invite-modal'
 import { InvitedDialog } from './invited-modal'
-import MemberDetailsModal from './member-details-modal'
+import { MemberDetailsModal } from './member-details-modal'
 import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
@@ -65,6 +65,7 @@ const MembersPage = () => {
     accounts.length >= features.members.limit
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
@@ -73,10 +74,7 @@ const MembersPage = () => {
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
-  }, [])
-
-  const handleCloseDetails = useCallback(() => {
-    setDetailsMember(null)
+    setDetailsOpen(true)
   }, [])
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
@@ -223,7 +221,8 @@ const MembersPage = () => {
             userProfileEmail !== detailsMember.email
           }
           allowMultipleRoles={systemFeatures.rbac_enabled}
-          onClose={handleCloseDetails}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
           onAssignSubmit={handleAssignRolesSubmit}
         />
       )}

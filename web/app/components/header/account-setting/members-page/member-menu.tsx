@@ -25,7 +25,7 @@ import { toast } from '@/app/notifications'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
-import AssignRolesModal from './assign-roles-modal'
+import { AssignRolesModal } from './assign-roles-modal'
 
 type MemberMenuProps = {
   member: Member
@@ -185,14 +185,13 @@ const MemberMenu = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {assignModalOpen && (
-        <AssignRolesModal
-          selectedRoles={selectedRoles}
-          allowMultipleRoles={allowMultipleRoles}
-          onClose={() => setAssignModalOpen(false)}
-          onSubmit={handleAssignRolesSubmit}
-        />
-      )}
+      <AssignRolesModal
+        open={assignModalOpen}
+        onOpenChange={setAssignModalOpen}
+        selectedRoles={selectedRoles}
+        allowMultipleRoles={allowMultipleRoles}
+        onSubmit={handleAssignRolesSubmit}
+      />
     </div>
   )
 }
