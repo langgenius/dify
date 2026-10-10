@@ -1653,6 +1653,7 @@ export type LatestPluginCache = {
 export type PluginParameterOption = {
   icon?: string | null
   label: I18nObject
+  show_on?: Array<PluginParameterShowOnCondition>
   value: string
 }
 
@@ -2376,6 +2377,11 @@ export type PluginDeclarationResponse = {
   version: string
 }
 
+export type PluginParameterShowOnCondition = {
+  value: string
+  variable: string
+}
+
 export type PluginBundleDependencyType = 'github' | 'marketplace' | 'package'
 
 export type AuthorizedCategory = 'community' | 'langgenius' | 'partner'
@@ -2450,6 +2456,7 @@ export type ToolParameter = {
   precision?: number | null
   required?: boolean
   scope?: string | null
+  show_on?: Array<PluginParameterShowOnCondition>
   template?: PluginParameterTemplate | null
   type: ToolParameterType
 }
@@ -2563,6 +2570,7 @@ export type AgentStrategyParameter = {
   precision?: number | null
   required?: boolean
   scope?: string | null
+  show_on?: Array<PluginParameterShowOnCondition>
   template?: PluginParameterTemplate | null
   type: AgentStrategyParameterType
 }
