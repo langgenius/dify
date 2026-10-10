@@ -549,7 +549,9 @@ class WeaviateVector(BaseVector):
         """
         Performs BM25 full-text search on document content.
 
-        Filters by document IDs if provided and returns matching documents with vectors.
+        Filters by document IDs if provided. Vectors are not requested from Weaviate:
+        collections use self-provided embeddings, and requesting vectors on BM25 can
+        fail on newer Weaviate versions and abort Dify hybrid retrieval (#42996).
         """
         if not self._client.collections.exists(self._collection_name):
             return []
@@ -570,19 +572,27 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
-                include_vector=True,
+                include_vector=False,
                 filters=where,
             )
         except WeaviateQueryError:
             self._ensure_properties()
-            res = col.query.bm25(
-                query=query,
-                query_properties=[Field.TEXT_KEY.value],
-                limit=top_k,
-                return_properties=props,
-                include_vector=True,
-                filters=where,
-            )
+            try:
+                res = col.query.bm25(
+                    query=query,
+                    query_properties=[Field.TEXT_KEY.value],
+                    limit=top_k,
+                    return_properties=props,
+                    include_vector=False,
+                    filters=where,
+                )
+            except WeaviateQueryError:
+                logger.warning(
+                    "BM25 search failed for collection %s; returning no full-text hits",
+                    self._collection_name,
+                    exc_info=True,
+                )
+                return []
 
         docs: list[Document] = []
         for obj in res.objects:
