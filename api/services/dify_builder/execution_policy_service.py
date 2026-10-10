@@ -67,6 +67,19 @@ def restricted_admission_snapshot(workflow: Workflow, app: App) -> RestrictedAdm
     if tracing and (tracing.get("enabled") is not False or set(tracing) - {"enabled", "tracing_provider"}):
         raise BuilderExecutionPolicyError("unsupported_external_tracing")
     graph = _raw_object(workflow.graph, "invalid_graph_metadata")
+    # start_schema is an ordinary native input helper. Validate its minimal
+    # structural preconditions before letting it inspect untrusted draft data.
+    nodes = graph.get("nodes", [])
+    if not isinstance(nodes, list) or len(nodes) > 128:
+        raise BuilderExecutionPolicyError("invalid_graph_metadata")
+    for node in nodes:
+        if not isinstance(node, dict) or not isinstance(node.get("data"), dict):
+            raise BuilderExecutionPolicyError("invalid_graph_metadata")
+        data = node["data"]
+        if data.get("type") == "start":
+            variables = data.get("variables", [])
+            if not isinstance(variables, list) or any(not isinstance(variable, dict) for variable in variables):
+                raise BuilderExecutionPolicyError("invalid_graph_metadata")
     features = _raw_object(workflow.serialized_features, "invalid_feature_metadata", absent_allowed=True)
     try:
         kind = workflow.kind_or_standard

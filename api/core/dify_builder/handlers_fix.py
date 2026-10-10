@@ -38,7 +38,6 @@ from core.dify_builder.contract import (
     FormField,
     NoticeItem,
     TestResultCard,
-    decode_testdata_http_fixtures,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
@@ -64,6 +63,7 @@ from core.dify_builder.models import (
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
+from core.dify_builder.testdata import stamp_testdata_http_fixtures
 from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, publication_decision, result_card
 
 logger = logging.getLogger(__name__)
@@ -1015,15 +1015,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Prepare inputs for the verify run. Port of
     ``handlers_fix.go:176``."""
-    submitted_fixtures = decode_testdata_http_fixtures(turn.action.payload if turn.action is not None else {})
-    http_fixtures = None
-    if submitted_fixtures is not None:
-        http_fixtures = env.dify.stamp_http_fixtures(
-            s.app_id,
-            turn.actor,
-            base_app_revision=turn.action.base_app_revision if turn.action is not None else "",
-            fixtures=submitted_fixtures,
-        )
+    http_fixtures = stamp_testdata_http_fixtures(env.dify, app_id=s.app_id, turn=turn)
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")

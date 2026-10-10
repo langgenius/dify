@@ -20,6 +20,7 @@ from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.dify_builder import DifyBuilderExecutionRequest
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import UploadFile
 from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable, WorkflowDraftVariableFile
@@ -120,16 +121,21 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
     delete_bindings = MagicMock(side_effect=lambda *_args: events.append("bindings"))
     delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
+    delete_execution_requests = MagicMock(side_effect=lambda *_args: events.append("execution_requests"))
     monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
     monkeypatch.setattr(
         remove_app_task_module, "_delete_app_workflow_node_executions", lambda *_args: events.append("executions")
     )
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflow_runs", lambda *_args: events.append("runs"))
+    monkeypatch.setattr(
+        remove_app_task_module, "_delete_builder_execution_requests", delete_execution_requests, raising=False
+    )
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    assert events == ["bindings", "workflows", "executions", "runs"]
+    assert events == ["execution_requests", "bindings", "workflows", "executions", "runs"]
+    delete_execution_requests.assert_called_once_with("tenant-1", "app-1")
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
 
@@ -266,6 +272,37 @@ def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
 
     retry.assert_called_once_with(exc=broker_error, countdown=60)
     first_local_cleanup.assert_not_called()
+
+
+def test_builder_execution_request_cleanup_is_scoped_idempotent_and_batched(sqlite_session: Session) -> None:
+    def request(tenant_id: str, app_id: str, state: str) -> DifyBuilderExecutionRequest:
+        return DifyBuilderExecutionRequest(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id="workflow",
+            actor_id="actor",
+            session_id="session",
+            test_input_id="test-input",
+            context={},
+            context_digest="a" * 64,
+            state=state,
+            observations=[],
+        )
+
+    targets = [request("tenant-1", "app-1", ("prepared", "running", "sealed")[i % 3]) for i in range(1001)]
+    other_app = request("tenant-1", "app-2", "running")
+    other_tenant = request("tenant-2", "app-1", "sealed")
+    sqlite_session.add_all([*targets, other_app, other_tenant])
+    sqlite_session.commit()
+    kept_ids = {other_app.id, other_tenant.id}
+
+    remove_app_task_module._delete_builder_execution_requests("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderExecutionRequest.id))) == kept_ids
+    remove_app_task_module._delete_builder_execution_requests("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderExecutionRequest.id))) == kept_ids
 
 
 class TestDeleteDraftVariablesBatch:
