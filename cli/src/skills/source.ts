@@ -14,9 +14,29 @@ const REPO_SKILL_DIR = fileURLToPath(new URL(`../../../skills/${EMBED_PREFIX}`, 
 const NO_EMBEDDED_SKILL =
   'this difyctl build has no embedded skill; reinstall difyctl or pass --from <folder>'
 
+const EXECUTABLE_MODE = 0o755
+const FILE_MODE = 0o644
+const PERMISSION_BITS = 0o777
+const SHEBANG = [0x23, 0x21]
+
+export type SkillFile = {
+  readonly bytes: Uint8Array
+  readonly mode: number
+}
+
 export type SkillSource = {
   readonly paths: readonly string[]
-  readonly read: (path: string) => Promise<Uint8Array>
+  readonly read: (path: string) => Promise<SkillFile>
+}
+
+// Embedded files carry no permission bits, so a script is recognised by its shebang.
+function embeddedMode(bytes: Uint8Array): number {
+  return SHEBANG.every((byte, i) => bytes[i] === byte) ? EXECUTABLE_MODE : FILE_MODE
+}
+
+async function readLocal(abs: string): Promise<SkillFile> {
+  const [bytes, info] = await Promise.all([readFile(abs), stat(abs)])
+  return { bytes, mode: info.mode & PERMISSION_BITS }
 }
 
 export const FROM_FIELD = z
@@ -41,7 +61,7 @@ export async function openDir(root: string): Promise<SkillSource> {
     if (entry.isFile())
       paths.push(relative(root, join(entry.parentPath, entry.name)).split(sep).join('/'))
   }
-  return { paths, read: (path) => readFile(join(root, path)) }
+  return { paths, read: (path) => readLocal(join(root, path)) }
 }
 
 function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
@@ -55,7 +75,8 @@ function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
           code: ErrorCode.SkillMissing,
           message: `the embedded skill has no ${path}`,
         })
-      return new Uint8Array(await file.arrayBuffer())
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      return { bytes, mode: embeddedMode(bytes) }
     },
   }
 }
