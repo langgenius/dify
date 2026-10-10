@@ -18,12 +18,12 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
