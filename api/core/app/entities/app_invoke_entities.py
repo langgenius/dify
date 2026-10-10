@@ -16,6 +16,7 @@ from core.credit_usage import (
     normalize_credit_usage_app_type,
     normalize_credit_usage_created_by,
 )
+from core.dify_builder.execution_policy import BuilderExecutionContext
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
@@ -94,6 +95,8 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 
 class DifyRunContext(BaseModel):
+    builder_execution: BuilderExecutionContext | None = None
+
     tenant_id: str
     app_id: str
     user_id: str
@@ -132,6 +135,7 @@ def build_dify_run_context(
     trace_session_id: str | None = None,
     capture_agent_evaluation_trace: bool = False,
     extra_context: Mapping[str, Any] | None = None,
+    builder_execution: BuilderExecutionContext | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -141,6 +145,7 @@ def build_dify_run_context(
     """
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+        builder_execution=builder_execution,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -176,6 +181,8 @@ class AppGenerateEntity(BaseModel):
     """Admitted generation data and process-local tracing context."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    builder_execution: BuilderExecutionContext | None = None
 
     task_id: str
 

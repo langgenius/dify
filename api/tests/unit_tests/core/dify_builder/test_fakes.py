@@ -372,7 +372,9 @@ def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status():
     events = []
 
     port.verify_pass = False
-    run = port.run_draft("app-1", _actor(), {"query": "x"}, events.append)
+    run = port.run_draft(
+        "app-1", _actor(), {"query": "x"}, events.append, session_id="session-1", test_input_id="test-1"
+    )
 
     assert run.status == "failed"
     assert len(events) == 2
@@ -380,7 +382,9 @@ def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status():
 
     events.clear()
     port.verify_pass = True
-    run2 = port.run_draft("app-1", _actor(), {"query": "y"}, events.append)
+    run2 = port.run_draft(
+        "app-1", _actor(), {"query": "y"}, events.append, session_id="session-1", test_input_id="test-1"
+    )
 
     assert run2.status == "succeeded"
     assert len(events) == 2
@@ -468,12 +472,12 @@ def test_fake_build_dify_port_run_draft_pass_and_fail():
     events = []
     port = FakeBuildDifyPort()
     actor = Actor(account_id="a", tenant_id="t")
-    run = port.run_draft("app", actor, {"q": "x"}, events.append)
+    run = port.run_draft("app", actor, {"q": "x"}, events.append, session_id="session-1", test_input_id="test-1")
     assert run.status == "succeeded"
     assert run.per_node
     assert run.per_node[0].status == "success"
     port.verify_pass = False
-    run2 = port.run_draft("app", actor, {"q": "x"}, events.append)
+    run2 = port.run_draft("app", actor, {"q": "x"}, events.append, session_id="session-1", test_input_id="test-1")
     assert run2.status == "failed"
     assert run2.per_node[0].status == "failed"
     assert run2.per_node[0].error
