@@ -267,8 +267,7 @@ export function WebAppAccessCard({
             <SettingsDialog
               key={appId}
               isChat
-              appInfo={settingsAppInfo ?? undefined}
-              disabled={!canManageWebApp}
+              appInfo={canManageWebApp && settingsAppInfo ? settingsAppInfo : undefined}
               onSave={handleSaveSettings}
               triggerLabel={t(($) => $['agentDetail.access.webApp.actions.settings'])}
             />

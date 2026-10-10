@@ -428,7 +428,27 @@ describe('SettingsDialog', () => {
     },
   )
 
-  it('keeps an unfinished save locked when permission disappears and returns', async () => {
+  it('keeps the open draft and blocks saving while the entry is disabled', async () => {
+    const user = userEvent.setup()
+    const { rerender } = await renderSettingsDialog()
+    const name = screen.getByPlaceholderText('app.appNamePlaceholder')
+    await user.clear(name)
+    await user.type(name, 'Draft title')
+    rerender(<SettingsDialog isChat appInfo={mockAppInfo} disabled onSave={mockOnSave} />)
+    expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
+    expect(name).toHaveValue('Draft title')
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(save).toBeDisabled()
+    await user.type(name, '{Enter}')
+    expect(mockOnSave).not.toHaveBeenCalled()
+    rerender(<SettingsDialog isChat appInfo={mockAppInfo} onSave={mockOnSave} />)
+    await user.click(save)
+    expect(mockOnSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ title: 'Draft title' }),
+    )
+  })
+
+  it('keeps an unfinished save locked when the settings source disappears and returns', async () => {
     const user = userEvent.setup()
     let finishSave!: (saved: boolean) => void
     mockOnSave.mockImplementationOnce(
@@ -439,7 +459,7 @@ describe('SettingsDialog', () => {
     )
     const { rerender } = await renderSettingsDialog()
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    rerender(<SettingsDialog isChat appInfo={mockAppInfo} disabled onSave={mockOnSave} />)
+    rerender(<SettingsDialog isChat onSave={mockOnSave} />)
     expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument()
     rerender(<SettingsDialog isChat appInfo={mockAppInfo} onSave={mockOnSave} />)
     const trigger = screen.getByRole('button', { name: triggerName })

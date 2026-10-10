@@ -189,9 +189,10 @@ function SettingsForm({
   isChat,
   canDeploy = false,
   appInfo,
+  disabled,
   pending,
   onSubmit,
-}: Pick<SettingsDialogProps, 'isChat' | 'canDeploy'> & {
+}: Pick<SettingsDialogProps, 'isChat' | 'canDeploy' | 'disabled'> & {
   appInfo: SettingsAppInfo
   pending: boolean
   onSubmit: (params: AppSiteUpdatePayload) => Promise<void>
@@ -783,7 +784,7 @@ function SettingsForm({
         <DialogClose disabled={pending} render={<Button className="mr-2" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" variant="primary" loading={pending}>
+        <Button type="submit" variant="primary" loading={pending} disabled={disabled}>
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
@@ -825,7 +826,7 @@ export function SettingsDialog({
     }
   }
 
-  if (!appInfo || disabled) return trigger
+  if (!appInfo) return trigger
 
   return (
     <Dialog
@@ -864,6 +865,7 @@ export function SettingsDialog({
           appInfo={appInfo}
           isChat={isChat}
           canDeploy={canDeploy}
+          disabled={disabled}
           pending={pending}
           onSubmit={handleSave}
         />
