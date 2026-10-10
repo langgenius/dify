@@ -694,27 +694,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           )}
           {!isStartPlaceholderPanel && (
             <>
-              {needsToolAuth && (
-                <ToolAuthorization
-                  nodeId={id}
-                  providerId={data.provider_id as string}
-                  showAuthorizationTabs
-                  className="px-4 pb-2"
-                  authorizedFooter={<div className="px-4">{panelTabs}</div>}
-                  nodeAuth={{
-                    providerName:
-                      currToolCollection?.label[language] || currToolCollection?.label.en_US,
-                    credentialId: data.credential_id,
-                    onAuthorizationItemClick: handleAuthorizationItemClick,
-                  }}
-                  pluginPayload={{
-                    provider: currToolCollection?.name || '',
-                    providerType: currToolCollection?.type,
-                    category: AuthCategory.tool,
-                    detail: currToolCollection as any,
-                  }}
-                />
-              )}
               {!!currentDataSource && (
                 <PluginAuthInDataSourceNode
                   onJumpToDataSourcePage={handleJumpToDataSourcePage}
@@ -737,7 +716,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   {panelTabs}
                 </TriggerSubscription>
               )}
-              {!needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
+              {!currentDataSource && !currentTriggerPlugin && (
                 <div className="flex items-center justify-between pr-3 pl-4">{panelTabs}</div>
               )}
               <Split />
@@ -751,6 +730,26 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
         {!isStartPlaceholderPanel && (
           <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
+            {needsToolAuth && (
+              <ToolAuthorization
+                nodeId={id}
+                providerId={data.provider_id as string}
+                showAuthorizationTabs
+                className="px-4 pb-2"
+                nodeAuth={{
+                  providerName:
+                    currToolCollection?.label[language] || currToolCollection?.label.en_US,
+                  credentialId: data.credential_id,
+                  onAuthorizationItemClick: handleAuthorizationItemClick,
+                }}
+                pluginPayload={{
+                  provider: currToolCollection?.name || '',
+                  providerType: currToolCollection?.type,
+                  category: AuthCategory.tool,
+                  detail: currToolCollection as any,
+                }}
+              />
+            )}
             <div>{panelChildren}</div>
             <Split />
             {hasRetryNode(data.type) && <RetryOnPanel id={id} data={data} />}

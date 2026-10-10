@@ -15,7 +15,6 @@ import WorkspaceAuth from './workspace-auth'
 export type PluginAuthProps = {
   pluginPayload: PluginPayload
   nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
-  authorizedFooter?: React.ReactNode
   className?: string
   showAuthorizationTabs?: boolean
   authorizationTab?: AuthorizationTab
@@ -31,7 +30,6 @@ const authorizationTabClassName =
 const PluginAuth = ({
   pluginPayload,
   nodeAuth,
-  authorizedFooter,
   className,
   showAuthorizationTabs = false,
   authorizationTab,
@@ -59,79 +57,75 @@ const PluginAuth = ({
   }
 
   return (
-    <>
-      <Tabs
-        defaultValue="workspace-auth"
-        value={authorizationTab}
-        onValueChange={(tab) => {
-          if (tab !== 'workspace-auth' && tab !== 'app-user-auth' && tab !== 'reuse-from-node')
-            return
-          if (tab === 'app-user-auth' && appUserAuth && !appUserAuth.draft) {
-            appUserAuth.onChange(
-              createAppUserAuthDraft({
-                canOAuth: !!authorization.canOAuth,
-                canApiKey: !!authorization.canApiKey,
-              }),
-            )
-          }
-          onAuthorizationTabChange?.(tab)
-        }}
-        className="py-2"
-      >
-        <div className="space-y-2 px-4 py-2">
-          <div className="flex h-6 items-center gap-0.5">
-            <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
-              {t(($) => $['auth.authorization'], { ns: 'plugin' })}
-            </h3>
-            <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="size-4" />
-              <InfotipContent aria-labelledby={labelId}>
-                {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
-              </InfotipContent>
-            </Infotip>
-          </div>
-          <TabsList aria-labelledby={labelId} className="gap-2">
-            <TabsTab value="workspace-auth" className={authorizationTabClassName}>
-              {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
-            </TabsTab>
-            <TabsTab
-              value="app-user-auth"
-              disabled={authorization.isLoading}
-              className={authorizationTabClassName}
-            >
-              {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
-            </TabsTab>
-            <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
-              {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
-            </TabsTab>
-          </TabsList>
+    <Tabs
+      defaultValue="workspace-auth"
+      value={authorizationTab}
+      onValueChange={(tab) => {
+        if (tab !== 'workspace-auth' && tab !== 'app-user-auth' && tab !== 'reuse-from-node') return
+        if (tab === 'app-user-auth' && appUserAuth && !appUserAuth.draft) {
+          appUserAuth.onChange(
+            createAppUserAuthDraft({
+              canOAuth: !!authorization.canOAuth,
+              canApiKey: !!authorization.canApiKey,
+            }),
+          )
+        }
+        onAuthorizationTabChange?.(tab)
+      }}
+      className="pt-2"
+    >
+      <div className="space-y-2 px-4 py-2">
+        <div className="flex h-6 items-center gap-0.5">
+          <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
+            {t(($) => $['auth.authorization'], { ns: 'plugin' })}
+          </h3>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} className="size-4" />
+            <InfotipContent aria-labelledby={labelId}>
+              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+            </InfotipContent>
+          </Infotip>
         </div>
-        <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
-          <WorkspaceAuth
-            pluginPayload={pluginPayload}
-            authorization={authorization}
-            nodeAuth={nodeAuth}
-            showDescription
+        <TabsList aria-labelledby={labelId} className="gap-2">
+          <TabsTab value="workspace-auth" className={authorizationTabClassName}>
+            {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
+          </TabsTab>
+          <TabsTab
+            value="app-user-auth"
+            disabled={authorization.isLoading}
+            className={authorizationTabClassName}
+          >
+            {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
+          </TabsTab>
+          <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
+            {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
+          </TabsTab>
+        </TabsList>
+      </div>
+      <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
+        <WorkspaceAuth
+          pluginPayload={pluginPayload}
+          authorization={authorization}
+          nodeAuth={nodeAuth}
+          showDescription
+        />
+      </TabsPanel>
+      <TabsPanel value="app-user-auth" keepMounted className="px-4 py-2 data-hidden:hidden">
+        {!authorization.isLoading && (
+          <AppUserAuth
+            key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
+            canOAuth={!!authorization.canOAuth}
+            canApiKey={!!authorization.canApiKey}
+            providerName={nodeAuth?.providerName}
+            value={appUserAuth?.draft}
+            onChange={appUserAuth?.onChange}
           />
-        </TabsPanel>
-        <TabsPanel value="app-user-auth" keepMounted className="px-4 py-2 data-hidden:hidden">
-          {!authorization.isLoading && (
-            <AppUserAuth
-              key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
-              canOAuth={!!authorization.canOAuth}
-              canApiKey={!!authorization.canApiKey}
-              providerName={nodeAuth?.providerName}
-              value={appUserAuth?.draft}
-              onChange={appUserAuth?.onChange}
-            />
-          )}
-        </TabsPanel>
-        <TabsPanel value="reuse-from-node" className="px-4 py-2">
-          <ReuseFromNode />
-        </TabsPanel>
-      </Tabs>
-      {authorization.isAuthorized && authorizedFooter}
-    </>
+        )}
+      </TabsPanel>
+      <TabsPanel value="reuse-from-node" className="px-4 py-2">
+        <ReuseFromNode />
+      </TabsPanel>
+    </Tabs>
   )
 }
 

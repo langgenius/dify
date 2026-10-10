@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
-import type { ConnectionSelectorProps } from '@/app/components/plugins/plugin-auth/workspace-auth/connection-selector'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { PluginAuthProps } from '@/app/components/plugins/plugin-auth/plugin-auth'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
@@ -24,6 +24,7 @@ const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
 let mockNodesReadOnly = false
 let mockCanRun = true
+let mockWorkspaceAuthorizationRequired = false
 let mockBuiltInTools = [
   {
     id: 'provider/tool',
@@ -247,18 +248,17 @@ vi.mock('../hooks/use-resize-panel', () => ({
 }))
 
 vi.mock('../last-run/use-last-run', () => ({
-  default: () => mockLastRunState,
+  default: function useLastRun() {
+    const [tabType, setTabType] = React.useState(mockLastRunState.tabType)
+    return { ...mockLastRunState, tabType, setTabType }
+  },
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth/plugin-auth', () => ({
-  default: ({
-    nodeAuth,
-    authorizedFooter,
-  }: {
-    nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
-    authorizedFooter?: React.ReactNode
-  }) => (
+  default: ({ nodeAuth }: Pick<PluginAuthProps, 'nodeAuth'>) => (
     <div>
+      <h3>Authorization</h3>
+      {mockWorkspaceAuthorizationRequired && <p>Workspace authorization required</p>}
       {nodeAuth && (
         <>
           <span>{nodeAuth.providerName}</span>
@@ -267,7 +267,6 @@ vi.mock('@/app/components/plugins/plugin-auth/plugin-auth', () => ({
           </button>
         </>
       )}
-      {authorizedFooter}
     </div>
   ),
 }))
@@ -432,6 +431,7 @@ describe('workflow-panel index', () => {
     mockHandleNodeSelect.mockReset()
     mockNodesReadOnly = false
     mockCanRun = true
+    mockWorkspaceAuthorizationRequired = false
     mockBuiltInTools = [
       {
         id: 'provider/tool',
@@ -571,6 +571,58 @@ describe('workflow-panel index', () => {
     )
   })
 
+  it('keeps Authorization inside Settings before the tool configuration', () => {
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <h3>Tool configuration</h3>
+      </BasePanel>,
+    )
+
+    const settingsPanel = screen.getByRole('tabpanel')
+    expect(
+      within(settingsPanel)
+        .getAllByRole('heading')
+        .map((heading) => heading.textContent),
+    ).toEqual(['Authorization', 'Tool configuration'])
+  })
+
+  it('keeps Settings and Last Run navigable without Workspace authorization', async () => {
+    const user = userEvent.setup()
+    mockWorkspaceAuthorizationRequired = true
+    mockBuiltInTools = mockBuiltInTools.map((tool) => ({
+      ...tool,
+      is_team_authorization: false,
+    }))
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <h3>Tool configuration</h3>
+      </BasePanel>,
+    )
+
+    expect(screen.getByText('Workspace authorization required')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /workflowDebug\.debug\.lastRunTab/i }))
+
+    const lastRunPanel = screen.getByRole('tabpanel', {
+      name: /workflowDebug\.debug\.lastRunTab/i,
+    })
+    expect(within(lastRunPanel).getByText('last-run-panel')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Authorization' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Workspace authorization required')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: /workflowDebug\.debug\.settingsTab/i }))
+
+    const settingsPanel = screen.getByRole('tabpanel', {
+      name: /workflowDebug\.debug\.settingsTab/i,
+    })
+    expect(
+      within(settingsPanel).getByRole('heading', { name: 'Authorization' }),
+    ).toBeInTheDocument()
+    await user.click(within(settingsPanel).getByRole('button', { name: 'authorized-in-node' }))
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ credential_id: 'credential-1' }) }),
+    )
+  })
+
   it('should hide the single-run action when nodes are readonly even with run permission', () => {
     mockNodesReadOnly = true
 
@@ -644,8 +696,7 @@ describe('workflow-panel index', () => {
       },
     )
 
-    expect(screen.getByText('last-run-panel')).toBeInTheDocument()
-    expect(screen.getByRole('tabpanel')).toHaveClass('flex', 'flex-1', 'flex-col')
+    expect(within(screen.getByRole('tabpanel')).getByText('last-run-panel')).toBeInTheDocument()
   })
 
   it('should render the plain tab layout and allow last-run status updates', async () => {

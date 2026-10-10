@@ -196,7 +196,6 @@ describe('ToolPanel', () => {
       renderPanel()
 
       expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
-      expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(mockToolForm).not.toHaveBeenCalled()
     })
   })
@@ -218,7 +217,6 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByText('workflow.nodes.tool.inputVars'))!.toBeInTheDocument()
       expect(screen.getByText('workflow.nodes.tool.settings'))!.toBeInTheDocument()
       expect(screen.getAllByTestId('split')).toHaveLength(2)
 
@@ -251,7 +249,6 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.settings')).not.toBeInTheDocument()
       expect(screen.getByText('text'))!.toBeInTheDocument()
       expect(screen.getByText('files'))!.toBeInTheDocument()

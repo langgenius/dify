@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AppUserAuthDraft, AuthorizationTab } from '../app-user-auth/draft'
 import type { Credential } from '../types'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -164,7 +163,6 @@ describe('PluginAuth', () => {
       <PluginAuth
         pluginPayload={defaultPayload}
         nodeAuth={{ onAuthorizationItemClick }}
-        authorizedFooter={<button type="button">Workflow settings</button>}
         showAuthorizationTabs
       />,
       { wrapper: createConnectionQueryWrapper() },
@@ -172,7 +170,6 @@ describe('PluginAuth', () => {
 
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeVisible()
     expect(screen.queryByRole('button', { name: /Workspace API key/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Workflow settings' })).not.toBeInTheDocument()
 
     mockUsePluginAuth.mockReturnValue({
       ...authorization,
@@ -191,7 +188,6 @@ describe('PluginAuth', () => {
       <PluginAuth
         pluginPayload={defaultPayload}
         nodeAuth={{ onAuthorizationItemClick }}
-        authorizedFooter={<button type="button">Workflow settings</button>}
         showAuthorizationTabs
       />,
     )
@@ -201,7 +197,6 @@ describe('PluginAuth', () => {
     expect(defaultConnection).toBeVisible()
     expect(defaultConnection).toHaveTextContent('•••• 1234')
     expect(screen.queryByRole('button', { name: /Selected API key/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Workflow settings' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
 
     rerender(
@@ -219,7 +214,7 @@ describe('PluginAuth', () => {
     expect(screen.queryByRole('button', { name: /Workspace API key/ })).not.toBeInTheDocument()
   })
 
-  it('keeps authorization tabs visible for authorized nodes and independent from the workflow tabs', async () => {
+  it('keeps authorization tabs visible for authorized nodes', async () => {
     const user = userEvent.setup()
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: true,
@@ -231,26 +226,15 @@ describe('PluginAuth', () => {
     })
 
     render(
-      <Tabs defaultValue="settings">
-        <PluginAuth
-          pluginPayload={defaultPayload}
-          nodeAuth={{ onAuthorizationItemClick: vi.fn() }}
-          showAuthorizationTabs
-          authorizedFooter={
-            <TabsList>
-              <TabsTab value="settings">Settings</TabsTab>
-              <TabsTab value="last-run">Last run</TabsTab>
-            </TabsList>
-          }
-        />
-        <TabsPanel value="settings">Settings content</TabsPanel>
-        <TabsPanel value="last-run">Last run content</TabsPanel>
-      </Tabs>,
+      <PluginAuth
+        pluginPayload={defaultPayload}
+        nodeAuth={{ onAuthorizationItemClick: vi.fn() }}
+        showAuthorizationTabs
+      />,
       { wrapper: createConnectionQueryWrapper() },
     )
 
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
-    expect(screen.getByRole('tabpanel', { name: 'Settings' })).toHaveTextContent('Settings content')
     const workspaceTab = screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' })
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
     const reuseTab = screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' })
@@ -269,13 +253,6 @@ describe('PluginAuth', () => {
       within(appUserPanel).queryByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /key/ })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('tab', { name: 'Last run' }))
-
-    expect(screen.getByRole('tab', { name: 'Last run' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel', { name: 'Last run' })).toHaveTextContent('Last run content')
-    expect(screen.queryByRole('tabpanel', { name: 'Settings' })).not.toBeInTheDocument()
-    expect(appUserTab).toHaveAttribute('aria-selected', 'true')
 
     await user.click(reuseTab)
 
@@ -297,11 +274,6 @@ describe('PluginAuth', () => {
         },
       ),
     ).toBeVisible()
-    expect(screen.getByRole('tab', { name: 'Last run' })).toHaveAttribute('aria-selected', 'true')
-
-    await user.click(screen.getByRole('tab', { name: 'Settings' }))
-
-    expect(screen.getByRole('tabpanel', { name: 'Settings' })).toHaveTextContent('Settings content')
     expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
   })
 

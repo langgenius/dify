@@ -49,7 +49,7 @@ const AppUserAuth = ({
   const [clientDialog, setClientDialog] = useState<{ open: boolean } | null>(null)
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    <div className="flex flex-col gap-4">
       <Fieldset
         aria-label={t(($) => $['auth.authorization'], { ns: 'plugin' })}
         aria-describedby={errors.methods ? methodsErrorId : undefined}
