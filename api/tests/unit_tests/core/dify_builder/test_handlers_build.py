@@ -763,7 +763,8 @@ def test_test_and_repair_input_failure_routes_to_testdata_gate():
 
     assert result.next == PcState.BUILD_AWAIT_TESTDATA
     assert result.context.test_input_ref == ""  # stale input cleared
-    assert result.context.verify_run_id == ""
+    assert result.run is not None
+    assert result.context.verify_run_id == result.run.id
     kinds = [i.kind for i in result.items]
     assert "form" in kinds
     assert "change_set" not in kinds  # gate, not repair
@@ -994,6 +995,9 @@ def test_review_publish_advances_to_publish():
 
     env, repo = _new_env()
     s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
+    from tests.unit_tests.core.dify_builder.fakes import seed_verified_run
+
+    seed_verified_run(repo, s, env.dify)
     publish_turn = Turn(action=Action(kind="publish_workflow", base_version=1), actor=_actor())
     res = handle_review(env, publish_turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_PUBLISH
@@ -1051,6 +1055,9 @@ def test_publish_calls_dify_and_completes_with_text_receipt():
     dify = FakeBuildDifyPort()
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(repo, PcState.BUILD_PUBLISH, built_node_ids=["start", "llm", "end"])
+    from tests.unit_tests.core.dify_builder.fakes import seed_verified_run
+
+    seed_verified_run(repo, s, env.dify)
     res = handle_publish(env, Turn(actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_COMPLETE
     assert dify.published is True
@@ -1825,6 +1832,9 @@ def test_recovery_continue_reruns_interrupted_publish_step():
     dify = FakeBuildDifyPort()
     env, repo = _new_env(dify=dify)
     s = _seed_build_session(repo, PcState.BUILD_PUBLISH, plan_items=["x"], built_node_ids=["start_1"])
+    from tests.unit_tests.core.dify_builder.fakes import seed_verified_run
+
+    seed_verified_run(repo, s, env.dify)
     runner = Runner(env, build_registry())
 
     runner.advance(s.id, Turn(action=Action(kind="recovery_continue", base_version=s.version), actor=_actor()))
@@ -1950,7 +1960,7 @@ class _ResourceAgent(PlaceholderAgent):
     def __init__(self, options) -> None:
         self.options = options
 
-    def discover_resources(self, _plan_items):
+    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
         return self.options
 
 
@@ -2005,10 +2015,10 @@ class _GapAgent(PlaceholderAgent):
         self.options = options
         self.gap = gap
 
-    def discover_resources(self, _plan_items):
+    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
         return self.options
 
-    def assess_capability_gap(self, _plan_items, _options):
+    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):  # noqa: ARG002
         return self.gap
 
 
@@ -2781,9 +2791,10 @@ def test_an_unknown_outcome_is_re_runnable_once_and_capped_on_the_second():
     first = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert first.next == PcState.BUILD_EXECUTION  # unchanged: one unknown outcome is re-runnable
     assert first.context.unknown_outcome_count == 1
-    assert "outcome couldn't be determined" in next(
-        i for i in first.items if i.kind == "assistant_turn"
-    ).payload["reply_text"]
+    assert (
+        "outcome couldn't be determined"
+        in next(i for i in first.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
     second = handle_test_and_repair(env, Turn(actor=_actor()), s, first.context)
     assert second.next == PcState.BUILD_AWAIT_REPAIR

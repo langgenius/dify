@@ -54,16 +54,16 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
 
-    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=()):
-        seen["propose_plan_v1"] = (model, requirements, list(tools))
+    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=(), goal_text):
+        seen["propose_plan_v1"] = (model, requirements, list(tools), goal_text)
         return []
 
-    def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None):
-        seen["discover_resources"] = (model, tenant_id, plan_items)
+    def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None, *, goal_text, requirements):
+        seen["discover_resources"] = (model, tenant_id, plan_items, goal_text, requirements)
         return []
 
-    def mock_assess_capability_gap(model, plan_items, options):
-        seen["assess_capability_gap"] = (model, plan_items, options)
+    def mock_assess_capability_gap(model, plan_items, options, *, goal_text, requirements):
+        seen["assess_capability_gap"] = (model, plan_items, options, goal_text, requirements)
         return ""
 
     def mock_bind_resources(model, tenant_id, plan_items, resource_ids):
@@ -92,14 +92,19 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     agent = LlmBuilderAgent("t1", model_config)
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
-    agent.propose_plan_v1({"x": 1})
-    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1}, ["catalogue-stub"])
+    goal = "Upload the real file. " + "原始目标。" * 1800
+    requirements = {"format": "pptx", "endpoint": {"url": "https://example.test"}}
+    agent.propose_plan_v1(requirements, goal_text=goal)
+    assert seen["propose_plan_v1"] == ("MODEL", requirements, ["catalogue-stub"], goal)
+    assert seen["propose_plan_v1"][1] is requirements
 
-    agent.discover_resources(["step"])
-    assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
+    agent.discover_resources(["step"], goal_text=goal, requirements=requirements)
+    assert seen["discover_resources"] == ("MODEL", "t1", ["step"], goal, requirements)
+    assert seen["discover_resources"][4] is requirements
 
-    agent.assess_capability_gap(["step"], [])
-    assert seen["assess_capability_gap"] == ("MODEL", ["step"], [])
+    agent.assess_capability_gap(["step"], [], goal_text=goal, requirements=requirements)
+    assert seen["assess_capability_gap"] == ("MODEL", ["step"], [], goal, requirements)
+    assert seen["assess_capability_gap"][4] is requirements
 
     agent.bind_resources(["step"], ["rid"])
     assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"])

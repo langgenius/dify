@@ -29,7 +29,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from core.dify_builder.state import PcState
 
@@ -86,11 +86,50 @@ class NodeOutput:
     error: str = ""
     inputs: Inputs = field(default_factory=dict)
     outputs: Inputs = field(default_factory=dict)
+    outputs_available: bool = False
+
+
+@dataclass(kw_only=True)
+class OutputFinding:
+    node_id: str
+    output_name: str
+    selector: list[str]
+    state: Literal["present", "unresolved", "unknown"]
+    reason: str
+
+
+@dataclass(kw_only=True)
+class RunVerification:
+    """Observed execution facts. Empty digests mean revision binding is unavailable."""
+
+    execution_revision: str
+    executed_graph_revision: str
+    terminal_outputs: Inputs | None
+    output_findings: list[OutputFinding]
+    executed_node_ids: list[str]
+    no_output_dead_branch: bool
+
+
+@dataclass(kw_only=True)
+class PublicationDecision:
+    allowed: bool
+    reason: Literal[
+        "eligible",
+        "no_verified_run",
+        "execution_failed",
+        "execution_unknown",
+        "revision_unbound",
+        "stale_revision",
+        "required_output_unresolved",
+        "dead_branch_without_output",
+    ]
 
 
 @dataclass(kw_only=True)
 class Run:
     id: str = ""
+    session_id: str = ""
+    verification: RunVerification | None = None
     kind: str = ""  # original-failed | verify
     dify_run_id: str = ""
     status: str = ""  # running | succeeded | failed

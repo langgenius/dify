@@ -775,6 +775,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        expected_draft_id: str | None = None,
         workflow_kind: WorkflowKind | None = None,
     ) -> Workflow:
         """Publish an existing draft, preserving the active kind unless one is requested.
@@ -788,6 +789,12 @@ class WorkflowService:
             Workflow.app_id == app_model.id,
             Workflow.version == Workflow.VERSION_DRAFT,
         )
+        if expected_draft_id is not None:
+            # Builder holds this exact draft's row lock after checking its run
+            # evidence. Never substitute another draft candidate during publish.
+            draft_workflow_stmt = draft_workflow_stmt.where(Workflow.id == expected_draft_id).execution_options(
+                populate_existing=True
+            )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")

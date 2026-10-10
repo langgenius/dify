@@ -111,24 +111,29 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-app-name"),
         )
 
-    def propose_plan_v1(self, requirements):
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]:
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
             self._reasoning_for("propose-build-plan"),
             tools=build.ready_tool_catalogue(self._tenant_id),
+            goal_text=goal_text,
         )
 
-    def discover_resources(self, plan_items):
+    def discover_resources(self, plan_items, *, goal_text: str, requirements: dict[str, Any]):
         return build.discover_resources(
             self.model_or_none(),
             self._tenant_id,
             plan_items,
             self._reasoning_for("discover-resources"),
+            goal_text=goal_text,
+            requirements=requirements,
         )
 
-    def assess_capability_gap(self, plan_items, options):
-        return build.assess_capability_gap(self.model_or_none(), plan_items, options)
+    def assess_capability_gap(self, plan_items, options, *, goal_text: str, requirements: dict[str, Any]):
+        return build.assess_capability_gap(
+            self.model_or_none(), plan_items, options, goal_text=goal_text, requirements=requirements
+        )
 
     def bind_resources(self, plan_items, resource_ids):
         return build.bind_resources(self.model_or_none(), self._tenant_id, plan_items, resource_ids)

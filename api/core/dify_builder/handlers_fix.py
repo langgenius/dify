@@ -39,7 +39,8 @@ from core.dify_builder.contract import (
     NoticeItem,
     TestResultCard,
 )
-from core.dify_builder.errors import DraftWouldNotStartError
+from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
+from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
 from core.dify_builder.models import (
     ApplyResult,
     ChangeSet,
@@ -51,6 +52,7 @@ from core.dify_builder.models import (
     Inputs,
     NodeEvent,
     NodeOutput,
+    PublicationDecision,
     Run,
     Session,
     Snapshot,
@@ -61,6 +63,7 @@ from core.dify_builder.models import (
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
+from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, publication_decision, result_card
 
 logger = logging.getLogger(__name__)
 
@@ -465,17 +468,6 @@ def first_failed_node(nodes: list[NodeOutput]) -> str:
     return ""
 
 
-def start_schema(graph: Graph) -> StartSchema:
-    """The start node's declared input variables, as the opaque StartSchema the
-    agent interprets: {"variables": [...]}. Empty list when there is no start
-    node or it declares none. Pure dict access -- stays in core (no graph_ops)."""
-    for node in graph.get("nodes", []):
-        data = node.get("data") or {}
-        if data.get("type") == "start":
-            return {"variables": list(data.get("variables") or [])}
-    return {"variables": []}
-
-
 _UPLOAD_VARIABLE_TYPES = frozenset({"file", "file-list"})
 
 
@@ -654,7 +646,8 @@ def is_input_failure(run: Run) -> bool:
     required"), which misrouted those failures to the testdata gate, where
     the diagnosed auto-repair is never offered. The spec safe default for an
     ambiguous failure is the config-repair path, so this tuple favors
-    PRECISION: only signals specific enough to input/file problems remain --
+    PRECISION: exact native query-argument errors and signals specific enough
+    to input/file problems remain --
     ``"file variable"`` alone still matches the real file-input E2E error,
     "File variable not found for selector: [...]".
     """
@@ -662,7 +655,9 @@ def is_input_failure(run: Run) -> bool:
     if run.error:
         texts.append(run.error)
     for text in texts:
-        low = text.lower()
+        low = text.lower().strip()
+        if re.fullmatch(r"(?:sys\.)?query (?:is required|must be a string)(?: \[invalid_param\])?", low):
+            return True
         if any(sig in low for sig in _INPUT_FAILURE_SIGNALS):
             return True
     return False
@@ -757,6 +752,33 @@ def testdata_form_fields(schema: StartSchema) -> list[FormField]:
             )
         )
     return fields
+
+
+def input_gate_result(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    schema: StartSchema,
+    inputs: dict[str, Any],
+    state: PcState,
+    reason: str,
+) -> StepResult:
+    """Return invalid runtime test data for correction without losing uploads."""
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
+    form_items = append_card(
+        fc,
+        FormCard(
+            variant="testdata",
+            title="Provide test data",
+            description="Review the inputs Builder will use for this run.",
+            fields=testdata_form_fields(schema),
+            values=inputs,
+            frozen=False,
+        ),
+    )
+    items = append_assistant(env, s, fc, f"Provide test inputs and retry: {reason}", cards=["form"])
+    return StepResult(next=state, context=fc, items=[*form_items, *items])
 
 
 def _mode_or_default(mode: str) -> str:
@@ -960,6 +982,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # run_verify: if we have prepared inputs, go verify; else prepare test data.
+    fc.verify_run_id = ""
     if fc.test_input_ref == "":
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         form_items = append_card(
@@ -968,7 +991,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 variant="testdata",
                 title="Provide test data",
                 description="Review the inputs Builder will use for this run.",
-                fields=testdata_form_fields(start_schema(graph)),
+                fields=testdata_form_fields(start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))),
                 values={},
                 frozen=False,
             ),
@@ -991,6 +1014,8 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Prepare inputs for the verify run. Port of
     ``handlers_fix.go:176``."""
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
     inputs: dict[str, Any] = {}
     if mode == "mock":
@@ -1002,8 +1027,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             steps=[("fix-generate-test-inputs", "Generate validation inputs")],
         )
         progress.activate("fix-generate-test-inputs")
-        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
         progress.finish()
     else:
         # upload / reuse: payload carries the inputs directly for the slice.
@@ -1012,7 +1036,11 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             if isinstance(raw, dict):
                 inputs = raw
 
-    ti = TestInput(session_id=s.id, source=_mode_or_default(mode), inputs=inputs)
+    try:
+        validate_runtime_inputs(schema, inputs)
+    except ValueError as exc:
+        return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc))
+    ti = TestInput(session_id=s.id, source=_mode_or_default(mode), inputs=inputs, start_schema_hash=schema_hash(schema))
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
@@ -1020,8 +1048,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
 
 def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working) Run the repaired draft, mint a NEW immutable Run. Advances
-    to ``fix.await_decision`` on both pass and fail; never touches the
-    original failed run. Port of ``handlers_fix.go:206``."""
+    to ``fix.await_decision`` on pass or graph failure; Chatflow input
+    failures return to ``fix.await_testdata``. Never touches the original
+    failed run. Port of ``handlers_fix.go:206``."""
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
@@ -1035,6 +1064,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     )
     progress.activate("fix-prepare-validation")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
+    ti = None
     inputs: dict[str, Any] = {}
     if fc.test_input_ref != "":
         ti = env.repo.get_test_input(fc.test_input_ref)
@@ -1046,6 +1077,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         progress.observe_node("fix-run-validation", event)
 
     try:
+        validate_runtime_inputs(schema, inputs, ti)
         result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
     except Exception as exc:
         # Same degrade as Build/Edit: never crash the advance; the launch error
@@ -1066,6 +1098,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     # already matches).
     run = Run(
         id=str(uuid.uuid4()),
+        session_id=s.id,
+        verification=result.verification,
         kind="verify",
         dify_run_id=result.dify_run_id,
         status=result.status,
@@ -1074,6 +1108,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    fc.verify_run_id = run.id
 
     if result.status == "running":
         # Stream truncated: the run's outcome is genuinely unknown, NOT a
@@ -1111,22 +1147,28 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         run.culprit_node_id = first_failed_node(result.per_node)
 
     fc.verify_run_id = run.id
-    if result.status == "succeeded" and run_finished_without_output(graph, result.per_node):
+    if result.status == "succeeded" and (
+        has_output_blocker(run) or (run.verification is None and run_finished_without_output(graph, result.per_node))
+    ):
         # A branch node ran and every one of its arms was skipped, and no End
         # node ran either: not a pass, and not an engine error to diagnose.
         # Point at the branch node and let the user decide.
         run.culprit_node_id = dead_end_branch_node_id(graph, result.per_node)
         items = append_card(
             fc,
-            TestResultCard(
-                status="failed",
-                failure_reason=NO_OUTPUT_BODY,
-                dify_run_id=run.dify_run_id,
-            ),
+            result_card(run)
+            if run.verification
+            else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
         )
         execution = progress.finish()
         items += append_assistant(
-            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
+            env,
+            s,
+            fc,
+            (result_card(run).failure_reason or NO_OUTPUT_REPLY),
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.FIX_AWAIT_DECISION,
@@ -1135,15 +1177,24 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             run=run,
             run_id_sink=[run.id],
         )
+    if result.status == "failed" and schema.get("system_query") == SYSTEM_QUERY and is_input_failure(run):
+        progress.finish()
+        gated = input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, test_failure_reason(run))
+        # The shared prelaunch gate clears older evidence. This post-run gate
+        # must retain the failed attempt that Runner persists before the CAS.
+        fc.verify_run_id = run.id
+        gated.run = run
+        gated.run_id_sink = [run.id]
+        return gated
     items = append_card(
         fc,
-        TestResultCard(
-            status=("succeeded" if result.status == "succeeded" else "failed"),
-            failure_reason=None if result.status == "succeeded" else test_failure_reason(run),
-            dify_run_id=run.dify_run_id,
-        ),
+        result_card(run),
     )
     progress.finish()
+    if run.status == "succeeded":
+        items += append_assistant(
+            env, s, fc, SUCCESS_REPLY + " " + (result_card(run).review_note or ""), cards=["test_result"]
+        )
     return StepResult(
         next=PcState.FIX_AWAIT_DECISION,
         context=fc,
@@ -1153,10 +1204,46 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     )
 
 
+def publication_for_context(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> PublicationDecision:
+    run = None
+    if fc.verify_run_id:
+        try:
+            run = env.repo.get_run(fc.verify_run_id)
+        except NotFoundError:
+            pass
+    graph, revision = env.dify.read_graph(s.app_id, turn.actor)
+    return publication_decision(
+        run, session_id=s.id, current_revision=revision, current_graph_revision=env.dify.graph_revision(graph)
+    )
+
+
+def publication_denied(fc: DifyBuilderContext, state: PcState, reason: str) -> StepResult:
+    return StepResult(
+        next=state,
+        context=fc,
+        items=append_card(
+            fc,
+            NoticeItem(
+                text=(
+                    f"Publication requires a successful run of the current draft ({reason}). "
+                    "Run validation again, then review its outputs."
+                ),
+                tone="neutral",
+            ),
+        ),
+    )
+
+
 def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Terminal choice. Port of ``handlers_fix.go:239``."""
     kind = action_kind(turn)
+    if kind == "run_verify":
+        fc.verify_run_id = ""
+        return handle_await_verify(env, turn, s, fc)
     if kind == "publish":
+        decision = publication_for_context(env, turn, s, fc)
+        if not decision.allowed:
+            return publication_denied(fc, PcState.FIX_AWAIT_DECISION, decision.reason)
         return StepResult(next=PcState.FIX_PUBLISH, context=fc)
     if kind == "re_fix":
         fc.diagnosis = None
@@ -1179,6 +1266,12 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
 def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working) Publish the repaired workflow. Port of
     ``handlers_fix.go:316``."""
+    decision = publication_for_context(env, turn, s, fc)
+    if not decision.allowed:
+        return publication_denied(fc, PcState.FIX_AWAIT_DECISION, decision.reason)
+    verified_run = env.repo.get_run(fc.verify_run_id)
+    evidence = verified_run.verification
+    assert evidence is not None
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
@@ -1187,7 +1280,17 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         steps=[("fix-publish-workflow", "Publish the repaired workflow")],
     )
     progress.activate("fix-publish-workflow")
-    published = env.dify.publish(s.app_id, turn.actor)
+    try:
+        published = env.dify.publish(
+            s.app_id,
+            turn.actor,
+            expected_revision=evidence.execution_revision,
+            expected_graph_revision=evidence.executed_graph_revision,
+        )
+    except HashMismatchError:
+        progress.fail_step("fix-publish-workflow")
+        progress.finish()
+        return publication_denied(fc, PcState.FIX_AWAIT_DECISION, "stale_revision")
     execution = progress.finish()
     items = append_assistant(
         env,

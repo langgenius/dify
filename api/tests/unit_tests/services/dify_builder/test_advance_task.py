@@ -21,11 +21,19 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as mod
-from core.dify_builder.models import ConversationItem, DifyBuilderContext, EntryMode, Run, Session
+from core.dify_builder.models import (
+    Actor,
+    ConversationItem,
+    DifyBuilderContext,
+    EntryMode,
+    MutationIntent,
+    Run,
+    Session,
+)
 from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -105,6 +113,203 @@ def wired(monkeypatch, repo: SqlDifyBuilderRepository):
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
     monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
     return events, released
+
+
+@pytest.mark.parametrize(
+    ("evidence", "expected_action"),
+    [
+        ("eligible", "publish_fix"),
+        ("stale_execution", "run_validation"),
+        ("stale_graph", "run_validation"),
+        ("failed", "run_validation"),
+        ("evidenceless", "run_validation"),
+    ],
+)
+def test_terminal_review_projects_current_persisted_verification(
+    repo: SqlDifyBuilderRepository, wired, monkeypatch: pytest.MonkeyPatch, evidence: str, expected_action: str
+) -> None:
+    events, released = wired
+    port = FakeDifyPort()
+    port.verify_pass = evidence != "failed"
+    native_run_draft = port.run_draft
+    native_read_graph = port.read_graph
+    projected_reads: list[tuple[str, Actor]] = []
+
+    def run_draft(*args, **kwargs):
+        result = native_run_draft(*args, **kwargs)
+        if evidence == "stale_execution":
+            port.hash = "h-stale"
+        elif evidence == "stale_graph":
+            port.graph["nodes"].append({"id": "new", "data": {"type": "end", "outputs": []}})
+        elif evidence == "evidenceless":
+            result.verification = None
+        return result
+
+    def read_graph(app_id: str, actor: Actor):
+        if released:
+            projected_reads.append((app_id, actor))
+        return native_read_graph(app_id, actor)
+
+    monkeypatch.setattr(port, "run_draft", run_draft)
+    monkeypatch.setattr(port, "read_graph", read_graph)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_VERIFY,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    mod.advance_session(session.id, _act("run_verify", session.version), _ACTOR_DICT, "verify-token")
+
+    stored, context = repo.get_session(session.id)
+    run = repo.get_run(context.verify_run_id)
+    finished = events[-1][1]
+    assert stored.current_state == PcState.FIX_AWAIT_DECISION
+    assert run.session_id == session.id
+    assert run.kind == "verify"
+    assert run.immutable is True
+    assert run.status == ("failed" if evidence == "failed" else "succeeded")
+    assert (run.verification is None) is (evidence in {"failed", "evidenceless"})
+    assert released == [(session.id, "verify-token")]
+    assert finished["kind"] == "command_finished"
+    assert finished["state"] == "fix.await_decision"
+    assert finished["actions"][0]["id"] == expected_action
+    assert finished["decision"]["default_option_id"] == expected_action
+    assert ("publish_fix" in [action["id"] for action in finished["actions"]]) is (evidence == "eligible")
+    # Revision-conflict projection reads once; publication reads the full and
+    # graph identities together from one additional authorized draft read.
+    assert projected_reads == [(APP_ID, Actor(**_ACTOR_DICT))] * 2
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "repair_state", "applied_state", "follow_up"),
+    [
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_REPAIR, PcState.BUILD_EXECUTION, "run_test"),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_REPAIR, PcState.EDIT_APPLY_CHANGES, "run_affected_tests"),
+    ],
+)
+@pytest.mark.parametrize("repair_outcome", ["empty", "refused", "applied"])
+def test_repair_command_only_requests_retest_after_a_committed_repair(
+    repo: SqlDifyBuilderRepository,
+    wired,
+    monkeypatch: pytest.MonkeyPatch,
+    entry_mode: EntryMode,
+    repair_state: PcState,
+    applied_state: PcState,
+    follow_up: str,
+    repair_outcome: str,
+) -> None:
+    events, released = wired
+    port = FakeEditDifyPort()
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    # Exercise the adapter's pure graph operations: a missing node raises a
+    # real refusal, while a valid title update changes the graph and revision.
+    target = "missing-node" if repair_outcome == "refused" else "llm"
+    intent = MutationIntent(op="set_node_config", args={"node_id": target, "path": "title", "value": "Fixed"})
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=repair_state,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(staged_repair=[] if repair_outcome == "empty" else [intent], last_snapshot_hash="h0"),
+        [],
+    )
+
+    mod.advance_session(session.id, _act("approve_repair", session.version), _ACTOR_DICT, "repair-token")
+
+    stored, context = repo.get_session(session.id)
+    finished = next(event for _sid, event in events if event["kind"] == "command_finished")
+    canvas_events = [event for _sid, event in events if event["kind"] == "canvas"]
+    assert released == [(session.id, "repair-token")]
+    assert events[-1][1] == finished
+    assert context.staged_repair == []
+    if repair_outcome == "applied":
+        assert stored.current_state == applied_state
+        assert finished["state"] == str(applied_state)
+        assert finished["post_canvas_action_id"] == follow_up
+        assert follow_up in [action["id"] for action in finished["actions"]]
+        assert context.last_snapshot_hash == port.hash == "h1"
+        assert next(node for node in port.graph["nodes"] if node["id"] == "llm")["data"]["title"] == "Fixed"
+        assert canvas_events
+        assert all(event["event"] == "apply_error_fix" for event in canvas_events)
+    else:
+        assert stored.current_state == repair_state
+        assert finished["state"] == str(repair_state)
+        assert finished["post_canvas_action_id"] is None
+        assert [action["id"] for action in finished["actions"]] == ["keep_draft", "revert"]
+        assert context.last_snapshot_hash == port.hash == "h0"
+        assert canvas_events == []
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "repair_state", "applied_state"),
+    [
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_REPAIR, PcState.BUILD_EXECUTION),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_REPAIR, PcState.EDIT_APPLY_CHANGES),
+    ],
+)
+@pytest.mark.parametrize(
+    ("restriction", "expected_actions"),
+    [("paused", []), ("recovery", ["recovery_continue", "restart"]), ("revision", ["check_recovery"])],
+)
+def test_applied_repair_follow_up_respects_the_completed_views_lifecycle_restriction(
+    repo: SqlDifyBuilderRepository,
+    wired,
+    monkeypatch: pytest.MonkeyPatch,
+    entry_mode: EntryMode,
+    repair_state: PcState,
+    applied_state: PcState,
+    restriction: str,
+    expected_actions: list[str],
+) -> None:
+    events, _released = wired
+    port = FakeEditDifyPort()
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    if restriction == "revision":
+        read_graph = port.read_graph
+
+        def read_graph_after_external_edit(app_id, actor):
+            graph, revision = read_graph(app_id, actor)
+            # Model an editor change between repair application and the task's
+            # terminal projection, while preserving the repair's graph write.
+            return graph, "external-revision" if revision == "h1" else revision
+
+        monkeypatch.setattr(port, "read_graph", read_graph_after_external_edit)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=repair_state,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(
+            staged_repair=[
+                MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})
+            ],
+            last_snapshot_hash="h0",
+            paused=restriction == "paused",
+            recovery_class="config_only" if restriction == "recovery" else "",
+        ),
+        [],
+    )
+
+    mod.advance_session(session.id, _act("approve_repair", session.version), _ACTOR_DICT, "repair-token")
+
+    stored, context = repo.get_session(session.id)
+    finished = next(event for _sid, event in events if event["kind"] == "command_finished")
+    assert stored.current_state == applied_state
+    assert context.last_snapshot_hash == port.hash == "h1"
+    assert [action["id"] for action in finished["actions"]] == expected_actions
+    assert finished["post_canvas_action_id"] is None
 
 
 def test_advance_session_drives_state_forward_emits_events_and_releases_lock(

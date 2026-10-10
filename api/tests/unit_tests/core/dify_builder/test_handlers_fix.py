@@ -642,7 +642,7 @@ def test_checklist_fix_diagnose_to_apply_reaches_await_recheck():
     )
 
 
-def test_checklist_fix_recheck_passed_reaches_success_via_publish():
+def test_checklist_fix_recheck_passed_requires_native_run_before_publish():
     env, repo = _new_env()
     fake = env.dify
     runner, s = _drive_checklist_to_await_recheck(env, repo)
@@ -653,8 +653,8 @@ def test_checklist_fix_recheck_passed_reaches_success_via_publish():
 
     turn = Turn(action=Action(kind="publish", base_version=out.version), actor=_actor())
     out = runner.advance(s.id, turn)
-    assert out.current_state == PcState.SUCCESS
-    assert fake.published
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+    assert not fake.published
 
 
 def test_checklist_fix_recheck_failed_loops_back_to_diagnose():
@@ -1336,9 +1336,9 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
     assert "reached no End node" in test_result.payload["failure_reason"]
-    assert "without producing any output" in next(
-        i for i in res.items if i.kind == "assistant_turn"
-    ).payload["reply_text"]
+    assert (
+        "without producing any output" in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
 # ---- dead_end_branch_node_id / run_finished_without_output (fix round 1) --

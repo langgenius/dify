@@ -6,6 +6,7 @@ import { DifyBuilderCard } from '../cards/card-shell'
 import { ExecutionProgress } from './execution-progress'
 import { PreflightContextCard } from './preflight-context-card'
 import { ReadOnlyFormResponse } from './read-only-form-response'
+import { TestResultCard } from './test-result-card'
 import { Thinking } from './thinking'
 
 export const AssistantReply = ({ text }: { text: string }) => (
@@ -145,22 +146,8 @@ export const ConversationCard = memo(
       )
     }
 
-    if (item.kind === 'test_result') {
-      const succeeded = item.payload.status === 'succeeded'
-      return (
-        <DifyBuilderCard
-          category={t(($) => $['difyBuilder.cardCategory.test'], { ns: 'workflow' })}
-          headline={t(
-            ($) =>
-              succeeded ? $['common.workflowProcessSucceeded'] : $['common.workflowProcessFailed'],
-            { ns: 'workflow' },
-          )}
-          invalidated={invalidated}
-          status={{ state: succeeded ? 'done' : 'failed' }}
-          subheadline={succeeded ? undefined : item.payload.failure_reason}
-        />
-      )
-    }
+    if (item.kind === 'test_result')
+      return <TestResultCard payload={item.payload} invalidated={invalidated} />
 
     return null
   },

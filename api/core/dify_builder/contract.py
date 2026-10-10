@@ -11,6 +11,7 @@ snake_case wire value directly; the member name is just the UPPER_SNAKE of
 that value.
 """
 
+from collections.abc import Collection
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
@@ -146,13 +147,27 @@ class BuilderErrorCode(StrEnum):
     MODEL_UNAVAILABLE = "model_unavailable"
 
 
-def post_canvas_action_id(state: object, action_kind: object) -> str | None:
-    """Return the browser follow-up needed after a repair graph refresh."""
+def post_canvas_action_id(
+    state: object,
+    action_kind: object,
+    *,
+    completed_state: object,
+    available_action_ids: Collection[str],
+) -> str | None:
+    """Request retest only after an approved repair reaches its applied gate.
+
+    The authoritative completed view must also offer the follow-up, so an
+    empty/refused repair or a lifecycle restriction cannot trigger a test.
+    """
     if action_kind not in {"approve_plan", "approve_repair"}:
         return None
-    if state == "build.await_repair":
+    if state == "build.await_repair" and completed_state == "build.execution" and "run_test" in available_action_ids:
         return "run_test"
-    if state == "edit.await_repair":
+    if (
+        state == "edit.await_repair"
+        and completed_state == "edit.apply_changes"
+        and "run_affected_tests" in available_action_ids
+    ):
         return "run_affected_tests"
     return None
 
@@ -601,6 +616,15 @@ class TestResultCard(_Card):
     # the run on the canvas later. Persisted because SSE does not survive a
     # page reload. "" when no run backs the card.
     dify_run_id: str = ""
+    outcome: (
+        Literal[
+            "execution_succeeded_needs_review", "required_output_unresolved", "execution_failed", "execution_unknown"
+        ]
+        | None
+    ) = None
+    terminal_outputs: dict[str, Any] | None = None
+    executed_node_ids: list[str] = field(default_factory=list)
+    review_note: str | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -624,8 +624,19 @@ export type ResourceSelectCard = {
 
 export type TestResultCard = {
   dify_run_id?: string
+  executed_node_ids?: Array<string>
   failure_reason?: string | null
+  outcome?:
+    | 'execution_failed'
+    | 'execution_succeeded_needs_review'
+    | 'execution_unknown'
+    | 'required_output_unresolved'
+    | null
+  review_note?: string | null
   status: 'failed' | 'succeeded'
+  terminal_outputs?: {
+    [key: string]: unknown
+  } | null
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {

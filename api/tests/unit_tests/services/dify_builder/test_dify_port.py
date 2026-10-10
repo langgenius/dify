@@ -106,11 +106,19 @@ def _mock_sessionmaker(mock_session: MagicMock):
         yield mock_sessionmaker_ctor
 
 
+@pytest.fixture(autouse=True)
+def _default_draft_for_native_runs():
+    # Stream fixtures now also read a real draft to establish launch identity.
+    with patch("services.dify_builder.dify_port.WorkflowService") as service:
+        service.return_value.get_draft_workflow.return_value = _workflow()
+        yield
+
+
 # ---- read_graph --------------------------------------------------------------
 
 
 def test_read_graph_returns_graph_and_execution_revision(mock_session: MagicMock):
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, app=app)
     workflow = _workflow(graph_dict={"nodes": [], "edges": []})
 
@@ -126,7 +134,7 @@ def test_read_graph_returns_graph_and_execution_revision(mock_session: MagicMock
 
 
 def test_read_graph_raises_when_no_draft_workflow(mock_session: MagicMock):
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, app=app)
 
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
@@ -140,7 +148,7 @@ def test_read_graph_raises_when_no_draft_workflow(mock_session: MagicMock):
 
 
 def test_node_outputs_maps_executions_and_falls_back_to_empty_dicts(mock_session: MagicMock):
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, app=app)
 
     node_exec_with_io = SimpleNamespace(
@@ -190,7 +198,7 @@ def test_node_outputs_maps_executions_and_falls_back_to_empty_dicts(mock_session
 
 def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_sync(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     original_graph = {"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []}
@@ -235,7 +243,7 @@ def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_s
 
 def test_apply_repair_ignores_unknown_op_intents(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -265,7 +273,7 @@ def test_apply_repair_ignores_unknown_op_intents(mock_session: MagicMock):
 
 def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -286,7 +294,7 @@ def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock
 
 def test_apply_repair_dispatches_create_node(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -312,7 +320,7 @@ def test_apply_repair_dispatches_create_node(mock_session: MagicMock):
 
 def test_apply_repair_dispatches_connect_and_reports_dangling_ref_as_value_error(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -332,7 +340,7 @@ def test_apply_repair_dispatches_connect_and_reports_dangling_ref_as_value_error
 
 def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -361,7 +369,7 @@ def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(m
 
 def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -386,7 +394,7 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
 
 def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -433,7 +441,7 @@ def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
     mock_session: MagicMock, node_type, expected_event
 ):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -457,7 +465,7 @@ def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
 
 def test_apply_repair_skips_on_canvas_when_not_provided(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
@@ -482,7 +490,7 @@ def test_apply_repair_skips_already_present_create_and_connect(mock_session: Mag
     draft. create_node for a present id and connect for a present edge must be
     dropped (no duplicate, no ValueError); set_node_config still applies."""
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     # Draft already has node "llm_1" and edge start_1 -> llm_1 (the result of a prior apply).
@@ -525,7 +533,7 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
     deleting the start node with no re-create, and the subsequent connect
     would then raise ValueError('node not found: start')."""
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     # Draft has only the canvas's default placeholder start node "start".
@@ -567,7 +575,7 @@ def test_apply_repair_survives_delete_and_recreate_of_same_id_in_one_batch(mock_
 @pytest.mark.parametrize("operation", ["apply", "noop", "restore"])
 def test_mutations_recheck_execution_revision_after_locking(mock_session: MagicMock, operation: str):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
     workflow = _workflow(graph_dict={"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []})
     expected = execution_revision(workflow)
@@ -607,7 +615,7 @@ def test_mutations_recheck_execution_revision_after_locking(mock_session: MagicM
 
 def test_repair_preserves_layout_committed_while_builder_was_planning(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
     workflow = _workflow(
         graph_dict={
@@ -690,7 +698,9 @@ _FINISHED_CHUNK = {
 
 def _configure_default_identity(session: MagicMock) -> None:
     _configure_session_get(
-        session, account=SimpleNamespace(id="acc-1"), app=SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        session,
+        account=SimpleNamespace(id="acc-1"),
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow"),
     )
 
 
@@ -710,7 +720,7 @@ def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session
     """In-process streaming emits each event while the workflow is running,
     without waiting for a second Celery task or replaying completed rows."""
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     chunks = [
@@ -764,7 +774,7 @@ def test_run_draft_consumes_the_stream_after_the_session_is_closed(mock_session:
     whole workflow run, so the loop must sit outside it.
     """
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     session_open_at_pull: list[bool] = []
@@ -1067,10 +1077,18 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         mock_ws_cls.return_value.publish_workflow.return_value = published_workflow
         mock_naive_utc_now.return_value = "the-now"
 
-        result = WorkflowServiceDifyPort().publish("app-1", _actor())
+        draft = _workflow()
+        draft.id = "locked-draft"
+        mock_ws_cls.return_value.get_draft_workflow.return_value = draft
+        result = WorkflowServiceDifyPort().publish(
+            "app-1",
+            _actor(),
+            expected_revision=execution_revision(draft),
+            expected_graph_revision=WorkflowServiceDifyPort().graph_revision(draft.graph_dict),
+        )
 
     mock_ws_cls.return_value.publish_workflow.assert_called_once_with(
-        session=mock_session, app_model=app, account=account
+        session=mock_session, app_model=app, account=account, expected_draft_id=draft.id
     )
     assert app.workflow_id == "new-wf-id"
     # Publish must also advance the app's audit fields -- mirrors the console idiom at
@@ -1106,7 +1124,7 @@ def test_run_draft_reads_a_blocking_dict_response(mock_session: MagicMock):
     ``response["data"]`` directly; the streaming rewrite dropped that path.
     """
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     blocking_response = {
@@ -1137,7 +1155,7 @@ def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: MagicMock
     Default streaming dispatches a child task and deadlocks when all slots are
     occupied by Builder tasks waiting for their children."""
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     with (
@@ -1293,3 +1311,141 @@ def test_no_terminal_frame_and_no_error_frame_is_still_unknown(mock_session: Mag
 
     assert run.status == "running"
     assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
+
+
+@pytest.mark.parametrize("custom", [{}, {"query": "custom Start query", "file": {"id": "file-1"}}])
+def test_chatflow_routes_system_message_separately_from_start_inputs(mock_session, custom):
+    _configure_session_get(
+        mock_session,
+        account=SimpleNamespace(id="acc-1"),
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="advanced-chat"),
+    )
+    inputs = {**custom, "sys.query": "User system message"}
+    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
+        generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
+        with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
+            WorkflowServiceDifyPort().run_draft("app-1", _actor(), inputs, lambda _event: None)
+    assert generate.generate.call_args.kwargs["args"] == {"query": "User system message", "inputs": custom}
+    assert inputs == {**custom, "sys.query": "User system message"}
+
+
+@pytest.mark.parametrize(
+    "inputs", [{}, {"sys.query": ""}, {"sys.query": "  "}, {"sys.query": 1}, {"query": "only Start query"}]
+)
+def test_chatflow_rejects_invalid_system_query_before_native_launch(mock_session, inputs):
+    _configure_session_get(
+        mock_session,
+        account=SimpleNamespace(id="acc-1"),
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="advanced-chat"),
+    )
+    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
+        with pytest.raises(ValueError, match="query is required"):
+            WorkflowServiceDifyPort().run_draft("app-1", _actor(), inputs, lambda _event: None)
+    generate.generate.assert_not_called()
+
+
+def test_workflow_keeps_query_as_an_ordinary_start_input(mock_session):
+    _configure_session_get(
+        mock_session,
+        account=SimpleNamespace(id="acc-1"),
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow"),
+    )
+    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
+        generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
+        with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
+            WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"query": "custom"}, lambda _event: None)
+    assert generate.generate.call_args.kwargs["args"] == {"inputs": {"query": "custom"}}
+
+
+def test_get_app_mode_reads_persisted_tenant_scoped_app(mock_session):
+    _configure_session_get(mock_session, app=SimpleNamespace(tenant_id="tenant-1", mode="advanced-chat"))
+    assert WorkflowServiceDifyPort().get_app_mode("app-1", _actor()) == "advanced-chat"
+    _configure_session_get(mock_session, app=SimpleNamespace(tenant_id="other-tenant", mode="workflow"))
+    from core.dify_builder.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        WorkflowServiceDifyPort().get_app_mode("app-1", _actor())
+
+
+@pytest.mark.parametrize(
+    ("native_graph", "changed_features", "bound"),
+    [("same", False, True), ("different", False, False), (None, False, False), ("same", True, False)],
+)
+def test_verification_binds_actual_native_graph(mock_session, native_graph, changed_features, bound):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
+    _configure_session_get(mock_session, account=account, app=app)
+    workflow = _workflow(graph_dict={"nodes": [{"id": "a", "data": {"type": "start"}}], "edges": []})
+    native = (
+        workflow.graph_dict
+        if native_graph == "same"
+        else {"nodes": [{"id": "b", "data": {"type": "start"}}], "edges": []}
+        if native_graph
+        else None
+    )
+    before = execution_revision(workflow)
+
+    def stream():
+        if changed_features:
+            workflow.features = json.dumps({"changed": True})
+        yield {
+            "event": "workflow_finished",
+            "data": {"id": "native", "status": "succeeded", "outputs": {"result": None}},
+        }
+
+    with (
+        patch("services.dify_builder.dify_port.WorkflowService") as ws,
+        patch("services.dify_builder.dify_port.AppGenerateService") as gen,
+        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as factory,
+    ):
+        ws.return_value.get_draft_workflow.return_value = workflow
+        gen.generate.return_value = stream()
+        node_repo = factory.create_api_workflow_node_execution_repository.return_value
+        node_repo.get_executions_by_workflow_run.return_value = []
+        repo = factory.create_api_workflow_run_repository.return_value
+        repo.get_workflow_run_by_id.return_value = SimpleNamespace(graph_dict=native) if native else None
+        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _: None)
+        repo.get_workflow_run_by_id.assert_called_once_with(tenant_id="tenant-1", app_id="app-1", run_id="native")
+    assert run.status == "succeeded"
+    assert run.verification.terminal_outputs == {"result": None}
+    assert run.verification.execution_revision == (before if bound else "")
+
+
+@pytest.mark.parametrize("stale", [True, False])
+def test_publish_verification_locked_guard(mock_session, stale):
+    from services.dify_builder.revision import executable_graph_revision
+
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow", workflow_id="old")
+    _configure_session_get(mock_session, account=account, app=app)
+    draft = _workflow()
+    draft.id = "locked-draft"
+    expected = execution_revision(draft)
+    expected_graph = executable_graph_revision(draft.graph_dict)
+
+    def refresh(row, *, with_for_update):
+        assert row is draft
+        assert with_for_update
+        if stale:
+            draft.features = json.dumps({"changed": True})
+
+    mock_session.refresh.side_effect = refresh
+    with patch("services.dify_builder.dify_port.WorkflowService") as ws:
+        ws.return_value.get_draft_workflow.return_value = draft
+        ws.return_value.publish_workflow.return_value = SimpleNamespace(id="published", marked_name="v1")
+        if stale:
+            with pytest.raises(HashMismatchError):
+                WorkflowServiceDifyPort().publish(
+                    "app-1", _actor(), expected_revision=expected, expected_graph_revision=expected_graph
+                )
+            ws.return_value.publish_workflow.assert_not_called()
+            mock_session.commit.assert_not_called()
+            assert app.workflow_id == "old"
+        else:
+            WorkflowServiceDifyPort().publish(
+                "app-1", _actor(), expected_revision=expected, expected_graph_revision=expected_graph
+            )
+            assert ws.return_value.publish_workflow.call_args.kwargs["expected_draft_id"] == "locked-draft"
+            assert app.workflow_id == "published"
+            mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(draft, with_for_update=True)

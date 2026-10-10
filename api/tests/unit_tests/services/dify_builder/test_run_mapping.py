@@ -81,8 +81,12 @@ def test_succeeded_run_maps_to_succeeded_domain_run():
     assert run.tokens == 42
     assert run.elapsed_ms == 1500
     assert run.per_node == [
-        NodeOutput(node_id="node-1", title="Start", status="succeeded", error="", outputs={"x": 1}),
-        NodeOutput(node_id="node-2", title="LLM", status="succeeded", error="", outputs={"text": "hi"}),
+        NodeOutput(
+            outputs_available=True, node_id="node-1", title="Start", status="succeeded", error="", outputs={"x": 1}
+        ),
+        NodeOutput(
+            outputs_available=True, node_id="node-2", title="LLM", status="succeeded", error="", outputs={"text": "hi"}
+        ),
     ]
 
 
@@ -106,7 +110,9 @@ def test_failed_run_maps_to_failed_status_and_finds_culprit_node():
 
     assert run.status == "failed"
     assert run.culprit_node_id == "node-2"
-    assert run.per_node[1] == NodeOutput(node_id="node-2", title="Code", status="failed", error="boom", outputs={})
+    assert run.per_node[1] == NodeOutput(
+        outputs_available=True, node_id="node-2", title="Code", status="failed", error="boom", outputs={}
+    )
 
 
 def test_exception_node_status_is_also_treated_as_culprit():
@@ -378,7 +384,14 @@ def test_run_row_maps_to_the_shape_map_run_result_expects():
 
     data = run_result_data_from_run_row(row)
 
-    assert data == {"id": "run-1", "status": "succeeded", "error": "", "elapsed_time": 361.0, "total_tokens": 99}
+    assert data == {
+        "id": "run-1",
+        "status": "succeeded",
+        "error": "",
+        "elapsed_time": 361.0,
+        "total_tokens": 99,
+        "outputs": None,
+    }
     run = map_run_result(data, [])
     assert run.status == "succeeded"
     assert run.dify_run_id == "run-1"

@@ -61,3 +61,7 @@ class ProposalWouldRunWrongError(Exception):
     been written when it is raised; the message is the engine-grounded reason,
     which handlers show at the gate and carry into the next attempt.
     """
+
+
+class HashMismatchError(Exception):
+    """The authorized execution revision no longer matches the current draft."""
