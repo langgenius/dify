@@ -2,7 +2,13 @@ import type { FC } from 'react'
 import type { DefaultModel, DefaultModelResponse } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
@@ -258,7 +264,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             />
           }
           backdropProps={{ forceRender: true }}
-          className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-120 flex-col overflow-hidden rounded-2xl p-0"
         >
           <DialogClose
             render={
@@ -275,9 +281,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
             </DialogTitle>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
+            <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
               {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
-            </p>
+            </DialogDescription>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {isSystemModelListLoading ? (
@@ -401,9 +407,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             )}
           </div>
           <div className="flex h-19 shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
-            <Button className="min-w-18" onClick={() => handleOpenChange(false)}>
+            <DialogClose render={<Button className="min-w-18" />}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+            </DialogClose>
             <Button
               className="min-w-18"
               variant="primary"
