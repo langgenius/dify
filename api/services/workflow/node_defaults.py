@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from types import UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_factory import resolve_workflow_node_class
@@ -88,25 +88,12 @@ def _sub_models(annotation: object) -> _SubModels:
     return _SubModels(value=_single_model(arms), item=_single_model(get_args(annotation)) if is_sequence else None)
 
 
-class NodeDataUnreadableError(ValueError):
-    """A validator raised something other than a ValidationError."""
-
-
-def validate_node_data[M: BaseModel](model: type[M], value: Mapping[str, Any]) -> M:
-    # Some graphon validators raise KeyError and the like on bad or newer values instead of a ValidationError.
-    try:
-        return model.model_validate(value)
-    except ValidationError:
-        raise
-    except Exception as error:
-        raise NodeDataUnreadableError(f"{type(error).__name__}: {error}") from error
-
-
 def _fill(model: type[BaseModel], value: Mapping[str, Any]) -> dict[str, Any]:
-    # graph_diff fills stored graphs that were never validated; a sub-object its model refuses is kept as it is.
+    # graph_diff fills stored graphs that were never validated, and some graphon validators raise KeyError and the
+    # like on bad data instead of a ValidationError; a sub-object its model refuses is kept as it is.
     try:
-        filled = validate_node_data(model, value).model_dump(mode="json")
-    except (ValidationError, NodeDataUnreadableError):
+        filled = model.model_validate(value).model_dump(mode="json")
+    except Exception:
         return dict(value)
     return {**filled, **value}
 

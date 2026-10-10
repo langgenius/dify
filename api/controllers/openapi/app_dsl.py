@@ -30,7 +30,7 @@ from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
-from services.app_dsl_service import AppDslService, YamlUrlFetchError, fetch_yaml_url
+from services.app_dsl_service import AppDslService, YamlUrlFetchError
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
@@ -59,18 +59,12 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
     )
 
 
-def _source_yaml(body: AppDslImportPayload) -> str:
-    if body.mode == ImportMode.YAML_URL and body.yaml_url:
-        return fetch_yaml_url(body.yaml_url)
-    assert body.yaml_content, "the payload requires yaml_content in yaml-content mode"
-    return body.yaml_content
-
-
 def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
     try:
         return prepare_import(
             context,
-            yaml_content=_source_yaml(body),
+            mode=ImportMode(body.mode),
+            source=body.source,
             app_id=body.app_id,
             draft_hash=body.draft_hash,
         )

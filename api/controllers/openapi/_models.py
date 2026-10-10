@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Final, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
@@ -26,7 +26,7 @@ from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_va
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import
-from services.entities.dsl_entities import CheckDependenciesResult
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -617,16 +617,22 @@ class AppDslImportPayload(BaseModel):
         description="draft_hash from the export or restore this import is based on. The import fails if the "
         "draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
     )
+    _source: str = PrivateAttr()
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
         if self.draft_hash is not None and not self.app_id:
             raise ValueError("draft_hash is only valid when app_id names the app to overwrite")
-        if self.mode == "yaml-content" and not self.yaml_content:
-            raise ValueError("yaml_content is required when mode is 'yaml-content'")
-        if self.mode == "yaml-url" and not self.yaml_url:
-            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        source = self.yaml_url if self.mode == ImportMode.YAML_URL else self.yaml_content
+        if not source:
+            raise ValueError(f"{self.mode.replace('-', '_')} is required when mode is '{self.mode}'")
+        self._source = source
         return self
+
+    @property
+    def source(self) -> str:
+        """The URL or the YAML text, whichever the mode names."""
+        return self._source
 
 
 class AppDslExportQuery(BaseModel):

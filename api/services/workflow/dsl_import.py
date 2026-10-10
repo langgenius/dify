@@ -20,6 +20,8 @@ from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
 from models import App, AppMode, Workflow
 from repositories.app.console_repository import require_console_app
+from services.app_dsl_service import fetch_yaml_url
+from services.entities.dsl_entities import ImportMode
 from services.workflow.graph_check import (
     GRAPH_MODES,
     GraphIssue,
@@ -119,23 +121,27 @@ def _keep_stored_secrets(workflow: Mapping[str, Any], draft: Workflow) -> None:
             variable["value"] = HIDDEN_VALUE
 
 
-def prepare_import(context: RequestContext, *, yaml_content: str, app_id: str | None, draft_hash: str | None) -> str:
+def prepare_import(
+    context: RequestContext, *, mode: ImportMode, source: str, app_id: str | None, draft_hash: str | None
+) -> str:
     """The YAML to hand the import. A DSL the check can't read goes through unchanged, for the import to judge.
 
-    Raises DraftChangedError, DslRefusedError, or ConsoleAppNotFoundError for an `app_id` outside the workspace.
+    A URL is fetched only after the target app and draft pass. Raises DraftChangedError, DslRefusedError,
+    YamlUrlFetchError, or ConsoleAppNotFoundError for an `app_id` outside the workspace.
     """
     with session_factory.create_session() as session:
         app = _target_app(session, context, app_id)
         draft = WorkflowService().get_draft_workflow(app_model=app, session=session) if app else None
         if draft_hash is not None and (draft is None or draft_token(draft) != draft_hash):
             raise DraftChangedError()
+        yaml_content = fetch_yaml_url(source) if mode == ImportMode.YAML_URL else source
         try:
             data = _parse(yaml_content)
-            mode = _graph_mode(data, app)
+            app_mode = _graph_mode(data, app)
         except DslNotCheckableError:
             return yaml_content
         workflow = _section(data, "workflow")
-        errors = [i for i in check_graph(_graph(workflow), mode=mode) if i.code.severity is IssueSeverity.ERROR]
+        errors = [i for i in check_graph(_graph(workflow), mode=app_mode) if i.code.severity is IssueSeverity.ERROR]
         if errors:
             raise DslRefusedError(errors)
         if "graph" in workflow:

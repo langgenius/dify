@@ -21,13 +21,7 @@ from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.branch_handles import SOURCE_HANDLE, branch_handles
-from services.workflow.node_defaults import (
-    NodeDataUnreadableError,
-    complete_sub_models,
-    editor_defaults,
-    node_data_type,
-    validate_node_data,
-)
+from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -137,17 +131,13 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
     model = node_data_type(node_class.node_type, node_class)
     config = adapt_node_config_for_graph({"id": node_id, "data": data})
     try:
-        validate_node_data(model, config["data"])
+        model.model_validate(config["data"])
     except ValidationError as error:
         problems = error.errors(include_url=False, include_input=False, include_context=False)
         issues = tuple(
             GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"])) for p in problems
         )
         return _Node(node_id, data, issues)
-    except NodeDataUnreadableError as error:
-        logger.warning("node %s data could not be validated", node_id, exc_info=True)
-        message = f"The node data could not be read ({error})"
-        return _Node(node_id, data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),))
     return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))
 
 
