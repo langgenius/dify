@@ -11,7 +11,6 @@ from configs import dify_config
 from controllers.common.agent_access import resolve_agent_access_filter
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     query_params_from_request,
     register_response_schema_models,
     register_schema_models,
@@ -630,7 +629,7 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
+    @console_ns.doc_query(AgentAppListQuery)
     @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
     @login_required
@@ -698,7 +697,7 @@ class AgentAppListApi(Resource):
             agent_permissions=permissions.agent,
         )
 
-    @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
+    @console_ns.expect_model(AgentAppCreatePayload)
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(409, "Agent name already exists")
     @console_ns.response(403, "Insufficient permissions")
@@ -742,7 +741,7 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
 
-    @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
+    @console_ns.expect_model(AgentAppUpdatePayload)
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -823,7 +822,7 @@ class AgentDebugConversationRefreshApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
-    @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
+    @console_ns.expect_model(AgentPublishPayload)
     @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -854,7 +853,7 @@ class AgentPublishApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
 class AgentBuildDraftCheckoutApi(Resource):
-    @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
+    @console_ns.expect_model(AgentBuildDraftCheckoutPayload)
     @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
     @login_required
@@ -902,7 +901,7 @@ class AgentBuildDraftApi(Resource):
             account_id=current_user.id,
         )
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
     @login_required
@@ -969,7 +968,7 @@ class AgentBuildDraftApplyApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/copy")
 class AgentAppCopyApi(Resource):
-    @console_ns.expect(console_ns.models[AgentAppCopyPayload.__name__])
+    @console_ns.expect_model(AgentAppCopyPayload)
     @console_ns.response(201, "Agent app copied successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -1021,7 +1020,7 @@ class AgentApiAccessApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-enable")
 class AgentApiStatusApi(Resource):
-    @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
+    @console_ns.expect_model(AgentApiStatusPayload)
     @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -1082,7 +1081,7 @@ class AgentApiKeyApi(Resource):
 
 @console_ns.route("/agent/invite-options")
 class AgentInviteOptionsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
+    @console_ns.doc_query(AgentInviteOptionsQuery)
     @console_ns.response(200, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
     @setup_required
     @login_required
@@ -1127,7 +1126,7 @@ class AgentInviteOptionsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/logs")
 class AgentLogsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
+    @console_ns.doc_query(AgentLogsQuery)
     @console_ns.response(200, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
     @setup_required
     @login_required
@@ -1166,7 +1165,7 @@ class AgentLogsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
 class AgentLogMessagesApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
+    @console_ns.doc_query(AgentLogsQuery)
     @console_ns.response(200, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
     @setup_required
     @login_required
@@ -1222,7 +1221,7 @@ class AgentLogSourcesApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/statistics/summary")
 class AgentStatisticsSummaryApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AgentStatisticsQuery))
+    @console_ns.doc_query(AgentStatisticsQuery)
     @console_ns.response(
         200,
         "Agent monitoring summary and chart data",

@@ -57,7 +57,7 @@ register_response_schema_models(
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateApi(Resource):
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
-    @console_ns.expect(console_ns.models[MetadataArgs.__name__])
+    @console_ns.expect_model(MetadataArgs)
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
@@ -85,7 +85,7 @@ class DatasetMetadataCreateApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataApi(Resource):
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
-    @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
+    @console_ns.expect_model(MetadataUpdatePayload)
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
@@ -148,7 +148,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditApi(Resource):
-    @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
+    @console_ns.expect_model(MetadataOperationData)
     @console_ns.response(
         204,
         "Documents metadata updated successfully",

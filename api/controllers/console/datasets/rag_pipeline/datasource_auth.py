@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -157,7 +157,7 @@ register_response_schema_models(
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/get-authorization-url")
 class DatasourcePluginOAuthAuthorizationUrl(Resource):
-    @console_ns.doc(params=query_params_from_model(DatasourceOAuthAuthorizationQuery))
+    @console_ns.doc_query(DatasourceOAuthAuthorizationQuery)
     @console_ns.response(
         200,
         "Datasource OAuth authorization URL generated successfully",
@@ -229,7 +229,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/callback")
 class DatasourceOAuthCallback(Resource):
-    @console_ns.doc(params=query_params_from_model(DatasourceOAuthCallbackQuery))
+    @console_ns.doc_query(DatasourceOAuthCallbackQuery)
     # response-contract:ignore redirect response
     @console_ns.response(302, "Redirect to OAuth callback page")
     @setup_required
@@ -302,7 +302,7 @@ class DatasourceOAuthCallback(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialPayload.__name__])
+    @console_ns.expect_model(DatasourceCredentialPayload)
     @console_ns.response(
         200, "Datasource credential created successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -356,7 +356,7 @@ class DatasourceAuth(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialDeletePayload.__name__])
+    @console_ns.expect_model(DatasourceCredentialDeletePayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -383,7 +383,7 @@ class DatasourceAuthDeleteApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialUpdatePayload.__name__])
+    @console_ns.expect_model(DatasourceCredentialUpdatePayload)
     @console_ns.response(
         201, "Datasource credential updated successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -457,7 +457,7 @@ class DatasourceHardCodeAuthListApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCustomClientPayload.__name__])
+    @console_ns.expect_model(DatasourceCustomClientPayload)
     @console_ns.response(
         200, "Datasource OAuth custom client saved successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -498,7 +498,7 @@ class DatasourceAuthOauthCustomClient(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceDefaultPayload.__name__])
+    @console_ns.expect_model(DatasourceDefaultPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -520,7 +520,7 @@ class DatasourceAuthDefaultApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceUpdateNamePayload.__name__])
+    @console_ns.expect_model(DatasourceUpdateNamePayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required

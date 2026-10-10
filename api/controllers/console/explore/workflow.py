@@ -44,7 +44,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
+    @console_ns.expect_model(WorkflowRunPayload)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app

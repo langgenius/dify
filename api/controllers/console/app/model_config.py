@@ -37,7 +37,7 @@ class ModelConfigResource(Resource):
     @console_ns.doc("update_app_model_config")
     @console_ns.doc(description="Update application model configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppModelConfigPayload.__name__])
+    @console_ns.expect_model(AppModelConfigPayload)
     @console_ns.response(
         200,
         "Model configuration updated successfully",

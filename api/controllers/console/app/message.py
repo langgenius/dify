@@ -182,7 +182,7 @@ class AgentChatMessageListApi(Resource):
     @console_ns.doc("list_agent_chat_messages")
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
+    @console_ns.doc_query(ChatMessagesQuery)
     @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Agent or conversation not found")
     @login_required
@@ -220,7 +220,7 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc("create_message_feedback")
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect_model(MessageFeedbackPayload)
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
@@ -245,7 +245,7 @@ class AgentMessageFeedbackApi(Resource):
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect_model(MessageFeedbackPayload)
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Agent or message not found")
     @setup_required

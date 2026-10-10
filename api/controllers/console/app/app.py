@@ -12,7 +12,6 @@ from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     query_params_from_request,
     register_enum_models,
     register_response_schema_models,
@@ -338,7 +337,7 @@ class AppResource(Resource):
 class AppListApi(AppResource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.doc(params=query_params_from_model(AppListQuery))
+    @console_ns.doc_query(AppListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppPagination.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext):
@@ -350,7 +349,7 @@ class AppListApi(AppResource):
 
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
-    @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
+    @console_ns.expect_model(CreateAppPayload)
     @console_ns.response(HTTPStatus.CREATED, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
@@ -370,7 +369,7 @@ class AppListApi(AppResource):
 class RecentAppListApi(AppResource):
     @console_ns.doc("list_recent_apps")
     @console_ns.doc(description="Get recently modified apps for the home Continue Work section")
-    @console_ns.doc(params=query_params_from_model(RecentAppListQuery))
+    @console_ns.doc_query(RecentAppListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecentAppListResponse.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext):
@@ -384,7 +383,7 @@ class RecentAppListApi(AppResource):
 class StarredAppListApi(AppResource):
     @console_ns.doc("list_starred_apps")
     @console_ns.doc(description="Get applications starred by the current account")
-    @console_ns.doc(params=query_params_from_model(StarredAppListQuery))
+    @console_ns.doc_query(StarredAppListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppPagination.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext):
@@ -432,7 +431,7 @@ class AppApi(AppResource):
     @console_ns.doc("update_app")
     @console_ns.doc(description="Update application details")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
+    @console_ns.expect_model(UpdateAppPayload)
     @console_ns.response(HTTPStatus.OK, "App updated successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
@@ -479,7 +478,7 @@ class AppCopyApi(AppResource):
     @console_ns.doc("copy_app")
     @console_ns.doc(description="Create a copy of an existing application")
     @console_ns.doc(params={"app_id": "Application ID to copy"})
-    @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
+    @console_ns.expect_model(CopyAppPayload)
     @console_ns.response(HTTPStatus.CREATED, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__]
@@ -506,7 +505,7 @@ class AppExportApi(AppResource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.doc(params=query_params_from_model(AppExportQuery))
+    @console_ns.doc_query(AppExportQuery)
     @console_ns.doc(
         produces=["application/json", "application/zip"],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
@@ -558,7 +557,7 @@ class AppNameApi(AppResource):
     @console_ns.doc("check_app_name")
     @console_ns.doc(description="Check if app name is available")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppNamePayload.__name__])
+    @console_ns.expect_model(AppNamePayload)
     @console_ns.response(HTTPStatus.OK, "Name availability checked", console_ns.models[AppDetail.__name__])
     @console_account_admission(
         allowed_roles=_EDIT_ROLES,
@@ -577,7 +576,7 @@ class AppIconApi(AppResource):
     @console_ns.doc("update_app_icon")
     @console_ns.doc(description="Update application icon")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppIconPayload.__name__])
+    @console_ns.expect_model(AppIconPayload)
     @console_ns.response(HTTPStatus.OK, "Icon updated successfully", console_ns.models[AppDetail.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
@@ -604,7 +603,7 @@ class AppSiteStatus(AppResource):
     @console_ns.doc("update_app_site_status")
     @console_ns.doc(description="Enable or disable app site")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppSiteStatusPayload.__name__])
+    @console_ns.expect_model(AppSiteStatusPayload)
     @console_ns.response(HTTPStatus.OK, "Site status updated successfully", console_ns.models[AppDetail.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
@@ -626,7 +625,7 @@ class AppApiStatus(AppResource):
     @console_ns.doc("update_app_api_status")
     @console_ns.doc(description="Enable or disable app API")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppApiStatusPayload.__name__])
+    @console_ns.expect_model(AppApiStatusPayload)
     @console_ns.response(HTTPStatus.OK, "API status updated successfully", console_ns.models[AppDetail.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
@@ -660,7 +659,7 @@ class AppTraceApi(AppResource):
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppTracePayload.__name__])
+    @console_ns.expect_model(AppTracePayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Trace configuration updated successfully",

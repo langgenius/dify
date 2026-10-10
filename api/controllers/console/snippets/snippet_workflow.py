@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
@@ -340,7 +340,7 @@ class SnippetDefaultBlockConfigsApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows")
 class SnippetPublishedAllWorkflowApi(Resource):
-    @console_ns.doc(params=query_params_from_model(SnippetWorkflowListQuery))
+    @console_ns.doc_query(SnippetWorkflowListQuery)
     @console_ns.doc("get_all_snippet_published_workflows")
     @console_ns.doc(description="Get all published workflows for a snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})
@@ -431,7 +431,7 @@ class SnippetWorkflowByIdApi(Resource):
     @console_ns.doc("update_snippet_workflow_by_id")
     @console_ns.doc(description="Update published snippet workflow attributes")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
-    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
+    @console_ns.expect_model(WorkflowUpdatePayload)
     @console_ns.response(200, "Workflow updated successfully", console_ns.models[SnippetWorkflowResponse.__name__])
     @console_ns.response(400, "No valid fields to update")
     @console_ns.response(404, "Workflow not found")
@@ -510,7 +510,7 @@ class SnippetWorkflowByIdApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
 class SnippetWorkflowRunsApi(Resource):
     @console_ns.doc("list_snippet_workflow_runs")
-    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
+    @console_ns.doc_query(WorkflowRunQuery)
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",

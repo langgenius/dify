@@ -9,7 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.common.session import with_session
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -95,7 +95,7 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.doc(params=query_params_from_model(Parser))
+    @console_ns.doc_query(Parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -166,7 +166,7 @@ class AppTriggersApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
-    @console_ns.expect(console_ns.models[ParserEnable.__name__])
+    @console_ns.expect_model(ParserEnable)
     @setup_required
     @login_required
     @account_initialization_required

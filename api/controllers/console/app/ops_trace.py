@@ -5,7 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppNotFoundError,
@@ -98,7 +98,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("get_trace_app_config")
     @console_ns.doc(description="Get tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
+    @console_ns.doc_query(TraceProviderQuery)
     @console_ns.response(
         200,
         "Tracing configuration retrieved successfully",
@@ -145,7 +145,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("create_trace_app_config")
     @console_ns.doc(description="Create a new tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
+    @console_ns.expect_model(TraceConfigPayload)
     @console_ns.response(
         201,
         "Tracing configuration created successfully",
@@ -197,7 +197,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("update_trace_app_config")
     @console_ns.doc(description="Update an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
+    @console_ns.expect_model(TraceConfigPayload)
     @console_ns.response(
         200,
         "Tracing configuration updated successfully",
@@ -248,7 +248,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("delete_trace_app_config")
     @console_ns.doc(description="Delete an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
+    @console_ns.doc_query(TraceProviderQuery)
     @console_ns.response(204, "Tracing configuration deleted successfully")
     @console_ns.response(400, "Invalid request parameters or unsupported tracing provider")
     @console_ns.response(403, "Insufficient permissions")

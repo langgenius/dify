@@ -9,7 +9,7 @@ from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultResponse, TextContentResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
@@ -201,7 +201,7 @@ class DataSourceIntegrationApi(Resource):
 
 @console_ns.route("/notion/pre-import/pages")
 class DataSourceNotionListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(DataSourceNotionListQuery))
+    @console_ns.doc_query(DataSourceNotionListQuery)
     @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
     @console_account_admission()
     @model_validate(DataSourceNotionListQuery)
@@ -229,7 +229,7 @@ class DataSourceNotionListApi(Resource):
 class DataSourceNotionPreviewApi(Resource):
     """Preview one authorized Notion page through the datasource credential."""
 
-    @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
+    @console_ns.doc_query(DataSourceNotionPreviewQuery)
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     @console_account_admission()
     @model_validate(DataSourceNotionPreviewQuery)
@@ -260,7 +260,7 @@ class DataSourceNotionPreviewApi(Resource):
 class DataSourceNotionIndexingEstimateApi(Resource):
     """Estimate indexing work for selected Notion pages."""
 
-    @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
+    @console_ns.expect_model(NotionEstimatePayload)
     @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
     @console_account_admission()
     @model_validate(NotionEstimatePayload)

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -56,7 +56,7 @@ class WorkflowAgentComposerApi(Resource):
     @console_ns.response(
         200, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
-    @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
+    @console_ns.doc_query(WorkflowAgentComposerQuery)
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,7 +86,7 @@ class WorkflowAgentComposerApi(Resource):
             ),
         )
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Workflow agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -124,7 +124,7 @@ class WorkflowAgentComposerApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
 class WorkflowAgentComposerCopyFromRosterApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
+    @console_ns.expect_model(WorkflowComposerCopyFromRosterPayload)
     @console_ns.response(
         200,
         "Workflow roster agent copied to inline agent",
@@ -166,7 +166,7 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class WorkflowAgentComposerValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Workflow agent composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
     )
@@ -213,7 +213,7 @@ class WorkflowAgentComposerCandidatesApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/impact")
 class WorkflowAgentComposerImpactApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(200, "Workflow agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__])
     @setup_required
     @login_required
@@ -238,7 +238,7 @@ class WorkflowAgentComposerImpactApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class WorkflowAgentComposerSaveToRosterApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Workflow agent composer saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -288,7 +288,7 @@ def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUI
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class SnippetAgentComposerApi(Resource):
     @console_ns.response(200, "Snippet agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__])
-    @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
+    @console_ns.doc_query(WorkflowAgentComposerQuery)
     @setup_required
     @login_required
     @account_initialization_required
@@ -317,7 +317,7 @@ class SnippetAgentComposerApi(Resource):
             ),
         )
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(200, "Snippet agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__])
     @setup_required
     @login_required
@@ -352,7 +352,7 @@ class SnippetAgentComposerApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
 class SnippetAgentComposerCopyFromRosterApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
+    @console_ns.expect_model(WorkflowComposerCopyFromRosterPayload)
     @console_ns.response(
         200, "Roster agent copied into snippet", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -391,7 +391,7 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class SnippetAgentComposerValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Snippet agent composer validation", console_ns.models[AgentComposerValidateResponse.__name__]
     )
@@ -437,7 +437,7 @@ class SnippetAgentComposerCandidatesApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/impact")
 class SnippetAgentComposerImpactApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(200, "Snippet agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__])
     @setup_required
     @login_required
@@ -464,7 +464,7 @@ class SnippetAgentComposerImpactApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class SnippetAgentComposerSaveToRosterApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Snippet agent saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -515,7 +515,7 @@ class AgentComposerApi(Resource):
             AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id)),
         )
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(200, "Agent app composer saved", console_ns.models[AgentAppComposerResponse.__name__])
     @setup_required
     @login_required
@@ -541,7 +541,7 @@ class AgentComposerApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/validate")
 class AgentComposerValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.expect_model(ComposerSavePayload)
     @console_ns.response(
         200, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
     )

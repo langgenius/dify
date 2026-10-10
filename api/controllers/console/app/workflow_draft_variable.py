@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -204,7 +204,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
-    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
+    @console_ns.doc_query(WorkflowDraftVariableListQuery)
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -337,7 +337,7 @@ class VariableApi(Resource):
 
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
+    @console_ns.expect_model(WorkflowDraftVariableUpdatePayload)
     @console_ns.response(
         200,
         "Variable updated successfully",
@@ -525,7 +525,7 @@ class ConversationVariableCollectionApi(Resource):
             _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id),
         )
 
-    @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
+    @console_ns.expect_model(ConversationVariableUpdatePayload)
     @console_ns.doc("update_conversation_variables")
     @console_ns.doc(description="Update conversation variables for workflow draft")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -626,7 +626,7 @@ class EnvironmentVariableCollectionApi(Resource):
 
         return {"items": env_vars_list}
 
-    @console_ns.expect(console_ns.models[EnvironmentVariableUpdatePayload.__name__])
+    @console_ns.expect_model(EnvironmentVariableUpdatePayload)
     @console_ns.doc("update_environment_variables")
     @console_ns.doc(description="Update environment variables for workflow draft")
     @console_ns.doc(params={"app_id": "Application ID"})

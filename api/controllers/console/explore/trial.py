@@ -24,7 +24,6 @@ from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
     JsonResponseWithStatus,
-    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -487,7 +486,7 @@ class TrialAppFileUploadApi(Resource):
     endpoint="trial_app_remote_file_upload",
 )
 class TrialAppRemoteFileUploadApi(Resource):
-    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.expect_model(RemoteFileUploadPayload)
     @console_ns.response(
         HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__]
     )
@@ -512,7 +511,7 @@ class TrialAppRemoteFileUploadApi(Resource):
     endpoint="trial_app_workflow_run",
 )
 class TrialAppWorkflowRunApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
+    @console_ns.expect_model(WorkflowRunRequest)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
@@ -576,7 +575,7 @@ class TrialAppWorkflowTaskStopApi(Resource):
     endpoint="trial_app_chat_completion",
 )
 class TrialChatApi(Resource):
-    @console_ns.expect(console_ns.models[ChatRequest.__name__])
+    @console_ns.expect_model(ChatRequest)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
@@ -764,7 +763,7 @@ class TrialChatAudioApi(Resource):
     endpoint="trial_app_text",
 )
 class TrialChatTextApi(Resource):
-    @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
+    @console_ns.expect_model(TextToSpeechRequest)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -800,7 +799,7 @@ class TrialChatTextApi(Resource):
     endpoint="trial_app_completion",
 )
 class TrialCompletionApi(Resource):
-    @console_ns.expect(console_ns.models[CompletionRequest.__name__])
+    @console_ns.expect_model(CompletionRequest)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
@@ -950,7 +949,7 @@ class AppWorkflowApi(Resource):
     endpoint="trial_app_datasets",
 )
 class DatasetListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
+    @console_ns.doc_query(TrialDatasetListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:

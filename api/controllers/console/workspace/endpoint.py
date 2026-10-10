@@ -15,7 +15,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.rbac import RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -228,7 +228,7 @@ class EndpointCollectionApi(Resource):
 
     @console_ns.doc("create_endpoint")
     @console_ns.doc(description="Create a new plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
+    @console_ns.expect_model(EndpointCreatePayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
@@ -260,7 +260,7 @@ class DeprecatedEndpointCreateApi(Resource):
             "Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/current/endpoints instead."
         )
     )
-    @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
+    @console_ns.expect_model(EndpointCreatePayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
@@ -285,7 +285,7 @@ class DeprecatedEndpointCreateApi(Resource):
 class EndpointListApi(Resource):
     @console_ns.doc("list_endpoints")
     @console_ns.doc(description="List plugin endpoints with pagination")
-    @console_ns.doc(params=query_params_from_model(EndpointListQuery))
+    @console_ns.doc_query(EndpointListQuery)
     @console_ns.response(
         HTTPStatus.OK,
         "Success",
@@ -315,7 +315,7 @@ class EndpointListApi(Resource):
 class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc("list_plugin_endpoints")
     @console_ns.doc(description="List endpoints for a specific plugin")
-    @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
+    @console_ns.doc_query(EndpointListForPluginQuery)
     @console_ns.response(
         HTTPStatus.OK,
         "Success",
@@ -369,7 +369,7 @@ class EndpointItemApi(Resource):
 
     @console_ns.doc("update_endpoint")
     @console_ns.doc(description="Update a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointUpdatePayload.__name__])
+    @console_ns.expect_model(EndpointUpdatePayload)
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
         HTTPStatus.OK,
@@ -403,7 +403,7 @@ class DeprecatedEndpointDeleteApi(Resource):
             "Use DELETE /workspaces/current/endpoints/{id} instead."
         )
     )
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect_model(EndpointIdPayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint deleted successfully",
@@ -436,7 +436,7 @@ class DeprecatedEndpointUpdateApi(Resource):
             "Use PATCH /workspaces/current/endpoints/{id} instead."
         )
     )
-    @console_ns.expect(console_ns.models[LegacyEndpointUpdatePayload.__name__])
+    @console_ns.expect_model(LegacyEndpointUpdatePayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint updated successfully",
@@ -461,7 +461,7 @@ class DeprecatedEndpointUpdateApi(Resource):
 class EndpointEnableApi(Resource):
     @console_ns.doc("enable_endpoint")
     @console_ns.doc(description="Enable a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect_model(EndpointIdPayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint enabled successfully",
@@ -486,7 +486,7 @@ class EndpointEnableApi(Resource):
 class EndpointDisableApi(Resource):
     @console_ns.doc("disable_endpoint")
     @console_ns.doc(description="Disable a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect_model(EndpointIdPayload)
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint disabled successfully",

@@ -39,7 +39,7 @@ register_response_schema_models(console_ns, LoadBalancingCredentialValidateRespo
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate"
 )
 class LoadBalancingCredentialsValidateApi(Resource):
-    @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
+    @console_ns.expect_model(LoadBalancingCredentialPayload)
     @console_ns.response(
         200,
         "Credential validation result",
@@ -90,7 +90,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate"
 )
 class LoadBalancingConfigCredentialsValidateApi(Resource):
-    @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
+    @console_ns.expect_model(LoadBalancingCredentialPayload)
     @console_ns.response(
         200,
         "Credential validation result",

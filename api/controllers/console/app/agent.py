@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models
+from controllers.common.schema import register_response_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -78,7 +78,7 @@ class AgentLogApi(Resource):
     @console_ns.doc("get_agent_logs")
     @console_ns.doc(description="Get agent execution logs for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(AgentLogQuery))
+    @console_ns.doc_query(AgentLogQuery)
     @console_ns.response(200, "Agent logs retrieved successfully", console_ns.models[AgentLogResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required

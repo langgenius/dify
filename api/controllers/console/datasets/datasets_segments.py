@@ -9,7 +9,6 @@ from controllers.common.controller_schemas import ChildChunkCreatePayload, Child
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import (
-    query_params_from_model,
     query_params_from_request,
     register_response_schema_models,
     register_schema_models,
@@ -197,7 +196,7 @@ def _raise_segment_error(error: Exception) -> Never:
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
-    @console_ns.doc(params=query_params_from_model(SegmentListQuery))
+    @console_ns.doc_query(SegmentListQuery)
     @console_ns.response(200, "Segments retrieved successfully", console_ns.models[ConsoleSegmentListResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
@@ -235,7 +234,7 @@ class DatasetDocumentSegmentListApi(Resource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
-    @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
+    @console_ns.doc_query(SegmentIdListQuery)
     @console_ns.response(204, "Segments deleted successfully")
     def delete(
         self,
@@ -259,7 +258,7 @@ class DatasetDocumentSegmentListApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_ACTION)
-    @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
+    @console_ns.doc_query(SegmentIdListQuery)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -300,7 +299,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__])
+    @console_ns.expect_model(SegmentCreatePayload)
     @console_ns.response(200, "Segment created successfully", console_ns.models[SegmentDetailResponse.__name__])
     @model_validate(SegmentCreatePayload)
     def post(
@@ -335,7 +334,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     )
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[SegmentUpdatePayload.__name__])
+    @console_ns.expect_model(SegmentUpdatePayload)
     @console_ns.response(200, "Segment updated successfully", console_ns.models[SegmentDetailResponse.__name__])
     @model_validate(SegmentUpdatePayload)
     def patch(
@@ -397,7 +396,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
+    @console_ns.expect_model(BatchImportPayload)
     @model_validate(BatchImportPayload)
     def post(
         self,
@@ -442,7 +441,7 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__])
+    @console_ns.expect_model(ChildChunkCreatePayload)
     @console_ns.response(200, "Child chunk created successfully", console_ns.models[ChildChunkDetailResponse.__name__])
     @model_validate(ChildChunkCreatePayload)
     def post(
@@ -466,7 +465,7 @@ class ChildChunkAddApi(Resource):
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
-    @console_ns.doc(params=query_params_from_model(ChildChunkListQuery))
+    @console_ns.doc_query(ChildChunkListQuery)
     @console_ns.response(200, "Child chunks retrieved successfully", console_ns.models[ChildChunkListResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
@@ -504,7 +503,7 @@ class ChildChunkAddApi(Resource):
         "Child chunks updated successfully",
         console_ns.models[ChildChunkBatchUpdateResponse.__name__],
     )
-    @console_ns.expect(console_ns.models[ChildChunkBatchUpdatePayload.__name__])
+    @console_ns.expect_model(ChildChunkBatchUpdatePayload)
     @model_validate(ChildChunkBatchUpdatePayload)
     def patch(
         self,
@@ -565,7 +564,7 @@ class ChildChunkUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
-    @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__])
+    @console_ns.expect_model(ChildChunkUpdatePayload)
     @console_ns.response(200, "Child chunk updated successfully", console_ns.models[ChildChunkDetailResponse.__name__])
     @model_validate(ChildChunkUpdatePayload)
     def patch(

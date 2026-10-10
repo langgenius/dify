@@ -6,7 +6,7 @@ from flask import make_response, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import RecommendedAppNotFoundError
 from controllers.console.flask_admission import console_account_admission
@@ -110,7 +110,7 @@ register_response_schema_models(
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
+    @console_ns.doc_query(RecommendedAppsQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppListResponse.__name__])
     @console_account_admission()
     @model_validate(RecommendedAppsQuery)
@@ -125,7 +125,7 @@ class RecommendedAppListApi(Resource):
 
 @console_ns.route("/explore/apps/learn-dify")
 class LearnDifyAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
+    @console_ns.doc_query(RecommendedAppsQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
     @console_account_admission()
     @model_validate(RecommendedAppsQuery)
@@ -153,7 +153,7 @@ class RecommendedAppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/export")
 class RecommendedAgentExportApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RecommendedAgentExportQuery))
+    @console_ns.doc_query(RecommendedAgentExportQuery)
     @console_ns.doc(
         produces=["application/json", "application/zip"],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},

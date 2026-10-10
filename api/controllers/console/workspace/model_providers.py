@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -145,7 +145,7 @@ register_response_schema_models(
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserModelList))
+    @console_ns.doc_query(ParserModelList)
     @console_ns.response(
         200, "Model providers retrieved successfully", console_ns.models[ModelProviderListResponse.__name__]
     )
@@ -196,7 +196,7 @@ class ModelProviderCreditsApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserCredentialId))
+    @console_ns.doc_query(ParserCredentialId)
     @console_ns.response(
         200,
         "Provider credentials retrieved successfully",
@@ -218,7 +218,7 @@ class ModelProviderCredentialApi(Resource):
 
         return ProviderCredentialsResponse(credentials=credentials).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserCredentialCreate.__name__])
+    @console_ns.expect_model(ParserCredentialCreate)
     @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -242,7 +242,7 @@ class ModelProviderCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
-    @console_ns.expect(console_ns.models[ParserCredentialUpdate.__name__])
+    @console_ns.expect_model(ParserCredentialUpdate)
     @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -267,7 +267,7 @@ class ModelProviderCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
+    @console_ns.expect_model(ParserCredentialDelete)
     @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
@@ -287,7 +287,7 @@ class ModelProviderCredentialApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
-    @console_ns.expect(console_ns.models[ParserCredentialSwitch.__name__])
+    @console_ns.expect_model(ParserCredentialSwitch)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -308,7 +308,7 @@ class ModelProviderCredentialSwitchApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ParserCredentialValidate.__name__])
+    @console_ns.expect_model(ParserCredentialValidate)
     @console_ns.response(
         200,
         "Provider credentials validated successfully",
@@ -364,7 +364,7 @@ class ModelProviderIconApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPreferredProviderType.__name__])
+    @console_ns.expect_model(ParserPreferredProviderType)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required

@@ -231,7 +231,7 @@ register_response_schema_models(
 class RuleGenerateApi(Resource):
     @console_ns.doc("generate_rule_config")
     @console_ns.doc(description="Generate rule configuration using LLM")
-    @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
+    @console_ns.expect_model(RuleGeneratePayload)
     @console_ns.response(
         200,
         "Rule configuration generated successfully",
@@ -264,7 +264,7 @@ class RuleGenerateApi(Resource):
 class RuleCodeGenerateApi(Resource):
     @console_ns.doc("generate_rule_code")
     @console_ns.doc(description="Generate code rules using LLM")
-    @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
+    @console_ns.expect_model(RuleCodeGeneratePayload)
     @console_ns.response(200, "Code rules generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
@@ -296,7 +296,7 @@ class RuleCodeGenerateApi(Resource):
 class RuleStructuredOutputGenerateApi(Resource):
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
-    @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
+    @console_ns.expect_model(RuleStructuredOutputPayload)
     @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
@@ -328,7 +328,7 @@ class RuleStructuredOutputGenerateApi(Resource):
 class InstructionGenerateApi(Resource):
     @console_ns.doc("generate_instruction")
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
-    @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
+    @console_ns.expect_model(InstructionGeneratePayload)
     @console_ns.response(200, "Instruction generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
     @console_ns.response(402, "Provider quota exceeded")
@@ -430,7 +430,7 @@ class InstructionGenerateApi(Resource):
 class InstructionGenerationTemplateApi(Resource):
     @console_ns.doc("get_instruction_template")
     @console_ns.doc(description="Get instruction generation template")
-    @console_ns.expect(console_ns.models[InstructionTemplatePayload.__name__])
+    @console_ns.expect_model(InstructionTemplatePayload)
     @console_ns.response(200, "Template retrieved successfully", console_ns.models[SimpleDataResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -490,7 +490,7 @@ class WorkflowGenerateApi(Resource):
 
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
-    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.expect_model(WorkflowGeneratePayload)
     @console_ns.response(
         200,
         "Workflow graph generated successfully",
@@ -546,7 +546,7 @@ class WorkflowInstructionSuggestionsApi(Resource):
 
     @console_ns.doc("generate_workflow_instruction_suggestions")
     @console_ns.doc(description="Suggest example workflow-generator instructions for the tenant")
-    @console_ns.expect(console_ns.models[WorkflowInstructionSuggestionsPayload.__name__])
+    @console_ns.expect_model(WorkflowInstructionSuggestionsPayload)
     @console_ns.response(
         200,
         "Suggestions generated successfully",
@@ -582,7 +582,7 @@ class WorkflowGenerateStreamApi(Resource):
 
     @console_ns.doc("generate_workflow_graph_stream")
     @console_ns.doc(description="Stream a Dify workflow graph (plan then result) via SSE")
-    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.expect_model(WorkflowGeneratePayload)
     @console_ns.response(
         200,
         "Server-Sent Events stream; each data frame matches this plan/result event schema",

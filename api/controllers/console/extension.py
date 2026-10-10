@@ -20,7 +20,7 @@ from services.api_based_extension_application_service import (
 )
 from services.code_based_extension_service import CodeBasedExtensionService
 
-from ..common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from ..common.schema import register_response_schema_models, register_schema_models
 from . import console_ns
 from .wraps import account_initialization_required, model_validate, setup_required
 
@@ -91,7 +91,7 @@ def _extension_response(extension: APIBasedExtensionRecord) -> dict[str, Any]:
 class CodeBasedExtensionAPI(Resource):
     @console_ns.doc("get_code_based_extension")
     @console_ns.doc(description="Get code-based extension data by module name")
-    @console_ns.doc(params=query_params_from_model(CodeBasedExtensionQuery))
+    @console_ns.doc_query(CodeBasedExtensionQuery)
     @console_ns.response(
         200,
         "Success",
@@ -120,7 +120,7 @@ class APIBasedExtensionAPI(Resource):
 
     @console_ns.doc("create_api_based_extension")
     @console_ns.doc(description="Create a new API-based extension")
-    @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
+    @console_ns.expect_model(APIBasedExtensionPayload)
     @console_ns.response(201, "Extension created successfully", console_ns.models[APIBasedExtensionResponse.__name__])
     @console_account_admission()
     @model_validate(APIBasedExtensionPayload)
@@ -159,7 +159,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @console_ns.doc("update_api_based_extension")
     @console_ns.doc(description="Update API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
-    @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
+    @console_ns.expect_model(APIBasedExtensionPayload)
     @console_ns.response(200, "Extension updated successfully", console_ns.models[APIBasedExtensionResponse.__name__])
     @console_account_admission()
     @model_validate(APIBasedExtensionPayload)

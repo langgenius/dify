@@ -34,7 +34,7 @@ class RBACAccessPoliciesApi(Resource):
         )
 
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
-    @console_ns.expect(console_ns.models[_AccessPolicyCreateRequest.__name__])
+    @console_ns.expect_model(_AccessPolicyCreateRequest)
     @console_ns.response(201, "Policy created", console_ns.models[dto.AccessPolicy.__name__])
     def post(self, context: RequestContext):
         request = _AccessPolicyCreateRequest.model_validate(console_ns.payload or {})
@@ -62,7 +62,7 @@ class RBACAccessPolicyItemApi(Resource):
         )
 
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
-    @console_ns.expect(console_ns.models[_AccessPolicyUpdateRequest.__name__])
+    @console_ns.expect_model(_AccessPolicyUpdateRequest)
     @console_ns.response(200, "Success", console_ns.models[dto.AccessPolicy.__name__])
     def put(self, context: RequestContext, policy_id):
         request = _AccessPolicyUpdateRequest.model_validate(console_ns.payload or {})

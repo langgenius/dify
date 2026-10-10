@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace, enforce_rbac_checks
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
@@ -127,7 +127,7 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
 
 @console_ns.route("/tags")
 class TagListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TagListQueryParam))
+    @console_ns.doc_query(TagListQueryParam)
     @console_ns.response(200, "Success", console_ns.models[TagListResponse.__name__])
     @console_account_admission()
     @model_validate(TagListQueryParam)
@@ -136,7 +136,7 @@ class TagListApi(Resource):
 
         return dump_response(TagListResponse, tags), 200
 
-    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @console_ns.expect_model(TagBasePayload)
     @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
     @console_account_admission()
     @model_validate(TagBasePayload)
@@ -158,7 +158,7 @@ class TagListApi(Resource):
 
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[TagUpdateRequestPayload.__name__])
+    @console_ns.expect_model(TagUpdateRequestPayload)
     @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
     @console_account_admission()
     @model_validate(TagUpdateRequestPayload)
@@ -247,7 +247,7 @@ class TagBindingCollectionApi(Resource):
     """Canonical collection resource for tag binding creation."""
 
     @console_ns.doc("create_tag_binding")
-    @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
+    @console_ns.expect_model(TagBindingPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @model_validate(TagBindingPayload)
@@ -261,7 +261,7 @@ class TagBindingRemoveApi(Resource):
 
     @console_ns.doc("remove_tag_bindings")
     @console_ns.doc(description="Remove one or more tag bindings from a target.")
-    @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
+    @console_ns.expect_model(TagBindingRemovePayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @model_validate(TagBindingRemovePayload)
