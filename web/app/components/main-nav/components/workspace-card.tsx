@@ -309,7 +309,6 @@ export function WorkspaceCard() {
       if (currentWorkspace.id === tenant_id) return
 
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

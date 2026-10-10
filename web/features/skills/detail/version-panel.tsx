@@ -268,7 +268,6 @@ function VersionRow({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.renameVersionSuccess']))
           setRenameOpen(false)
           invalidateVersions()
         },

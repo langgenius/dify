@@ -528,7 +528,6 @@
   "singleRun.testRun": "測試運行",
   "snippet.confirm": "確認",
   "snippet.createDialogTitle": "建立片段",
-  "snippet.createSuccess": "已建立片段",
   "snippet.descriptionLabel": "描述（可選）",
   "snippet.descriptionPlaceholder": "簡單描述您的片段",
   "snippet.nameLabel": "片段名稱",
