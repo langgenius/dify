@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import type { AnnotationItem, HitHistoryItem } from '../type'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -273,7 +273,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </div>
-                        <AlertDialogActions>
+                        <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
@@ -287,7 +287,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                           >
                             {t(($) => $['operation.confirm'], { ns: 'common' })}
                           </AlertDialogConfirmButton>
-                        </AlertDialogActions>
+                        </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>

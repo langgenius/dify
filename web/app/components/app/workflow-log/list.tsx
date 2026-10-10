@@ -239,7 +239,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   <td className="w-45 p-3 pr-2">
                     <DrawerTrigger
                       data-log-detail-trigger
-                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      className="w-full cursor-pointer rounded-sm text-left"
                       onClick={(event) => {
                         event.stopPropagation()
                         setCurrentLog(log)

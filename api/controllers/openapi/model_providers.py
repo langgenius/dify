@@ -54,7 +54,7 @@ _PROVIDER_PATH: Final = "/workspaces/<string:workspace_id>/model-providers/<path
 
 
 @contextmanager
-def _model_provider_errors() -> Generator[None, None, None]:
+def _model_provider_errors() -> Generator[None]:
     """Maps what the model provider service raises for a credential write or a provider lookup."""
     try:
         yield

@@ -113,6 +113,8 @@ class ConsoleApps(Protocol):
 
     def access_ready(self, context: RequestContext, app_id: str) -> bool: ...
 
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None: ...
+
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None: ...
 
     def get_reference(self, context: RequestContext, app_id: str) -> AppReference: ...
@@ -214,6 +216,10 @@ class ConsoleAppService:
     def access_ready(self, context: RequestContext, app_id: str) -> bool:
         """Whether an agent app has a published version its web app and Service API can serve."""
         return self._apps.access_ready(context, app_id)
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        """The role of an agent app's backing agent; None for other apps."""
+        return self._apps.agent_role(context, app_id)
 
     def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
         if source is not None:
@@ -397,7 +403,9 @@ class ConsoleAppService:
         self._apps.set_starred(context, app_id, starred)
 
     def copy(self, context: RequestContext, app_id: str, params: CopyAppParams) -> tuple[Import, AppRecord | None]:
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=True))
+        dsl = self._transfers.export_dsl(
+            context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
+        )
         result = self._transfers.import_dsl(
             context,
             AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),

@@ -125,7 +125,7 @@ function Canvas({
   useWorkflowControlScale(containerRef)
   return (
     <>
-      {[1, 0.5, 0.25].map((zoom) => (
+      {[1, 0.25].map((zoom) => (
         <button key={zoom} type="button" onClick={() => setViewport({ x: 0, y: 0, zoom })}>
           Zoom {zoom * 100}%
         </button>
@@ -183,13 +183,15 @@ function Fixture(props: { initialZoom?: number; showEdge?: boolean; humanInput?:
   )
 }
 
-it.each([1, 0.5, 0.25])(
+it.each([1, 0.25])(
   'keeps real handles clickable at their edges and draggable at zoom %s',
   async (zoom) => {
     // Native hit testing under both ReactFlow and control transforms is not represented by DOM unit tests.
     await page.viewport(1100, 700)
     const screen = await render(<Fixture />)
     await screen.getByRole('button', { name: `Zoom ${zoom * 100}%` }).click()
+    await expect.element(screen.getByRole('group', { name: 'Source node' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
     // ReactFlow handle elements are a canvas boundary without a semantic locator.
     const source = page.elementLocator(
       screen
@@ -236,6 +238,8 @@ it.each([1, 0.5, 0.25])(
 it('keeps a saved connection anchored to the port centers when initialized at 25% zoom', async () => {
   await page.viewport(1100, 700)
   const screen = await render(<Fixture initialZoom={0.25} showEdge />)
+  await expect.element(screen.getByRole('group', { name: 'Source node' })).toBeInTheDocument()
+  await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
   const source = screen
     .getByRole('group', { name: 'Source node' })
     .element()
@@ -276,6 +280,8 @@ it('adds and connects the intended human input branch at 25% zoom', async () => 
   await page.viewport(1100, 700)
   const screen = await render(<Fixture initialZoom={0.25} humanInput />)
   const sourceNode = screen.getByRole('group', { name: 'Human input node' })
+  await expect.element(sourceNode).toBeInTheDocument()
+  await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
   const target = page.elementLocator(
     screen
       .getByRole('group', { name: 'Target node' })

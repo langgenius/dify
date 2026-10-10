@@ -29,6 +29,7 @@ Read this document when a component consumes generated contracts, nullable API v
 - Use generated `mutationOptions()` directly for owner-local mutations.
 - Do not introduce deprecated `useInvalid` or `useReset` APIs.
 - Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. In oRPC v1, caller options override defaults, including callbacks. Local callbacks may own toast, close, and navigation effects but must preserve shared cache behavior.
+- A mutation callback is not a reason to show a toast. Show one only for a result the user cannot see where they acted; a control that displays its new value, or a dialog that closes onto the updated list, is already the feedback. Do not report a failure that another layer already reports.
 - Prefer `mutate(...)`. Use `mutateAsync(...)` only when Promise composition is required, and catch awaited failures.
 - Preserve intentional empty values and current list/detail ownership when updating data. Do not add optimistic updates without a verified owner contract.
 

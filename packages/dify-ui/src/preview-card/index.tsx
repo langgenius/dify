@@ -26,6 +26,8 @@ const PreviewCardTrigger = BasePreviewCard.Trigger
 const PreviewCardViewport = BasePreviewCard.Viewport
 const createPreviewCardHandle = BasePreviewCard.createHandle
 
+type PreviewCardActions = BasePreviewCard.Root.Actions
+
 type PreviewCardProps<Payload = unknown> = BasePreviewCard.Root.Props<Payload>
 type PreviewCardHandle<Payload = unknown> = BasePreviewCard.Handle<Payload>
 type PreviewCardTriggerProps<Payload = unknown> = BasePreviewCard.Trigger.Props<Payload>
@@ -115,6 +117,7 @@ export {
   PreviewCardViewport,
 }
 export type {
+  PreviewCardActions,
   PreviewCardContentProps,
   PreviewCardHandle,
   PreviewCardPopupProps,

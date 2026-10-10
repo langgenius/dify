@@ -1,5 +1,4 @@
 import type { DayPickerProps } from '@daypicker/react'
-import type { OptionColumnHandle } from '../internal/option-column'
 import * as React from 'react'
 import { Button } from '../../button'
 import { OptionColumn } from '../internal/option-column'
@@ -53,8 +52,6 @@ function CalendarPanel({
   const [focusCalendar, setFocusCalendar] = React.useState(false)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const headerRef = React.useRef<HTMLButtonElement>(null)
-  const monthRef = React.useRef<OptionColumnHandle>(null)
-  const yearRef = React.useRef<OptionColumnHandle>(null)
   React.useEffect(() => {
     if (choosingMonth || !focusCalendar) return
     const frame = requestAnimationFrame(() => {
@@ -102,15 +99,10 @@ function CalendarPanel({
     panelRef.current?.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true })
   }
   function finish(apply: boolean) {
-    let next = draftMonth
-    if (apply) {
-      next = `${String(yearRef.current?.settle() ?? year).padStart(4, '0')}-${String(monthRef.current?.settle() ?? month).padStart(2, '0')}-01`
-      setDraftMonth(next)
-      if (outOfBounds(next)) return
-    }
+    if (apply && outOfBounds(draftMonth)) return
     focusPopup()
     setFocusCalendar(apply)
-    if (apply) onDisplayMonthChange(next)
+    if (apply) onDisplayMonthChange(draftMonth)
     setMonthPickerHeight(null)
     if (!apply) requestAnimationFrame(() => headerRef.current?.focus())
   }
@@ -197,7 +189,6 @@ function CalendarPanel({
           aria-describedby={unavailable ? errorId : undefined}
         >
           <OptionColumn
-            ref={monthRef}
             onEscape={() => finish(false)}
             focusOnMount
             normalizeDigits={numbers.normalizeDigits}
@@ -211,7 +202,6 @@ function CalendarPanel({
             }
           />
           <OptionColumn
-            ref={yearRef}
             onEscape={() => finish(false)}
             normalizeDigits={numbers.normalizeDigits}
             label={labels.year}

@@ -10,11 +10,11 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -323,7 +323,6 @@ export function AppCardInteractions({
         { params: { app_id: app.id } },
         {
           onSuccess: () => {
-            toast.success(t(($) => $.appDeleted, { ns: 'app' }))
             setActiveDialog(null)
             setConfirmDeleteInput('')
           },
@@ -421,7 +420,6 @@ export function AppCardInteractions({
           },
         })
         setActiveDialog(null)
-        toast.success(t(($) => $.editDone, { ns: 'app' }))
       } catch (e) {
         toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
       }
@@ -454,7 +452,6 @@ export function AppCardInteractions({
             }
 
             setActiveDialog(null)
-            toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
             getRedirection(newApp, push, {
               currentUserId,
               resourceMaintainer: newApp.maintainer ?? undefined,
@@ -725,7 +722,7 @@ export function AppCardInteractions({
                 </InputGroup>
               </Field>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
@@ -736,7 +733,7 @@ export function AppCardInteractions({
               >
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>

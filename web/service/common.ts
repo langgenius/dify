@@ -60,16 +60,6 @@ export const fetchInitValidateStatus = (): Promise<InitValidateStatusResponse> =
 export const fetchSetupStatus = (): Promise<SetupStatusResponse> => {
   return get<SetupStatusResponse>('/setup')
 }
-export const updateUserProfile = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
 export const deleteMemberOrCancelInvitation = ({
   url,
 }: {

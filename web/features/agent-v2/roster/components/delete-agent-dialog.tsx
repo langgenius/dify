@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
@@ -44,7 +44,6 @@ export function DeleteAgentDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.deleteSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
           onDeleted?.()
         },
@@ -64,7 +63,7 @@ export function DeleteAgentDialog({
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
           {t(($) => $['roster.deleteDialog.description'], { ns: 'agentRoster', name: agentName })}
         </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
+        <AlertDialogFooter className="p-0 pt-6">
           <AlertDialogCancelButton disabled={deleteAgentMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -75,7 +74,7 @@ export function DeleteAgentDialog({
           >
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

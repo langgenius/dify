@@ -1741,6 +1741,7 @@ export const zSyncDraftWorkflowPayload = z.object({
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
   features: z.record(z.string(), z.unknown()),
+  force: z.boolean().optional().default(false),
   graph: z.record(z.string(), z.unknown()),
   hash: z.string().nullish(),
 })
@@ -5381,6 +5382,7 @@ export const zGetAppsQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().optional(),
+  openapi_visible: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
@@ -5464,6 +5466,7 @@ export const zGetAppsStarredQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().optional(),
+  openapi_visible: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])

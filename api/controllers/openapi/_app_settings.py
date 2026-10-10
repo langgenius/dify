@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.rbac.locators import agent_binding
 from controllers.openapi._errors import WebAppAccessModeConsoleOnly, WebAppAccessUnavailable
 from controllers.openapi._models import (
     AgentAppInfo,
@@ -84,8 +83,7 @@ def update_app_info[T: BaseModel](ctx: Context, patch: BaseModel, model: type[T]
 
 
 def _stored_role(ctx: Context) -> str | None:
-    agent = agent_binding(ctx.workspace.id, ctx.app.id)
-    return agent.role if agent is not None else None
+    return application_services().apps.console.agent_role(ctx.request_context, ctx.app.id)
 
 
 def _agent_app_info(record: AppRecord, role: str | None) -> AgentAppInfo:
@@ -98,10 +96,8 @@ def agent_app_info(ctx: Context) -> AgentAppInfo:
 
 
 def update_agent_app_info(ctx: Context, patch: AgentAppInfoPatch) -> AgentAppInfo:
-    changes = patch.model_dump(exclude_unset=True, exclude_none=True)
-    # The request's agent binding may be cached from before the write, so a role sent is the one stored.
-    role = changes["role"] if "role" in changes else _stored_role(ctx)
-    return _agent_app_info(_update_app_info(ctx, changes), role)
+    record = _update_app_info(ctx, patch.model_dump(exclude_unset=True, exclude_none=True))
+    return _agent_app_info(record, _stored_role(ctx))
 
 
 def _update_app_info(ctx: Context, changes: dict[str, Any]) -> AppRecord:

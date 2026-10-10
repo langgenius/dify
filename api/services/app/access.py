@@ -2,15 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from sqlalchemy.orm import Session
 
 from services.enterprise import rbac_service as enterprise_rbac_service
-
-if TYPE_CHECKING:
-    from services.enterprise.rbac_service import MyPermissionsResponse
-    from services.entities.app_entities import AppListBaseParams
+from services.entities.app_entities import AppListBaseParams
+from services.rbac.contracts import MyPermissionsResponse
 
 # Permission keys (dot-notation, from MyPermissionsResponse) that grant
 # list/preview access to an app. Keep this the single source of truth for both
@@ -69,7 +64,6 @@ def resolve_app_access_filter(
     tenant_id: str,
     account_id: str,
     *,
-    session: Session,
     permissions: MyPermissionsResponse | None = None,
 ) -> AppAccessFilter:
     """Compute the RBAC app-access filter for ``account_id`` in ``tenant_id``.
@@ -79,7 +73,10 @@ def resolve_app_access_filter(
     inner-API round trip; otherwise it is fetched here.
     """
     if permissions is None:
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=session)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            tenant_id,
+            account_id,
+        )
     whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(tenant_id, account_id)
 
     can_manage_own_apps = _MANAGE_OWN_APPS_PERMISSION_KEY in permissions.workspace.permission_keys

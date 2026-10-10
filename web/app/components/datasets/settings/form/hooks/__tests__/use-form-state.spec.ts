@@ -316,22 +316,8 @@ describe('useFormState', () => {
   })
 
   describe('Icon Handlers', () => {
-    it('should open app icon picker and save previous icon', () => {
-      const { result } = renderHook(() => useFormState())
-
-      act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      expect(result.current.showIconPicker).toBe(true)
-    })
-
     it('should select emoji icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
-
-      act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
 
       act(() => {
         result.current.handleSelectAppIcon({
@@ -341,7 +327,6 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -354,10 +339,6 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      act(() => {
         result.current.handleSelectAppIcon({
           type: 'image',
           fileId: 'file-123',
@@ -365,40 +346,11 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'image',
         icon: 'file-123',
         icon_background: undefined,
         icon_url: 'https://example.com/icon.png',
-      })
-    })
-
-    it('should close picker through open state setter without changing icon', () => {
-      const { result } = renderHook(() => useFormState())
-
-      act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      act(() => {
-        result.current.handleSelectAppIcon({
-          type: 'emoji',
-          icon: '🎉',
-          background: '#FF0000',
-        })
-      })
-
-      act(() => {
-        result.current.setShowIconPicker(false)
-      })
-
-      expect(result.current.showIconPicker).toBe(false)
-      expect(result.current.iconInfo).toEqual({
-        icon_type: 'emoji',
-        icon: '🎉',
-        icon_background: '#FF0000',
-        icon_url: undefined,
       })
     })
   })

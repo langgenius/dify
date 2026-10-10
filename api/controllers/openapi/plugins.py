@@ -59,7 +59,7 @@ _TASK_READ: Final = (*WORKSPACE_READ_GUARDS, CheckPluginInstallSetting())
 
 
 @contextmanager
-def _plugin_errors() -> Generator[None, None, None]:
+def _plugin_errors() -> Generator[None]:
     try:
         yield
     except PluginInstallationForbiddenError as error:

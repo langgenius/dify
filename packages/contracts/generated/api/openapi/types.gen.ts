@@ -1126,7 +1126,7 @@ export type SimpleResultResponse = {
   result: string
 }
 
-export type SubjectType = 'account' | 'external_sso'
+export type SubjectType = 'account' | 'external_sso' | 'resource_access'
 
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 

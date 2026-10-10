@@ -30,7 +30,7 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import AccountSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
@@ -265,6 +265,8 @@ class CheckAppAccess(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if isinstance(subject, ResourceAccessSubject):
+            return
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
         access_mode = self._access_mode(load_app(ctx).id)

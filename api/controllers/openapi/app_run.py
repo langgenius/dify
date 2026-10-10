@@ -50,7 +50,7 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     account_app_guards,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import with_form_hints
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -95,7 +95,7 @@ _INVALID_RUN_INPUT: Final = "invalid run input"
 
 
 @contextmanager
-def _translate_service_errors() -> Generator[None, None, None]:
+def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
@@ -137,7 +137,7 @@ def _translate_service_errors() -> Generator[None, None, None]:
 
 
 _RUN_GUARDS: Final = (
-    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
@@ -197,7 +197,7 @@ class _ChatMessageEnd(MessageEndStreamResponse):
     conversation_id: str
 
 
-def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str, None, None]:
+def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
         end = _ChatMessageEnd.model_validate(event)
         return [
@@ -211,14 +211,14 @@ def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generato
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
 
-HintLayer = Callable[[Iterable[str], str, str], Generator[str, None, None]]
+HintLayer = Callable[[Iterable[str], str, str], Generator[str]]
 
 
-def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _reply_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_reply_hints(events, op=op, app_id=app_id)
 
 
-def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str, None, None]:
+def _form_layer(events: Iterable[str], op: str, app_id: str) -> Generator[str]:
     return with_form_hints(events, app_id=app_id)
 
 
@@ -446,6 +446,10 @@ class AppRunTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
+            if owner != f"end-user-{ctx.end_user.id}".encode():
+                raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return TaskStopResponse(result="success")

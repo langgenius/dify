@@ -70,7 +70,7 @@ def _form(schemas: Sequence[ProviderConfig], language: str | None) -> list[Crede
 
 
 @contextmanager
-def _provider_not_found_errors() -> Generator[None, None, None]:
+def _provider_not_found_errors() -> Generator[None]:
     try:
         yield
     except ToolProviderNotFoundError as error:
@@ -78,7 +78,7 @@ def _provider_not_found_errors() -> Generator[None, None, None]:
 
 
 @contextmanager
-def _credential_write_errors() -> Generator[None, None, None]:
+def _credential_write_errors() -> Generator[None]:
     """Maps what the builtin tool service raises for a credential write; it wraps every failure, a rejected key
     included, in a ValueError."""
     try:
