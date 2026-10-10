@@ -8,7 +8,6 @@ import * as z from 'zod'
 export const zAppImportPayload = z.object({
   app_id: z.string().nullish(),
   description: z.string().nullish(),
-  draft_hash: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),

@@ -12,15 +12,9 @@ export const SHAPE = {
   Map: 'map',
   Object: 'object',
   Json: 'json',
-  Union: 'union',
 } as const
 export type Shape = (typeof SHAPE)[keyof typeof SHAPE]
-export type ShapeNode = Readonly<{
-  shape: Shape
-  item?: ShapeNode
-  values?: readonly string[]
-  options?: readonly ShapeNode[]
-}>
+export type ShapeNode = Readonly<{ shape: Shape; item?: ShapeNode; values?: readonly string[] }>
 
 type Coercion = (raw: string) => unknown
 
@@ -30,7 +24,7 @@ const ARRAY_TYPE = 'array'
 const OBJECT_TYPE = 'object'
 const STRING_TYPE = 'string'
 const FILE_REF_PREFIX = '@'
-const ALTERNATIVE_SEPARATOR = ' | '
+const ENUM_SEPARATOR = ' | '
 const BOOLEAN_LITERALS: Readonly<Record<string, boolean>> = { true: true, false: false }
 
 const keepRaw: Coercion = (raw) => raw
@@ -70,7 +64,7 @@ const SHAPE_INFO: Readonly<Record<Shape, ShapeInfo>> = {
   [SHAPE.Number]: { label: () => SHAPE.Number, coerce: () => toNumber, scalar: true },
   [SHAPE.Boolean]: { label: () => SHAPE.Boolean, coerce: () => toBoolean, scalar: true },
   [SHAPE.Enum]: {
-    label: (n) => (n.values ?? []).join(ALTERNATIVE_SEPARATOR),
+    label: (n) => (n.values ?? []).join(ENUM_SEPARATOR),
     coerce: () => keepRaw,
     scalar: true,
   },
@@ -87,24 +81,19 @@ const SHAPE_INFO: Readonly<Record<Shape, ShapeInfo>> = {
   },
   [SHAPE.Object]: { label: () => SHAPE.Object, coerce: () => toJson, scalar: false },
   [SHAPE.Json]: { label: () => SHAPE.Json, coerce: () => toJson, scalar: false },
-  [SHAPE.Union]: {
-    label: (n) => (n.options ?? []).map(labelOf).join(ALTERNATIVE_SEPARATOR),
-    coerce: () => toJson,
-    scalar: false,
-  },
 }
 
-function alternativesOf(schema: JsonSchema): JsonSchema[] {
-  const branches = schema.anyOf ?? schema.oneOf
-  if (!Array.isArray(branches)) return []
-  return branches.filter((b) => isRecord(b) && b.type !== NULL_TYPE) as JsonSchema[]
+// pydantic optional: anyOf [T, null]. Anything else with anyOf is json.
+function unwrapNullable(schema: JsonSchema): JsonSchema | undefined {
+  const branches = schema.anyOf
+  if (!Array.isArray(branches) || branches.length !== 2) return undefined
+  const real = branches.filter((b) => !(isRecord(b) && b.type === NULL_TYPE))
+  return real.length === 1 && isRecord(real[0]) ? (real[0] as JsonSchema) : undefined
 }
 
 export function shapeOf(schema: JsonSchema): ShapeNode {
-  const alternatives = alternativesOf(schema)
-  const [only] = alternatives
-  if (alternatives.length === 1 && only !== undefined) return shapeOf(only)
-  if (alternatives.length > 1) return { shape: SHAPE.Union, options: alternatives.map(shapeOf) }
+  const inner = unwrapNullable(schema)
+  if (inner !== undefined) return shapeOf(inner)
   const type = typeof schema.type === 'string' ? schema.type : undefined
   // An enum with no members names no value at all, so it degrades to json rather than
   // labelling as the empty string.

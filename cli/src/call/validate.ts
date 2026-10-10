@@ -21,20 +21,17 @@ function compile(schema: JsonSchema): ValidateFunction {
   return validate
 }
 
-const INSTANCE_PATH_SEPARATOR = '/'
-
-const READINGS: Readonly<Record<string, Readonly<{ param: string; msg: string }>>> = {
-  required: { param: 'missingProperty', msg: 'required' },
-  additionalProperties: { param: 'additionalProperty', msg: 'unknown field' },
+function locFor(error: ErrorObject): (string | number)[] {
+  const loc = error.instancePath.split('/').filter(Boolean)
+  if (error.keyword === 'required') {
+    const missingProperty = (error.params as { missingProperty?: string }).missingProperty
+    if (missingProperty !== undefined) loc.push(missingProperty)
+  }
+  return loc
 }
 
 function toDetail(error: ErrorObject): ValidationDetail {
-  const reading = READINGS[error.keyword]
-  const loc: (string | number)[] = error.instancePath.split(INSTANCE_PATH_SEPARATOR).filter(Boolean)
-  const named =
-    reading === undefined ? undefined : (error.params as Record<string, unknown>)[reading.param]
-  if (typeof named === 'string') loc.push(named)
-  return { type: error.keyword, loc, msg: reading?.msg ?? error.message ?? error.keyword }
+  return { type: error.keyword, loc: locFor(error), msg: error.message ?? error.keyword }
 }
 
 export function validateInput(schema: JsonSchema, input: unknown): readonly ValidationDetail[] {

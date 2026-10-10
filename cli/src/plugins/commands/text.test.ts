@@ -7,9 +7,8 @@ import SkillsInstall from '@/commands/install/skills/index'
 import { parseCatalog } from '@/plugins/catalog'
 import { colorScheme } from '@/sys/io/color'
 import { commandRow } from './describe'
-import { commandExamples, exampleLine } from './examples'
 import { helpMap } from './help'
-import { descriptorView, fieldRows, listingView, mapView, SECTIONS } from './text'
+import { descriptorView, exampleLine, fieldRows, listingView, mapView, SECTIONS } from './text'
 
 const OPS = parseCatalog(readFileSync(join(__dirname, '../../../test/fixtures/catalog.json'))).ops
 const plain = colorScheme(false)
@@ -24,7 +23,7 @@ function opDescriptor(id: string, path: readonly string[]): Descriptor {
     effect: 'write',
     input: op.input,
     positional: [],
-    examples: commandExamples({ id: path.join(' '), input: op.input, positional: [] }, op.examples),
+    examples: op.examples,
     op: id,
     method: op.method,
     path: op.path,
@@ -60,18 +59,18 @@ it('renders an op descriptor with input, options, global and examples', () => {
       difyctl run console_app workflow [flags]
 
     Flags
-      --app-id        string                      required
-      --attachments   file[]                      optional  Local files attached to the run itself (the app's
-                                                            \`sys.files\`), not to a variable
-      --files         map<string, file | file[]>  optional  Local files keyed by the app's file variable name; the
-                                                            server uploads each one and sets \`inputs[<name>]\`. Send a
-                                                            list (part name \`files[<name>][]\`) for a file-list variable
-      --inputs        map<string, json>           required  Variables declared by the app. The exact shape is per app:
-                                                            read \`input_schema\` from describe.console_app. A file
-                                                            variable takes a Dify file mapping (remote url or upload id)
-                                                            here, or a local file in \`files\`, not both.
-      --workflow-id   string                      optional  Pin a published workflow version
-      --workspace-id  string                      optional  Workspace that owns the app
+      --app-id        string             required
+      --attachments   file[]             optional  Local files attached to the run itself (the app's
+                                                   \`sys.files\`), not to a variable
+      --files         map<string, json>  optional  Local files keyed by the app's file variable name; the
+                                                   server uploads each one and sets \`inputs[<name>]\`. Send a
+                                                   list (part name \`files[<name>][]\`) for a file-list variable
+      --inputs        map<string, json>  required  Variables declared by the app. The exact shape is per app:
+                                                   read \`input_schema\` from describe.console_app. A file
+                                                   variable takes a Dify file mapping (remote url or upload id)
+                                                   here, or a local file in \`files\`, not both.
+      --workflow-id   string             optional  Pin a published workflow version
+      --workspace-id  string             optional  Workspace that owns the app
 
     Options
       --input   string    optional  Operation input as JSON, @file or @- for stdin
@@ -93,7 +92,7 @@ it('renders an op descriptor with input, options, global and examples', () => {
 
 it('renders a static descriptor with arguments and flags', () => {
   expect(descriptorView(skillsInstall).text(plain)).toMatchInlineSnapshot(`
-    "install skills  Write the difyctl skill into a skills root  write
+    "install skills  Write skills from the collection into a skills root  write
 
     Usage
       difyctl install skills <dir> [flags]
@@ -103,16 +102,19 @@ it('renders a static descriptor with arguments and flags', () => {
                                per skill
 
     Flags
-      --from  string  optional  A local skill folder to install instead of the one built
-                                into difyctl
+      --skill  string[]  []                                                        Skill to install (repeatable); default: the whole collection
+      --from   string    "https://github.com/langgenius/dify/tree/0000000/skills"  Where the skills come from: a GitHub folder URL or a local
+                                                                                   folder
 
     Global
       --verbose  boolean  false  Keep the raw server response in error envelopes
       --json     boolean  false  Print JSON even on a terminal
 
     Examples
-      # Install the skill for Claude Code
-      difyctl install skills ~/.claude/skills"
+      # Install every skill for Claude Code
+      difyctl install skills ~/.claude/skills
+      # Install one skill for Codex
+      difyctl install skills ~/.codex/skills --skill difyctl"
   `)
 })
 
@@ -123,9 +125,9 @@ it('example lines put positionals first, scalars as --flag value, non-scalars as
   expect(
     exampleLine(skillsInstall, {
       title: 't',
-      input: { dir: '~/.claude/skills', from: './skill' },
+      input: { dir: '~/.claude/skills', skill: ['difyctl'] },
     }),
-  ).toBe('difyctl install skills ~/.claude/skills --from ./skill')
+  ).toBe('difyctl install skills ~/.claude/skills --skill difyctl')
 })
 
 it('a missing positional prints as itself and a non-scalar one as json', () => {
@@ -203,9 +205,10 @@ it('a description prints its first line only', () => {
 })
 
 it('an op without examples prints a skeleton of its required fields', () => {
-  const skeleton = 'difyctl run console_app workflow --app-id <app_id> --inputs <inputs>'
-  expect(workflowRun.examples).toEqual([{ title: 'Required fields', command: skeleton }])
-  expect(descriptorView(workflowRun).text(plain)).toContain(skeleton)
+  expect(workflowRun.examples).toEqual([])
+  expect(descriptorView(workflowRun).text(plain)).toContain(
+    'difyctl run console_app workflow --app-id <app_id> --inputs <inputs>',
+  )
 })
 
 it('the map names each head, leaves by summary and groups by count', () => {

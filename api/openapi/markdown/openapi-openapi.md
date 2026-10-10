@@ -2408,7 +2408,7 @@ Portable DSL reference that could not be restored in the target workspace.
 | loc | [ string<br>integer ] |  | Yes |
 | message | string |  | Yes |
 | node_id | string |  | Yes |
-| severity | string | error: import refuses it; warning: import allows it, publish does not | Yes |
+| severity | string | error: import refuses it; warning: import allows it, the release check does not | Yes |
 
 #### EnvVariableListResponse
 

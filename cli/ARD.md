@@ -25,7 +25,7 @@ src/
   net/          fetch init and proxy dispatcher, shared by the http plugin and the pre-login device flow
   store/        config/session/token file and keychain persistence
   sys/          the process edges — env, argv, exit, platform paths; io/ holds streams.ts, color.ts and view.ts (a JSON value paired with its text form, the mode picks one)
-  skills/       the one embedded difyctl skill (or a local folder) and its installer
+  skills/       reads skills from a GitHub folder or a local folder, and installs them
 ```
 
 ---

@@ -115,11 +115,6 @@ function Resolve-Release {
     }
 }
 
-function Write-SkillHint {
-    Write-Host 'AI agents: run `difyctl install skills <your skills root>` to load the difyctl skill.'
-    Write-Host 'Run it again after each difyctl upgrade; the skill ships inside the binary.'
-}
-
 function Invoke-Main {
     $release = Resolve-Release
     $difyTag = $release.tag_name
@@ -163,7 +158,6 @@ function Invoke-Main {
         else {
             Write-Host 'verify: run "difyctl version"'
         }
-        Write-SkillHint
     }
     finally {
         Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

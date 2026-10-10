@@ -1148,6 +1148,7 @@ export const zOpenApiErrorCode = z.enum([
   'credential_invalid',
   'credential_not_found',
   'credential_oauth_only',
+  'draft_changed',
   'draft_not_found',
   'dsl_invalid',
   'env_variable_not_found',

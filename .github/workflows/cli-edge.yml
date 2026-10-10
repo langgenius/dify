@@ -57,11 +57,7 @@ jobs:
         run: CLI_VERSION="${{ steps.ver.outputs.version }}" scripts/release-write-checksums.sh
 
       - name: Smoke the runner-arch binary
-        run: |
-          bin="./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64"
-          "$bin" version
-          "$bin" install skills "$RUNNER_TEMP/skill"
-          diff -r "$RUNNER_TEMP/skill/difyctl" ../skills/difyctl
+        run: ./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64 version
 
       - name: Publish to R2
         env:

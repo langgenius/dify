@@ -1,6 +1,6 @@
 ---
 name: difyctl
-description: 'Operate a Dify server through difyctl: find and run any operation, and build, test, publish and change Workflow and Chatflow apps. Use when the task involves difyctl, a Dify server, or Dify apps.'
+description: 'Base skill for the difyctl CLI: find any command or Dify operation through help and run it as a command. Use when the task involves difyctl or a Dify server from the command line.'
 ---
 
 # difyctl
@@ -24,11 +24,36 @@ Four views under `help`, covering local commands and server operations as one tr
 
 Not logged in, or the server unreachable, gives the local commands plus one line on stderr.
 
+## Running an operation
+
+`difyctl run console_app workflow --app-id <id> --inputs '{"a":1}'`. Each top-level field of `input` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or `@file.json`; lists of scalars repeat the flag. Fields named `input`, `stream`, `only`, `output`, `verbose`, `json` or `help` have no flag; pass them through `--input`.
+
+`--input '{"a":1}'`, `--input @file.json` or `--input @-` (stdin) sends the whole body; field flags merge over it. A dotted id is a command with the dots as spaces: `run.console_app.workflow` is `difyctl run console_app workflow`.
+
+Run an app with the op for its mode: `run console_app workflow`, `run console_app chat`, `run console_app advanced_chat`, `run console_app completion`. First `difyctl describe console_app --app-id <id> --json` and read `input_schema`; that is the shape of `inputs`. Local files go under `files`, keyed by the app's file variable name (`{"files":{"doc":"./r.pdf"}}` or a list of paths); files for the run itself under `attachments`; URLs straight into `inputs`.
+
+## difyctl-only flags
+
+`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
+
+## Reading results
+
+Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conversation_id?, error?, hints}`. `text.answer` is the reply; `text.by_source` appears only while `status` is `incomplete`. `status` is `ended`, `failed` (exit 1), `suspended` (a form is waiting; follow `hints`) or `incomplete` (the stream broke early). Any response may carry `hints: [{summary, op, input, form?}]`, the server's next steps: next page, confirm step, reply op, form submit. Fill any `null` in `input` and pass it back with `difyctl <op, dots as spaces> --input '<input>'`.
+
+## Errors and exit codes
+
+Errors are one envelope on stderr: `{"error":{"code","message","hint"?,"details"?,"schema"?}}`. Exit 2 is bad input (schema included), 4 not logged in or forbidden, 6 catalog unavailable or unknown op (run `difyctl refresh cache` or upgrade difyctl), 7 rate limited.
+
+## Login and environment
+
+`difyctl login --server https://...` (device flow; `--no-browser` prints the URL and code; `--no-keyring` keeps the token in a file; `--insecure` skips TLS verification). One login at a time. `difyctl use workspace <id>` pins a workspace; `difyctl get workspace` shows them. Scripts skip login with `DIFY_SERVER` and `DIFY_TOKEN`; `DIFY_WORKSPACE_ID` overrides the pin; `DIFY_CONFIG_DIR` and `DIFY_CACHE_DIR` move the files.
+
+`login` blocks until the browser approval arrives. Run `difyctl login --server <url> --no-browser` as a background job, relay the `open <url>` and `code <code>` lines from its stderr to the user, and do not cancel the job. Its exit code reports the result. In a sandbox, add `--no-keyring` and set `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session. If background jobs do not survive between calls, run `login --no-wait` instead, relay the `verification_uri` and `user_code` it prints, and after the user approves run `login --resume` until it stops printing `status: pending`.
+
+## Destructive operations
+
 Operations that remove or revoke have no confirmation prompt. Confirm with the person first.
 
-## Where to read next
+## Other skills
 
-- Read [`references/setup.md`](references/setup.md) to check login or log in, switching server or workspace, or running in a sandbox or CI.
-- Read [`references/operations.md`](references/operations.md) before running any operation: flags, inputs, files, results, hints, errors and exit codes.
-- Read [`references/build-workflow.md`](references/build-workflow.md) when asked to create, change, test or publish a Workflow or Chatflow app.
-- Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the user asks to install or remove a plugin. Prefer an existing tool over an HTTP Request or Code node; the human picks.
+Scenario skills add guidance for one kind of task. `difyctl get skills` shows them; `difyctl install skills <skills root> --skill <name>` installs one, where `<skills root>` is the folder above this file's folder. Re-running `difyctl install skills <skills root>` after upgrading difyctl refreshes every skill.

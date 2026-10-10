@@ -45,20 +45,21 @@ difyctl has no built-in business commands. Every operation the server publishes 
 
 ## Commands
 
-| Command                    | Purpose                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `login`                    | Log in via the OAuth device flow                       |
-| `logout`                   | Log out of the current session                         |
-| `version`                  | Print the client and (if logged in) server versions    |
-| `use workspace <id>`       | Pin the local session to a workspace                   |
-| `get config [key]`         | Print the local config, or one key                     |
-| `set config <key> <value>` | Set a local config value                               |
-| `unset config <key>`       | Remove a local config value, restoring its default     |
-| `refresh cache`            | Refetch the server catalog and replace the local cache |
-| `delete cache`             | Delete the local server catalog cache                  |
-| `install skills <dir>`     | Write the difyctl skill into a skills root (`--from`)  |
+| Command                    | Purpose                                                         |
+| -------------------------- | --------------------------------------------------------------- |
+| `login`                    | Log in via the OAuth device flow                                |
+| `logout`                   | Log out of the current session                                  |
+| `version`                  | Print the client and (if logged in) server versions             |
+| `use workspace <id>`       | Pin the local session to a workspace                            |
+| `get config [key]`         | Print the local config, or one key                              |
+| `set config <key> <value>` | Set a local config value                                        |
+| `unset config <key>`       | Remove a local config value, restoring its default              |
+| `refresh cache`            | Refetch the server catalog and replace the local cache          |
+| `delete cache`             | Delete the local server catalog cache                           |
+| `get skills`               | List the skills in the collection                               |
+| `install skills <dir>`     | Write skills from the collection into a skills root (`--skill`) |
 
-`login` needs `--server`; there is no default server. It blocks until the browser approval arrives. An agent uses `--no-wait` instead: it gives the user the URL and code, then runs `login --resume` after the user approves. If it sets `DIFY_CONFIG_DIR`, it sets it on every call.
+`login` blocks until the browser approval arrives. An agent runs it in the background, relays the `open <url>` and `code <code>` lines from its stderr to the user, and does not cancel the job. In a sandbox it adds `--no-keyring` and sets `DIFY_CONFIG_DIR` to persistent storage on every call, so the login survives the next session.
 
 `--verbose` is global: it may appear on any command, and it keeps the raw server
 response in the error envelope instead of dropping it.
@@ -67,9 +68,11 @@ response in the error envelope instead of dropping it.
 
 ## Agent skills
 
-difyctl ships one skill, `difyctl`, built into the binary. It teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. The skill is a tree of linked docs under [`skills/difyctl/`].
+difyctl installs agent skills from [`skills/`] at the repo root. It downloads them from GitHub at install time, from the commit the binary was built from; the binary holds no copy and needs no git. The basic skill, `difyctl`, teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. Scenario skills add guidance for one kind of task and open by reading the basic one.
 
-- `difyctl install skills <dir> [--from <folder>]` — write the skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. The `difyctl` folder is replaced whole. It works offline. `--from` installs a local skill folder instead of the built-in one.
+- `difyctl get skills` — the collection: each skill's name and description. Writes nothing.
+- `difyctl install skills <dir>` — write every skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. Each skill's folder is replaced whole. `--skill <name>` (repeatable) writes only those skills; a scenario skill brings `difyctl` along.
+- `--from` on both reads skills from elsewhere: any GitHub folder in the standard layout (`https://github.com/<owner>/<repo>/tree/<ref>/<folder>`), or a local folder when GitHub is blocked. Set `GITHUB_TOKEN` if GitHub's rate limit (60 requests an hour per IP) gets in the way.
 
 difyctl does not detect agents. You name the root, and re-running the same command refreshes the copies.
 
@@ -85,7 +88,7 @@ The same files install through the Vercel skills installer: `npx skills add lang
 
 `get config [key]` prints the whole local config or one key; `set config <key> <value>` and `unset config <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
 
-Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one. On Linux without a DBus session (`DBUS_SESSION_BUS_ADDRESS` unset), the keychain would only hold the token until the session ends, so difyctl uses `tokens.yml` there too; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
+Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
 
 | Env var             | Effect                                                      |
 | ------------------- | ----------------------------------------------------------- |
@@ -128,4 +131,4 @@ Apache-2.0.
 [Agent skill]: #agent-skills
 [Dify]: https://dify.ai
 [`ARD.md`]: ARD.md
-[`skills/difyctl/`]: ../skills/difyctl
+[`skills/`]: ../skills

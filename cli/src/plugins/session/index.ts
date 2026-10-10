@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
-import { ENV, env } from '@/plugins/env'
+import { env } from '@/plugins/env'
 import { STORAGE_MODES, YamlStore } from '@/store/store'
 
 export const LOGIN_FILE_NAME = 'login.yml'
@@ -106,8 +106,7 @@ export const session = definePlugin({
       current,
       require: async () => {
         const login = await current()
-        if (login === null)
-          throw notLoggedIn(`no login saved in ${configDir}; ${ENV.ConfigDir} picks this folder`)
+        if (login === null) throw notLoggedIn()
         return login
       },
       save: async (login: Login) => {

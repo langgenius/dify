@@ -4,6 +4,7 @@
 import type { CommandTree } from '@/plugins/commands/registry'
 import DeleteCache from '@/commands/delete/cache/index'
 import GetConfig from '@/commands/get/config/index'
+import GetSkills from '@/commands/get/skills/index'
 import InstallSkills from '@/commands/install/skills/index'
 import Login from '@/commands/login/index'
 import Logout from '@/commands/logout/index'
@@ -22,6 +23,7 @@ export const commandTree: CommandTree = {
   get: {
     subcommands: {
       config: { command: GetConfig, subcommands: {} },
+      skills: { command: GetSkills, subcommands: {} },
     },
   },
   install: {

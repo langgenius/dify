@@ -100,7 +100,7 @@ export function opCommand(id: string, op: CatalogOp): CommandConstructor {
       const fields = Object.fromEntries(
         Object.entries(input).filter(([key]) => !(key in CALL_FLAGS)),
       )
-      return executeCall({ id, op, positional: OpCommand.positional, flags, fields }, ctx)
+      return executeCall({ id, op, flags, fields }, ctx)
     }
   }
 }

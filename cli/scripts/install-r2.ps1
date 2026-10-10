@@ -38,11 +38,6 @@ function Get-ChecksumTarget([string]$text, [string]$target) {
   return $null
 }
 
-function Write-SkillHint {
-  Write-Host 'AI agents: run `difyctl install skills <your skills root>` to load the difyctl skill.'
-  Write-Host 'Run it again after each difyctl upgrade; the skill ships inside the binary.'
-}
-
 # Download, sha256-verify, place. Returns nothing; throws on mismatch.
 function Install-DifyctlBinary([string]$dlUrl, [string]$sha, [string]$version, [string]$channel, [string]$installDir) {
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetFileName($dlUrl))
@@ -60,7 +55,6 @@ function Install-DifyctlBinary([string]$dlUrl, [string]$sha, [string]$version, [
     Write-Host "$installDir is not on your PATH. Add it with:"
     Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$installDir;`$env:PATH`", 'User')"
   }
-  Write-SkillHint
 }
 
 function Install-DifyctlR2 {

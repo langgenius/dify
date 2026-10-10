@@ -9,7 +9,6 @@ import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { inputSchema } from '@/plugins/argv/parse'
 import { COMMAND_SEPARATOR } from '@/protocol/op-id'
-import { typedName } from '@/util/flag-name'
 import { BINARY } from '@/version/info'
 import { commandRow } from './describe'
 
@@ -22,36 +21,6 @@ export const HELP_WORD = 'help'
 /** Points at the help for `words`, or at the map when nothing is named. */
 export function helpHint(...words: readonly string[]): string {
   return ['run', BINARY, HELP_WORD, ...words].join(COMMAND_SEPARATOR)
-}
-
-const LOC_SEPARATOR = '.'
-
-type InputCheck = Readonly<{
-  command: readonly string[]
-  schema: JsonSchema
-  positional: readonly string[]
-  input: Record<string, unknown>
-}>
-
-function typedField(loc: readonly (string | number)[], positional: readonly string[]) {
-  const [head, ...rest] = loc
-  if (typeof head !== 'string') return undefined
-  return [typedName(head, positional), ...rest].join(LOC_SEPARATOR)
-}
-
-export function assertValidInput(check: InputCheck): void {
-  const details = validateInput(check.schema, check.input)
-  if (details.length === 0) return
-  throw new BaseError({
-    code: ErrorCode.InputInvalid,
-    message: `invalid input for "${check.command.join(COMMAND_SEPARATOR)}"`,
-    hint: helpHint(...check.command),
-    details: details.map((detail) => ({
-      ...detail,
-      field: typedField(detail.loc, check.positional),
-    })),
-    schema: check.schema,
-  })
 }
 
 /** Returned by a command that already wrote its output or needs a non-zero exit. */
@@ -100,7 +69,17 @@ export abstract class Command<S extends z.ZodObject = z.ZodObject> {
     input: Record<string, unknown>,
     path: readonly string[],
   ): Record<string, unknown> {
-    assertValidInput({ command: path, schema: this.schema(), positional: this.positional, input })
+    const schema = this.schema()
+    const details = validateInput(schema, input)
+    if (details.length > 0) {
+      throw new BaseError({
+        code: ErrorCode.InputInvalid,
+        message: `invalid input for "${path.join(COMMAND_SEPARATOR)}"`,
+        hint: helpHint(...path),
+        details: [...details],
+        schema,
+      })
+    }
     const parsed = this.input.safeParse(input)
     if (!parsed.success) {
       throw new BaseError({

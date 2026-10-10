@@ -43,24 +43,3 @@ it('drops schema in text and shows raw_response only when verbose', () => {
   )
   expect(renderEnvelope(env, plain, { verbose: true })).toMatch(/raw_response: Bearer \[redacted\]/)
 })
-
-it('renders each server hint as a next line with the op spelled as a command', () => {
-  const text = renderEnvelope(
-    {
-      error: {
-        code: 'dsl_invalid',
-        message: 'the DSL has errors',
-        server: {
-          message: 'the DSL has errors',
-          hints: [{ summary: 'See every problem', op: 'check.console_app.dsl', input: {} }],
-        },
-      },
-    },
-    plain,
-    { verbose: false },
-  )
-  expect(text.split('\n')).toEqual([
-    'dsl_invalid: the DSL has errors',
-    'next: difyctl check console_app dsl — See every problem',
-  ])
-})
