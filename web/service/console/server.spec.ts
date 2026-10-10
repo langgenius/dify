@@ -28,6 +28,10 @@ vi.mock('@/next/headers', () => ({
   cookies: () => mocks.cookies(),
 }))
 
+vi.mock('@/next/server', () => ({
+  connection: vi.fn(async () => undefined),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.unstubAllGlobals()
@@ -41,6 +45,34 @@ beforeEach(() => {
 })
 
 describe('server console oRPC client', () => {
+  it.each(['getOptionalSystemFeatures', 'getSystemFeatures'] as const)(
+    '%s requests an anonymous snapshot with 600-second revalidation',
+    async (accessor) => {
+      const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
+      const snapshot = createSystemFeaturesFixture()
+      const fetch = vi.fn(async (_request: Request) => Response.json(snapshot))
+      vi.stubGlobal('fetch', fetch)
+      await import('./server')
+      const systemFeatures = await import('@/features/system-features/server')
+
+      await expect(systemFeatures[accessor]()).resolves.toEqual(snapshot)
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.any(Request),
+        expect.objectContaining({
+          cache: 'force-cache',
+          next: { revalidate: 600 },
+        }),
+      )
+      const request = fetch.mock.calls[0]![0]
+      expect(request.url).toBe('http://localhost:5001/console/api/system-features')
+      expect(request.headers.has('cookie')).toBe(false)
+      expect(request.headers.has('X-CSRF-Token')).toBe(false)
+      expect(mocks.headers).not.toHaveBeenCalled()
+      expect(mocks.cookies).not.toHaveBeenCalled()
+    },
+  )
+
   it('should resolve server console API URLs only from configured or absolute prefixes', async () => {
     const { resolveServerConsoleApiPrefix, resolveServerConsoleApiUrl } = await import('./server')
 
