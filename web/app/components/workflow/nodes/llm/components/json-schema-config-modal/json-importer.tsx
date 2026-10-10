@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { checkJsonDepth } from '../../utils'
+import { checkJsonSchemaDepth, jsonToSchema } from '../../utils'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
 import { useMittContext } from './visual-editor/context'
@@ -53,7 +53,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
         setParseError(new Error('Root must be an object, not an array or primitive value.'))
         return
       }
-      const maxDepth = checkJsonDepth(parsedJSON)
+      const maxDepth = checkJsonSchemaDepth(jsonToSchema(parsedJSON))
       if (maxDepth > JSON_SCHEMA_MAX_DEPTH) {
         setParseError({
           type: 'error',
