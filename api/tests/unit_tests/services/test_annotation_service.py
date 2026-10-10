@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Any, cast
@@ -31,9 +30,7 @@ from models.model import (
     AppAnnotationHitHistory,
     AppAnnotationSetting,
     AppMode,
-    ConversationFromSource,
     IconType,
-    Message,
     MessageAnnotation,
 )
 from services.annotation_service import AppAnnotationService
@@ -81,31 +78,6 @@ def _persist_app(
     session.add(app)
     session.commit()
     return app
-
-
-def _persist_message(
-    session: Session,
-    app: App,
-    *,
-    message_id: str = "msg-1",
-    query: str = "default-question",
-) -> Message:
-    message = Message(
-        id=message_id,
-        app_id=app.id,
-        conversation_id="conv-1",
-        _inputs={},
-        query=query,
-        message={},
-        message_unit_price=Decimal(0),
-        answer="answer",
-        answer_unit_price=Decimal(0),
-        currency="USD",
-        from_source=ConversationFromSource.API,
-    )
-    session.add(message)
-    session.commit()
-    return message
 
 
 def _persist_annotation(
@@ -215,107 +187,6 @@ def _file(content: bytes) -> FileStorage:
 def _observer_get(factory: sessionmaker[Session], model: type[Any], identifier: str) -> Any:
     with factory() as observer:
         return observer.get(model, identifier)
-
-
-class TestAppAnnotationServiceUpsert:
-    def test_rejects_missing_or_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
-        _persist_app(sqlite_session, app_id="other-app", tenant_id=OTHER_TENANT_ID)
-
-        with pytest.raises(NotFound):
-            AppAnnotationService.up_insert_app_annotation_from_message(
-                {"answer": "hello", "question": "q"}, "other-app", sqlite_session
-            )
-
-    def test_validates_answer_and_question(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-
-        with pytest.raises(ValueError, match="answer.*content"):
-            AppAnnotationService.up_insert_app_annotation_from_message({"question": "q"}, app.id, sqlite_session)
-        with pytest.raises(ValueError, match="question"):
-            AppAnnotationService.up_insert_app_annotation_from_message({"answer": "a"}, app.id, sqlite_session)
-
-    def test_rejects_message_from_another_app(self, sqlite_session: Session, current_user: Account) -> None:
-        app = _persist_app(sqlite_session)
-        other_app = _persist_app(sqlite_session, app_id="app-2")
-        message = _persist_message(sqlite_session, other_app)
-
-        with pytest.raises(NotFound, match="Message"):
-            AppAnnotationService.up_insert_app_annotation_from_message(
-                {"answer": "hello", "message_id": message.id}, app.id, sqlite_session
-            )
-
-    def test_updates_existing_message_annotation_and_enqueues_index(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        current_user: Account,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        message = _persist_message(sqlite_session, app)
-        annotation = _persist_annotation(sqlite_session, app, message_id=message.id, content="old")
-        setting = _persist_setting(sqlite_session, app)
-
-        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
-            result = AppAnnotationService.up_insert_app_annotation_from_message(
-                {"answer": "updated", "message_id": message.id}, app.id, sqlite_session
-            )
-
-        assert result.id == annotation.id
-        stored = _observer_get(sqlite_session_factory, MessageAnnotation, annotation.id)
-        assert stored is not None
-        assert (stored.question, stored.content) == (message.query, "updated")
-        task.delay.assert_called_once_with(
-            annotation.id, message.query, TENANT_ID, app.id, setting.collection_binding_id
-        )
-
-    def test_creates_message_annotation_without_setting(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        current_user: Account,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        message = _persist_message(sqlite_session, app)
-
-        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
-            result = AppAnnotationService.up_insert_app_annotation_from_message(
-                {"answer": "hello", "question": "override", "message_id": message.id}, app.id, sqlite_session
-            )
-
-        stored = _observer_get(sqlite_session_factory, MessageAnnotation, result.id)
-        assert stored is not None
-        assert (stored.app_id, stored.message_id, stored.question, stored.content) == (
-            app.id,
-            message.id,
-            "override",
-            "hello",
-        )
-        assert stored.account_id == current_user.id
-        task.delay.assert_not_called()
-
-    def test_creates_direct_annotation_and_enqueues_index(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        current_user: Account,
-    ) -> None:
-        app = _persist_app(sqlite_session)
-        setting = _persist_setting(sqlite_session, app)
-
-        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
-            result = AppAnnotationService.up_insert_app_annotation_from_message(
-                {"answer": "hello", "question": "q1"}, app.id, sqlite_session
-            )
-
-        stored = _observer_get(sqlite_session_factory, MessageAnnotation, result.id)
-        assert stored is not None
-        assert (stored.conversation_id, stored.message_id, stored.question, stored.content) == (
-            None,
-            None,
-            "q1",
-            "hello",
-        )
-        task.delay.assert_called_once_with(result.id, "q1", TENANT_ID, app.id, setting.collection_binding_id)
 
 
 class TestAppAnnotationServiceEnableDisable:

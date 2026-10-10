@@ -95,6 +95,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.annotation_command_service import AnnotationCommandService
 from services.annotation_query import AnnotationQuery
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
@@ -194,6 +195,9 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
+from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
+from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -244,6 +248,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    annotation_commands: AnnotationCommandService
     annotation_queries: AnnotationQuery
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -498,8 +503,15 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    annotations = AnnotationRepository(session_factory=database_client)
     return ApplicationServices(
-        annotation_queries=AnnotationRepository(session_factory=database_client),
+        annotation_commands=AnnotationCommandService(
+            annotations=annotations,
+            add_index=add_annotation_to_index_task.delay,
+            update_index=update_annotation_to_index_task.delay,
+            delete_index=delete_annotation_index_task.delay,
+        ),
+        annotation_queries=annotations,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),

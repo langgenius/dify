@@ -1,16 +1,17 @@
-"""Bounded, tenant-scoped annotation reads returning detached records."""
+"""Bounded, tenant-scoped annotation persistence returning detached records."""
 
 from typing import override
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from models.dataset import DatasetCollectionBinding
 from models.enums import AppStatus
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from repositories.app.console_repository import find_console_app
+from services.annotation_command_service import AnnotationWriteResult, AnnotationWriteStore
 from services.annotation_query import (
     AnnotationAppNotFoundError,
     AnnotationEmbeddingModel,
@@ -21,9 +22,10 @@ from services.annotation_query import (
     AnnotationRecord,
     AnnotationSettingRecord,
 )
+from services.errors.message import MessageNotExistsError
 
 
-class AnnotationRepository(AnnotationQuery):
+class AnnotationRepository(AnnotationQuery, AnnotationWriteStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -59,16 +61,7 @@ class AnnotationRepository(AnnotationQuery):
             statement = statement.order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             result = paginate_query(statement, session=session, page=page, per_page=limit, max_per_page=100)
             return AnnotationPage(
-                data=tuple(
-                    AnnotationRecord(
-                        id=annotation.id,
-                        question=annotation.question,
-                        content=annotation.content,
-                        hit_count=annotation.hit_count,
-                        created_at=annotation.created_at,
-                    )
-                    for annotation in result.items
-                ),
+                data=tuple(self._record(annotation) for annotation in result.items),
                 page=result.page,
                 limit=result.per_page,
                 total=result.total,
@@ -83,16 +76,7 @@ class AnnotationRepository(AnnotationQuery):
                 .where(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc())
             )
-            return tuple(
-                AnnotationRecord(
-                    id=annotation.id,
-                    question=annotation.question,
-                    content=annotation.content,
-                    hit_count=annotation.hit_count,
-                    created_at=annotation.created_at,
-                )
-                for annotation in annotations
-            )
+            return tuple(self._record(annotation) for annotation in annotations)
 
     @override
     def get_setting(self, *, tenant_id: str, app_id: str) -> AnnotationSettingRecord:
@@ -148,6 +132,109 @@ class AnnotationRepository(AnnotationQuery):
                 limit=result.per_page,
                 total=result.total,
             )
+
+    @override
+    def upsert(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        account_id: str,
+        message_id: str | None,
+        question: str | None,
+        answer: str | None,
+    ) -> AnnotationWriteResult:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            if answer is None:
+                raise ValueError("Either 'answer' or 'content' must be provided")
+            if message_id:
+                message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_id))
+                if message is None:
+                    raise MessageNotExistsError("Message Not Exists.")
+                question = question or message.query or ""
+                annotation = session.scalar(
+                    select(MessageAnnotation)
+                    .where(MessageAnnotation.message_id == message.id, MessageAnnotation.app_id == app_id)
+                    .limit(1)
+                )
+                if annotation is None:
+                    annotation = MessageAnnotation(
+                        app_id=app_id,
+                        conversation_id=message.conversation_id,
+                        message_id=message.id,
+                        question=question,
+                        content=answer,
+                        account_id=account_id,
+                    )
+                else:
+                    annotation.question = question
+                    annotation.content = answer
+            else:
+                if not question:
+                    raise ValueError("'question' is required when 'message_id' is not provided")
+                annotation = MessageAnnotation(app_id=app_id, question=question, content=answer, account_id=account_id)
+            session.add(annotation)
+            session.flush()
+            return AnnotationWriteResult(
+                annotation=self._record(annotation), collection_binding_id=self._binding_id(session, app_id=app_id)
+            )
+
+    @override
+    def update(
+        self, *, tenant_id: str, app_id: str, annotation_id: str, question: str | None, answer: str | None
+    ) -> AnnotationWriteResult:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotation = self._require_annotation(session, app_id=app_id, annotation_id=annotation_id)
+            if question is None:
+                raise ValueError("'question' is required")
+            if answer is None:
+                raise ValueError("'answer' is required")
+            annotation.question = question
+            annotation.content = answer
+            session.flush()
+            return AnnotationWriteResult(
+                annotation=self._record(annotation), collection_binding_id=self._binding_id(session, app_id=app_id)
+            )
+
+    @override
+    def delete(self, *, tenant_id: str, app_id: str, annotation_id: str) -> str | None:
+        with self._session_factory.begin() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotation = self._require_annotation(session, app_id=app_id, annotation_id=annotation_id)
+            session.execute(
+                delete(AppAnnotationHitHistory).where(
+                    AppAnnotationHitHistory.app_id == app_id, AppAnnotationHitHistory.annotation_id == annotation_id
+                )
+            )
+            session.delete(annotation)
+            return self._binding_id(session, app_id=app_id)
+
+    @staticmethod
+    def _record(annotation: MessageAnnotation) -> AnnotationRecord:
+        return AnnotationRecord(
+            id=annotation.id,
+            question=annotation.question,
+            content=annotation.content,
+            hit_count=annotation.hit_count,
+            created_at=annotation.created_at,
+        )
+
+    @staticmethod
+    def _binding_id(session: Session, *, app_id: str) -> str | None:
+        return session.scalar(
+            select(AppAnnotationSetting.collection_binding_id).where(AppAnnotationSetting.app_id == app_id).limit(1)
+        )
+
+    @staticmethod
+    def _require_annotation(session: Session, *, app_id: str, annotation_id: str) -> MessageAnnotation:
+        annotation = session.scalar(
+            select(MessageAnnotation).where(MessageAnnotation.id == annotation_id, MessageAnnotation.app_id == app_id)
+        )
+        if annotation is None:
+            raise AnnotationNotFoundError(f"Annotation {annotation_id} is unavailable for app {app_id}")
+        return annotation
 
     @staticmethod
     def _require_app(session: Session, *, tenant_id: str, app_id: str) -> None:

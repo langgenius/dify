@@ -15,7 +15,7 @@ from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
 from models.account import Account
 from models.dataset import DatasetCollectionBinding
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -53,15 +53,6 @@ class EnableAnnotationArgs(TypedDict):
     embedding_model_name: str
 
 
-class UpsertAnnotationArgs(TypedDict, total=False):
-    """Expected shape of the args dict passed to up_insert_app_annotation_from_message."""
-
-    answer: str
-    content: str
-    message_id: str
-    question: str
-
-
 class InsertAnnotationArgs(TypedDict):
     """Expected shape of the args dict passed to insert_app_annotation_directly."""
 
@@ -97,79 +88,6 @@ class AppAnnotationService:
             )
             .limit(1)
         )
-
-    @classmethod
-    def up_insert_app_annotation_from_message(
-        cls, args: UpsertAnnotationArgs, app_id: str, session: Session
-    ) -> MessageAnnotation:
-        # get app info
-        current_user, current_tenant_id = current_account_with_tenant()
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            raise NotFound("App not found")
-
-        answer = args.get("answer") or args.get("content")
-        if answer is None:
-            raise ValueError("Either 'answer' or 'content' must be provided")
-
-        raw_message_id = args.get("message_id")
-        if raw_message_id:
-            message_id = raw_message_id
-            message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1))
-
-            if not message:
-                raise NotFound("Message Not Exists.")
-
-            question = args.get("question") or message.query or ""
-
-            annotation = session.scalar(
-                select(MessageAnnotation).where(MessageAnnotation.message_id == message.id).limit(1)
-            )
-            if annotation:
-                annotation.content = answer
-                annotation.question = question
-            else:
-                annotation = MessageAnnotation(
-                    app_id=app.id,
-                    conversation_id=message.conversation_id,
-                    message_id=message.id,
-                    content=answer,
-                    question=question,
-                    account_id=current_user.id,
-                )
-        else:
-            maybe_question = args.get("question")
-            if not maybe_question:
-                raise ValueError("'question' is required when 'message_id' is not provided")
-            question = maybe_question
-
-            annotation = MessageAnnotation(
-                app_id=app.id,
-                conversation_id=None,
-                message_id=None,
-                content=answer,
-                question=question,
-                account_id=current_user.id,
-            )
-        session.add(annotation)
-        session.commit()
-
-        annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-        )
-        assert current_tenant_id is not None
-        if annotation_setting:
-            add_annotation_to_index_task.delay(
-                annotation.id,
-                question,
-                current_tenant_id,
-                app_id,
-                annotation_setting.collection_binding_id,
-            )
-        return annotation
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:

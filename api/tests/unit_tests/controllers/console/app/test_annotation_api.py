@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from inspect import unwrap
 from unittest.mock import Mock, patch
 
@@ -11,8 +10,8 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console.app import annotation as annotation_module
 from models.account import Account
-from models.model import App, AppMode, IconType, MessageAnnotation
-from services.app_ref_service import AnnotationRef, AppRef
+from models.model import App, AppMode, IconType
+from services.app_ref_service import AppRef
 from tests.unit_tests.model_factories import make_account
 
 
@@ -35,19 +34,6 @@ def _persist_app(session: Session) -> App:
 
 def _account() -> Account:
     return make_account(name="Owner", email="owner@example.com")
-
-
-def _annotation_model(annotation_id: str = "ann-1") -> MessageAnnotation:
-    annotation = MessageAnnotation(
-        app_id="app-1",
-        question="q",
-        content="a",
-        account_id="account-1",
-    )
-    annotation.id = annotation_id
-    annotation.hit_count = 0
-    annotation.created_at = datetime(2026, 1, 1)
-    return annotation
 
 
 def test_annotation_reply_payload_valid():
@@ -173,54 +159,3 @@ class TestConsoleAnnotationRefBoundaries:
         assert response == ""
         assert status == 204
         delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"], sqlite_session)
-
-    def test_update_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
-        api = annotation_module.AnnotationUpdateDeleteApi()
-        handler = unwrap(api.post)
-        update_mock = Mock(return_value=_annotation_model())
-        _persist_app(sqlite_session)
-
-        with (
-            app.test_request_context("/annotations/ann-1", method="POST", json={"question": "updated"}),
-            patch.object(
-                annotation_module,
-                "current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch.object(annotation_module.AppAnnotationService, "update_app_annotation_directly", update_mock),
-        ):
-            response = handler(
-                api,
-                annotation_module.UpdateAnnotationPayload(question="updated"),
-                sqlite_session,
-                "app-1",
-                "ann-1",
-            )
-
-        assert response["question"] == "q"
-        update_mock.assert_called_once()
-        assert update_mock.call_args.args[1] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
-        assert update_mock.call_args.args[2] is sqlite_session
-
-    def test_delete_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
-        api = annotation_module.AnnotationUpdateDeleteApi()
-        handler = unwrap(api.delete)
-        delete_mock = Mock()
-        _persist_app(sqlite_session)
-
-        with (
-            app.test_request_context("/annotations/ann-1", method="DELETE"),
-            patch.object(
-                annotation_module,
-                "current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch.object(annotation_module.AppAnnotationService, "delete_app_annotation", delete_mock),
-        ):
-            response, status = handler(api, sqlite_session, "app-1", "ann-1")
-
-        assert response == ""
-        assert status == 204
-        delete_mock.assert_called_once()
-        assert delete_mock.call_args.args[0] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
-        assert delete_mock.call_args.args[1] is sqlite_session

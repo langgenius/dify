@@ -1108,11 +1108,12 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
-[importlinter:contract:annotation-query-boundary]
-name = Annotation query contracts and results are framework and persistence neutral
+[importlinter:contract:annotation-application-boundary]
+name = Annotation application services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.annotation_query
+    services.annotation_command_service
 forbidden_modules =
     controllers
     extensions
@@ -1120,4 +1121,5 @@ forbidden_modules =
     models
     repositories
     sqlalchemy
+    tasks
     werkzeug
