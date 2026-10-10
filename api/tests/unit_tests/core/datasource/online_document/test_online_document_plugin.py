@@ -1,9 +1,11 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
+    DatasourceMessage,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
+    OnlineDocumentPagesMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from tests.unit_tests.core.datasource.factories import datasource_entity
@@ -58,12 +60,13 @@ class TestOnlineDocumentDatasourcePlugin:
         datasource_parameters = {"param": "value"}
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [OnlineDocumentPagesMessage(result=[])]
+        response_stream = (message for message in messages)
 
         # Patch PluginDatasourceManager to isolate plugin behavior from external dependencies
         with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
             mock_manager_instance = MockManager.return_value
-            mock_manager_instance.get_online_document_pages.return_value = mock_generator
+            mock_manager_instance.get_online_document_pages.return_value = response_stream
 
             # Act
             result = plugin.get_online_document_pages(
@@ -71,7 +74,8 @@ class TestOnlineDocumentDatasourcePlugin:
             )
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.get_online_document_pages.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -108,11 +112,12 @@ class TestOnlineDocumentDatasourcePlugin:
         )
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
+        response_stream = (message for message in messages)
 
         with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
             mock_manager_instance = MockManager.return_value
-            mock_manager_instance.get_online_document_page_content.return_value = mock_generator
+            mock_manager_instance.get_online_document_page_content.return_value = response_stream
 
             # Act
             result = plugin.get_online_document_page_content(
@@ -120,7 +125,8 @@ class TestOnlineDocumentDatasourcePlugin:
             )
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.get_online_document_page_content.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
