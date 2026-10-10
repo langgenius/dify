@@ -627,6 +627,81 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
+    it('should merge each parallel tool result into the thought that called the tool', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools' }, {})
+      })
+
+      act(() => {
+        callbacks.onThought({ id: 'th-a', message_id: 'm-p', tool: 'tool_a', observation: '' })
+        callbacks.onThought({ id: 'th-b', message_id: 'm-p', tool: 'tool_b', observation: '' })
+        callbacks.onThought({
+          id: 'th-a',
+          message_id: 'm-p',
+          tool: 'tool_a',
+          observation: 'result a',
+        })
+        callbacks.onThought({
+          id: 'th-b',
+          message_id: 'm-p',
+          tool: 'tool_b',
+          observation: 'result b',
+        })
+      })
+
+      expect(
+        result.current.chatList[1]!.agent_thoughts!.map((thought) => [
+          thought.id,
+          thought.observation,
+        ]),
+      ).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
+    it('should merge each parallel tool result into its thought after a resumed stream', () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools after pause' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-p', task_id: 't-p' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-p' } })
+      })
+      act(() => {
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: 'result a' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: 'result b' })
+      })
+
+      const response = result.current.chatList[result.current.chatList.length - 1]
+      expect(response!.agent_thoughts!.map((thought) => [thought.id, thought.observation])).toEqual(
+        [
+          ['th-a', 'result a'],
+          ['th-b', 'result b'],
+        ],
+      )
+    })
+
     it('should handle human input forms, pauses, TTS, and message ends', async () => {
       let callbacks: HookCallbacks
 
