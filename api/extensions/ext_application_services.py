@@ -60,6 +60,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -117,6 +118,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -259,6 +261,7 @@ class ApplicationServices:
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
+    conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
@@ -526,6 +529,7 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        conversation_variables=ConversationVariableQueryRepository(session_factory=database_client),
         app_api_keys=build_app_api_key_service(database_client=database_client),
         dataset_api_keys=build_dataset_api_key_service(
             database_client=database_client,
