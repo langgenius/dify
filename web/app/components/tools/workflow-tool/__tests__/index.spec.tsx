@@ -6,39 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
 import { WorkflowToolDrawer } from '../index'
 
-vi.mock('@/app/components/tools/labels/selector', () => ({
-  default: ({ value, onChange }: { value: string[]; onChange: (labels: string[]) => void }) => (
-    <div data-testid="label-selector">
-      <span>{value.join(',')}</span>
-      <button data-testid="append-label" onClick={() => onChange([...value, 'new-label'])}>
-        Add
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../confirm-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onConfirm,
-  }: {
-    show: boolean
-    onClose: () => void
-    onConfirm: () => void
-  }) =>
-    show ? (
-      <div data-testid="confirm-modal">
-        <button data-testid="confirm-save" onClick={onConfirm}>
-          Confirm
-        </button>
-        <button data-testid="close-confirm" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
 const mockToastNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -95,7 +62,9 @@ describe('WorkflowToolDrawer', () => {
       screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'),
       'Created Tool',
     )
-    await user.click(screen.getByTestId('append-label'))
+    await user.click(screen.getByRole('button', { name: 'Label 1' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Label 2' }))
+    await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onCreate).toHaveBeenCalledWith(
@@ -103,7 +72,7 @@ describe('WorkflowToolDrawer', () => {
         workflow_app_id: 'workflow-app-1',
         label: 'Created Tool',
         icon: { content: '🔧', background: '#ffffff' },
-        labels: ['label1', 'new-label'],
+        labels: ['label1', 'label2'],
       }),
     )
     expect(onCreate.mock.calls[0]![0]).not.toHaveProperty('outputParameters')
@@ -166,9 +135,11 @@ describe('WorkflowToolDrawer', () => {
     render(<WorkflowToolDrawer payload={createPayload()} onHide={vi.fn()} onSave={onSave} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'tools.createTool.confirmTitle' }),
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('confirm-save'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
