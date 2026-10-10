@@ -12,6 +12,13 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
 from core.db.session_factory import session_factory
+from core.dify_builder.execution_policy import (
+    BuilderExecutionPolicyError,
+    BuilderExecutionRecorder,
+    RestrictedAdmissionSnapshot,
+    admitted_node_bindings,
+)
+from core.dify_builder.input_schema import start_schema
 from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
@@ -310,9 +317,11 @@ class DifyNodeFactory(NodeFactory):
         *,
         graph_init_context: DifyGraphInitContext,
         graph_runtime_state: "GraphRuntimeState",
+        execution_recorder: BuilderExecutionRecorder | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
+            execution_recorder=execution_recorder,
             graph_init_params=graph_init_context.to_graph_init_params(),
             graph_runtime_state=graph_runtime_state,
         )
@@ -321,10 +330,40 @@ class DifyNodeFactory(NodeFactory):
         self,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        *,
+        execution_recorder: BuilderExecutionRecorder | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
+        self.execution_recorder = execution_recorder
+        context = self._dify_context.builder_execution
+        if context is not None:
+            if execution_recorder is None or not execution_recorder.healthy:
+                raise BuilderExecutionPolicyError("missing_execution_recorder")
+            if (
+                self._dify_context.tenant_id,
+                self._dify_context.app_id,
+                self._dify_context.user_id,
+                graph_init_params.workflow_id,
+                graph_init_params.call_depth,
+            ) != (context.tenant_id, context.app_id, context.actor_id, context.workflow_id, 0):
+                raise BuilderExecutionPolicyError("execution_owner_mismatch")
+            graph = dict(graph_init_params.graph_config)
+            snapshot = RestrictedAdmissionSnapshot(
+                app_mode="workflow",
+                workflow_kind="standard",
+                graph=graph,
+                input_schema=start_schema(graph),
+                features={},
+                has_environment_variables=False,
+                has_conversation_variables=False,
+                has_external_tracing=False,
+            )
+            if admitted_node_bindings(snapshot) != context.admitted_nodes:
+                raise BuilderExecutionPolicyError("execution_binding_mismatch")
+            # Restricted capability construction must never fall through to live adapters.
+            raise BuilderExecutionPolicyError("restricted_capabilities_unavailable")
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -386,6 +425,7 @@ class DifyNodeFactory(NodeFactory):
 
     def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
+            execution_recorder=self.execution_recorder,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )

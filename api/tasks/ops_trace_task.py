@@ -58,7 +58,9 @@ def process_trace_tasks(self, file_info):
     trace_info = file_data.get("trace_info")
     trace_info_type = file_data.get("trace_info_type")
     enterprise_trace_dispatched = bool(file_data.get("_enterprise_trace_dispatched"))
-    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+    # Historical absent markers retain ordinary dispatch; malformed explicit markers fail closed.
+    external_tracing_disabled = file_data.get("external_tracing_disabled", False) is not False
+    trace_instance = None if external_tracing_disabled else OpsTraceManager.get_ops_trace_instance(app_id)
 
     if trace_info.get("message_data"):
         trace_info["message_data"] = Message.from_dict(data=trace_info["message_data"])

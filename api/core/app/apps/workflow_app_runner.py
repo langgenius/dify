@@ -35,6 +35,11 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.credit_usage import CreditUsageAppType
+from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionPolicyError,
+    BuilderExecutionRecorder,
+)
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
@@ -190,14 +195,19 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        builder_execution: BuilderExecutionContext | None = None,
+        execution_recorder: BuilderExecutionRecorder | None = None,
     ) -> Graph:
         """
         Init graph
         """
+        if builder_execution is not None and (execution_recorder is None or not execution_recorder.healthy):
+            raise BuilderExecutionPolicyError("missing_execution_recorder")
         graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
+            builder_execution=builder_execution,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,
@@ -216,6 +226,7 @@ class WorkflowBasedAppRunner:
         # Use the provided graph_runtime_state for consistent state management
 
         node_factory = DifyNodeFactory.from_graph_init_context(
+            execution_recorder=execution_recorder,
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )

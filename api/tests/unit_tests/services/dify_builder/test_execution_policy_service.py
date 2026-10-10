@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from core.dify_builder.models import Actor
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -23,7 +24,7 @@ def service_module():
 
 @pytest.fixture
 def owned():
-    engine = create_engine("sqlite://")
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     TypeBase.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False)

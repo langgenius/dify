@@ -303,3 +303,29 @@ def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_disp
     mock_retry.assert_not_called()
     mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
+
+
+@pytest.mark.parametrize("marker", [True, "false", 0, None, {}])
+def test_restricted_or_malformed_trace_policy_never_resolves_provider_but_keeps_enterprise(marker):
+    provider = MagicMock(side_effect=AssertionError("external provider resolution forbidden"))
+    enterprise = MagicMock()
+    modules = _install_trace_manager(MagicMock(), enterprise_enabled=True, enterprise_trace_cls=enterprise)
+    modules["core.ops.ops_trace_manager"].OpsTraceManager.get_ops_trace_instance = provider
+    with (
+        patch.dict(sys.modules, modules),
+        patch(
+            "tasks.ops_trace_task.storage.load",
+            return_value=json.dumps(
+                {
+                    "trace_info": {},
+                    "trace_info_type": None,
+                    "external_tracing_disabled": marker,
+                }
+            ),
+        ),
+        patch("tasks.ops_trace_task.storage.delete") as delete,
+    ):
+        _run_task({"app_id": "app", "file_id": "trace"})
+    provider.assert_not_called()
+    enterprise.return_value.trace.assert_called_once_with({})
+    delete.assert_called_once()

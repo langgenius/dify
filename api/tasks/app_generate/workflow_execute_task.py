@@ -22,6 +22,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.dify_builder.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
@@ -83,6 +84,8 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
+    builder_execution: BuilderExecutionContext | None = None
+
     app_id: str
     workflow_id: str
     tenant_id: str
@@ -108,6 +111,7 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
+        builder_execution: BuilderExecutionContext | None = None,
     ):
         user_params: _Account | _EndUser
         match user:
@@ -118,6 +122,7 @@ class AppExecutionParams(BaseModel):
             case _:
                 raise AssertionError("this statement should be unreachable.")
         return cls(
+            builder_execution=builder_execution,
             app_id=app_model.id,
             workflow_id=workflow.id,
             tenant_id=app_model.tenant_id,
@@ -474,6 +479,8 @@ def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
+    if exec_params.builder_execution is not None:
+        raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
@@ -499,6 +506,8 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
+    if generate_entity.builder_execution is not None:
+        raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()

@@ -20,6 +20,11 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.dify_builder.execution_policy import (
+    BuilderExecutionPolicyError,
+    BuilderExecutionRecorder,
+    scalar_inputs_digest,
+)
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
@@ -61,6 +66,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        execution_recorder: BuilderExecutionRecorder | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -68,6 +74,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             app_id=application_generate_entity.app_config.app_id,
             graph_engine_layers=graph_engine_layers,
         )
+        self._execution_recorder = execution_recorder
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
         self._sys_user_id = system_user_id
@@ -84,6 +91,43 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         """
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
+        entity = self.application_generate_entity
+        context = entity.builder_execution
+        if context is not None:
+            if self._execution_recorder is None or not self._execution_recorder.healthy:
+                raise BuilderExecutionPolicyError("missing_execution_recorder")
+            if (
+                entity.files
+                or entity.single_iteration_run
+                or entity.single_loop_run
+                or self._resume_graph_runtime_state is not None
+                or entity.call_depth != 0
+                or self._workflow.kind_or_standard != "standard"
+                or entity.invoke_from != InvokeFrom.DEBUGGER
+                or (
+                    app_config.app_id,
+                    app_config.tenant_id,
+                    app_config.workflow_id,
+                    entity.user_id,
+                    self._workflow.app_id,
+                    self._workflow.tenant_id,
+                    self._workflow.id,
+                )
+                != (
+                    context.app_id,
+                    context.tenant_id,
+                    context.workflow_id,
+                    context.actor_id,
+                    context.app_id,
+                    context.tenant_id,
+                    context.workflow_id,
+                )
+                or scalar_inputs_digest(dict(entity.inputs)) != context.effective_inputs_digest
+            ):
+                raise BuilderExecutionPolicyError("execution_owner_mismatch")
+            root = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
+            if self._workflow.get_node_type_from_node_config(self._workflow.get_node_config_by_id(root)) != "start":
+                raise BuilderExecutionPolicyError("unsupported_execution_root")
         invoke_from = self.application_generate_entity.invoke_from
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -96,6 +140,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
+                builder_execution=entity.builder_execution,
+                execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
@@ -149,6 +195,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
+                builder_execution=entity.builder_execution,
+                execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,

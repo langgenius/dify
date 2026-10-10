@@ -799,3 +799,33 @@ def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, t
 
     with pytest.raises(ConnectionError, match="broker unavailable"):
         manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
+
+
+def test_restricted_trace_policy_survives_shared_queue_and_persistence(monkeypatch, trace_environment):
+    from unittest.mock import MagicMock
+
+    provider = MagicMock(side_effect=AssertionError("provider resolution forbidden"))
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", provider)
+    restricted = TraceQueueManager(app_id="restricted", external_tracing_disabled=True)
+    provider.assert_not_called()
+    restricted._enterprise_telemetry_enabled = True
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda _: True)
+    ordinary = TraceQueueManager(app_id="ordinary")
+    storage = RecordingStorage()
+    monkeypatch.setattr(module.storage, "save", storage.save)
+    for manager in (restricted, ordinary):
+        manager.add_trace_task(
+            TraceTask(
+                trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+                conversation_id="conversation",
+                timer={"start": 1, "end": 2},
+                tenant_id="tenant",
+                generate_conversation_name="name",
+                inputs="query",
+            )
+        )
+    for task in ordinary.collect_tasks():
+        ordinary.persist_trace_task(task)
+    payloads = {json.loads(data)["app_id"]: json.loads(data) for _, data in storage.writes}
+    assert payloads["restricted"]["external_tracing_disabled"] is True
+    assert payloads["ordinary"]["external_tracing_disabled"] is False

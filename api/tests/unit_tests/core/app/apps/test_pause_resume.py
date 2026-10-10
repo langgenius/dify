@@ -302,6 +302,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         workflow=_make_workflow(),
         user=_make_account(),
         application_generate_entity=SimpleNamespace(
+            builder_execution=None,
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
             trace_manager=SimpleNamespace(),

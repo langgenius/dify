@@ -46,6 +46,7 @@ def test_run_uses_single_node_execution_branch(
     app_config.app_mode = AppMode.WORKFLOW
 
     app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    app_generate_entity.builder_execution = None
     app_generate_entity.app_config = app_config
     app_generate_entity.inputs = {}
     app_generate_entity.files = []
@@ -162,6 +163,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_config.workflow_id = "workflow"
 
     app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    app_generate_entity.builder_execution = None
     app_generate_entity.app_config = app_config
     app_generate_entity.inputs = {"question": "hello"}
     app_generate_entity.files = []

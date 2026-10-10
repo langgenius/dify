@@ -232,6 +232,13 @@ class ExecutionEvidenceSummary(_TrustedModel):
     native_run_id: BoundedID | None = None
 
 
+class BuilderExecutionRefusal(_TrustedModel):
+    """Typed prelaunch refusal; no request/run identity is fabricated."""
+
+    safety_outcome: Literal["unsupported_safe_execution"] = "unsupported_safe_execution"
+    reason_code: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
+
+
 class RestrictedAdmissionSnapshot(_TrustedModel):
     """Untrusted raw graph/config snapshot, held only for inspection."""
 

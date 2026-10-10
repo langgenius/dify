@@ -15,17 +15,23 @@ from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import BuilderExecutionAdmission, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
+from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionPolicyError,
+    scalar_inputs_digest,
+)
 from core.trigger.constants import is_trigger_node_type
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
+from services.dify_builder.execution_policy_service import restricted_admission_snapshot
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -109,6 +115,8 @@ class AppGenerateService:
         streaming: bool = True,
         root_node_id: str | None = None,
         workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution_admit: BuilderExecutionAdmission | None = None,
     ):
         """
         App Content Generate
@@ -121,6 +129,19 @@ class AppGenerateService:
             inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
+        if builder_execution is not None:
+            if (
+                app_model.mode != AppMode.WORKFLOW
+                or workflow_execution_mode != "in_process"
+                or invoke_from != InvokeFrom.DEBUGGER
+                or not isinstance(user, Account)
+                or builder_execution_admit is None
+                or args.get("files")
+            ):
+                raise BuilderExecutionPolicyError("unsupported_execution_transport")
+            workflow = cls._get_workflow(app_model, invoke_from, args.get("workflow_id"), session=session)
+            restricted_admission_snapshot(workflow, app_model)
+            scalar_inputs_digest(args.get("inputs", {}))
         return cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
@@ -135,6 +156,8 @@ class AppGenerateService:
                 rate_limit=rate_limit,
                 request_id=request_id,
                 workflow_execution_mode=workflow_execution_mode,
+                builder_execution=builder_execution,
+                builder_execution_admit=builder_execution_admit,
             ),
         )
 
@@ -184,12 +207,16 @@ class AppGenerateService:
         rate_limit: RateLimit,
         request_id: str,
         workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution_admit: BuilderExecutionAdmission | None = None,
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
             else app_model.mode
         )
+        if builder_execution is not None and effective_mode != AppMode.WORKFLOW:
+            raise BuilderExecutionPolicyError("unsupported_workflow")
         match effective_mode:
             case AppMode.COMPLETION:
                 return rate_limit.generate(
@@ -308,6 +335,8 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if builder_execution is not None:
+                    restricted_admission_snapshot(workflow, app_model)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming and workflow_execution_mode == "celery":
                     with rate_limit_context(rate_limit, request_id):
@@ -354,7 +383,9 @@ class AppGenerateService:
                             streaming=streaming,
                             root_node_id=root_node_id,
                             call_depth=0,
-                            pause_state_config=pause_config,
+                            pause_state_config=pause_config if builder_execution is None else None,
+                            builder_execution=builder_execution,
+                            builder_execution_admit=builder_execution_admit,
                         ),
                     ),
                     request_id,

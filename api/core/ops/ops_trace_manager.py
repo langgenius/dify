@@ -726,6 +726,7 @@ class TraceTask:
         timer: Any | None = None,
         **kwargs,
     ):
+        self.external_tracing_disabled = False
         self.trace_type = trace_type
         self.message_id = message_id
         self.workflow_run_id = workflow_execution.id_ if workflow_execution else workflow_run_id
@@ -1472,12 +1473,13 @@ trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
 
 
 class TraceQueueManager:
-    def __init__(self, app_id=None, user_id=None):
+    def __init__(self, app_id=None, user_id=None, *, external_tracing_disabled: bool = False):
         global trace_manager_timer
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        self.external_tracing_disabled = external_tracing_disabled is not False
+        self.trace_instance = None if self.external_tracing_disabled else OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
@@ -1491,6 +1493,9 @@ class TraceQueueManager:
         try:
             if self._enterprise_telemetry_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
+                trace_task.external_tracing_disabled = (
+                    trace_task.external_tracing_disabled is not False or self.external_tracing_disabled
+                )
                 trace_manager_queue.put(trace_task)
         except Exception:
             logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
@@ -1544,6 +1549,7 @@ class TraceQueueManager:
         if isinstance(trace_info, BaseTraceInfo) and trace_info.operation_id is None:
             trace_info = trace_info.model_copy(update={"operation_id": str(uuid4())})
         task_data = TaskData(
+            external_tracing_disabled=task.external_tracing_disabled is not False,
             app_id=storage_id,
             trace_info_type=type(trace_info).__name__,
             trace_info=trace_info.model_dump() if trace_info else None,
