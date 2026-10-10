@@ -34,25 +34,6 @@ vi.mock('next/dynamic', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({
-    show,
-    onHide,
-    isEditModal,
-  }: {
-    show: boolean
-    onHide: () => void
-    isEditModal?: boolean
-  }) =>
-    show ? (
-      <div data-testid={isEditModal ? 'edit-modal' : 'create-modal'}>
-        <button type="button" onClick={onHide}>
-          Close Edit
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   UpdateDSLDialog: ({
     open,
@@ -132,7 +113,7 @@ const defaultProps = {
   closeModal: vi.fn(),
   secretEnvList: [] as never[],
   setSecretEnvList: vi.fn(),
-  onEdit: vi.fn(),
+  onEdit: vi.fn(async () => {}),
   onCopy: vi.fn(async () => {}),
   onExport: vi.fn(async () => true),
   isExporting: false,
@@ -193,13 +174,37 @@ describe('AppInfoModals', () => {
     expect(loadDynamic).toHaveBeenCalledTimes(1)
   })
 
-  it('should render CreateAppModal in edit mode when activeModal is edit', async () => {
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="edit" />)
-    })
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-modal')).toBeInTheDocument()
-    })
+  it('loads the edit module on first activation and starts a fresh draft after dismissal', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<AppInfoModals {...defaultProps} activeModal={null} />)
+    expect(loadDynamic).not.toHaveBeenCalled()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal="edit" />)
+    const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+    const input = within(dialog).getByRole('textbox', { name: 'app.newApp.captionName' })
+    await user.clear(input)
+    await user.type(input, 'Discarded edit')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onEdit).not.toHaveBeenCalled()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal={null} />)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'app.editAppTitle' })).not.toBeInTheDocument(),
+    )
+    rerender(
+      <AppInfoModals
+        {...defaultProps}
+        appDetail={createAppDetail({ name: 'Current app name' })}
+        activeModal="edit"
+      />,
+    )
+    const reopened = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
+    expect(within(reopened).getByRole('textbox', { name: 'app.newApp.captionName' })).toHaveValue(
+      'Current app name',
+    )
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
   })
 
   it('loads the duplicate module on first activation and creates a fresh draft after closing', async () => {

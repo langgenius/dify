@@ -292,6 +292,7 @@ export function AppCardInteractions({
   const [activeDialog, setActiveDialog] = useState<
     'delete' | 'duplicate' | 'edit' | 'switch' | null
   >(null)
+  const [hasActivatedEditDialog, setHasActivatedEditDialog] = useState(false)
   const [hasActivatedDuplicateDialog, setHasActivatedDuplicateDialog] = useState(false)
   const [hasActivatedSwitchDialog, setHasActivatedSwitchDialog] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
@@ -373,6 +374,7 @@ export function AppCardInteractions({
   const handleShowEditModal = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
+      setHasActivatedEditDialog(true)
       setActiveDialog('edit')
     })
   }, [setIsOperationsMenuOpen])
@@ -648,7 +650,7 @@ export function AppCardInteractions({
           )}
         </div>
       </div>
-      {activeDialog === 'edit' && (
+      {hasActivatedEditDialog && (
         <EditAppModal
           isEditModal
           appName={app.name}
@@ -660,9 +662,11 @@ export function AppCardInteractions({
           appMode={app.mode}
           appUseIconAsAnswerIcon={app.use_icon_as_answer_icon ?? false}
           max_active_requests={app.max_active_requests ?? null}
-          show
+          open={activeDialog === 'edit'}
           onConfirm={onEdit}
-          onHide={() => setActiveDialog(null)}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
         />
       )}
       {hasActivatedDuplicateDialog && (

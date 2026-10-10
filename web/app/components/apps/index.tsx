@@ -67,6 +67,8 @@ const AppsContent = () => {
     [queryClient],
   )
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+  const [hasActivatedCreateModal, setHasActivatedCreateModal] = useState(false)
+  if (isShowCreateModal && !hasActivatedCreateModal) setHasActivatedCreateModal(true)
 
   const handleCreateLearnDify = (app: RecommendedAppResponse) => {
     if (!canCreateApp) return
@@ -171,6 +173,7 @@ const AppsContent = () => {
             setIsShowCreateModal(false)
           },
           onPending: () => {
+            setIsShowCreateModal(false)
             setShowDSLConfirmModal(true)
           },
         })
@@ -207,7 +210,7 @@ const AppsContent = () => {
           />
         )}
 
-        {isShowCreateModal && (
+        {hasActivatedCreateModal && (
           <CreateAppModal
             appIconType={
               currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
@@ -219,10 +222,9 @@ const AppsContent = () => {
             appIconUrl={currApp?.app?.icon_url}
             appName={currApp?.app?.name ?? ''}
             appDescription=""
-            show
+            open={isShowCreateModal}
             onConfirm={onCreate}
-            confirmLoading={isFetching}
-            onHide={() => setIsShowCreateModal(false)}
+            onOpenChange={setIsShowCreateModal}
           />
         )}
 

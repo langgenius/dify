@@ -73,6 +73,8 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [hasActivatedEditDialog, setHasActivatedEditDialog] = useState(() => activeModal === 'edit')
+  if (activeModal === 'edit' && !hasActivatedEditDialog) setHasActivatedEditDialog(true)
   const [hasActivatedDuplicateDialog, setHasActivatedDuplicateDialog] = useState(
     () => activeModal === 'duplicate',
   )
@@ -126,7 +128,7 @@ const AppInfoModals = ({
           }}
         />
       )}
-      {activeModal === 'edit' && (
+      {hasActivatedEditDialog && (
         <CreateAppModal
           isEditModal
           appName={appDetail.name}
@@ -138,9 +140,11 @@ const AppInfoModals = ({
           appMode={appDetail.mode}
           appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
           max_active_requests={appDetail.max_active_requests ?? null}
-          show
+          open={activeModal === 'edit'}
           onConfirm={onEdit}
-          onHide={closeModal}
+          onOpenChange={(open) => {
+            if (!open) closeModal()
+          }}
         />
       )}
       {hasActivatedDuplicateDialog && (
