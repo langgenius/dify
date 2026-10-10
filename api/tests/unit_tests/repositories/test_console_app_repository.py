@@ -85,6 +85,8 @@ def test_authorization_maintainer_requires_normal_app(
         lambda repo, ctx, app_id: repo.get_trace(ctx, app_id),
         lambda repo, ctx, app_id: repo.set_trace(ctx, app_id, AppTraceSettings(True, "langfuse")),
         lambda repo, ctx, app_id: repo.get_reference(ctx, app_id),
+        lambda repo, ctx, app_id: repo.set_site_enabled(ctx, app_id, False),
+        lambda repo, ctx, app_id: repo.set_api_enabled(ctx, app_id, False),
     ],
 )
 @pytest.mark.parametrize("visibility", ["other_tenant", "disabled", "workflow_only"])
@@ -196,6 +198,26 @@ def test_star_is_idempotent_and_scoped_to_account(repository: ConsoleAppReposito
     assert sqlite_session.scalars(select(AppStar.account_id)).all() == [another.account_id]
     assert repository.list_apps(CONTEXT, StarredAppListParams()).data == []
     assert repository.list_apps(another, StarredAppListParams()).data[0].is_starred
+
+
+@pytest.mark.parametrize("surface", ["site", "api"])
+@pytest.mark.parametrize("enabled", [True, False])
+def test_status_changes_preserve_other_surface_and_noop_audit_fields(
+    repository: ConsoleAppRepository, sqlite_session: Session, surface: str, enabled: bool
+) -> None:
+    app = persist_app(sqlite_session, enable_site=not enabled, enable_api=not enabled)
+    set_enabled = repository.set_site_enabled if surface == "site" else repository.set_api_enabled
+
+    changed = set_enabled(CONTEXT, app.id, enabled)
+    assert changed.changed
+    assert (changed.app.enable_site if surface == "site" else changed.app.enable_api) is enabled
+    assert (changed.app.enable_api if surface == "site" else changed.app.enable_site) is not enabled
+    assert changed.app.updated_by == ACTOR
+
+    unchanged = set_enabled(CONTEXT._replace(account_id=str(uuid4())), app.id, enabled)
+    assert not unchanged.changed
+    assert unchanged.app.updated_by == changed.app.updated_by
+    assert unchanged.app.updated_at == changed.app.updated_at
 
 
 def test_draft_trigger_enrichment_is_tenant_scoped_and_tolerates_bad_graphs(

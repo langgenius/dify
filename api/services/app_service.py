@@ -782,6 +782,8 @@ class AppService:
         :param enable_api: enable api status
         :return: App instance
         """
+        # The Agent endpoint may have loaded this App before another status write committed.
+        session.refresh(app, with_for_update=True)
         if enable_api:
             self.ensure_agent_app_access_ready(app, session=session)
         if enable_api == app.enable_api:

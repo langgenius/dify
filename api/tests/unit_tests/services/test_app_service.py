@@ -415,6 +415,65 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
     assert phase_events == ["commit", "signal"]
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_api_status_uses_persisted_state_instead_of_stale_snapshot(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], enabled: bool
+) -> None:
+    account = _persist_account(sqlite_session)
+    app = _persist_app(sqlite_session, tenant_id=account.current_tenant_id or "")
+    app.enable_api = enabled
+    sqlite_session.commit()
+
+    with sqlite_session_factory.begin() as concurrent_session:
+        concurrent_app = concurrent_session.get(App, app.id)
+        assert concurrent_app is not None
+        concurrent_app.enable_api = not enabled
+
+    assert app.enable_api is enabled
+    with (
+        patch("services.app_service.current_user", account),
+        patch("services.app_service.app_was_updated.send") as updated,
+    ):
+        result = AppService().update_app_api_status(app, enabled, session=sqlite_session)
+
+    assert result.enable_api is enabled
+    with sqlite_session_factory() as read:
+        persisted = read.get(App, app.id)
+        assert persisted is not None
+        assert persisted.enable_api is enabled
+        assert persisted.updated_by == account.id
+    updated.assert_called_once_with(result)
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_api_status_noop_uses_persisted_state_without_actor_or_event(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], enabled: bool
+) -> None:
+    app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+    app.enable_api = not enabled
+    sqlite_session.commit()
+    with sqlite_session_factory.begin() as concurrent_session:
+        concurrent_app = concurrent_session.get(App, app.id)
+        assert concurrent_app is not None
+        concurrent_app.enable_api = enabled
+    updated_at = app.updated_at
+    updated_by = app.updated_by
+    commits: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
+
+    with (
+        patch("services.app_service.current_user", None),
+        patch("services.app_service.app_was_updated.send") as updated,
+    ):
+        result = AppService().update_app_api_status(app, enabled, session=sqlite_session)
+
+    assert result.enable_api is enabled
+    assert result.updated_at == updated_at
+    assert result.updated_by == updated_by
+    assert commits == []
+    updated.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "update_status",
     [

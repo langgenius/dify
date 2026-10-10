@@ -78,9 +78,9 @@ logger = logging.getLogger(__name__)
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
-def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
+def find_console_app(session: Session, *, workspace_id: str, app_id: str, for_update: bool = False) -> App | None:
     """Shared normal-app lookup, including the hidden workflow backing-app gate."""
-    app = session.scalar(
+    statement = (
         select(App)
         .where(
             App.id == app_id,
@@ -89,6 +89,10 @@ def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App
         )
         .limit(1)
     )
+    if for_update:
+        # Compare status only after an in-flight writer commits, even for apparent no-ops.
+        statement = statement.with_for_update().execution_options(populate_existing=True)
+    app = session.scalar(statement)
     if app is not None:
         binding = app.agent_app_binding_with_session(session=session, include_archived=True)
         if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
@@ -96,8 +100,8 @@ def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App
     return app
 
 
-def require_console_app(session: Session, context: RequestContext, app_id: str) -> App:
-    app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
+def require_console_app(session: Session, context: RequestContext, app_id: str, *, for_update: bool = False) -> App:
+    app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id, for_update=for_update)
     if app is None:
         raise ConsoleAppNotFoundError("App not found")
     return app
@@ -254,7 +258,7 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     @override
     def set_site_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange:
         with self._session_factory() as session:
-            app = require_console_app(session, context, app_id)
+            app = require_console_app(session, context, app_id, for_update=True)
             changed = app.enable_site != enabled
             app = self.update_app_site_status(app, enabled, account_id=context.account_id, session=session)
             return AppChange(app_record(app, session=session, projection="detail"), changed)
@@ -262,7 +266,7 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     @override
     def set_api_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange:
         with self._session_factory() as session:
-            app = require_console_app(session, context, app_id)
+            app = require_console_app(session, context, app_id, for_update=True)
             changed = app.enable_api != enabled
             app = self.update_app_api_status(app, enabled, account_id=context.account_id, session=session)
             return AppChange(app_record(app, session=session, projection="detail"), changed)
