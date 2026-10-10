@@ -1,5 +1,5 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { platform, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vite-plus/test'
 import { installSkill } from './install'
@@ -35,9 +35,12 @@ it('writes every file under <root>/difyctl', async () => {
   expect(await readFile(join(root, SKILL_NAME, 'references/setup.md'), 'utf8')).toBe('setup')
 })
 
-it('keeps the permission bits of files from a local folder', async () => {
-  await put('scripts/run', 'no shebang')
-  await chmod(join(from, 'scripts/run'), 0o755)
-  await installSkill(root, await openDir(from))
-  expect((await stat(join(root, SKILL_NAME, 'scripts/run'))).mode & 0o111).toBe(0o111)
-})
+it.skipIf(platform() === 'win32')(
+  'keeps the permission bits of files from a local folder',
+  async () => {
+    await put('scripts/run', 'no shebang')
+    await chmod(join(from, 'scripts/run'), 0o755)
+    await installSkill(root, await openDir(from))
+    expect((await stat(join(root, SKILL_NAME, 'scripts/run'))).mode & 0o111).toBe(0o111)
+  },
+)
