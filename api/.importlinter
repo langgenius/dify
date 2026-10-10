@@ -1254,3 +1254,35 @@ forbidden_modules =
     extensions.application_services
     extensions.ext_application_services
 allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-application-boundary]
+name = Workflow variable services consume injected persistence and storage ports
+type = forbidden
+source_modules =
+    services.workflow.variable_service
+    services.workflow.draft_variable_service
+forbidden_modules =
+    repositories
+    sqlalchemy
+    flask
+    controllers
+    extensions
+allow_indirect_imports = True
+
+[importlinter:contract:console-draft-variable-use-case-boundary]
+name = Console variable use cases receive persistence and file resolution through ports
+type = forbidden
+source_modules =
+    services.workflow.console_variable_service
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    flask
+    werkzeug
+    controllers
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+    factories.file_factory
+allow_indirect_imports = True

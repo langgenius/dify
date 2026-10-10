@@ -58,6 +58,8 @@ if TYPE_CHECKING:
     from repositories.tools.workflow_repository import WorkflowToolRepository
     from services.tag_application_service import TagApplicationService
     from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+    from services.workflow.console_variable_service import ConsoleWorkflowVariableService
+    from services.workflow.variable_service import WorkflowVariableService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -384,3 +386,23 @@ def workflow_tools(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToo
     from extensions.application_services.tools import build_tool_services
 
     return build_tool_services(sqlite_session_factory).workflows
+
+
+@pytest.fixture
+def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowVariableService:
+    from extensions.application_services.workflow_variables import build_workflow_variable_service
+
+    return build_workflow_variable_service(database_client=sqlite_session_factory)
+
+
+@pytest.fixture
+def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> ConsoleWorkflowVariableService:
+    from extensions.application_services.workflow_variables import (
+        build_console_workflow_variables,
+        build_workflow_variable_service,
+    )
+
+    return build_console_workflow_variables(
+        database_client=sqlite_session_factory,
+        variables=build_workflow_variable_service(database_client=sqlite_session_factory),
+    )
