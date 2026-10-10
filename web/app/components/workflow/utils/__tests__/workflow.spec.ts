@@ -41,8 +41,8 @@ describe('canRunBySingle', () => {
     expect(canRunBySingle(type, false)).toBe(true)
   })
 
-  it('should return false for Assigner when it is a child node', () => {
-    expect(canRunBySingle(BlockEnum.Assigner, true)).toBe(false)
+  it('should return true for Assigner when it is a child node', () => {
+    expect(canRunBySingle(BlockEnum.Assigner, true)).toBe(true)
   })
 
   it('should return true for LLM even as a child node', () => {
