@@ -6,7 +6,7 @@ import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -22,13 +22,13 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import {
   useDocumentDetail,
   useDocumentMetadata,
   useInvalidDocumentList,
 } from '@/service/knowledge/use-document'
 import {
-  useCheckSegmentBatchImportProgress,
   useChildSegmentListKey,
   useSegmentBatchImport,
   useSegmentListKey,
@@ -88,10 +88,12 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetImportStatus = () => setImportStatus(undefined)
 
-  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
-  const checkProcess = async (jobID: string) => {
-    await checkSegmentBatchImportProgress(
-      { jobID },
+  const { mutate: checkSegmentBatchImportProgress } = useMutation(
+    consoleQuery.datasets.byDatasetId.batchImportStatus.byJobId.get.mutationOptions(),
+  )
+  const checkProcess = (jobID: string) => {
+    checkSegmentBatchImportProgress(
+      { params: { dataset_id: datasetId, job_id: jobID } },
       {
         onSuccess: (res) => {
           setImportStatus(res.job_status)

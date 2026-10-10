@@ -2,13 +2,17 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import create_autospec, patch
+from unittest.mock import Mock, create_autospec, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from flask_restx import Api
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
+from controllers.common.rbac import DatasetId
+from controllers.console import console_ns, flask_admission, wraps
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
     BatchImportPayload,
@@ -26,7 +30,10 @@ from controllers.console.datasets.datasets_segments import (
     _raise_segment_error,
 )
 from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
+from libs import login as login_adapter
+from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from services.enterprise.rbac_service import RBACService
 from services.knowledge.entities.segments import ChildChunkRecord, ChildChunkUpdateArgs, SegmentRecord
 from services.knowledge.segments.application import (
     ChildChunkDeleteIndexApplicationError,
@@ -51,6 +58,8 @@ from services.knowledge.segments.application import (
     SegmentStatusUpdateError,
     SegmentUploadFileNotFoundError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _context() -> RequestContext:
@@ -279,14 +288,73 @@ def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
 
     segments.get_batch_import_status.side_effect = SegmentBatchImportNotFoundError("The job does not exist.")
     with app.test_request_context("/"), _patch_services(segments), pytest.raises(ValueError):
-        method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
+        method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "dataset-1", "job-1")
 
     segments.get_batch_import_status.side_effect = None
     segments.get_batch_import_status.return_value = SegmentBatchImport(job_id="job-1", job_status="completed")
     with app.test_request_context("/"), _patch_services(segments):
-        response, status = method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
+        response, status = method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "dataset-1", "job-1")
     assert status == 200
     assert response == {"job_id": "job-1", "job_status": "completed"}
+
+
+@pytest.mark.parametrize(
+    ("allowed", "service_error", "expected_status"),
+    [
+        (True, None, 200),
+        (False, None, 403),
+        (True, SegmentDatasetNotFoundError(), 404),
+        (True, SegmentPermissionDeniedError("Dataset access denied."), 403),
+    ],
+)
+def test_batch_import_status_requires_dataset_read_permission(
+    monkeypatch: pytest.MonkeyPatch,
+    allowed: bool,
+    service_error: Exception | None,
+    expected_status: int,
+) -> None:
+    dataset_id = UUID("11111111-1111-1111-1111-111111111111")
+    job_id = UUID("22222222-2222-2222-2222-222222222222")
+    account = make_account()
+    identity = AccountWithTenant(account, "tenant-1")
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True, LOGIN_DISABLED=False)
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    monkeypatch.setattr(login_adapter, "_resolve_current_user", lambda: account)
+    monkeypatch.setattr(login_adapter, "check_csrf_token", lambda *_args: None)
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(DatasetId, "owner_id", lambda *_args: None)
+    check_access = Mock(return_value=allowed)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.get_batch_import_status.return_value = SegmentBatchImport(job_id=str(job_id), job_status="completed")
+    segments.get_batch_import_status.side_effect = service_error
+    resource = next(r for r in console_ns.resources if r.resource is DatasetDocumentSegmentBatchImportStatusApi)
+    http_app = Flask(__name__)
+    Api(http_app).add_resource(DatasetDocumentSegmentBatchImportStatusApi, *resource.urls)
+    url = f"/datasets/{dataset_id}/batch_import_status/{job_id}"
+
+    with _patch_services(segments):
+        response = http_app.test_client().get(url)
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json == {"job_id": str(job_id), "job_status": "completed"}
+    elif service_error is not None:
+        assert response.json == {
+            "message": "Dataset not found." if expected_status == 404 else "Dataset access denied.",
+        }
+    if allowed:
+        assert segments.get_batch_import_status.call_args.kwargs == {
+            "dataset_id": str(dataset_id),
+            "job_id": str(job_id),
+        }
+    else:
+        segments.get_batch_import_status.assert_not_called()
+    assert check_access.call_args.kwargs["resource_id"] == str(dataset_id)
+    assert check_access.call_args.kwargs["scene"] == wraps.RBACPermission.DATASET_READONLY
+    assert http_app.test_client().post(url).status_code == 405
+    assert http_app.test_client().get(f"/datasets/batch_import_status/{job_id}").status_code == 404
 
 
 def test_child_chunk_create_and_list_delegate(app: Flask) -> None:

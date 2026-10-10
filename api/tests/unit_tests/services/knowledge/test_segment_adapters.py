@@ -378,12 +378,30 @@ def test_redis_state_uses_existing_keys_and_decodes_status() -> None:
     redis = create_autospec(RedisSegmentClient, instance=True, spec_set=True)
     redis.get.side_effect = [b"running", b"completed"]
     state = RedisSegmentIndexingState(redis)
+    dataset_ref = DatasetRef("workspace-1", "dataset-1")
 
     assert state.is_document_indexing("document-1") is True
-    state.set_batch_waiting("job-1")
-    assert state.get_batch_status("job-1") == "completed"
+    state.set_batch_waiting(dataset_ref, "job-1")
+    assert state.get_batch_status(dataset_ref, "job-1") == "completed"
     redis.get.assert_any_call("document_document-1_indexing")
-    redis.setnx.assert_called_once_with("segment_batch_import_job-1", "waiting")
+    redis.setnx.assert_called_once_with("segment_batch_import_workspace-1_dataset-1_job-1", "waiting")
+
+
+def test_batch_status_is_isolated_by_workspace_and_dataset() -> None:
+    from services.knowledge.segments.adapters import RedisSegmentClient
+
+    values: dict[str, str] = {"segment_batch_import_legacy-job": "completed"}
+    redis = create_autospec(RedisSegmentClient, instance=True, spec_set=True)
+    redis.setnx.side_effect = values.setdefault
+    redis.get.side_effect = values.get
+    state = RedisSegmentIndexingState(redis)
+    owner = DatasetRef("workspace-1", "dataset-1")
+    state.set_batch_waiting(owner, "job-1")
+
+    assert state.get_batch_status(owner, "job-1") == "waiting"
+    assert state.get_batch_status(DatasetRef("workspace-1", "dataset-2"), "job-1") is None
+    assert state.get_batch_status(DatasetRef("workspace-2", "dataset-1"), "job-1") is None
+    assert state.get_batch_status(owner, "legacy-job") is None
 
 
 def test_child_chunk_mutations_preserve_explicit_actors(

@@ -5165,19 +5165,6 @@ Delete dataset API key
 | ---- | ----------- |
 | 204 | API key deleted successfully |
 
-### [GET] /datasets/batch_import_status/{job_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
-
 ### [POST] /datasets/external
 Create external knowledge dataset
 
@@ -5494,6 +5481,20 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/batch_import_status/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| job_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents
 #### Parameters
@@ -23141,7 +23142,7 @@ Resource types understood by access policies.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | job_id | string |  | Yes |
-| job_status | string |  | Yes |
+| job_status | string, <br>**Available values:** "completed", "error", "processing", "waiting" | *Enum:* `"completed"`, `"error"`, `"processing"`, `"waiting"` | Yes |
 
 #### SegmentCreatePayload
 

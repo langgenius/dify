@@ -113,7 +113,7 @@ class BatchImportPayload(BaseModel):
 
 class SegmentBatchImportStatusResponse(ResponseModel):
     job_id: str
-    job_status: str
+    job_status: Literal["waiting", "processing", "completed", "error"]
 
 
 class ConsoleSegmentListResponse(ResponseModel):
@@ -420,15 +420,21 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         return dump_response(SegmentBatchImportStatusResponse, result), 200
 
 
-@console_ns.route("/datasets/batch_import_status/<uuid:job_id>")
+@console_ns.route("/datasets/<uuid:dataset_id>/batch_import_status/<uuid:job_id>")
 class DatasetDocumentSegmentBatchImportStatusApi(Resource):
     @console_ns.response(200, "Batch import status", console_ns.models[SegmentBatchImportStatusResponse.__name__])
-    @console_account_admission()
-    def get(self, _request_context: RequestContext, job_id: UUID):
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
+    )
+    def get(self, request_context: RequestContext, dataset_id: UUID, job_id: UUID):
         try:
-            result = application_services().knowledge.segments.get_batch_import_status(str(job_id))
+            result = application_services().knowledge.segments.get_batch_import_status(
+                request_context, dataset_id=str(dataset_id), job_id=str(job_id)
+            )
         except SegmentBatchImportNotFoundError as error:
             raise ValueError(str(error)) from error
+        except Exception as error:
+            _raise_segment_error(error)
         return dump_response(SegmentBatchImportStatusResponse, result), 200
 
 

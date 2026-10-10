@@ -12,7 +12,12 @@ from uuid import uuid4
 
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import DatasetAccess, DatasetAccessDeniedError, DatasetAccessSnapshot
+from services.knowledge.dataset_access import (
+    DatasetAccess,
+    DatasetAccessDeniedError,
+    DatasetAccessSnapshot,
+    DatasetNotFoundError,
+)
 from services.knowledge.entities.segments import (
     ChildChunkRecord,
     ChildChunkUpdateArgs,
@@ -212,9 +217,9 @@ class SegmentIndexingState(Protocol):
 
     def is_document_indexing(self, document_id: str) -> bool: ...
 
-    def set_batch_waiting(self, job_id: str) -> None: ...
+    def set_batch_waiting(self, dataset_ref: DatasetRef, job_id: str) -> None: ...
 
-    def get_batch_status(self, job_id: str) -> str | None: ...
+    def get_batch_status(self, dataset_ref: DatasetRef, job_id: str) -> str | None: ...
 
 
 class SegmentBatchImportDispatcher(Protocol):
@@ -468,7 +473,7 @@ class DatasetSegmentApplicationService:
 
         job_id = self._job_id_factory()
         try:
-            self._indexing_state.set_batch_waiting(job_id)
+            self._indexing_state.set_batch_waiting(scope.document.ref.dataset, job_id)
             self._batch_dispatcher.dispatch(
                 job_id=job_id,
                 upload_file_id=upload_file_id,
@@ -481,8 +486,14 @@ class DatasetSegmentApplicationService:
             raise SegmentBatchImportDispatchError(str(error)) from error
         return SegmentBatchImport(job_id=job_id, job_status="waiting")
 
-    def get_batch_import_status(self, job_id: str) -> SegmentBatchImport:
-        status = self._indexing_state.get_batch_status(job_id)
+    def get_batch_import_status(self, context: RequestContext, *, dataset_id: str, job_id: str) -> SegmentBatchImport:
+        try:
+            dataset = self._dataset_access.require_accessible(context, dataset_id)
+        except DatasetNotFoundError as error:
+            raise SegmentDatasetNotFoundError(str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise SegmentPermissionDeniedError(str(error)) from error
+        status = self._indexing_state.get_batch_status(DatasetRef(dataset.workspace_id, dataset.id), job_id)
         if status is None:
             raise SegmentBatchImportNotFoundError("The job does not exist.")
         return SegmentBatchImport(job_id=job_id, job_status=status)

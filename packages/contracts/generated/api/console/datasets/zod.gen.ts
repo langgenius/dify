@@ -36,14 +36,6 @@ export const zApiKeyList = z.object({
 })
 
 /**
- * SegmentBatchImportStatusResponse
- */
-export const zSegmentBatchImportStatusResponse = z.object({
-  job_id: z.string(),
-  job_status: z.string(),
-})
-
-/**
  * ExternalDatasetCreatePayload
  *
  * Validated fields required to create an external dataset binding.
@@ -109,6 +101,14 @@ export const zSimpleResultResponse = z.object({
 export const zAutoDisableLogsResponse = z.object({
   count: z.int(),
   document_ids: z.array(z.string()),
+})
+
+/**
+ * SegmentBatchImportStatusResponse
+ */
+export const zSegmentBatchImportStatusResponse = z.object({
+  job_id: z.string(),
+  job_status: z.enum(['completed', 'error', 'processing', 'waiting']),
 })
 
 /**
@@ -1533,15 +1533,6 @@ export const zDeleteDatasetsApiKeysByApiKeyIdPath = z.object({
  */
 export const zDeleteDatasetsApiKeysByApiKeyIdResponse = z.void()
 
-export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
-  job_id: z.uuid(),
-})
-
-/**
- * Batch import status
- */
-export const zGetDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
-
 export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 
 /**
@@ -1725,6 +1716,17 @@ export const zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath = z.object({
  * Indexing status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse = zDocumentStatusListResponse
+
+export const zGetDatasetsByDatasetIdBatchImportStatusByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.uuid(),
+})
+
+/**
+ * Batch import status
+ */
+export const zGetDatasetsByDatasetIdBatchImportStatusByJobIdResponse =
+  zSegmentBatchImportStatusResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsPath = z.object({
   dataset_id: z.uuid(),
