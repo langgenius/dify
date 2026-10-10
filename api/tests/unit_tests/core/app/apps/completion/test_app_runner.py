@@ -1,9 +1,9 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal
-from types import SimpleNamespace
 
 import pytest
+from redis import Redis
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -12,22 +12,27 @@ from core.app.app_config.entities import (
     AppAdditionalFeatures,
     DatasetEntity,
     DatasetRetrieveConfigEntity,
+    EasyUIBasedAppModelConfigFrom,
+    ExternalDataVariableEntity,
+    ModelConfigEntity,
     PromptTemplateEntity,
 )
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.apps.completion.app_runner import CompletionAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileUploadConfig
 from graphon.file.models import ImageConfig
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
+from tests.unit_tests.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -58,12 +63,21 @@ class CallRecorder:
         return self.result
 
 
-class RecordingQueueManager(AppQueueManager):
-    def __init__(self) -> None:
-        self.published: list[tuple[object, PublishFrom]] = []
-
-    def _publish(self, event: object, pub_from: PublishFrom) -> None:
-        self.published.append((event, pub_from))
+@pytest.fixture
+def queue_manager(monkeypatch: pytest.MonkeyPatch) -> Iterator[MessageBasedAppQueueManager]:
+    with Redis() as client:
+        monkeypatch.setattr(client, "execute_command", lambda *_args, **_kwargs: None)
+        redis = RedisClientWrapper()
+        redis.initialize(client)
+        monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis)
+        yield MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="user",
+            invoke_from=InvokeFrom.SERVICE_API,
+            conversation_id="conv",
+            app_mode=AppMode.COMPLETION,
+            message_id="msg",
+        )
 
 
 class RecordingDatasetRetrieval(DatasetRetrieval):
@@ -105,10 +119,13 @@ def runner():
 
 
 def _build_app_config(dataset=None, external_tools=None, additional_features=None):
-    return CompletionAppConfig.model_construct(
+    return CompletionAppConfig(
         app_id=APP_ID,
         tenant_id=TENANT_ID,
         app_mode=AppMode.COMPLETION,
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+        app_model_config_id="model-config",
+        model=ModelConfigEntity(provider="provider", model="model", mode="completion"),
         prompt_template=PromptTemplateEntity(
             prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
             simple_prompt_template="Answer the query.",
@@ -121,14 +138,11 @@ def _build_app_config(dataset=None, external_tools=None, additional_features=Non
 
 
 def _build_generate_entity(app_config, file_upload_config=None):
-    model_conf = ModelConfigWithCredentialsEntity.model_construct(
-        provider="provider",
-        provider_model_bundle="bundle",
-        model="model",
-        parameters={"max_tokens": 10},
-        stop=["stop"],
-    )
-    return SimpleNamespace(
+    model_conf = make_model_config(provider="provider", model="model", mode="completion")
+    model_conf.parameters = {"max_tokens": 10}
+    model_conf.stop = ["stop"]
+    return CompletionAppGenerateEntity(
+        task_id="task",
         app_config=app_config,
         model_conf=model_conf,
         inputs={"qvar": "query_from_input"},
@@ -190,14 +204,16 @@ def _persist_records(session: Session) -> tuple[App, Message]:
 
 
 class TestCompletionAppRunner:
-    def test_run_app_not_found(self, runner, sqlite_session: Session):
+    def test_run_app_not_found(self, runner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager):
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
 
         with pytest.raises(ValueError):
-            runner.run(app_generate_entity, RecordingQueueManager(), _message(), sqlite_session)
+            runner.run(app_generate_entity, queue_manager, _message(), sqlite_session)
 
-    def test_run_moderation_error_outputs_direct(self, runner, sqlite_session: Session):
+    def test_run_moderation_error_outputs_direct(
+        self, runner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+    ):
         _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
@@ -210,12 +226,14 @@ class TestCompletionAppRunner:
         runner.direct_output = direct_output  # type: ignore[method-assign]
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, RecordingQueueManager(), message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert len(direct_output.calls) == 1
         assert handle_invoke_result.calls == []
 
-    def test_run_hosting_moderation_stops(self, runner, sqlite_session: Session):
+    def test_run_hosting_moderation_stops(
+        self, runner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+    ):
         _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
@@ -229,12 +247,16 @@ class TestCompletionAppRunner:
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, RecordingQueueManager(), message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert handle_invoke_result.calls == []
 
     def test_run_dataset_and_external_tools_flow(
-        self, runner, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
     ):
         _, message = _persist_records(sqlite_session)
 
@@ -246,7 +268,7 @@ class TestCompletionAppRunner:
         additional_features = AppAdditionalFeatures(show_retrieve_source=True)
         app_config = _build_app_config(
             dataset=dataset_config,
-            external_tools=["tool"],
+            external_tools=[ExternalDataVariableEntity(variable="tool", type="api", config={})],
             additional_features=additional_features,
         )
 
@@ -275,19 +297,22 @@ class TestCompletionAppRunner:
         model_manager = RecordingModelManager(model_instance)
         monkeypatch.setattr(module.ModelManager, "for_tenant", staticmethod(lambda tenant_id: model_manager))
 
-        runner.run(app_generate_entity, RecordingQueueManager(), message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert len(dataset_retrieval.calls) == 1
         assert dataset_retrieval.calls[0].kwargs["query"] == "query_from_input"
         assert len(handle_invoke_result.calls) == 1
 
     def test_run_closes_explicit_session_before_stream_consumption(
-        self, runner, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        runner,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
     ):
         _, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
-        queue_manager = RecordingQueueManager()
 
         events = []
         session = sqlite_session
@@ -349,6 +374,7 @@ class TestCompletionAppRunner:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         stream: bool,
+        queue_manager: MessageBasedAppQueueManager,
     ):
         _, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
@@ -368,7 +394,7 @@ class TestCompletionAppRunner:
         model_manager_factory = CallRecorder(result=model_manager)
         monkeypatch.setattr(module.ModelManager, "for_tenant", staticmethod(model_manager_factory))
 
-        runner.run(app_generate_entity, RecordingQueueManager(), message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert model_manager_factory.calls == [RecordedCall(args=(), kwargs={"tenant_id": TENANT_ID})]
         assert model_manager.calls == [
@@ -399,7 +425,9 @@ class TestCompletionAppRunner:
             )
         ]
 
-    def test_run_uses_low_image_detail_default(self, runner, sqlite_session: Session):
+    def test_run_uses_low_image_detail_default(
+        self, runner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+    ):
         _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
@@ -412,6 +440,6 @@ class TestCompletionAppRunner:
         )
         runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, RecordingQueueManager(), message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert organize_prompt_messages.calls[-1].kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW
