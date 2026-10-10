@@ -1,5 +1,6 @@
 export type Scenario =
   | 'happy'
+  | 'resource-token'
   | 'sso'
   | 'no-email'
   | 'denied'

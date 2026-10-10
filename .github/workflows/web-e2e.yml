@@ -71,14 +71,10 @@ jobs:
 
       - name: Package Web build
         run: >-
-          tar -cf e2e-web-build.tar -C web
-          .next/BUILD_ID
-          .next/e2e-web-build.sha256
-          .next/standalone
-          .next/static
+          tar -cf e2e-web-build.tar -C web .next/BUILD_ID .next/e2e-web-build.sha256 .next/standalone .next/static
 
       - name: Upload Web build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: core-e2e-web-build-${{ github.run_attempt }}
           path: e2e-web-build.tar
@@ -122,7 +118,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       # API and web installs are independent, so overlap them; the browser
@@ -154,7 +150,7 @@ jobs:
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cucumber-report-chromium-${{ matrix.shard }}
           path: e2e/cucumber-report
@@ -164,7 +160,7 @@ jobs:
 
       - name: Upload E2E logs
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-chromium-${{ matrix.shard }}
           path: e2e/.logs/*.log
@@ -200,7 +196,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       # API and web installs are independent, so overlap them; the browser
@@ -232,7 +228,7 @@ jobs:
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cucumber-report-webkit
           path: e2e/cucumber-report
@@ -242,7 +238,7 @@ jobs:
 
       - name: Upload E2E logs
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-webkit
           path: e2e/.logs/*.log
@@ -272,7 +268,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock
@@ -327,7 +323,7 @@ jobs:
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cucumber-report
           path: e2e/cucumber-report
@@ -336,7 +332,7 @@ jobs:
 
       - name: Upload E2E logs
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs
           path: e2e/.logs/*.log
@@ -346,7 +342,7 @@ jobs:
 
       - name: Upload E2E seed report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-seed-report
           path: e2e/seed-report

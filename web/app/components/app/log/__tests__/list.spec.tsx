@@ -13,6 +13,7 @@ import ConversationList from '../list'
 
 const mockFetchChatMessages = vi.fn()
 const mockUpdateLogMessageFeedbacks = vi.fn()
+const mockFeedbackResult = vi.fn()
 const mockUpdateLogMessageAnnotations = vi.fn()
 const mockOnRefresh = vi.fn()
 const mockCompletionRefetch = vi.fn()
@@ -82,11 +83,11 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   }: {
     content: string
     onOpenLog?: (item: IChatItem) => void
-    onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
+    onFeedback: (value: { rating: string; content?: string }) => void
   }) => (
     <div data-testid="text-generation" data-log-enabled={String(!!onOpenLog)}>
       <div>{content}</div>
-      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
+      <button onClick={() => onFeedback({ rating: 'like', content: 'great' })}>
         completion-feedback
       </button>
     </div>
@@ -104,7 +105,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onOpenLog,
   }: {
     chatList: Array<{ id: string }>
-    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
+    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<void>
     onAnnotationAdded: (
       annotationId: string,
       authorName: string,
@@ -187,7 +188,14 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           </button>
         </>
       )}
-      <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>
+      <button
+        onClick={() => {
+          void onFeedback('message-1', { rating: 'like', content: 'nice' }).then(
+            () => mockFeedbackResult(true),
+            () => mockFeedbackResult(false),
+          )
+        }}
+      >
         chat-feedback
       </button>
       <button
@@ -426,81 +434,88 @@ describe('ConversationList', () => {
     expect(update.options.history).toBe('replace')
   })
 
-  it('should render chat conversation details and submit feedback from the chat panel', async () => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
-        user_input_form: [
-          {
-            query: {
-              variable: 'query',
-            },
+  it.each([true, false])(
+    'settles admin feedback with the request outcome (success: %s)',
+    async (succeeded) => {
+      mockFeedbackResult.mockClear()
+      if (!succeeded)
+        mockUpdateLogMessageFeedbacks.mockRejectedValueOnce(new Error('Feedback failed'))
+      mockChatConversationDetail = {
+        id: 'conversation-1',
+        created_at: 1710000000,
+        model_config: {
+          model: 'gpt-4o',
+          configs: {
+            introduction: 'Hello there',
           },
-        ],
-      },
-      message: {
-        inputs: {
-          query: 'Latest question',
+          user_input_form: [
+            {
+              query: {
+                variable: 'query',
+              },
+            },
+          ],
         },
-      },
-    }
-    mockFetchChatMessages.mockResolvedValue({
-      data: [
-        {
-          id: 'message-1',
-          answer: 'Assistant reply',
-          query: 'Latest question',
-          created_at: 1710000000,
+        message: {
           inputs: {
             query: 'Latest question',
           },
-          feedbacks: [],
-          message: [],
-          message_files: [],
         },
-      ],
-      has_more: false,
-    })
-
-    renderConversationList({
-      searchParams: '?page=2&conversation_id=conversation-1',
-    })
-
-    await waitFor(() => {
-      expect(mockFetchChatMessages).toHaveBeenCalledWith({
-        url: '/apps/app-1/chat-messages',
-        params: {
-          conversation_id: 'conversation-1',
-          limit: 10,
-        },
+      }
+      mockFetchChatMessages.mockResolvedValue({
+        data: [
+          {
+            id: 'message-1',
+            answer: 'Assistant reply',
+            query: 'Latest question',
+            created_at: 1710000000,
+            inputs: {
+              query: 'Latest question',
+            },
+            feedbacks: [],
+            message: [],
+            message_files: [],
+          },
+        ],
+        has_more: false,
       })
-    })
 
-    await waitFor(() => {
-      expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
-    })
-
-    expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
-    expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
-
-    fireEvent.click(screen.getByText('chat-feedback'))
-
-    await waitFor(() => {
-      expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-        url: '/apps/app-1/feedbacks',
-        body: {
-          message_id: 'message-1',
-          rating: 'like',
-          content: 'nice',
-        },
+      renderConversationList({
+        searchParams: '?page=2&conversation_id=conversation-1',
       })
-    })
-  })
+
+      await waitFor(() => {
+        expect(mockFetchChatMessages).toHaveBeenCalledWith({
+          url: '/apps/app-1/chat-messages',
+          params: {
+            conversation_id: 'conversation-1',
+            limit: 10,
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
+      })
+
+      expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
+      expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
+
+      fireEvent.click(screen.getByText('chat-feedback'))
+
+      await waitFor(() => {
+        expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
+          url: '/apps/app-1/feedbacks',
+          body: {
+            message_id: 'message-1',
+            rating: 'like',
+            content: 'nice',
+          },
+        })
+      })
+      await waitFor(() => expect(mockFeedbackResult).toHaveBeenCalledWith(succeeded))
+    },
+  )
 
   it.each([
     ['chatbot', AppModeEnum.CHAT, 'false'],

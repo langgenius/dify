@@ -28,6 +28,8 @@
   "menus.plugins": "Intégrations",
   "menus.status": "bêta",
   "menus.tools": "Outils",
+  "settings.accessToken": "Jetons d’accès",
+  "settings.accessTokenDescription": "Créez des jetons d’API de service donnant accès uniquement aux applications et bases de connaissances sélectionnées.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Facturation",
   "settings.customEndpoint": "Point de terminaison personnalisé",

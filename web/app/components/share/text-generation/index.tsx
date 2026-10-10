@@ -1,4 +1,5 @@
 'use client'
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl } from './types'
 import type { VisionFile } from '@/types/app'
@@ -37,12 +38,9 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   const [resultExisted, setResultExisted] = useState(false)
   const [isShowResultPanel, { setTrue: showResultPanelState, setFalse: hideResultPanel }] =
     useBoolean(false)
-  const notify = useCallback(
-    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
-      toast(message, { type })
-    },
-    [],
-  )
+  const notify = useCallback(({ type, message }: { type: ToastType; message: string }) => {
+    toast(message, { type })
+  }, [])
   const updateInputs = useCallback((newInputs: Record<string, InputValueTypes>) => {
     setInputs(newInputs)
     inputsRef.current = newInputs

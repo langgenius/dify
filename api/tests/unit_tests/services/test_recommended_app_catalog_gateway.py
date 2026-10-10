@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
+import httpx
 import pytest
 import yaml
 
@@ -285,8 +286,7 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=200)
-        response.json.side_effect = ValueError("invalid JSON")
+        response = httpx.Response(status_code=200, content=b"invalid JSON")
         monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
 
         assert router.list_recommended("en-US") == expected_page
@@ -357,7 +357,7 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=status_code)
+        response = httpx.Response(status_code=status_code)
         monkeypatch.setattr("services.recommended_app_catalog_gateway.httpx.get", MagicMock(return_value=response))
 
         assert router.get_detail("missing") is None
@@ -433,7 +433,7 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=status_code)
+        response = httpx.Response(status_code=status_code)
         monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
 
         assert router.contains("missing") is False
@@ -457,8 +457,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _detail_payload()
+        response = httpx.Response(status_code=200, json=_detail_payload())
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(
@@ -477,8 +476,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         assert call.kwargs["timeout"].read == 10.0
 
     def test_remote_request_uses_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
+        response = httpx.Response(status_code=200, json=_page_payload())
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(
@@ -493,7 +491,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         http_get.assert_called_once()
 
     def test_remote_request_does_not_cache_failed_responses(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=500)
+        response = httpx.Response(status_code=500)
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
@@ -511,8 +509,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         assert http_get.call_count == 2
 
     def test_remote_request_skips_cache_when_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
+        response = httpx.Response(status_code=200, json=_page_payload())
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=0)
@@ -526,8 +523,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _page_payload()
+        response = httpx.Response(status_code=200, json=_page_payload())
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
@@ -553,8 +549,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         console_web_url: str,
         expected_headers: dict[str, str],
     ) -> None:
-        response = MagicMock(status_code=200)
-        response.json.return_value = _detail_payload()
+        response = httpx.Response(status_code=200, json=_detail_payload())
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(monkeypatch, CONSOLE_WEB_URL=console_web_url)
@@ -576,7 +571,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         operation: str,
         expected_url: str,
     ) -> None:
-        response = MagicMock(status_code=500)
+        response = httpx.Response(status_code=500)
         http_get = MagicMock(return_value=response)
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         apply_config_overrides(

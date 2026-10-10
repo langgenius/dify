@@ -68,7 +68,7 @@ class _MemoryStorage:
         self.read_count = 0
         self.bytes_yielded: dict[str, int] = {}
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         self.read_count += 1
         if self.before_read is not None:
             self.before_read()

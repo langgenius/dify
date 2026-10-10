@@ -117,6 +117,8 @@
   "common.branch": "شاخه",
   "common.chooseDSL": "انتخاب فایل DSL (yml)",
   "common.chooseStartNodeToRun": "گره شروع را برای اجرا انتخاب کنید",
+  "common.clearCanvasConfirmDescription": "ذخیره کردن این گردش کار را پاک می‌کند. ادامه می‌دهید؟",
+  "common.clearCanvasConfirmTitle": "بوم را پاک می‌کنید؟",
   "common.clipboardVersionCompatibilityWarning": "این محتوا از نسخه دیگری از برنامه Dify کپی شده است. ممکن است برخی بخش‌ها ناسازگار باشند.",
   "common.commentMode": "حالت نظرات",
   "common.configure": "پیکربندی",
