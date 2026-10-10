@@ -1,12 +1,12 @@
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
-import MCPModal from '../modal'
+import { MCPModal } from '../modal'
 
 // Mock the service API
 vi.mock('@/service/common', () => ({
@@ -37,14 +37,14 @@ describe('MCPModal', () => {
     createConsoleQueryWrapper({ systemFeatures: mockSystemFeatures }).wrapper
 
   const defaultProps = {
-    show: true,
+    open: true,
     onConfirm: vi.fn(),
-    onHide: vi.fn(),
+    onOpenChange: vi.fn(),
   }
 
   describe('Rendering', () => {
     it('should not render when show is false', () => {
-      render(<MCPModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} open={false} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.title')).not.toBeInTheDocument()
     })
 
@@ -175,31 +175,37 @@ describe('MCPModal', () => {
       expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
     })
 
-    it('should call onHide when cancel is clicked', () => {
-      const onHide = vi.fn()
-      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+    it('should call onOpenChange when cancel is clicked', () => {
+      const onOpenChange = vi.fn()
+      render(<MCPModal {...defaultProps} onOpenChange={onOpenChange} />, {
+        wrapper: createWrapper(),
+      })
 
       const cancelButton = screen.getByText('tools.mcp.modal.cancel')
       fireEvent.click(cancelButton)
 
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onHide when close icon is clicked', () => {
-      const onHide = vi.fn()
-      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+    it('should call onOpenChange when close icon is clicked', () => {
+      const onOpenChange = vi.fn()
+      render(<MCPModal {...defaultProps} onOpenChange={onOpenChange} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
-      expect(onHide).toHaveBeenCalled()
+      expect(onOpenChange).toHaveBeenCalled()
     })
 
-    it('should call onHide when the dialog requests close', () => {
-      const onHide = vi.fn()
-      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+    it('should call onOpenChange when the dialog requests close', () => {
+      const onOpenChange = vi.fn()
+      render(<MCPModal {...defaultProps} onOpenChange={onOpenChange} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
     it('should have confirm button disabled when form is empty', () => {
@@ -355,27 +361,65 @@ describe('MCPModal', () => {
     })
   })
 
-  describe('Form Key Reset', () => {
-    it('should reset form when switching from create to edit mode', () => {
-      const { rerender } = render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Fill some data in create mode
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      fireEvent.change(nameInput, { target: { value: 'New Server' } })
-
-      // Switch to edit mode with different data
-      const mockData = {
-        id: 'edit-id',
-        name: 'Edit Server',
-        icon: { content: '🔗', background: '#6366F1' },
-      } as unknown as ToolWithProvider
-
-      rerender(<MCPModal {...defaultProps} data={mockData} />)
-
-      // Should show edit mode data
-      // Should show edit mode data
-      expect(screen.getByDisplayValue('Edit Server'))!.toBeInTheDocument()
+  it('starts a fresh draft for a different provider after closing', async () => {
+    const { rerender } = render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+      target: { value: 'Unsaved' },
     })
+    rerender(<MCPModal {...defaultProps} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const data = {
+      id: 'edit-id',
+      name: 'Edit Server',
+      icon: { content: '🔗', background: '#6366F1' },
+    } as unknown as ToolWithProvider
+    rerender(<MCPModal {...defaultProps} data={data} />)
+    expect(await screen.findByDisplayValue('Edit Server')).toBeInTheDocument()
+  })
+
+  it('blocks dismissal and duplicate native form submits while pending, and keeps a failed draft for retry', async () => {
+    const user = userEvent.setup()
+    let rejectRequest: (error: Error) => void = () => {}
+    const onConfirm = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            rejectRequest = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
+    const onOpenChange = vi.fn()
+    render(<MCPModal open onConfirm={onConfirm} onOpenChange={onOpenChange} />, {
+      wrapper: createWrapper(),
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverUrl'), {
+      target: { value: 'https://example.com/mcp' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+      target: { value: 'Draft server' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverIdentifier'), {
+      target: { value: 'draft-server' },
+    })
+    const save = screen.getByRole('button', { name: 'tools.mcp.modal.confirm' })
+    await user.click(save)
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByLabelText('tools.mcp.modal.name')).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+    await user.keyboard('{Enter}{Escape}')
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await act(async () => rejectRequest(new Error('Request failed')))
+    expect(screen.getByLabelText('tools.mcp.modal.name')).toHaveValue('Draft server')
+    expect(screen.getByLabelText('tools.mcp.modal.name')).not.toHaveAttribute('readonly')
+    await user.click(screen.getByLabelText('tools.mcp.modal.name'))
+    await user.keyboard('{Enter}')
+    expect(onConfirm).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   describe('URL Blur Handler', () => {

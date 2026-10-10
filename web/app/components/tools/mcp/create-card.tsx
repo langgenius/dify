@@ -8,7 +8,7 @@ import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissio
 import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'
 import CreateEntryCard from '../provider/create-entry-card'
-import MCPModal from './modal'
+import { MCPModal } from './modal'
 
 type Props = Readonly<{
   handleCreate: (provider: ToolWithProvider) => Promise<void> | void
@@ -24,6 +24,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 
     const provider = await createMCP(info)
     await handleCreate(provider)
+    setShowModal(false)
   }
 
   return {
@@ -53,14 +54,12 @@ export function NewMCPButton({ handleCreate }: Props) {
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addMCPServerLabel}
       </Button>
-      {canManageMCP && showModal && (
-        <MCPModal show={showModal} onConfirm={create} onHide={() => setShowModal(false)} />
-      )}
+      <MCPModal open={showModal} onConfirm={create} onOpenChange={setShowModal} />
     </>
   )
 }
 
-const NewMCPCard = ({ handleCreate }: Props) => {
+const NewMCPCard = ({ handleCreate, showEntry = true }: Props & { showEntry?: boolean }) => {
   const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
@@ -69,7 +68,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
 
   return (
     <>
-      {canManageMCP && (
+      {canManageMCP && showEntry && (
         <CreateEntryCard
           title={t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })}
           linkText={t(($) => $['mcp.create.cardLink'], { ns: 'tools' })}
@@ -77,9 +76,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
           onCreate={() => setShowModal(true)}
         />
       )}
-      {canManageMCP && showModal && (
-        <MCPModal show={showModal} onConfirm={create} onHide={() => setShowModal(false)} />
-      )}
+      {canManageMCP && <MCPModal open={showModal} onConfirm={create} onOpenChange={setShowModal} />}
     </>
   )
 }

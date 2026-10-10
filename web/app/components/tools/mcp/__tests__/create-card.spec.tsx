@@ -1,11 +1,12 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { renderWithEmoji as render } from '@/test/emoji-picker'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
@@ -16,33 +17,6 @@ vi.mock('@/service/use-tools', () => ({
   useCreateMCP: () => ({
     mutateAsync: mockCreateMCP,
   }),
-}))
-
-// Mock the MCP Modal
-type MockMCPModalProps = {
-  show: boolean
-  onConfirm: (info: { name: string; server_url: string }) => void
-  onHide: () => void
-}
-
-vi.mock('../modal', () => ({
-  default: ({ show, onConfirm, onHide }: MockMCPModalProps) => {
-    if (!show) return null
-    return (
-      <div data-testid="mcp-modal">
-        <span>tools.mcp.modal.title</span>
-        <button
-          data-testid="confirm-btn"
-          onClick={() => onConfirm({ name: 'Test MCP', server_url: 'https://test.com' })}
-        >
-          Confirm
-        </button>
-        <button data-testid="close-btn" onClick={onHide}>
-          Close
-        </button>
-      </div>
-    )
-  },
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
@@ -84,7 +58,7 @@ describe('NewMCPCard', () => {
   }
 
   beforeEach(() => {
-    mockCreateMCP.mockClear()
+    mockCreateMCP.mockReset().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
@@ -126,7 +100,7 @@ describe('NewMCPCard', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       const cardTitle = screen.getByText('tools.mcp.create.cardTitle')
-      const clickableArea = cardTitle.closest('.group')
+      const clickableArea = cardTitle.closest('button')
 
       if (clickableArea) {
         fireEvent.click(clickableArea)
@@ -181,24 +155,35 @@ describe('NewMCPCard', () => {
 
       // Open the modal
       const cardTitle = screen.getByText('tools.mcp.create.cardTitle')
-      const clickableArea = cardTitle.closest('.group')
+      const clickableArea = cardTitle.closest('button')
 
       if (clickableArea) {
         fireEvent.click(clickableArea)
 
         await waitFor(() => {
-          expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
+          expect(screen.getByRole('dialog')).toBeInTheDocument()
         })
 
         // Click confirm
-        const confirmBtn = screen.getByTestId('confirm-btn')
+        fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverUrl'), {
+          target: { value: 'https://test.com' },
+        })
+        fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+          target: { value: 'Test MCP' },
+        })
+        fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverIdentifier'), {
+          target: { value: 'test-mcp' },
+        })
+        const confirmBtn = screen.getByRole('button', { name: 'tools.mcp.modal.confirm' })
         fireEvent.click(confirmBtn)
 
         await waitFor(() => {
-          expect(mockCreateMCP).toHaveBeenCalledWith({
-            name: 'Test MCP',
-            server_url: 'https://test.com',
-          })
+          expect(mockCreateMCP).toHaveBeenCalledWith(
+            expect.objectContaining({
+              name: 'Test MCP',
+              server_url: 'https://test.com',
+            }),
+          )
           expect(handleCreate).toHaveBeenCalled()
         })
       }
@@ -209,23 +194,82 @@ describe('NewMCPCard', () => {
 
       // Open the modal
       const cardTitle = screen.getByText('tools.mcp.create.cardTitle')
-      const clickableArea = cardTitle.closest('.group')
+      const clickableArea = cardTitle.closest('button')
 
       if (clickableArea) {
         fireEvent.click(clickableArea)
 
         await waitFor(() => {
-          expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
+          expect(screen.getByRole('dialog')).toBeInTheDocument()
         })
 
         // Click close
-        const closeBtn = screen.getByTestId('close-btn')
+        const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
         fireEvent.click(closeBtn)
 
         await waitFor(() => {
-          expect(screen.queryByTestId('mcp-modal')).not.toBeInTheDocument()
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         })
       }
     })
+  })
+  it('keeps its session when the entry disappears while awaiting the original create handoff', async () => {
+    const user = userEvent.setup()
+    let finishHandoff: () => void = () => {}
+    const handleCreate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishHandoff = resolve
+        }),
+    )
+    const { rerender } = render(<NewMCPCard handleCreate={handleCreate} />, {
+      wrapper: createWrapper(),
+    })
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' }))
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverUrl'), {
+      target: { value: 'https://test.com' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+      target: { value: 'New MCP' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverIdentifier'), {
+      target: { value: 'new-mcp' },
+    })
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.confirm' }))
+    expect(handleCreate).toHaveBeenCalledTimes(1)
+    rerender(<NewMCPCard showEntry={false} handleCreate={handleCreate} />)
+    expect(
+      screen.queryByRole('button', { name: 'tools.mcp.create.cardTitle' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByLabelText('tools.mcp.modal.name')).toHaveValue('New MCP')
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await act(async () => finishHandoff())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('keeps a rejected toolbar creation draft and closes only after a successful retry', async () => {
+    const user = userEvent.setup()
+    mockCreateMCP.mockRejectedValueOnce(new Error('Create failed'))
+    const handleCreate = vi.fn()
+    render(<NewMCPButton handleCreate={handleCreate} />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' }))
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverUrl'), {
+      target: { value: 'https://test.com' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+      target: { value: 'Retry MCP' },
+    })
+    fireEvent.change(screen.getByLabelText('tools.mcp.modal.serverIdentifier'), {
+      target: { value: 'retry-mcp' },
+    })
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.confirm' }))
+    expect(handleCreate).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('tools.mcp.modal.name')).toHaveValue('Retry MCP')
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.confirm' }))
+    expect(mockCreateMCP).toHaveBeenCalledTimes(2)
+    expect(handleCreate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

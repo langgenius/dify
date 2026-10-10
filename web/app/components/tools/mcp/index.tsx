@@ -22,7 +22,7 @@ import { useAllMCPTools, useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
-import MCPModal from './modal'
+import { MCPModal } from './modal'
 import MCPCard from './provider-card'
 
 type Props = Readonly<{
@@ -159,7 +159,9 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {canManageMCP && (
+          <NewMCPCard showEntry={!isLoading && showCreateCard} handleCreate={handleCreate} />
+        )}
         {isLoading ? (
           <ToolCardSkeletonGrid variant="mcp" />
         ) : (
@@ -192,14 +194,12 @@ const MCPList = ({
           onFirstCreate={() => setIsTriggerAuthorize(false)}
         />
       )}
-      {editingProvider && (
-        <MCPModal
-          data={editingProvider as ToolWithProvider}
-          show
-          onConfirm={handleEditConfirm}
-          onHide={() => setEditingProviderID(undefined)}
-        />
-      )}
+      <MCPModal
+        data={editingProvider as ToolWithProvider}
+        open={!!editingProvider}
+        onConfirm={handleEditConfirm}
+        onOpenChange={(open) => !open && setEditingProviderID(undefined)}
+      />
       {deletingProvider && (
         <AlertDialog open onOpenChange={(open) => !open && setDeletingProviderID(undefined)}>
           <AlertDialogContent>

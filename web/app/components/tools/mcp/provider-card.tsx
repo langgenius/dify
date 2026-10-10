@@ -104,8 +104,8 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
       {canManageMCP && (
         <div
           className={cn(
-            'absolute top-2.5 right-2.5 z-10 hidden group-focus-within:block group-hover:block',
-            isOperationShow && 'block',
+            'absolute top-2.5 right-2.5 z-10 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+            isOperationShow && 'opacity-100',
           )}
         >
           <OperationDropdown

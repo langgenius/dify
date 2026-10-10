@@ -1,17 +1,16 @@
 'use client'
-import type { FC } from 'react'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   IconPicker,
@@ -53,20 +52,19 @@ type MCPModalConfirmPayload = {
   identity_mode?: 'off' | 'idp_token'
 }
 
-type DuplicateAppModalProps = {
+type MCPModalProps = {
   data?: ToolWithProvider
-  show: boolean
-  onConfirm: (info: MCPModalConfirmPayload) => void
-  onHide: () => void
+  open: boolean
+  onConfirm: (info: MCPModalConfirmPayload) => Promise<void>
+  onOpenChange: (open: boolean) => void
 }
 
-type MCPModalContentProps = {
-  data?: ToolWithProvider
-  onConfirm: (info: MCPModalConfirmPayload) => void
-  onHide: () => void
+type MCPModalContentProps = Pick<MCPModalProps, 'data' | 'onConfirm'> & {
+  isSubmitting: boolean
 }
 
-const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
+function MCPModalContent({ data: initialData, onConfirm, isSubmitting }: MCPModalContentProps) {
+  const [data] = useState(() => initialData)
   const { t } = useTranslation(['common', 'tools'])
   const serverUrlInputId = useId()
   const nameInputId = useId()
@@ -96,7 +94,11 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
     },
   ]
 
+  const isSubmitDisabled =
+    !state.name || !state.url || !state.serverIdentifier || state.isFetchingIcon
+
   const submit = async () => {
+    if (isSubmitting || isSubmitDisabled) return
     if (!isValidUrl(state.url)) {
       toast.error(t(($) => $['mcp.modal.invalidServerUrl'], { ns: 'tools' }))
       return
@@ -134,26 +136,29 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
       // longer available so a stale row can't keep forwarding configured.
       identity_mode: state.forwardUserIdentity && isForwardIdentitySupported ? 'idp_token' : 'off',
     })
-    if (isCreate) onHide()
   }
 
   const handleIconSelect = (payload: IconPickerValue) => {
     actions.setAppIcon(payload)
   }
 
-  const isSubmitDisabled =
-    !state.name || !state.url || !state.serverIdentifier || state.isFetchingIcon
-
   return (
-    <>
-      <button
-        type="button"
+    <form
+      noValidate
+      onSubmit={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        event.stopPropagation()
+        void submit()
+      }}
+    >
+      <DialogClose
+        disabled={isSubmitting}
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onHide}
       >
         <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-      </button>
+      </DialogClose>
       <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!isCreate
           ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
@@ -169,6 +174,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             </label>
           </div>
           <Input
+            readOnly={isSubmitting}
             id={serverUrlInputId}
             value={state.url}
             onChange={(e) => actions.setUrl(e.target.value)}
@@ -193,6 +199,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
               </label>
             </div>
             <Input
+              readOnly={isSubmitting}
               id={nameInputId}
               value={state.name}
               onChange={(e) => actions.setName(e.target.value)}
@@ -202,6 +209,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
           <div className="pt-2">
             <IconPicker value={state.appIcon} onValueChange={handleIconSelect}>
               <IconPickerTrigger
+                disabled={isSubmitting}
                 render={
                   <IconButton
                     aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
@@ -248,6 +256,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             {t(($) => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}
           </div>
           <Input
+            readOnly={isSubmitting}
             id={serverIdentifierInputId}
             aria-describedby={serverIdentifierDescriptionId}
             value={state.serverIdentifier}
@@ -267,6 +276,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
           <div>
             <div className="mb-1 flex h-6 items-center">
               <Switch
+                readOnly={isSubmitting}
                 className="mr-2"
                 checked={state.forwardUserIdentity}
                 onCheckedChange={actions.setForwardUserIdentity}
@@ -287,6 +297,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
         {/* Auth Method Tabs */}
         <SegmentedControl<MCPAuthMethod>
+          readOnly={isSubmitting}
           value={state.authMethod}
           onValueChange={actions.setAuthMethod}
           aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
@@ -306,6 +317,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         {/* Tab Content */}
         {state.authMethod === MCPAuthMethod.authentication && (
           <AuthenticationSection
+            readOnly={isSubmitting}
             isDynamicRegistration={state.isDynamicRegistration}
             onDynamicRegistrationChange={actions.setIsDynamicRegistration}
             clientID={state.clientID}
@@ -316,6 +328,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         )}
         {state.authMethod === MCPAuthMethod.headers && (
           <HeadersSection
+            readOnly={isSubmitting}
             headers={state.headers}
             onHeadersChange={actions.setHeaders}
             isCreate={isCreate}
@@ -323,6 +336,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         )}
         {state.authMethod === MCPAuthMethod.configurations && (
           <ConfigurationsSection
+            readOnly={isSubmitting}
             timeout={state.timeout}
             onTimeoutChange={actions.setTimeout}
             sseReadTimeout={state.sseReadTimeout}
@@ -333,39 +347,54 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
       {/* Actions */}
       <div className="flex flex-row-reverse pt-5">
-        <Button disabled={isSubmitDisabled} className="ml-2" variant="primary" onClick={submit}>
+        <Button
+          type="submit"
+          loading={isSubmitting}
+          disabled={isSubmitDisabled}
+          className="ml-2"
+          variant="primary"
+        >
           {data
             ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
             : t(($) => $['mcp.modal.confirm'], { ns: 'tools' })}
         </Button>
-        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+        <DialogClose disabled={isSubmitting} render={<Button />}>
+          {t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}
+        </DialogClose>
       </div>
-    </>
+    </form>
   )
 }
 
-/**
- * MCP Modal component for creating and editing MCP server configurations.
- *
- * Uses a keyed inner component to ensure form state resets when switching
- * between create mode and edit mode with different data.
- */
-const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide }) => {
-  // Use data ID as key to reset form state when switching between items
-  const formKey = data?.id ?? 'create'
+export function MCPModal({ data, open, onConfirm, onOpenChange }: MCPModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleConfirm = async (info: MCPModalConfirmPayload) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onConfirm(info)
+    } catch {
+      // The service reports request errors; keep the current draft for retry.
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) onHide()
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (isSubmitting) {
+          details.cancel()
+          return
+        }
+        onOpenChange(nextOpen)
       }}
     >
       <DialogContent className="w-full max-w-130! border-none p-6 text-left align-middle">
-        <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
+        <MCPModalContent data={data} onConfirm={handleConfirm} isSubmitting={isSubmitting} />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default MCPModal
