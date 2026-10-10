@@ -158,7 +158,6 @@ from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader,
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
-ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR = "Environment variable names must be unique."
 
 
 def _merge_environment_variable_patch(
@@ -199,7 +198,7 @@ def _merge_environment_variable_patch(
     )
     names = [variable.name for variable in merged_variables]
     if len(set(names)) != len(names):
-        raise ValueError(ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR)
+        raise ValueError("Environment variable names must be unique.")
     return merged_variables
 
 
@@ -270,7 +269,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Return the app draft while holding its row lock for the caller's transaction."""
         return session.scalar(
             select(Workflow)
@@ -443,7 +442,7 @@ class WorkflowService:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -564,7 +563,7 @@ class WorkflowService:
         variables they do not touch. Existing variables keep their order and new variables are appended.
         The transaction is committed before this method returns.
         """
-        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
         if not workflow:
             raise ValueError("No draft workflow found.")
 

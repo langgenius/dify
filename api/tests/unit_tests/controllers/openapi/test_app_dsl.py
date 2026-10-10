@@ -137,13 +137,14 @@ def test_export_reads_draft_hash_before_building_dsl(app: Flask, monkeypatch: py
 
     def fake_get_draft_workflow(**_kwargs: object) -> SimpleNamespace:
         call_order.append("draft_hash")
-        return SimpleNamespace(unique_hash="graph-only-hash", content_hash="hash-before-edit")
+        return SimpleNamespace(token="hash-before-edit")
 
     service = Mock()
     service.get_draft_workflow.side_effect = fake_get_draft_workflow
 
     monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
     monkeypatch.setattr(app_dsl, "WorkflowService", lambda: service)
+    monkeypatch.setattr(app_dsl, "draft_token", lambda draft: draft.token)
     monkeypatch.setattr(db, "session", lambda: None)
 
     ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})

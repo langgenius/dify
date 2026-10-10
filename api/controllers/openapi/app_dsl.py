@@ -10,11 +10,12 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import DslInvalid, ErrorDetail
+from controllers.openapi._errors import DraftChanged, DslInvalid, ErrorDetail
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -26,7 +27,7 @@ from controllers.openapi._models import (
     DslIssueRow,
     Hint,
 )
-from controllers.openapi.app_workflow import GRAPH_MODES
+from controllers.openapi.app_workflow import GRAPH_MODES, stored_secret_ids
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
@@ -44,16 +45,17 @@ from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from factories import variable_factory
-from graphon.variables import VariableBase
+from graphon.variables import SegmentType, VariableBase
 from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
-from models import AppMode
+from models import App, AppMode, Workflow
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import AppImportParams, Import, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.graph_check import GraphIssue, IssueSeverity, ResourceCheck, check_graph
+from services.workflow.graph_diff import draft_token
 from services.workflow.node_defaults import fill_graph
 from services.workflow_service import WorkflowService
 
@@ -157,6 +159,49 @@ def _refuse_invalid_dsl(context: RequestContext, body: AppDslImportPayload) -> N
         )
 
 
+def _current_draft(context: RequestContext, app_id: str) -> Workflow | None:
+    try:
+        application_services().apps.console.get(context, app_id)
+    except ConsoleAppNotFoundError as error:
+        raise NotFound(str(error)) from error
+    app = db.session.get(App, app_id)
+    return WorkflowService().get_draft_workflow(app_model=app, session=db.session()) if app else None
+
+
+def _keep_stored_secrets(workflow: dict[str, Any], draft: Workflow) -> None:
+    """An export blanks secret values; an empty secret the draft already stores keeps its stored value."""
+    stored = stored_secret_ids(draft)
+    for variable in workflow.get("environment_variables") or []:
+        if (
+            isinstance(variable, dict)
+            and variable.get("value_type") == SegmentType.SECRET
+            and variable.get("value") == ""
+            and variable.get("id") in stored
+        ):
+            variable["value"] = HIDDEN_VALUE
+
+
+def _prepare_import(context: RequestContext, body: AppDslImportPayload) -> AppDslImportPayload:
+    """Refuse a stale overwrite, then fill editor defaults and keep stored secrets in YAML imports."""
+    draft = _current_draft(context, body.app_id) if body.app_id else None
+    if body.draft_hash is not None and (draft is None or draft_token(draft) != body.draft_hash):
+        raise DraftChanged()
+    if body.mode != "yaml-content" or not body.yaml_content:
+        return body
+    try:
+        data = yaml.safe_load(body.yaml_content)
+    except yaml.YAMLError:
+        return body
+    workflow = data.get("workflow") if isinstance(data, dict) else None
+    if not isinstance(workflow, dict):
+        return body
+    if isinstance(workflow.get("graph"), Mapping):
+        workflow["graph"] = fill_graph(workflow["graph"])
+    if draft is not None:
+        _keep_stored_secrets(workflow, draft)
+    return body.model_copy(update={"yaml_content": yaml.safe_dump(data, allow_unicode=True, sort_keys=False)})
+
+
 def issue_row(issue: GraphIssue) -> DslIssueRow:
     return DslIssueRow(
         code=issue.code,
@@ -223,9 +268,10 @@ class AppDslImportApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
         _refuse_invalid_dsl(ctx, body)
+        body = _prepare_import(ctx, body)
         try:
             result = application_services().apps.imports.import_app(
-                ctx, AppImportParams.model_validate(body.model_dump())
+                ctx, AppImportParams.model_validate(body.model_dump(exclude={"draft_hash"}))
             )
         except NoPermissionError as exc:
             raise Forbidden(str(exc)) from exc
@@ -338,7 +384,7 @@ class AppDslExportApi(Resource):
             )
         except WorkflowNotFoundError as exc:
             return str(exc), 404
-        return AppDslExportResponse(data=data, draft_hash=draft.content_hash if draft else None), 200
+        return AppDslExportResponse(data=data, draft_hash=draft_token(draft) if draft else None), 200
 
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")

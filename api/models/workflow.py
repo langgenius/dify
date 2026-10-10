@@ -560,18 +560,6 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
-    @property
-    def content_hash(self) -> str:
-        """Hash of everything a DSL import replaces: graph, features, environment and conversation
-        variables. Hashes the stored column text, so encrypted secrets never leave the row."""
-        entity = {
-            "graph": self.graph,
-            "features": self.features,
-            "environment_variables": self._environment_variables,
-            "conversation_variables": self._conversation_variables,
-        }
-        return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
-
     @deprecated(
         "This method is not accurate for determining if a workflow is published as a tool."
         "It only checks if there's a WorkflowToolProvider for the app, "

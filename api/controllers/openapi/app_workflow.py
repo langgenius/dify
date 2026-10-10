@@ -70,6 +70,7 @@ from libs.helper import to_timestamp
 from models import AppMode, WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.workflow.graph_diff import draft_token
 from services.workflow_run_service import WorkflowRunListArgs
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -287,7 +288,7 @@ class AppVersionRestoreApi(Resource):
             raise VersionNotFound() from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
-        return RestoreResponse(result="success", draft_hash=draft.content_hash)
+        return RestoreResponse(result="success", draft_hash=draft_token(draft))
 
 
 def env_variable_rows(variables: Iterable[VariableBase]) -> list[EnvVariableRow]:
@@ -312,7 +313,7 @@ def require_draft(ctx: Context) -> Workflow:
     return draft
 
 
-def _stored_secret_ids(draft: Workflow) -> set[str]:
+def stored_secret_ids(draft: Workflow) -> set[str]:
     return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
 
 
@@ -374,7 +375,7 @@ class AppEnvItemApi(Resource):
         if body.value == encrypter.full_mask_token() and body.value_type != EnvVariableValueType.SECRET:
             raise SecretMaskNotSecret()
         [mapping] = Workflow.normalize_environment_variable_mappings([{**body.model_dump(mode="json"), "id": env_id}])
-        if mapping["value"] == HIDDEN_VALUE and env_id not in _stored_secret_ids(draft):
+        if mapping["value"] == HIDDEN_VALUE and env_id not in stored_secret_ids(draft):
             raise SecretMaskUnknownId()
         try:
             variable = variable_factory.build_environment_variable_from_mapping(mapping)

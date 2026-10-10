@@ -276,7 +276,6 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon=params.icon,
                 icon_background=params.icon_background,
                 app_id=params.app_id,
-                draft_hash=params.draft_hash,
                 package=package,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):

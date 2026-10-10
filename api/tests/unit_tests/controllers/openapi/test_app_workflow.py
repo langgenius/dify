@@ -212,9 +212,8 @@ def test_version_list_excludes_the_draft(app: Flask, monkeypatch: pytest.MonkeyP
 
 def test_restore_returns_the_hash_an_import_checks(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _fake_workflow_service(monkeypatch)
-    service.restore_published_workflow_to_draft.return_value = SimpleNamespace(
-        unique_hash="graph-only-hash", content_hash="whole-draft-hash"
-    )
+    service.restore_published_workflow_to_draft.return_value = SimpleNamespace(token="whole-draft-hash")
+    monkeypatch.setattr(app_workflow, "draft_token", lambda draft: draft.token)
     monkeypatch.setattr(app_workflow.db, "session", lambda: None)
     version_id = "11111111-1111-4111-8111-111111111111"
 

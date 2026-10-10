@@ -61,7 +61,6 @@ from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededEr
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
-    ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR,
     WorkflowService,
     _merge_environment_variable_patch,
     _rebuild_file_for_user_inputs_in_start_node,
@@ -3749,5 +3748,5 @@ def _env(variable_id: str, name: str) -> StringVariable:
 )
 def test_environment_patch_rejects_a_name_another_id_uses(upsert: StringVariable) -> None:
     current = [_env("taken-id", "TAKEN"), _env("other-id", "OTHER")]
-    with pytest.raises(ValueError, match=ENVIRONMENT_VARIABLE_NAME_TAKEN_ERROR):
+    with pytest.raises(ValueError, match="Environment variable names must be unique"):
         _merge_environment_variable_patch(current, [upsert], [])

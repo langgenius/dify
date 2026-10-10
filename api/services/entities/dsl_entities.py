@@ -35,7 +35,6 @@ class AppImportParams(BaseModel):
     icon: str | None = None
     icon_background: str | None = None
     app_id: str | None = None
-    draft_hash: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

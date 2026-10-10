@@ -9,7 +9,6 @@ This test suite covers:
 """
 
 import json
-from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -20,7 +19,6 @@ from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
 )
-from graphon.variables import StringVariable
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import (
     Workflow,
@@ -29,7 +27,6 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from tests.unit_tests.model_factories import make_workflow
 
 
 class TestWorkflowModelValidation:
@@ -1045,43 +1042,3 @@ class TestGraphConfigurationValidation:
 
         # Assert
         assert result is None
-
-
-def _add_env_variable(workflow: Workflow) -> None:
-    workflow.environment_variables = [
-        *workflow.environment_variables,
-        StringVariable(id="env-2", name="ADDED", value="x", selector=["env", "ADDED"]),
-    ]
-
-
-def _change_features(workflow: Workflow) -> None:
-    workflow.features = json.dumps({"opening_statement": "hi"})
-
-
-def _add_conversation_variable(workflow: Workflow) -> None:
-    workflow.conversation_variables = [
-        StringVariable(id="conv-1", name="topic", value="", selector=["conversation", "topic"])
-    ]
-
-
-def _change_graph(workflow: Workflow) -> None:
-    workflow.graph = json.dumps({"nodes": [{"id": "start"}], "edges": []})
-
-
-@pytest.mark.parametrize(
-    "edit", [_add_env_variable, _change_features, _add_conversation_variable, _change_graph], ids=lambda f: f.__name__
-)
-def test_content_hash_covers_everything_a_dsl_import_replaces(edit: Callable[[Workflow], None]) -> None:
-    workflow = make_workflow(
-        environment_variables=[StringVariable(id="env-1", name="URL", value="https://x", selector=["env", "URL"])]
-    )
-    before = workflow.content_hash
-    edit(workflow)
-    assert workflow.content_hash != before
-
-
-def test_unique_hash_still_covers_only_the_graph() -> None:
-    workflow = make_workflow()
-    before = workflow.unique_hash
-    _add_env_variable(workflow)
-    assert workflow.unique_hash == before

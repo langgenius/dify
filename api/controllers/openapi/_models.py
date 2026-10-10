@@ -614,6 +614,8 @@ class AppDslImportPayload(BaseModel):
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.draft_hash is not None and not self.app_id:
+            raise ValueError("draft_hash is only valid when app_id names the app to overwrite")
         if self.mode == "yaml-content" and not self.yaml_content:
             raise ValueError("yaml_content is required when mode is 'yaml-content'")
         if self.mode == "yaml-url" and not self.yaml_url:

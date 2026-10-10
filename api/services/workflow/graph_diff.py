@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
+from graphon.variables import SecretVariable, VariableBase
+from libs import helper
+from models.workflow import Workflow
 from services.workflow.node_defaults import fill_node_data
 
 _DATA_UI_KEYS: Final = frozenset({"selected", "_connectedSourceHandleIds", "_connectedTargetHandleIds"})
@@ -77,10 +81,28 @@ def _edges(graph: Mapping[str, Any]) -> set[str]:
     }
 
 
+def _runnable(graph: Mapping[str, Any]) -> dict[str, Any]:
+    """The graph as a run sees it: the editor's layout and selection state don't count."""
+    return {"nodes": {i: _data(n) for i, n in _nodes(graph).items()}, "edges": sorted(_edges(graph))}
+
+
 def same_graph(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
-    """Whether two graphs run the same; the editor's layout and selection state don't count."""
-    old, new = _nodes(a), _nodes(b)
-    return old.keys() == new.keys() and all(_data(old[i]) == _data(new[i]) for i in old) and _edges(a) == _edges(b)
+    return _runnable(a) == _runnable(b)
+
+
+def _variable(variable: VariableBase) -> dict[str, Any]:
+    return variable.model_dump(mode="json", exclude={"value"} if isinstance(variable, SecretVariable) else None)
+
+
+def draft_token(draft: Workflow) -> str:
+    """Changes when anything a DSL import replaces changes; editor layout and secret values don't count."""
+    content = {
+        "graph": _runnable(draft.graph_dict),
+        "features": draft.features_dict,
+        "environment_variables": [_variable(v) for v in draft.environment_variables],
+        "conversation_variables": [_variable(v) for v in draft.conversation_variables],
+    }
+    return helper.generate_text_hash(json.dumps(content, sort_keys=True))
 
 
 def diff_workflows(published: WorkflowSnapshot | None, draft: WorkflowSnapshot) -> WorkflowDiff:

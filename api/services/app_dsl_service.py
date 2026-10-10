@@ -2,7 +2,7 @@ import base64
 import hashlib
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -16,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from constants import HIDDEN_VALUE
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.app.app_config.features.suggested_questions_after_answer.manager import (
     SuggestedQuestionsAfterAnswerConfigManager,
@@ -47,7 +46,6 @@ from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
-from graphon.variables import SecretVariable, SegmentType
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.agent import AgentScope
@@ -73,7 +71,7 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.app import WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
@@ -83,7 +81,6 @@ from services.icon_configuration import (
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow.graph_check import refused_node_types
-from services.workflow.node_defaults import fill_graph
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -92,8 +89,6 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DRAFT_CHANGED_ERROR = "The draft changed after it was exported. Export it again and reapply your edits."
-DRAFT_HASH_NEEDS_APP_ID_ERROR = "draft_hash is only valid when app_id names the app to overwrite."
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
@@ -113,17 +108,6 @@ def missing_app_section_error(top_level_keys: list[str]) -> str:
     )
 
 
-def _keep_stored_secrets(mappings: Sequence[Mapping[str, Any]], stored_secret_ids: set[str]) -> list[Mapping[str, Any]]:
-    return [
-        {**mapping, "value": HIDDEN_VALUE}
-        if mapping.get("value_type") == SegmentType.SECRET
-        and mapping.get("value") == ""
-        and mapping.get("id") in stored_secret_ids
-        else mapping
-        for mapping in mappings
-    ]
-
-
 class PendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
@@ -133,7 +117,6 @@ class PendingData(PendingImportOwner):
     icon: str | None = None
     icon_background: str | None = None
     app_id: str | None = None
-    draft_hash: str | None = None
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -162,7 +145,6 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         app_id: str | None = None,
-        draft_hash: str | None = None,
         import_app_id: str | None = None,
         package: AppImportPackage | None = None,
     ) -> Import:
@@ -175,9 +157,6 @@ class AppDslService:
             mode = ImportMode(import_mode)
         except ValueError:
             raise ValueError(f"Invalid import_mode: {import_mode}")
-
-        if draft_hash is not None and not app_id:
-            return Import(id=import_id, status=ImportStatus.FAILED, error=DRAFT_HASH_NEEDS_APP_ID_ERROR)
 
         # Get YAML content
         content: str = ""
@@ -333,7 +312,6 @@ class AppDslService:
                     icon=icon,
                     icon_background=icon_background,
                     app_id=app_id,
-                    draft_hash=draft_hash,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -378,7 +356,6 @@ class AppDslService:
                 dependencies=check_dependencies_pending_data,
                 import_app_id=import_app_id,
                 allow_premium_site_settings=allow_premium_site_settings,
-                draft_hash=draft_hash,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -399,9 +376,6 @@ class AppDslService:
                 status=ImportStatus.FAILED,
                 error=f"Invalid YAML format: {str(e)}",
             )
-
-        except WorkflowHashNotEqualError:
-            return Import(id=import_id, status=ImportStatus.FAILED, error=DRAFT_CHANGED_ERROR)
 
         except NoPermissionError:
             raise
@@ -480,7 +454,6 @@ class AppDslService:
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
-                draft_hash=pending_data.draft_hash,
             )
 
             # Delete import info from Redis
@@ -495,9 +468,6 @@ class AppDslService:
                 imported_dsl_version=data.get("version", "0.1.0"),
                 warnings=self._warnings,
             )
-
-        except WorkflowHashNotEqualError:
-            return Import(id=import_id, status=ImportStatus.FAILED, error=DRAFT_CHANGED_ERROR)
 
         except NoPermissionError:
             raise
@@ -604,23 +574,8 @@ class AppDslService:
         # Package uploads cannot run the editor's YAML node checks before import.
         invalid_types = refused_node_types(AppMode(app.mode))
         nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
-        incompatible = [
-            f"{node['id']} ({node_type})" if "id" in node else node_type
-            for node in nodes
-            if (node_type := node.get("data", {}).get("type")) in invalid_types
-        ]
-        if incompatible:
-            raise ValueError(
-                f"Workflow contains node types incompatible with the target App: {', '.join(incompatible)}"
-            )
-
-    def _lock_draft_at_hash(self, app: App | None, draft_hash: str) -> Workflow:
-        """Row-lock the draft and require it to be the one the caller exported. The lock holds until
-        the import's transaction ends, so no edit can land between this check and the overwrite."""
-        draft = WorkflowService().get_draft_workflow_for_update(app_model=app, session=self._session) if app else None
-        if draft is None or draft.content_hash != draft_hash:
-            raise WorkflowHashNotEqualError()
-        return draft
+        if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
+            raise ValueError("Workflow contains node types incompatible with the target App")
 
     def _create_or_update_app(
         self,
@@ -636,7 +591,6 @@ class AppDslService:
         dependencies: list[PluginDependency] | None = None,
         import_app_id: str | None = None,
         allow_premium_site_settings: bool = True,
-        draft_hash: str | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -651,8 +605,6 @@ class AppDslService:
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
-
-        locked_draft = self._lock_draft_at_hash(app, draft_hash) if draft_hash is not None else None
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -725,18 +677,7 @@ class AppDslService:
                 if not workflow_data or not isinstance(workflow_data, dict):
                     raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-                workflow_service = WorkflowService()
-                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow(
-                    app_model=app, session=self._session
-                )
-                stored_secret_ids = (
-                    {v.id for v in current_draft_workflow.environment_variables if isinstance(v, SecretVariable)}
-                    if current_draft_workflow
-                    else set()
-                )
-                environment_variables_list = _keep_stored_secrets(
-                    workflow_data.get("environment_variables", []), stored_secret_ids
-                )
+                environment_variables_list = workflow_data.get("environment_variables", [])
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
                 ]
@@ -746,6 +687,8 @@ class AppDslService:
                     for obj in conversation_variables_list
                 ]
 
+                workflow_service = WorkflowService()
+                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
                 if current_draft_workflow:
                     unique_hash = current_draft_workflow.unique_hash
                 else:
@@ -756,7 +699,6 @@ class AppDslService:
                 # The source canvas position should not determine the imported app's initial view.
                 graph = graph.copy()
                 graph.pop("viewport", None)
-                graph = fill_graph(graph)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
