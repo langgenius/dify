@@ -6,6 +6,9 @@ import json
 from typing import Literal
 
 import pytest
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.config.layer import (
@@ -150,6 +153,123 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         "$ dify-agent file download --help"
     )
     assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt
+
+
+@pytest.mark.anyio
+async def test_read_config_skill_md_returns_full_instructions_hidden_from_shell_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+    layer.config = layer.config.model_copy(
+        update={"skills": [layer.config.skills[0].model_copy(update={"name": "alpha"})]}
+    )
+    decisive_instruction = "VERIFY THE IMPORT ROW COUNT BEFORE COMMITTING"
+    skill_md = "# Alpha\n" + "A" * 5600 + decisive_instruction + "B" * 5600
+    scripts: list[str] = []
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, timeout
+        assert inject_agent_stub_env is True
+        scripts.append(script)
+        return _remote_result(
+            json.dumps({"items": [{"name": "alpha", "skill_md": skill_md, "directory_path": "/workspace/alpha"}]})
+        )
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    tool = layer.tools[0]
+    assert tool.name == "read_config_skill_md"
+    result = await tool.function_schema.call({"name": "alpha"}, None)  # pyright: ignore[reportArgumentType]
+
+    assert result == skill_md
+    assert scripts == ["set -eu\ndify-agent config skills pull --json alpha"]
+    assert "read_config_skill_md(name)" in layer.build_suffix_prompt()
+
+
+def test_read_config_skill_md_tool_is_absent_without_configured_skills() -> None:
+    layer = _build_layer()
+    layer.config = layer.config.model_copy(update={"skills": []})
+
+    assert layer.tools == []
+
+
+async def _read_skill_after_retry(
+    layer: DifyConfigLayer,
+    first_args: dict[str, str],
+    expected_error: str,
+) -> None:
+    requests = 0
+
+    def respond(messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+        nonlocal requests
+        requests += 1
+        if requests == 1:
+            return ModelResponse(parts=[ToolCallPart("read_config_skill_md", first_args)])
+        if requests == 2:
+            retry = messages[-1].parts[0]
+            assert isinstance(retry, RetryPromptPart)
+            assert retry.tool_name == "read_config_skill_md"
+            assert expected_error in str(retry.content)
+            return ModelResponse(parts=[ToolCallPart("read_config_skill_md", {"name": "runtime-skill"})])
+        assert requests == 3
+        result = messages[-1].parts[0]
+        assert isinstance(result, ToolReturnPart)
+        assert result.content == "é"
+        return ModelResponse(parts=[TextPart("Read the skill successfully.")])
+
+    result = await Agent(FunctionModel(respond), tools=layer.tools).run("Read the configured skill.")
+    assert result.output == "Read the skill successfully."
+
+
+@pytest.mark.anyio
+async def test_read_config_skill_md_allows_model_to_correct_unknown_skill_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, inject_agent_stub_env, timeout
+        assert script == "set -eu\ndify-agent config skills pull --json runtime-skill"
+        return _remote_result(json.dumps({"items": [{"name": "runtime-skill", "skill_md": "é"}]}))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    await _read_skill_after_retry(layer, {"name": "other"}, "unknown config skill")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("failed_pull", "expected_error"),
+    [
+        (_remote_result("pull failed", exit_code=1), "pull failed in shell"),
+        (
+            _remote_result("incomplete", output_complete=False, incomplete_reason="output_limit"),
+            "output was incomplete",
+        ),
+        (_remote_result("invalid json"), "invalid JSON pull output"),
+        (_remote_result('{"items": []}'), "missing skill content"),
+    ],
+)
+async def test_read_config_skill_md_returns_pull_errors_to_model_for_retry(
+    monkeypatch: pytest.MonkeyPatch,
+    failed_pull: CompleteRemoteCommandResult,
+    expected_error: str,
+) -> None:
+    layer = _build_layer()
+    pulls = 0
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        nonlocal pulls
+        del self, script, inject_agent_stub_env, timeout
+        pulls += 1
+        if pulls == 1:
+            return failed_pull
+        return _remote_result(json.dumps({"items": [{"name": "runtime-skill", "skill_md": "é"}]}))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    await _read_skill_after_retry(layer, {"name": "runtime-skill"}, expected_error)
+    assert pulls == 2
 
 
 @pytest.mark.anyio

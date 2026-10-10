@@ -7,9 +7,10 @@ import shlex
 from dataclasses import dataclass
 from typing import ClassVar
 
+from pydantic_ai import ModelRetry, Tool
 from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PlainLayer
+from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
@@ -64,8 +65,8 @@ class DifyConfigDeps(LayerDeps):
 
 
 @dataclass(slots=True)
-class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConfigRuntimeState]):
-    """Config runtime layer that materializes prompt-mentioned targets via shell."""
+class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerConfig, DifyConfigRuntimeState]):
+    """Materialize prompt-mentioned assets and expose a full SKILL.md reader for config skills."""
 
     type_id: ClassVar[str | None] = DIFY_CONFIG_LAYER_TYPE_ID
 
@@ -78,13 +79,41 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
 
     @property
     @override
-    def prefix_prompts(self) -> list[str]:
-        return [self.build_prompt_context()]
+    def prefix_prompts(self) -> list[PydanticAIPrompt[object]]:
+        return [self.build_prompt_context]
 
     @property
     @override
-    def suffix_prompts(self) -> list[str]:
-        return [self.build_suffix_prompt()]
+    def suffix_prompts(self) -> list[PydanticAIPrompt[object]]:
+        return [self.build_suffix_prompt]
+
+    @property
+    @override
+    def tools(self) -> list[PydanticAITool[object]]:
+        if not self.config.skills:
+            return []
+        return [Tool(self._read_skill, name="read_config_skill_md")]
+
+    async def _read_skill(self, name: str) -> str:
+        """Return the full SKILL.md of one configured skill."""
+        try:
+            return await self._read_skill_md(name)
+        except (RuntimeError, ValueError) as exc:
+            # Tool callers can correct input or retry a pull; eager context pulls still fail fast.
+            raise ModelRetry(str(exc)) from exc
+
+    async def _read_skill_md(self, name: str) -> str:
+        if name not in {skill.name for skill in self.config.skills}:
+            raise ValueError(f"unknown config skill: {name}")
+        output = await self._run_mentioned_pull(
+            script=self._build_shell_skill_pull_script([name]),
+            target_kind="skill",
+        )
+        item = _parse_pull_items(output, target_kind="skill").get(name)
+        skill_md = item.get("skill_md") if item is not None else None
+        if not isinstance(skill_md, str):
+            raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
+        return skill_md
 
     @override
     async def on_context_create(self) -> None:
@@ -148,6 +177,11 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
                 f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self.runtime_state.config_context_json)}"
             )
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
+        if self.config.skills:
+            usage_lines.append(
+                "Use read_config_skill_md(name) to read a configured skill's full SKILL.md. "
+                "Shell output can omit the middle of a large SKILL.md."
+            )
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
         if file_cli_help := self._format_agent_file_cli_help():
