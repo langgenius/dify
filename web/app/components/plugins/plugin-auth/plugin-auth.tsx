@@ -1,5 +1,5 @@
-import type { AuthorizedInNodeProps } from './authorized-in-node'
 import type { PluginPayload } from './types'
+import type { ConnectionSelectorProps } from './workspace-auth/connection-selector'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -12,7 +12,7 @@ import WorkspaceAuth from './workspace-auth'
 
 type PluginAuthProps = {
   pluginPayload: PluginPayload
-  nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
+  nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
   authorizedFooter?: React.ReactNode
   className?: string
   showAuthorizationTabs?: boolean
@@ -29,7 +29,11 @@ const PluginAuth = ({
 }: PluginAuthProps) => {
   const { t } = useTranslation(['plugin'])
   const labelId = useId()
-  const authorization = usePluginAuth(pluginPayload, !!pluginPayload.provider)
+  const authorization = usePluginAuth(
+    pluginPayload,
+    !!pluginPayload.provider,
+    nodeAuth?.credentialId ? [nodeAuth.credentialId] : undefined,
+  )
 
   if (!showAuthorizationTabs) {
     return (

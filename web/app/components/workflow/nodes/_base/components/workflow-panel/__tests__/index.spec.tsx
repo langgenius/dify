@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import type { AuthorizedInNodeProps } from '@/app/components/plugins/plugin-auth/authorized-in-node'
+import type { ConnectionSelectorProps } from '@/app/components/plugins/plugin-auth/workspace-auth/connection-selector'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -254,7 +254,7 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
     nodeAuth,
     authorizedFooter,
   }: {
-    nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
+    nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
     authorizedFooter?: React.ReactNode
   }) => (
     <div>

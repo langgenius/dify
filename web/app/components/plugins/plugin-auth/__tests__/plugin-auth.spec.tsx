@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react'
+import type { Credential } from '../types'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import PluginAuth from '../plugin-auth'
-import { AuthCategory } from '../types'
+import { AuthCategory, CredentialTypeEnum } from '../types'
 
 const mockUsePluginAuth = vi.fn()
 const mockSetSettingsDestination = vi.fn()
@@ -52,6 +55,34 @@ const defaultPayload = {
   provider: 'test-provider',
 }
 
+const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
+  id: '1',
+  name: 'key',
+  is_default: true,
+  provider: 'test-provider',
+  credential_type: CredentialTypeEnum.API_KEY,
+  credentials: { api_key: 'sk********1234' },
+  ...overrides,
+})
+
+const createConnectionQueryWrapper = () => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
+      {
+        input: {
+          params: {
+            provider: defaultPayload.provider,
+            credential_type: CredentialTypeEnum.API_KEY,
+          },
+        },
+      },
+    ),
+    [{ name: 'api_key', type: 'secret-input', required: true, multiple: false }],
+  )
+  return wrapper
+}
+
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -87,7 +118,7 @@ describe('PluginAuth', () => {
       isAuthorized: true,
       canOAuth: true,
       canApiKey: true,
-      credentials: [{ id: '1', name: 'key', is_default: true, provider: 'test' }],
+      credentials: [createCredential()],
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
@@ -115,18 +146,25 @@ describe('PluginAuth', () => {
         authorizedFooter={<button type="button">Workflow settings</button>}
         showAuthorizationTabs
       />,
+      { wrapper: createConnectionQueryWrapper() },
     )
 
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: 'plugin.auth.workspaceDefault' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Workspace API key/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Workflow settings' })).not.toBeInTheDocument()
 
     mockUsePluginAuth.mockReturnValue({
       ...authorization,
       isAuthorized: true,
-      credentials: [{ id: '1', name: 'Workspace API key', is_default: true, provider: 'test' }],
+      credentials: [
+        createCredential({ name: 'Workspace API key' }),
+        createCredential({
+          id: '2',
+          name: 'Selected API key',
+          is_default: false,
+          credentials: { api_key: 'sk********5678' },
+        }),
+      ],
     })
     rerender(
       <PluginAuth
@@ -138,22 +176,26 @@ describe('PluginAuth', () => {
     )
 
     expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.auth.workspaceDefault' })).toBeVisible()
+    const defaultConnection = screen.getByRole('button', { name: /Workspace API key/ })
+    expect(defaultConnection).toBeVisible()
+    expect(defaultConnection).toHaveTextContent('•••• 1234')
+    expect(screen.queryByRole('button', { name: /Selected API key/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Workflow settings' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
 
     rerender(
       <PluginAuth
         pluginPayload={defaultPayload}
-        nodeAuth={{ onAuthorizationItemClick, credentialId: '1' }}
+        nodeAuth={{ onAuthorizationItemClick, credentialId: '2' }}
         showAuthorizationTabs
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Workspace API key' })).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: 'plugin.auth.workspaceDefault' }),
-    ).not.toBeInTheDocument()
+    const selectedConnection = screen.getByRole('button', { name: /Selected API key/ })
+    expect(selectedConnection).toBeVisible()
+    expect(selectedConnection).toHaveTextContent('•••• 5678')
+    expect(mockUsePluginAuth).toHaveBeenLastCalledWith(defaultPayload, true, ['2'])
+    expect(screen.queryByRole('button', { name: /Workspace API key/ })).not.toBeInTheDocument()
   })
 
   it('keeps authorization tabs visible for authorized nodes and independent from the workflow tabs', async () => {
@@ -162,7 +204,7 @@ describe('PluginAuth', () => {
       isAuthorized: true,
       canOAuth: false,
       canApiKey: true,
-      credentials: [{ id: '1', name: 'key', is_default: true, provider: 'test' }],
+      credentials: [createCredential()],
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
@@ -183,6 +225,7 @@ describe('PluginAuth', () => {
         <TabsPanel value="settings">Settings content</TabsPanel>
         <TabsPanel value="last-run">Last run content</TabsPanel>
       </Tabs>,
+      { wrapper: createConnectionQueryWrapper() },
     )
 
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
@@ -192,17 +235,13 @@ describe('PluginAuth', () => {
     const reuseTab = screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' })
     const workspacePanel = screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })
     expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
-    expect(
-      within(workspacePanel).getByRole('button', { name: 'plugin.auth.workspaceDefault' }),
-    ).toBeVisible()
+    expect(within(workspacePanel).getByRole('button', { name: /key/ })).toBeVisible()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
 
     await user.click(appUserTab)
 
     expect(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).toBeEmptyDOMElement()
-    expect(
-      screen.queryByRole('button', { name: 'plugin.auth.workspaceDefault' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /key/ })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Last run' }))
 
@@ -216,9 +255,7 @@ describe('PluginAuth', () => {
     expect(
       screen.getByRole('tabpanel', { name: 'plugin.auth.reuseFromNode' }),
     ).toBeEmptyDOMElement()
-    expect(
-      screen.queryByRole('button', { name: 'plugin.auth.workspaceDefault' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /key/ })).not.toBeInTheDocument()
     expect(workspaceTab).toBeVisible()
     expect(appUserTab).toBeVisible()
     expect(reuseTab).toBeVisible()
@@ -229,7 +266,7 @@ describe('PluginAuth', () => {
       within(screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })).getByRole(
         'button',
         {
-          name: 'plugin.auth.workspaceDefault',
+          name: /key/,
         },
       ),
     ).toBeVisible()
@@ -302,7 +339,7 @@ describe('PluginAuth', () => {
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
+    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true, undefined)
   })
 
   it('renders permission hint and disables authorization configuration when credential.create is missing', () => {

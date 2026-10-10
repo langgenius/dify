@@ -1,6 +1,6 @@
-import type { AuthorizedInNodeProps } from '../authorized-in-node'
 import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { PluginPayload } from '../types'
+import type { ConnectionSelectorProps } from './connection-selector'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,13 +10,13 @@ import {
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import Authorized from '../authorized'
-import AuthorizedInNode from '../authorized-in-node'
 import { AuthCategory } from '../types'
+import ConnectionSelector from './connection-selector'
 
 type WorkspaceAuthProps = {
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
-  nodeAuth?: Omit<AuthorizedInNodeProps, 'pluginPayload'>
+  nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
   showDescription?: boolean
 }
 
@@ -45,7 +45,14 @@ const WorkspaceAuth = ({
     (canOAuth || canApiKey)
 
   if (isAuthorized) {
-    if (nodeAuth) return <AuthorizedInNode pluginPayload={pluginPayload} {...nodeAuth} />
+    if (nodeAuth)
+      return (
+        <ConnectionSelector
+          pluginPayload={pluginPayload}
+          authorization={authorization}
+          {...nodeAuth}
+        />
+      )
 
     return (
       <Authorized
