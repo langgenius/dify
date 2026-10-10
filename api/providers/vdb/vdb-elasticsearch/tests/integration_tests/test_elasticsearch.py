@@ -18,5 +18,5 @@ class ElasticSearchVectorTest(AbstractVectorTest):
         )
 
 
-def test_elasticsearch_vector(setup_mock_redis):
+def test_elasticsearch_vector(setup_real_redis):
     ElasticSearchVectorTest().run_all_tests()
