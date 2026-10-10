@@ -338,6 +338,34 @@ def admit_raw_execution_metadata(snapshot: RestrictedAdmissionSnapshot) -> None:
     canonical_digest(snapshot.features)
 
 
+def validate_restricted_http_defaults(data: Mapping[str, Any]) -> None:
+    """Only the reviewed native scalar HTTP default-output fields are admitted."""
+    if data.get("default_values") not in (None, []):
+        raise BuilderExecutionPolicyError("unsupported_http_defaults")
+    defaults = data.get("default_value")
+    if defaults is None:
+        return
+    if not isinstance(defaults, list) or len(defaults) > 2:
+        raise BuilderExecutionPolicyError("unsupported_http_defaults")
+    seen: set[str] = set()
+    for item in defaults:
+        if not isinstance(item, dict) or set(item) != {"type", "key", "value"}:
+            raise BuilderExecutionPolicyError("unsupported_http_defaults")
+        key, kind, value = item["key"], item["type"], item["value"]
+        if not isinstance(key, str) or key in seen:
+            raise BuilderExecutionPolicyError("unsupported_http_defaults")
+        seen.add(key)
+        if key == "body" and kind == "string" and type(value) is str:
+            try:
+                if len(value.encode("utf-8")) <= 65536:
+                    continue
+            except UnicodeError:
+                pass
+        if key == "status_code" and kind == "number" and type(value) in (int, float) and math.isfinite(value):
+            continue
+        raise BuilderExecutionPolicyError("unsupported_http_defaults")
+
+
 def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[AdmittedNodeBinding, ...]:
     """Resolve audited class identities before class-owned data validation."""
     from core.workflow.node_factory import resolve_workflow_node_class
@@ -372,6 +400,8 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
         cls = resolve_workflow_node_class(node_type=node_type, node_version=version, node_data=data)
         if cls is not audited[node_type] or cls.version() != "1":
             raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        if node_type == "http-request":
+            validate_restricted_http_defaults(data)
         try:
             cls.validate_node_data(data)
         except (ValidationError, ValueError, TypeError):
@@ -459,6 +489,10 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
                     "content-type: application/json",
                     "content-type:text/plain",
                     "content-type: text/plain",
+                    "content-type:application/json; charset=utf-8",
+                    "content-type: application/json; charset=utf-8",
+                    "content-type:text/plain; charset=utf-8",
+                    "content-type: text/plain; charset=utf-8",
                 }
             ):
                 raise BuilderExecutionPolicyError("unsupported_http_headers")
@@ -473,9 +507,7 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
                     not isinstance(item, dict) or item.get("type") != "text" or item.get("file") for item in items
                 ):
                     raise BuilderExecutionPolicyError("unsupported_http_body")
-            for key in ("default_value", "default_values"):
-                if data.get(key):
-                    raise BuilderExecutionPolicyError("unsupported_http_defaults")
+            validate_restricted_http_defaults(data)
         if types[node_id] == "end":
             if any(not selector_allowed(node_id, output.get("value_selector")) for output in data.get("outputs", [])):
                 raise BuilderExecutionPolicyError("unsupported_selector")
