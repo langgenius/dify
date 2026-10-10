@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Дозвіл на доступ",
   "accessRule.actions": "Дії",
-  "accessRule.addMemberAria": "Додати {{name}}",
   "accessRule.addMembersTitle": "Додати учасників",
   "accessRule.agentDescription": "Керуйте доступом до цього агента та дозволами користувачів.",
   "accessRule.agentTitle": "Набір дозволів агента",

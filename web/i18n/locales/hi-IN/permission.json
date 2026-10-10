@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "पहुँच अनुमति",
   "accessRule.actions": "क्रियाएं",
-  "accessRule.addMemberAria": "{{name}} जोड़ें",
   "accessRule.addMembersTitle": "सदस्य जोड़ें",
   "accessRule.agentDescription": "इस एजेंट तक किसकी पहुँच है और उनकी अनुमतियाँ प्रबंधित करें।",
   "accessRule.agentTitle": "एजेंट अनुमति सेट",

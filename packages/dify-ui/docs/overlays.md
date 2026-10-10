@@ -64,6 +64,8 @@ Toast remains one layer above ordinary overlays.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
+  A long action list filters with `DropdownMenuFilterProvider`; choosing a value is
+  [`Combobox`] in [Selection].
 - Use [`Tooltip`] for a supplementary visual label on a control that already has a primary
   action and an accessible name. Use `Infotip` when the information icon's action is to open
   the explanation. Text length alone does not determine the component. Follow the
@@ -80,6 +82,8 @@ spacing unless its API documents a measured exception.
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Infotip contract]: ../src/infotip/README.md
 [MDN `isolation`]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/isolation
+[Selection]: selection.md
+[`Combobox`]: https://base-ui.com/react/components/combobox
 [`Dialog.Portal`]: https://base-ui.com/react/components/dialog#portal
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card

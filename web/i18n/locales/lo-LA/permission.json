@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "ສິດໃນການເຂົ້າເຖິງ",
   "accessRule.actions": "ການຈັດການ",
-  "accessRule.addMemberAria": "ເພີ່ມ {{name}}",
   "accessRule.addMembersTitle": "ເພີ່ມສະມາຊິກ",
   "accessRule.agentDescription": "ຈັດການຜູ້ທີ່ສາມາດເຂົ້າເຖິງຕົວແທນນີ້ ແລະ ສິດຂອງພວກເຂົາ.",
   "accessRule.agentTitle": "ຊຸດການກຳນົດສິດຕົວແທນ",
