@@ -1,4 +1,4 @@
-import type { Tag } from '../../../hooks'
+import type { Tag } from '../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -6,20 +6,15 @@ import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 
-type ToolSelectorTriggerProps = {
-  selectedTagsLength: number
+type CompactTriggerProps = {
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
 }
 
-function ToolSelectorTrigger({
-  selectedTagsLength,
-  tags,
-  tagsMap,
-  onTagsChange,
-}: ToolSelectorTriggerProps) {
+function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
   const { t } = useTranslation(['pluginTags'])
+  const selectedTagsLength = tags.length
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
   const selectedTagLabels = tags.map((tag) => tagsMap[tag]?.label).filter(Boolean)
@@ -35,7 +30,7 @@ function ToolSelectorTrigger({
   }, [selectedTagsLength])
 
   return (
-    <div className="relative mr-1 inline-flex h-7 max-w-32 shrink-0 items-center">
+    <div className="relative inline-flex h-7 max-w-32 shrink-0 items-center">
       <PopoverTrigger
         render={
           <Button
@@ -100,4 +95,4 @@ function ToolSelectorTrigger({
   )
 }
 
-export default memo(ToolSelectorTrigger)
+export default memo(CompactTrigger)

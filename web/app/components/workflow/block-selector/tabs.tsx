@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import AllStartBlocks from './all-start-blocks'
 import Blocks from './blocks'
 import DataSources from './data-sources'
@@ -127,28 +127,26 @@ function BlockSelectorPanels({
     const filter = (() => {
       if (tab === TabType.Start) {
         return (
-          <SearchBox
+          <PluginSearchInput
             ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
+            value={searchText}
+            onValueChange={(value) => setSearchText(tab, value)}
             tags={tags}
             onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })}
-            inputClassName="grow"
           />
         )
       }
 
       if (tab === TabType.Tools) {
         return (
-          <SearchBox
+          <PluginSearchInput
             ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
+            value={searchText}
+            onValueChange={(value) => setSearchText(tab, value)}
             tags={tags}
             onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-            inputClassName="grow"
           />
         )
       }
