@@ -20,6 +20,7 @@ from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
     METRIC_VALUE_TYPE_MAPPING,
+    NATIVE_AGENT_METRIC_NAMES,
     AgentToolCall,
     CustomizedMetrics,
     DefaultMetric,
@@ -40,6 +41,7 @@ from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from models.agent import Agent
 from models.dataset import Dataset
 from models.evaluation import (
     EvaluationConfiguration,
@@ -52,6 +54,7 @@ from models.evaluation import (
 from models.model import App, AppMode, UploadFile
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+from services.agent.evaluation_target_service import AgentEvaluationTargetService
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -96,7 +99,7 @@ class EvaluationService:
     @classmethod
     def generate_dataset_template(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -107,8 +110,8 @@ class EvaluationService:
         Creates an XLSX file with headers based on the evaluation target's input parameters
         and the selected evaluation metrics.
 
-        :param target: App or CustomizedSnippet instance
-        :param target_type: Target type string ("apps" or "snippets")
+        :param target: App, CustomizedSnippet, or Agent instance
+        :param target_type: Target type string ("apps", "snippets", or "agents")
         :param data: Evaluation configuration used to determine reference columns
         :param session: Database session used to resolve target inputs
         :return: Tuple of (xlsx_content_bytes, filename)
@@ -460,6 +463,13 @@ class EvaluationService:
                 raise ValueError("Evaluation target not found.")
             if dataset.provider == "external":
                 raise ValueError("External knowledge bases are not supported by evaluation.")
+        elif normalized_target_type == EvaluationTargetType.AGENTS:
+            target_agent = AgentEvaluationTargetService.resolve_active_snapshot(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=target_id,
+            )
+            published_nodes[target_id] = {"type": "agent", "title": target_agent.agent_name}
         else:
             target: App | CustomizedSnippet | None
             if normalized_target_type == EvaluationTargetType.APPS:
@@ -503,6 +513,15 @@ class EvaluationService:
                         f"Knowledge base metric '{metric.metric}' is target-scoped and must not select workflow nodes."
                     )
                 categories = {EvaluationCategory.RETRIEVAL}
+            elif normalized_target_type == EvaluationTargetType.AGENTS:
+                if metric.metric not in {name.value for name in NATIVE_AGENT_METRIC_NAMES}:
+                    raise ValueError(f"Metric '{metric.metric}' is not supported for Agent V2 evaluation.")
+                if len(metric.node_info_list) != 1:
+                    raise ValueError(f"Agent metric '{metric.metric}' must select the target Agent.")
+                node = metric.node_info_list[0]
+                if node.node_id != target_id or node.type != "agent":
+                    raise ValueError(f"Agent metric '{metric.metric}' must select the target Agent.")
+                categories = {EvaluationCategory.AGENT}
             else:
                 if not metric.node_info_list:
                     raise ValueError(f"Metric '{metric.metric}' must select at least one node.")
@@ -528,6 +547,8 @@ class EvaluationService:
         if customized_metrics is not None:
             if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
                 raise ValueError("Customized evaluation workflows are not supported for knowledge bases.")
+            if normalized_target_type == EvaluationTargetType.AGENTS:
+                raise ValueError("Customized evaluation workflows are not supported for Agent V2 targets.")
             output_variables = [field.variable for field in customized_metrics.output_fields]
             if not output_variables:
                 raise ValueError("Customized metrics must select at least one evaluation workflow output.")
@@ -792,6 +813,21 @@ class EvaluationService:
         return workflow.id, workflow, [field for field in input_fields if isinstance(field, Mapping)]
 
     @staticmethod
+    def _pin_target_agent(
+        *,
+        session: Session,
+        tenant_id: str,
+        target_id: str,
+    ) -> tuple[str, list[Mapping[str, Any]]]:
+        """Resolve the immutable published Agent configuration used by a run."""
+        target = AgentEvaluationTargetService.resolve_active_snapshot(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=target_id,
+        )
+        return target.config_snapshot_id, [{"variable": "query", "type": "string"}]
+
+    @staticmethod
     def _extract_llm_context_node_mapping(workflow: Workflow | None) -> dict[str, list[str]]:
         """Capture retrieval sources explicitly configured as each LLM node's context."""
         if workflow is None:
@@ -846,12 +882,22 @@ class EvaluationService:
             tenant_id=tenant_id,
             run_request=resolved_run_request,
         )
-        target_workflow_version_id, target_workflow, target_input_fields = cls._pin_target_workflow(
-            session=session,
-            tenant_id=tenant_id,
-            target_type=target_type,
-            target_id=target_id,
-        )
+        target_agent_config_snapshot_id: str | None = None
+        if target_type == EvaluationTargetType.AGENTS.value:
+            target_agent_config_snapshot_id, target_input_fields = cls._pin_target_agent(
+                session=session,
+                tenant_id=tenant_id,
+                target_id=target_id,
+            )
+            target_workflow_version_id = None
+            target_workflow = None
+        else:
+            target_workflow_version_id, target_workflow, target_input_fields = cls._pin_target_workflow(
+                session=session,
+                tenant_id=tenant_id,
+                target_type=target_type,
+                target_id=target_id,
+            )
         dataset_input_types = cls._dataset_input_types(target_input_fields)
 
         # Save the editable configuration without pinning it to today's published evaluator.
@@ -880,11 +926,11 @@ class EvaluationService:
             resolved_run_request.default_metrics,
             evaluation_instance=evaluation_instance,
         )
-        if target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
+        if target_type in {EvaluationTargetType.KNOWLEDGE_BASE.value, EvaluationTargetType.AGENTS.value}:
             missing_query_indices = [item.index for item in items if not str(item.inputs.get("query", "")).strip()]
             if missing_query_indices:
                 raise EvaluationDatasetInvalidError(
-                    "Knowledge base datasets require a non-empty 'query' value; "
+                    f"{target_type} evaluation datasets require a non-empty 'query' value; "
                     f"invalid rows: {missing_query_indices[:10]}."
                 )
 
@@ -915,6 +961,7 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             target_workflow_version_id=target_workflow_version_id,
+            target_agent_config_snapshot_id=target_agent_config_snapshot_id,
             evaluation_config_id=config.id,
             config_snapshot=run_snapshot.model_dump_json(),
             status=EvaluationRunStatus.PENDING,
@@ -935,6 +982,7 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             target_workflow_version_id=target_workflow_version_id,
+            target_agent_config_snapshot_id=target_agent_config_snapshot_id,
             evaluation_framework=evaluation_framework,
             evaluation_model_provider=pinned_run_request.evaluation_model_provider,
             evaluation_model=pinned_run_request.evaluation_model,
@@ -989,7 +1037,10 @@ class EvaluationService:
         pinned_workflow = cls._resolve_pinned_target_workflow_for_run(session=session, run=run)
         if run_snapshot.dataset_input_types:
             input_types = run_snapshot.dataset_input_types
-        elif EvaluationTargetType(run.target_type) == EvaluationTargetType.KNOWLEDGE_BASE:
+        elif EvaluationTargetType(run.target_type) in {
+            EvaluationTargetType.KNOWLEDGE_BASE,
+            EvaluationTargetType.AGENTS,
+        }:
             input_types = {"query": "string"}
         elif pinned_workflow is not None:
             input_types = cls._dataset_input_types(
@@ -1012,11 +1063,11 @@ class EvaluationService:
             run_request.default_metrics,
             evaluation_instance=evaluation_instance,
         )
-        if target_type == EvaluationTargetType.KNOWLEDGE_BASE.value:
+        if target_type in {EvaluationTargetType.KNOWLEDGE_BASE.value, EvaluationTargetType.AGENTS.value}:
             missing_query_indices = [item.index for item in items if not str(item.inputs.get("query", "")).strip()]
             if missing_query_indices:
                 raise EvaluationDatasetInvalidError(
-                    "Knowledge base datasets require a non-empty 'query' value; "
+                    f"{target_type} evaluation datasets require a non-empty 'query' value; "
                     f"invalid rows: {missing_query_indices[:10]}."
                 )
 
@@ -1026,6 +1077,7 @@ class EvaluationService:
             target_type=EvaluationTargetType(run.target_type).value,
             target_id=run.target_id,
             target_workflow_version_id=run.target_workflow_version_id,
+            target_agent_config_snapshot_id=run.target_agent_config_snapshot_id,
             evaluation_framework=run_snapshot.evaluation_framework,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
@@ -1067,6 +1119,22 @@ class EvaluationService:
         if locked_run.status != EvaluationRunStatus.FAILED:
             raise ValueError("Only failed evaluation runs can be retried.")
 
+        agent_checkpoints_to_reset: list[tuple[str | None, str | None]] = []
+        agent_checkpoint_ids_to_reset: list[str] = []
+        if target_type == EvaluationTargetType.AGENTS.value:
+            running_agent_items = list(
+                session.scalars(
+                    select(EvaluationRunItem).where(
+                        EvaluationRunItem.evaluation_run_id == locked_run.id,
+                        EvaluationRunItem.status == EvaluationRunItemStatus.TARGET_RUNNING,
+                    )
+                ).all()
+            )
+            agent_checkpoints_to_reset = [
+                (item.agent_backend_run_id, item.agent_workspace_binding_id) for item in running_agent_items
+            ]
+            agent_checkpoint_ids_to_reset = [item.id for item in running_agent_items]
+
         checkpoint_rows = session.execute(
             select(EvaluationRunItem.item_index, EvaluationRunItem.status, EvaluationRunItem.error).where(
                 EvaluationRunItem.evaluation_run_id == locked_run.id
@@ -1080,6 +1148,8 @@ class EvaluationService:
             raise EvaluationDatasetInvalidError(
                 "The persisted evaluation dataset no longer matches the run checkpoints."
             )
+        if agent_checkpoint_ids_to_reset:
+            session.execute(delete(EvaluationRunItem).where(EvaluationRunItem.id.in_(agent_checkpoint_ids_to_reset)))
         completed_items = sum(
             1 for _, status, error in checkpoint_rows if status == EvaluationRunItemStatus.COMPLETED and error is None
         )
@@ -1106,6 +1176,12 @@ class EvaluationService:
         locked_run.metrics_summary = None
         locked_run.error = None
         session.commit()
+
+        if agent_checkpoints_to_reset:
+            cls._stop_agent_checkpoints(
+                tenant_id=tenant_id,
+                checkpoints=agent_checkpoints_to_reset,
+            )
 
         from tasks.evaluation_task import run_evaluation
 
@@ -1312,6 +1388,8 @@ class EvaluationService:
 
         if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
             cls._stop_workflow_tasks(run.id, run.total_items)
+        elif target_type == EvaluationTargetType.AGENTS.value:
+            cls._stop_agent_runs(tenant_id=tenant_id, evaluation_run_id=run.id)
 
         # Persist cancellation before notifying Celery so cooperative checks in
         # a running task can observe the terminal state immediately.
@@ -1361,6 +1439,81 @@ class EvaluationService:
                 except Exception:
                     logger.exception("Failed to send stop command for evaluation workflow task %s", task_id)
 
+    @staticmethod
+    def _stop_agent_runs(*, tenant_id: str, evaluation_run_id: str) -> None:
+        """Best-effort cancellation and retirement for in-flight Agent V2 rows."""
+        with session_factory.create_session() as session:
+            checkpoints = [
+                (backend_run_id, binding_id)
+                for backend_run_id, binding_id in session.execute(
+                    select(
+                        EvaluationRunItem.agent_backend_run_id,
+                        EvaluationRunItem.agent_workspace_binding_id,
+                    ).where(
+                        EvaluationRunItem.evaluation_run_id == evaluation_run_id,
+                        EvaluationRunItem.status == EvaluationRunItemStatus.TARGET_RUNNING,
+                    )
+                ).all()
+            ]
+        EvaluationService._stop_agent_checkpoints(tenant_id=tenant_id, checkpoints=checkpoints)
+
+    @staticmethod
+    def _stop_agent_checkpoints(
+        *,
+        tenant_id: str,
+        checkpoints: Sequence[tuple[str | None, str | None]],
+    ) -> None:
+        """Stop already-resolved Agent runs after the owning DB change commits."""
+        from clients.agent_backend import create_agent_backend_run_client
+        from services.agent.workspace_service import AgentWorkspaceService
+        from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
+
+        if not checkpoints:
+            return
+
+        try:
+            client = create_agent_backend_run_client(
+                base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+                use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
+                stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
+            )
+        except Exception:
+            logger.exception("Failed to initialize Agent backend client while stopping evaluation rows")
+        else:
+            for backend_run_id, _ in checkpoints:
+                if not backend_run_id:
+                    continue
+                try:
+                    client.cancel_run(backend_run_id)
+                except Exception:
+                    logger.exception("Failed to cancel Agent evaluation backend run %s", backend_run_id)
+
+        retired_binding_ids: list[str] = []
+        for binding_id in dict.fromkeys(binding_id for _, binding_id in checkpoints if binding_id):
+            try:
+                with session_factory.create_session() as session:
+                    retired_binding_id = AgentWorkspaceService.retire_binding(
+                        session=session,
+                        tenant_id=tenant_id,
+                        binding_id=binding_id,
+                    )
+                    session.commit()
+                if retired_binding_id is not None:
+                    retired_binding_ids.append(retired_binding_id)
+            except Exception:
+                logger.exception("Failed to retire Agent evaluation binding %s", binding_id)
+        if retired_binding_ids:
+            try:
+                enqueue_agent_resource_collection(
+                    tenant_id=tenant_id,
+                    binding_ids=tuple(retired_binding_ids),
+                )
+            except Exception:
+                logger.exception("Failed to enqueue Agent evaluation resource collection")
+
     @classmethod
     def stage_target_evaluation_cleanup(
         cls,
@@ -1404,6 +1557,20 @@ class EvaluationService:
             for run in runs
             if run.status in {EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING}
         ]
+        agent_checkpoints: list[tuple[str | None, str | None]] = []
+        if run_ids and any(target_type == EvaluationTargetType.AGENTS.value for _, _, target_type, _ in tasks_to_stop):
+            agent_checkpoints = [
+                (backend_run_id, binding_id)
+                for backend_run_id, binding_id in session.execute(
+                    select(
+                        EvaluationRunItem.agent_backend_run_id,
+                        EvaluationRunItem.agent_workspace_binding_id,
+                    ).where(
+                        EvaluationRunItem.evaluation_run_id.in_(run_ids),
+                        EvaluationRunItem.status == EvaluationRunItemStatus.TARGET_RUNNING,
+                    )
+                ).all()
+            ]
 
         if run_ids:
             session.execute(delete(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id.in_(run_ids)))
@@ -1456,6 +1623,8 @@ class EvaluationService:
                         celery_app.control.revoke(celery_task_id, terminate=False)
                     except Exception:
                         logger.exception("Failed to revoke evaluation task %s during target cleanup", celery_task_id)
+            if agent_checkpoints:
+                cls._stop_agent_checkpoints(tenant_id=tenant_id, checkpoints=agent_checkpoints)
             for storage_key in storage_keys:
                 try:
                     storage.delete(storage_key)
@@ -1634,7 +1803,7 @@ class EvaluationService:
     @classmethod
     def get_dataset_column_names(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -1655,7 +1824,7 @@ class EvaluationService:
     @classmethod
     def _get_target_input_columns(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         session: Session,
     ) -> list[EvaluationTemplateColumn]:
@@ -1664,6 +1833,8 @@ class EvaluationService:
             input_fields = cls._get_app_input_fields(target, session)
         elif target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
             input_fields = cls._get_snippet_input_fields(target, session)
+        elif target_type == EvaluationTargetType.AGENTS.value and isinstance(target, Agent):
+            input_fields = [{"variable": "query", "type": "string"}]
         else:
             raise ValueError(f"Unsupported target type: {target_type}")
 
@@ -1840,7 +2011,7 @@ class EvaluationService:
     @classmethod
     def get_default_metrics_with_nodes_for_published_target(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         session: Session,
     ) -> list[DefaultMetric]:
@@ -1850,6 +2021,19 @@ class EvaluationService:
         :data:`METRIC_NODE_TYPE_MAPPING`. Node lists are derived from the published workflow only
         (no draft fallback).
         """
+        if target_type == EvaluationTargetType.AGENTS.value and isinstance(target, Agent):
+            target_node = NodeInfo(node_id=target.id, type="agent", title=target.name)
+            agent_supported = set(cls.get_console_supported_metrics(EvaluationCategory.AGENT))
+            return [
+                DefaultMetric(
+                    metric=metric.value,
+                    value_type=METRIC_VALUE_TYPE_MAPPING.get(metric.value, "number"),
+                    node_info_list=[target_node],
+                )
+                for metric in NATIVE_AGENT_METRIC_NAMES
+                if metric.value in agent_supported
+            ]
+
         workflow = cls._resolve_published_workflow(target, target_type, session)
         if not workflow:
             return []
@@ -1872,7 +2056,7 @@ class EvaluationService:
     @classmethod
     def get_nodes_for_metrics(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         session: Session,
         metrics: list[str] | None = None,
@@ -1886,6 +2070,13 @@ class EvaluationService:
         :returns: ``{metric_name: [NodeInfo dict, ...]}`` or
             ``{"all": [NodeInfo dict, ...]}``.
         """
+        if target_type == EvaluationTargetType.AGENTS.value and isinstance(target, Agent):
+            node = NodeInfo(node_id=target.id, type="agent", title=target.name).model_dump()
+            if not metrics:
+                return {"all": [node]}
+            supported = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
+            return {metric: [node] if metric in supported else [] for metric in metrics}
+
         workflow = cls._resolve_workflow(target, target_type, session)
         if not workflow:
             return {"all": []} if not metrics else {m: [] for m in metrics}
@@ -1903,7 +2094,7 @@ class EvaluationService:
     @classmethod
     def _resolve_published_workflow(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         session: Session,
     ) -> Workflow | None:
@@ -1917,7 +2108,7 @@ class EvaluationService:
     @classmethod
     def _resolve_workflow(
         cls,
-        target: Union[App, CustomizedSnippet],
+        target: Union[App, CustomizedSnippet, Agent],
         target_type: str,
         session: Session,
     ) -> Workflow | None:

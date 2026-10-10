@@ -49,6 +49,7 @@ export function getAgentDefaultSection(capabilities: ReturnType<typeof getAgentA
 export function getAgentSectionAccess(capabilities: ReturnType<typeof getAgentACLCapabilities>) {
   return {
     configure: capabilities.canConfigure,
+    evaluation: capabilities.canTestAndRun,
     access: capabilities.canViewAccessPoint,
     logs: capabilities.canManageLogs,
     monitoring: capabilities.canMonitor,

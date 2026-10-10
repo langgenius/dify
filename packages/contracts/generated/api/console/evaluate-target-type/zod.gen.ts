@@ -47,6 +47,7 @@ export const zEvaluationRunResponse = z.object({
   result_file_id: z.string().nullish(),
   started_at: z.int().nullish(),
   status: z.string(),
+  target_agent_config_snapshot_id: z.string().nullish(),
   target_id: z.string(),
   target_type: z.string(),
   target_workflow_version_id: z.string().nullish(),

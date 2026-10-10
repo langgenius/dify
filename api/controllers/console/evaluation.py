@@ -17,7 +17,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 import services
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
+from controllers.common.rbac import AgentId, DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
@@ -50,6 +50,7 @@ from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import Account, App, Dataset, UploadFile
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationTargetType
 from models.model import AppMode
 from models.snippet import CustomizedSnippet
@@ -66,7 +67,7 @@ from services.workflow_service import WorkflowService
 
 P = ParamSpec("P")
 R = TypeVar("R")
-EvaluationTarget = App | CustomizedSnippet
+EvaluationTarget = App | CustomizedSnippet | Agent
 XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -123,6 +124,7 @@ class EvaluationRunResponse(ResponseModel):
     target_type: str
     target_id: str
     target_workflow_version_id: str | None = None
+    target_agent_config_snapshot_id: str | None = None
     evaluation_config_id: str
     status: str
     dataset_file_id: str | None = None
@@ -292,8 +294,9 @@ def evaluation_target_required(
     *,
     app_permission: RBACPermission,
     snippet_permission: RBACPermission = RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
+    agent_permission: RBACPermission = RBACPermission.AGENT_TEST_AND_RUN,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Resolve an app/snippet target with tenant and dynamic RBAC checks."""
+    """Resolve an app/snippet/Agent target with tenant and dynamic RBAC checks."""
 
     def decorator(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
@@ -327,6 +330,23 @@ def evaluation_target_required(
                     select(CustomizedSnippet).where(
                         CustomizedSnippet.id == target_id,
                         CustomizedSnippet.tenant_id == tenant_id,
+                    )
+                )
+            elif target_type == EvaluationTargetType.AGENTS.value:
+                enforce_rbac_checks(
+                    tenant_id=tenant_id,
+                    account_id=current_user.id,
+                    checks=[RBACCheck(agent_permission, AgentId("evaluate_target_id"))],
+                    path_args={"evaluate_target_id": target_id},
+                )
+                target = session.scalar(
+                    select(Agent).where(
+                        Agent.id == target_id,
+                        Agent.tenant_id == tenant_id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                        Agent.status == AgentStatus.ACTIVE,
+                        Agent.app_id.is_not(None),
                     )
                 )
             else:
@@ -377,7 +397,9 @@ def _config_response(config: EvaluationConfiguration | None, *, target_type: str
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
             "default_metrics": default_metrics,
-            "customized_metrics": config.customized_metrics_dict,
+            "customized_metrics": (
+                None if target_type == EvaluationTargetType.AGENTS.value else config.customized_metrics_dict
+            ),
             "judgment_config": EvaluationService.serialize_console_judgment_config(config.judgment_config_dict),
         },
     )

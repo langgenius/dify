@@ -4,17 +4,23 @@ import io
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from agenton.compositor import CompositorSessionSnapshot
 from celery.exceptions import Retry
 from openpyxl import load_workbook
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.agent_backend import AgentBackendRunSucceededInternalEvent
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
+    AgentEvaluationItem,
     CustomizedMetricOutputField,
     CustomizedMetrics,
+    DefaultMetric,
     EvaluationCategory,
     EvaluationDatasetInput,
     EvaluationItemResult,
@@ -36,6 +42,8 @@ from tasks.evaluation_task import (
     _build_missing_result_errors,
     _compute_metrics_summary,
     _create_runner,
+    _evaluate_agent_row,
+    _execute_agent_target,
     _execute_evaluation,
     _execute_evaluation_runner,
     _finalize_results,
@@ -46,6 +54,7 @@ from tasks.evaluation_task import (
     _persist_target_checkpoint,
     _renew_evaluation_run_heartbeat,
     _renew_evaluation_run_heartbeat_while_running,
+    _resume_agent_rows,
     _resume_retrieval_rows,
     _resume_workflow_rows,
     _stamp_and_merge,
@@ -642,6 +651,229 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
     assert execute_runner.call_args.kwargs["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
     assert execute_runner.call_args.kwargs["task_positions"] == [0]
     assert execute_runner.call_args.kwargs["lease"] == lease
+
+
+def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000121"
+    tenant_id = "30000000-0000-0000-0000-000000000002"
+    agent_id = "30000000-0000-0000-0000-000000000003"
+    snapshot_id = "30000000-0000-0000-0000-000000000004"
+    binding_id = "30000000-0000-0000-0000-000000000008"
+    lease = _lease(run_id)
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id=tenant_id,
+                target_type="agents",
+                target_id=agent_id,
+                target_agent_config_snapshot_id=snapshot_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    target = SimpleNamespace(agent_id=agent_id, agent_name="Research Agent")
+    monkeypatch.setattr(
+        "tasks.evaluation_task.AgentEvaluationTargetService.resolve_active_snapshot",
+        MagicMock(return_value=target),
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task.AgentEvaluationTargetService.ensure_row_binding",
+        MagicMock(return_value=SimpleNamespace(id=binding_id, backend_binding_ref="binding-ref-1")),
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task.AgentEvaluationTargetService.build_runtime_request",
+        MagicMock(return_value=SimpleNamespace(request=object(), available_tools=())),
+    )
+    client = MagicMock()
+    client.create_run.return_value = SimpleNamespace(run_id="backend-run-1")
+    client.stream_events.return_value = [object(), object()]
+    monkeypatch.setattr("tasks.evaluation_task.create_agent_backend_run_client", MagicMock(return_value=client))
+    terminal = AgentBackendRunSucceededInternalEvent(
+        run_id="backend-run-1",
+        source_event_id="event-1",
+        output={"text": "done"},
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+    )
+    adapter = MagicMock()
+    adapter.adapt.return_value = [terminal]
+    monkeypatch.setattr("tasks.evaluation_task.AgentBackendRunEventAdapter", MagicMock(return_value=adapter))
+    retire_binding = MagicMock(return_value=binding_id)
+    monkeypatch.setattr(
+        "tasks.evaluation_task.AgentWorkspaceService.retire_binding",
+        retire_binding,
+    )
+    enqueue_binding = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._enqueue_retired_agent_binding", enqueue_binding)
+    dataset_item = EvaluationDatasetInput(index=7, inputs={"query": "research this"})
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id=tenant_id,
+        target_type="agents",
+        target_id=agent_id,
+        target_agent_config_snapshot_id=snapshot_id,
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="task_completion",
+                node_info_list=[NodeInfo(node_id=agent_id, type="agent", title="Research Agent")],
+            )
+        ],
+        input_list=[dataset_item],
+    )
+
+    with sqlite_session_factory() as session:
+        agent_item, target_error = _execute_agent_target(
+            session=session,
+            run_data=run_data,
+            dataset_item=dataset_item,
+            account_id="30000000-0000-0000-0000-000000000006",
+            lease=lease,
+        )
+
+    assert target_error is None
+    assert agent_item is not None
+    assert agent_item.output == "done"
+    adapter.adapt.assert_called_once()
+    with sqlite_session_factory() as session:
+        checkpoint = session.scalar(
+            select(EvaluationRunItem).where(
+                EvaluationRunItem.evaluation_run_id == run_id,
+                EvaluationRunItem.item_index == 7,
+            )
+        )
+        assert checkpoint is not None
+        assert checkpoint.status == EvaluationRunItemStatus.TARGET_COMPLETED
+        assert checkpoint.agent_backend_run_id == "backend-run-1"
+        assert checkpoint.agent_workspace_binding_id == binding_id
+        assert AgentEvaluationItem.model_validate_json(checkpoint.target_result_json or "{}").output == "done"
+    assert retire_binding.call_args.kwargs["tenant_id"] == tenant_id
+    assert retire_binding.call_args.kwargs["binding_id"] == binding_id
+    enqueue_binding.assert_called_once_with(tenant_id, binding_id)
+
+
+def test_resume_agent_rows_reuses_target_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000131"
+    tenant_id = "30000000-0000-0000-0000-000000000002"
+    agent_id = "30000000-0000-0000-0000-000000000003"
+    lease = _lease(run_id)
+    dataset_item = EvaluationDatasetInput(index=7, inputs={"query": "hello"})
+    checkpointed_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id=tenant_id,
+                    target_type="agents",
+                    target_id=agent_id,
+                    target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    execution_token=lease.token,
+                    total_items=1,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    item_index=7,
+                    status=EvaluationRunItemStatus.TARGET_COMPLETED,
+                    inputs='{"query": "hello"}',
+                    agent_workspace_binding_id="30000000-0000-0000-0000-000000000008",
+                    target_result_json=checkpointed_item.model_dump_json(),
+                ),
+            ]
+        )
+        session.commit()
+
+    execute_target = MagicMock()
+    evaluate_row = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._execute_agent_target", execute_target)
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_agent_row", evaluate_row)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
+    retire_binding = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._retire_agent_binding", retire_binding)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id=tenant_id,
+        target_type="agents",
+        target_id=agent_id,
+        target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        input_list=[dataset_item],
+    )
+
+    with sqlite_session_factory() as session:
+        _resume_agent_rows(session, run_data, MagicMock(), "account-1", lease)
+
+    execute_target.assert_not_called()
+    retire_binding.assert_called_once_with(
+        tenant_id,
+        "30000000-0000-0000-0000-000000000008",
+    )
+    assert evaluate_row.call_args.kwargs["agent_item"] == checkpointed_item
+    assert evaluate_row.call_args.kwargs["target_error"] is None
+
+
+def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+    node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
+    agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
+    evaluation_instance = MagicMock()
+    evaluation_instance.evaluate_agent.return_value = [
+        EvaluationItemResult(
+            index=0,
+            metrics=[EvaluationMetric(name="task_completion", value=0.9)],
+        )
+    ]
+    persist_results = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        target_agent_config_snapshot_id="snapshot-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="task_completion", node_info_list=[node_info])],
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+
+    _evaluate_agent_row(
+        session=MagicMock(),
+        run_data=run_data,
+        evaluation_instance=evaluation_instance,
+        agent_item=agent_item,
+        target_error=None,
+        lease=_lease("run-1"),
+    )
+
+    evaluation_instance.evaluate_agent.assert_called_once_with(
+        [agent_item],
+        ["task_completion"],
+        "provider",
+        "model",
+        "tenant-1",
+    )
+    persisted_result = persist_results.call_args.args[2][0]
+    assert persisted_result.index == 7
+    assert persisted_result.metrics[0].node_info == node_info
+    assert persisted_result.overall_score == 0.9
 
 
 def test_resume_retrieval_rows_skips_completed_checkpoint(

@@ -112,4 +112,38 @@ describe('evaluation store utils', () => {
       },
     })
   })
+
+  it('never serializes custom workflow evaluators for Agent V2 targets', () => {
+    const customMetric = createCustomMetric()
+    const resource = createResource({
+      judgeModelId: 'openai::gpt-4o-mini',
+      metrics: [
+        createBuiltinMetric(resolveMetricOption('task_completion'), [
+          { node_id: 'agent-1', title: 'Research Agent', type: 'agent' },
+        ]),
+        {
+          ...customMetric,
+          customConfig: {
+            ...customMetric.customConfig!,
+            workflowId: 'workflow-1',
+            workflowAppId: 'app-1',
+            outputs: [{ id: 'score', valueType: 'number' }],
+          },
+        },
+      ],
+    })
+
+    expect(buildEvaluationConfigPayload(resource, 'agents', 'agent-1')).toMatchObject({
+      evaluation_model: 'gpt-4o-mini',
+      evaluation_model_provider: 'openai',
+      default_metrics: [
+        {
+          metric: 'task_completion',
+          node_info_list: [{ node_id: 'agent-1', title: 'Research Agent', type: 'agent' }],
+          value_type: 'number',
+        },
+      ],
+      customized_metrics: null,
+    })
+  })
 })

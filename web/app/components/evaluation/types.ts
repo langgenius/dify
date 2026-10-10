@@ -1,6 +1,6 @@
 import type { NodeInfo } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
 
-export type EvaluationResourceType = 'apps' | 'datasets' | 'snippets'
+export type EvaluationResourceType = 'agents' | 'apps' | 'datasets' | 'snippets'
 export type NonDatasetEvaluationResourceType = Exclude<EvaluationResourceType, 'datasets'>
 export type NonPipelineEvaluationResourceType = NonDatasetEvaluationResourceType
 
