@@ -430,16 +430,19 @@ class NetworkAccessGroupService:
 
     @staticmethod
     def _normalize_ip_network(raw_cidr: object) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+        """Normalize a management display entry for matching without rewriting it."""
         if not isinstance(raw_cidr, str) or "%" in raw_cidr:
             raise TypeError("policy CIDR must be a string")
         address_value, separator, prefix_value = raw_cidr.partition("/")
-        if not separator:
-            raise ValueError("policy CIDR must include a prefix length")
+        if separator and (not prefix_value.isascii() or not prefix_value.isdecimal()):
+            raise ValueError("policy CIDR prefix must be a decimal length")
         original_address = ipaddress.ip_address(address_value)
+        # Management replies preserve bare IPs and CIDR host bits for display.
+        # ip_network assigns a host prefix to bare IPs and masks only this local value.
         network = ipaddress.ip_network(raw_cidr, strict=False)
         if not isinstance(original_address, ipaddress.IPv6Address) or original_address.ipv4_mapped is None:
             return network
-        prefix_length = int(prefix_value)
+        prefix_length = network.prefixlen
         if prefix_length < 96:
             raise ValueError("IPv4-mapped IPv6 policy prefixes must be at least /96")
         return ipaddress.IPv4Network((original_address.ipv4_mapped, prefix_length - 96), strict=False)

@@ -782,6 +782,24 @@ def test_current_ip_check_does_not_read_ip_when_tenant_scoped_policy_lookup_fail
         (["::ffff:203.0.113.0/120"], "203.0.113.7", True),
         (["2001:db8::/32"], "2001:db8:1::1", True),
         (["2001:db8::/48"], "2001:db9::1", False),
+        (["203.0.113.7"], "203.0.113.7", True),
+        (["203.0.113.7"], "203.0.113.8", False),
+        (["0.0.0.0"], "203.0.113.7", False),
+        (["2001:db8::1"], "2001:db8::1", True),
+        (["2001:db8::1"], "2001:db8::2", False),
+        (["2001:0DB8:0000:0000:0000:0000:0000:0001"], "2001:db8::1", True),
+        (["2001:db8::1"], "2001:0db8:0:0:0:0:0:1", True),
+        (["::"], "2001:db8::1", False),
+        (["203.0.113.77/24"], "203.0.113.7", True),
+        (["203.0.113.77/24"], "203.0.114.7", False),
+        (["2001:db8:1::beef/64"], "2001:db8:1::42", True),
+        (["2001:db8:1::beef/64"], "2001:db8:2::42", False),
+        (["::ffff:203.0.113.7"], "203.0.113.7", True),
+        (["::ffff:203.0.113.7"], "203.0.113.8", False),
+        (["::ffff:203.0.113.129/120"], "203.0.113.7", True),
+        (["::ffff:203.0.113.129/120"], "203.0.114.7", False),
+        (["::ffff:203.0.113.129/96"], "198.51.100.7", True),
+        (["::ffff:203.0.113.129/96"], "2001:db8::1", False),
     ],
 )
 def test_current_ip_check_matches_ipv4_ipv6_and_mapped_addresses_consistently(
@@ -801,13 +819,52 @@ def test_current_ip_check_matches_ipv4_ipv6_and_mapped_addresses_consistently(
     assert result.allowed is expected
 
 
+def test_current_ip_check_preserves_display_spelling_and_order_without_rewriting_policy() -> None:
+    harness = _harness()
+    display_entries = (
+        "203.0.113.9",
+        "2001:0DB8:0000:0000:0000:0000:0000:0001",
+        "198.51.100.77/24",
+        "::ffff:203.0.113.129/120",
+    )
+    group = _group(allowed_cidrs=display_entries)
+    harness.control_plane.get_group.return_value = group
+
+    result = harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=lambda: "2001:db8::1")
+    displayed = harness.service.get_group(_context(), group_id=GROUP_ID)
+
+    assert result.allowed is True
+    assert group.allowed_cidrs == display_entries
+    assert displayed.allowed_cidrs == display_entries
+    harness.control_plane.create_group.assert_not_called()
+    harness.control_plane.update_group.assert_not_called()
+    harness.control_plane.update_app_binding.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "allowed_cidrs",
     [
         [],
         ["0.0.0.0/0", "not-a-cidr"],
         ["fe80::1%eth0/128"],
+        ["fe80::1%eth0"],
         ["::ffff:0:0/80"],
+        ["::ffff:203.0.113.7/95"],
+        ["203.0.113.7/255.255.255.0"],
+        ["203.0.113.7/0.0.0.255"],
+        ["203.0.113.7/"],
+        ["203.0.113.7/24/1"],
+        ["203.0.113.7/+24"],
+        ["203.0.113.7/２４"],
+        ["203.0.113.7/33"],
+        ["2001:db8::1/129"],
+        ["192.168.01.1"],
+        ["2001:db8:::1"],
+        ["203.0.113.7 "],
+        [" 203.0.113.7"],
+        [""],
+        ["203.0.113.7", "not-an-ip"],
+        ["203.0.113.0/24", "::ffff:203.0.113.7/95"],
     ],
 )
 def test_current_ip_check_rejects_malformed_policy_without_short_circuiting(

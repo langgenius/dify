@@ -212,7 +212,7 @@ def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception
     if exc.status_code == 409:
         message_by_reason = {
             "NETWORK_ACCESS_VERSION_CONFLICT": "The network access resource changed. Refresh it and try again.",
-            "NETWORK_ACCESS_GROUP_NAME_CONFLICT": "A network access group with this name already exists.",
+            "NETWORK_ACCESS_GROUP_NAME_CONFLICT": "An IP policy with this name already exists.",
             "NETWORK_ACCESS_GROUP_LIMIT": "This workspace has reached the network access group limit.",
         }
         return Conflict(message_by_reason.get(exc.reason or "", "The network access resource is in conflict."))
