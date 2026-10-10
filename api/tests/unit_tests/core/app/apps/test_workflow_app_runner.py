@@ -1281,6 +1281,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
             task_id="task-id",
             stream=True,
             call_depth=4,
+            extras={"capture_agent_evaluation_trace": True},
         )
 
         workflow = Workflow(
@@ -1329,6 +1330,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
         assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
         assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
         assert init_graph.call_args.kwargs["call_depth"] == 4
+        assert init_graph.call_args.kwargs["capture_agent_evaluation_trace"] is True
 
 
 def _save_form(session: Session, *, status: HumanInputFormStatus) -> HumanInputForm:

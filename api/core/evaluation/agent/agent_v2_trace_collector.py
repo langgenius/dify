@@ -16,6 +16,7 @@ from clients.agent_backend import (
 )
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
+    AgentEvaluationTraceSnapshot,
     AgentToolCall,
     AgentToolDefinition,
     AgentTrajectory,
@@ -77,6 +78,23 @@ class AgentV2TraceCollector:
     ) -> AgentEvaluationItem:
         """Build the immutable evaluation input after the target reaches a terminal state."""
         rendered_output = _render_output(output)
+        trace = self.build_trace_snapshot(output=output)
+        return AgentEvaluationItem(
+            index=dataset_item.index,
+            inputs={"task": str(dataset_item.inputs.get("query", ""))},
+            output=rendered_output,
+            expected_output=dataset_item.get_expected_output_for_node(node_info.node_id, node_info.title),
+            tool_calls=trace.tool_calls,
+            expected_tool_calls=dataset_item.get_expected_tool_calls_for_node(node_info.node_id, node_info.title),
+            success_criteria=dataset_item.get_success_criteria_for_node(node_info.node_id, node_info.title),
+            available_tools=trace.available_tools,
+            trajectory=trace.trajectory,
+        )
+
+    def build_trace_snapshot(self, *, output: Any) -> AgentEvaluationTraceSnapshot:
+        """Finalize and return the credential-free trace persisted for evaluation."""
+
+        rendered_output = _render_output(output)
         self._close_message_segment()
         self._steps.append(
             AgentTrajectoryStep(
@@ -93,14 +111,8 @@ class AgentV2TraceCollector:
             for state in self._tool_states
             if state.call.name not in self._tools_by_name
         )
-        return AgentEvaluationItem(
-            index=dataset_item.index,
-            inputs={"task": str(dataset_item.inputs.get("query", ""))},
-            output=rendered_output,
-            expected_output=dataset_item.get_expected_output_for_node(node_info.node_id, node_info.title),
+        return AgentEvaluationTraceSnapshot(
             tool_calls=[state.call for state in self._tool_states],
-            expected_tool_calls=dataset_item.get_expected_tool_calls_for_node(node_info.node_id, node_info.title),
-            success_criteria=dataset_item.get_success_criteria_for_node(node_info.node_id, node_info.title),
             available_tools=self._available_tools,
             trajectory=AgentTrajectory(source="agent_v2", steps=self._steps, warnings=warnings),
         )

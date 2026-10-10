@@ -114,7 +114,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Generator[Mapping[str, Any] | str]: ...
+        capture_agent_evaluation_trace: bool = False,
+    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
     def generate(
@@ -135,6 +136,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -156,7 +158,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
+        capture_agent_evaluation_trace: bool = False,
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
         self,
@@ -176,7 +179,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
+        capture_agent_evaluation_trace: bool = False,
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -207,6 +211,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_external_trace_id_from_args(args),
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
+                "capture_agent_evaluation_trace": capture_agent_evaluation_trace,
             }
             trace_scope = create_trace_scope(
                 tenant_id=app_model.tenant_id,

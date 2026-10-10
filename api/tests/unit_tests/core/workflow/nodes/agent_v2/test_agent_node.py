@@ -421,6 +421,7 @@ def _node(
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
+    capture_agent_evaluation_trace: bool = False,
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
         workflow_id="workflow-1",
@@ -433,6 +434,7 @@ def _node(
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                capture_agent_evaluation_trace=capture_agent_evaluation_trace,
             )
         },
         call_depth=0,
@@ -522,6 +524,27 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "credentials" not in layers["llm"]["config"]
     assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
     assert "output_type_check" not in agent_log
+    assert "evaluation_trace" not in agent_log
+
+
+def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
+    events = list(
+        _node(
+            agent_backend_client=AgentMessageDeltaBackendClient(),
+            capture_agent_evaluation_trace=True,
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
+    assert trace["schema_version"] == "1.0"
+    assert trace["trajectory"]["source"] == "agent_v2"
+    assert [step["step_type"] for step in trace["trajectory"]["steps"]] == [
+        "agent_message",
+        "final_output",
+    ]
+    assert trace["trajectory"]["steps"][0]["content"] == "hello "
+    assert trace["trajectory"]["steps"][-1]["content"] == "hello agent"
 
 
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():

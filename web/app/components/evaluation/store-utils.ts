@@ -62,8 +62,7 @@ export const resolveMetricOption = (metricId: string): MetricOption => {
 
 const isPipelineResourceType = (resourceType: EvaluationResourceType) => resourceType === 'datasets'
 
-const supportsCustomMetrics = (resourceType: EvaluationResourceType) =>
-  resourceType === 'apps' || resourceType === 'snippets'
+const supportsCustomMetrics = (resourceType: EvaluationResourceType) => resourceType !== 'datasets'
 
 const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
   if (!value?.length) return []

@@ -860,6 +860,7 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.Monk
         evaluation_instance=evaluation_instance,
         agent_item=agent_item,
         target_error=None,
+        task_position=0,
         lease=_lease("run-1"),
     )
 
@@ -874,6 +875,78 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.Monk
     assert persisted_result.index == 7
     assert persisted_result.metrics[0].node_info == node_info
     assert persisted_result.overall_score == 0.9
+
+
+def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = MagicMock()
+    lease = _lease("run-1")
+    agent_item = AgentEvaluationItem(
+        index=7,
+        inputs={"task": "hello"},
+        output="done",
+        expected_output="expected",
+    )
+    evaluation_instance = MagicMock()
+    evaluation_instance.evaluate_with_customized_workflow.return_value = [
+        EvaluationItemResult(
+            index=0,
+            metrics=[
+                EvaluationMetric(
+                    name="score",
+                    value=0.8,
+                    node_info=NodeInfo(node_id="evaluator-app", type="customized", title="customized"),
+                )
+            ],
+        )
+    ]
+    persist_results = MagicMock()
+    clear_signals = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
+    monkeypatch.setattr("tasks.evaluation_task._clear_workflow_cancellation_signals", clear_signals)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        target_agent_config_snapshot_id="snapshot-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version-1",
+            input_fields={"answer": "{{#agent.output#}}"},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+
+    _evaluate_agent_row(
+        session=session,
+        run_data=run_data,
+        evaluation_instance=evaluation_instance,
+        agent_item=agent_item,
+        target_error=None,
+        task_position=4,
+        lease=lease,
+    )
+
+    evaluation_instance.evaluate_agent.assert_not_called()
+    clear_signals.assert_called_once_with(session, lease, "evaluator", [4])
+    call_kwargs = evaluation_instance.evaluate_with_customized_workflow.call_args.kwargs
+    synthetic_result = call_kwargs["node_run_result_mapping_list"][0]["agent"]
+    assert synthetic_result.outputs["query"] == "hello"
+    assert synthetic_result.outputs["output"] == "done"
+    assert synthetic_result.outputs["expected_output"] == "expected"
+    assert call_kwargs["customized_metrics"] == run_data.customized_metrics
+    assert call_kwargs["tenant_id"] == "tenant-1"
+    assert call_kwargs["task_id_factory"](0) == "evaluation:run-1:evaluator:4"
+    persisted_result = persist_results.call_args.args[2][0]
+    assert persisted_result.index == 7
+    assert persisted_result.actual_output == "done"
+    assert persisted_result.metrics[0].name == "score"
+    assert persisted_result.overall_score == 0.8
 
 
 def test_resume_retrieval_rows_skips_completed_checkpoint(

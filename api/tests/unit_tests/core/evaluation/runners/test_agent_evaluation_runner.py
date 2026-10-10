@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+from clients.agent_backend import WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, WORKFLOW_USER_PROMPT_LAYER_ID
 from core.evaluation.entities.evaluation_entity import (
     AgentToolCall,
     DefaultMetric,
@@ -189,3 +190,96 @@ def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() ->
     assert item.available_tools is not None
     assert item.available_tools[0].tool_ref == "weather/weather"
     assert item.available_tools[0].input_schema["required"] == ["city"]
+
+
+def test_agent_runner_prefers_captured_agent_v2_trace_snapshot() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.evaluate_agent.return_value = []
+    runner = AgentEvaluationRunner(evaluation_instance)
+    node_info = NodeInfo(node_id="agent-v2", type="agent", title="Research Agent")
+
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                inputs={
+                    "agent_backend_request": {
+                        "composition": {
+                            "layers": [
+                                {
+                                    "name": WORKFLOW_USER_PROMPT_LAYER_ID,
+                                    "config": {"user": "Workflow context loaded for this run: user query Dify"},
+                                },
+                                {
+                                    "name": WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
+                                    "config": {"user": "Research the product and summarize it."},
+                                },
+                            ]
+                        }
+                    }
+                },
+                outputs={"text": "Finished"},
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.AGENT_LOG: {
+                        "evaluation_trace": {
+                            "schema_version": "1.0",
+                            "tool_calls": [
+                                {
+                                    "name": "search",
+                                    "call_id": "call-1",
+                                    "tool_ref": "plugin:search/web",
+                                    "arguments": {"query": "Dify"},
+                                    "output": "result",
+                                }
+                            ],
+                            "available_tools": [
+                                {
+                                    "tool_ref": "plugin:search/web",
+                                    "name": "search",
+                                    "display_name": "Search",
+                                    "description": "Search the web.",
+                                    "input_schema": {"type": "object"},
+                                }
+                            ],
+                            "trajectory": {
+                                "schema_version": "1.0",
+                                "source": "agent_v2",
+                                "steps": [
+                                    {
+                                        "step_id": "final-output",
+                                        "sequence": 0,
+                                        "step_type": "final_output",
+                                        "content": "Finished",
+                                        "status": "succeeded",
+                                    }
+                                ],
+                                "warnings": [],
+                            },
+                        }
+                    }
+                },
+            )
+        ],
+        default_metric=DefaultMetric(metric="task_completion", node_info_list=[node_info]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+        dataset_items=[
+            EvaluationDatasetInput(
+                index=9,
+                inputs={"query": "Research Dify"},
+                expected_outputs={"Research Agent": "Finished"},
+            )
+        ],
+        node_info=node_info,
+    )
+
+    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    assert item.inputs == {
+        "task": ("Research the product and summarize it.\n\nWorkflow context loaded for this run: user query Dify")
+    }
+    assert item.expected_output == "Finished"
+    assert item.tool_calls[0].tool_ref == "plugin:search/web"
+    assert item.available_tools is not None
+    assert item.available_tools[0].name == "search"
+    assert item.trajectory is not None
+    assert item.trajectory.source == "agent_v2"

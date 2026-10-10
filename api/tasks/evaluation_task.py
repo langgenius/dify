@@ -30,6 +30,10 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
+from core.evaluation.agent.customized_workflow_adapter import (
+    AGENT_CUSTOM_EVALUATOR_NODE_ID,
+    build_agent_custom_evaluator_node_result,
+)
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
@@ -285,7 +289,11 @@ def reconcile_stale_evaluation_runs() -> int:
         if target_type in {EvaluationTargetType.APPS.value, EvaluationTargetType.SNIPPETS.value}:
             EvaluationService._stop_workflow_tasks(run_id, total_items)
         elif target_type == EvaluationTargetType.AGENTS.value:
-            EvaluationService._stop_agent_runs(tenant_id=tenant_id, evaluation_run_id=run_id)
+            EvaluationService._stop_agent_evaluation_tasks(
+                tenant_id=tenant_id,
+                evaluation_run_id=run_id,
+                total_items=total_items,
+            )
         if celery_task_id:
             try:
                 celery_app.control.revoke(celery_task_id, terminate=False)
@@ -548,6 +556,7 @@ def _resume_agent_rows(
             evaluation_instance=evaluation_instance,
             agent_item=agent_item,
             target_error=target_error,
+            task_position=position,
             lease=lease,
         )
         _update_run_progress(
@@ -851,6 +860,7 @@ def _evaluate_agent_row(
     evaluation_instance: BaseEvaluationInstance,
     agent_item: AgentEvaluationItem | None,
     target_error: str | None,
+    task_position: int,
     lease: EvaluationRunLease,
 ) -> None:
     dataset_item = run_data.input_list[0]
@@ -861,7 +871,19 @@ def _evaluate_agent_row(
             actual_output=agent_item.output if agent_item is not None else None,
             error=f"Target execution failed: {target_error or 'Agent target result is missing.'}",
         )
+        results_by_index = {dataset_item.index: result}
     else:
+        results_by_index = {
+            dataset_item.index: EvaluationItemResult(
+                index=dataset_item.index,
+                actual_output=agent_item.output,
+                metadata={
+                    "agent_trace_source": "agent_v2",
+                    "agent_trace_warnings": agent_item.trajectory.warnings if agent_item.trajectory else [],
+                },
+            )
+        }
+    if target_error is None and agent_item is not None and run_data.default_metrics:
         try:
             evaluated = evaluation_instance.evaluate_agent(
                 [agent_item],
@@ -885,15 +907,47 @@ def _evaluate_agent_row(
             )
             for metric in result.metrics:
                 metric.node_info = node_info
+            _merge_result(results_by_index, dataset_item.index, result)
         except Exception as exc:
             logger.exception("Failed Agent V2 metrics for evaluation row %s", dataset_item.index)
-            result = EvaluationItemResult(
-                index=dataset_item.index,
-                actual_output=agent_item.output,
-                error=f"Agent evaluation failed: {exc}",
+            _merge_result(
+                results_by_index,
+                dataset_item.index,
+                EvaluationItemResult(
+                    index=dataset_item.index,
+                    actual_output=agent_item.output,
+                    error=f"Agent evaluation failed: {exc}",
+                ),
             )
 
-    results = [result]
+    if target_error is None and agent_item is not None and run_data.customized_metrics is not None:
+        _clear_workflow_cancellation_signals(session, lease, "evaluator", [task_position])
+        try:
+            customized_results = evaluation_instance.evaluate_with_customized_workflow(
+                node_run_result_mapping_list=[
+                    {AGENT_CUSTOM_EVALUATOR_NODE_ID: build_agent_custom_evaluator_node_result(agent_item)}
+                ],
+                customized_metrics=run_data.customized_metrics,
+                tenant_id=run_data.tenant_id,
+                cancellation_check=lambda: _cooperative_checkpoint(session, lease),
+                task_id_factory=lambda _: _workflow_task_id(
+                    run_data.evaluation_run_id,
+                    "evaluator",
+                    task_position,
+                ),
+            )
+            _merge_customized_results(results_by_index, customized_results, [dataset_item])
+        except EvaluationWorkflowVersionNotFoundError:
+            raise
+        except Exception as exc:
+            logger.exception("Failed customized Agent metrics for evaluation row %s", dataset_item.index)
+            _merge_result(
+                results_by_index,
+                dataset_item.index,
+                EvaluationItemResult(index=dataset_item.index, error=f"Customized evaluation failed: {exc}"),
+            )
+
+    results = [results_by_index[dataset_item.index]]
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
     results = [_with_overall_score(item) for item in results]
@@ -1681,7 +1735,9 @@ def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) ->
     try:
         session.rollback()
         run_identity = session.execute(
-            select(EvaluationRun.tenant_id, EvaluationRun.target_type).where(EvaluationRun.id == lease.run_id)
+            select(EvaluationRun.tenant_id, EvaluationRun.target_type, EvaluationRun.total_items).where(
+                EvaluationRun.id == lease.run_id
+            )
         ).one_or_none()
         result = cast(
             CursorResult[Any],
@@ -1707,9 +1763,10 @@ def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) ->
             and run_identity is not None
             and EvaluationTargetType(run_identity.target_type) == EvaluationTargetType.AGENTS
         ):
-            EvaluationService._stop_agent_runs(
+            EvaluationService._stop_agent_evaluation_tasks(
                 tenant_id=run_identity.tenant_id,
                 evaluation_run_id=lease.run_id,
+                total_items=run_identity.total_items,
             )
     except Exception:
         logger.exception("Failed to mark run %s as failed", lease.run_id)
