@@ -8,7 +8,6 @@ import { z } from 'zod'
 import { parseCatalog } from '@/plugins/catalog'
 import { Command } from '@/plugins/commands/command'
 import { propertiesOf } from '@/protocol/shape'
-import { SKILL_NOTICE } from './help'
 import { commands, runPipeline } from './index'
 
 // What the mock serves by default, so an op's descriptor and its errors can be compared.
@@ -32,7 +31,7 @@ it('bare difyctl prints a pointer to help and the skill, and makes no request', 
   expect(JSON.parse(w.io.outBuf())).toEqual({
     message: 'difyctl has no built-in business commands; every server operation is a command',
     help: 'difyctl help',
-    skill: 'difyctl install skills <dir>',
+    skill: 'difyctl install skills <skills root>',
   })
   expect(w.mock.requestCount).toBe(0)
 })
@@ -68,7 +67,7 @@ it('the map with no server known is the static half and says so on stderr', asyn
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf()).toMatch(/not logged in: run difyctl login --help/)
+  expect(w.io.errBuf()).toMatch(/not logged in: run difyctl help login/)
   expect(w.mock.requestCount).toBe(0)
 })
 
@@ -79,9 +78,8 @@ it('the map still prints the static half when the catalog cannot be fetched', as
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  const [couldNotList, notice, ...rest] = w.io.errBuf().trim().split('\n')
+  const [couldNotList, ...rest] = w.io.errBuf().trim().split('\n')
   expect(couldNotList).toMatch(/^could not list server operations: failed to fetch the catalog: /)
-  expect(notice).toBe(SKILL_NOTICE)
   expect(rest).toEqual([])
 })
 

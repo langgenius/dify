@@ -39,8 +39,7 @@ function Get-ChecksumTarget([string]$text, [string]$target) {
 }
 
 function Write-SkillHint {
-  Write-Host 'AI agents: run `difyctl install skills <your skills root>` to load the difyctl skill.'
-  Write-Host 'Run it again after each difyctl upgrade; the skill ships inside the binary.'
+  Write-Host 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
 # Download, sha256-verify, place. Returns nothing; throws on mismatch.

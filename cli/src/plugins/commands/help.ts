@@ -12,8 +12,7 @@ import { collectCommands } from './registry'
 
 const SEARCH_LIMIT = 20
 const NEWLINE = '\n'
-const SKILL_WORDS = 'install skills <dir>'
-export const SKILL_NOTICE = `AI agents: run \`${BINARY} ${SKILL_WORDS.replace('<dir>', '<skills root>')}\` once to learn how to use ${BINARY}.`
+const SKILL_COMMAND = [BINARY, 'install', 'skills', '<skills root>'].join(COMMAND_SEPARATOR)
 const POINTER_MESSAGE = `${BINARY} has no built-in business commands; every server operation is a command`
 
 export type HelpEntry = {
@@ -33,7 +32,7 @@ export function pointer(): View<Record<string, string>> {
   const json = {
     message: POINTER_MESSAGE,
     help: [BINARY, HELP_WORD].join(COMMAND_SEPARATOR),
-    skill: [BINARY, SKILL_WORDS].join(COMMAND_SEPARATOR),
+    skill: SKILL_COMMAND,
   }
   return view(json, () => Object.values(json).join(NEWLINE))
 }

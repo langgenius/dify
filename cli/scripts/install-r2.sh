@@ -22,8 +22,7 @@ err() { printf '%s\n' "install-r2: $*" >&2; }
 die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 print_skill_hint() {
-  printf '%s\n' 'AI agents: run `difyctl install skills <your skills root>` to load the difyctl skill.'
-  printf '%s\n' 'Run it again after each difyctl upgrade; the skill ships inside the binary.'
+  printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
 detect_target() {
@@ -99,10 +98,9 @@ fetch_verify_install() {
 
   printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${install_dir}/difyctl"
   case ":${PATH}:" in
-    *":${install_dir}:"*) ;;
+    *":${install_dir}:"*) print_skill_hint ;;
     *) printf 'note: add %s to your PATH\n' "$install_dir" ;;
   esac
-  print_skill_hint
 }
 
 # Resolve a pinned build into download url + sha. Sets: version, dl_url, dl_sha.

@@ -96,7 +96,7 @@ it('the pointer names help and the skill in both forms', () => {
   expect(pointed.json).toEqual({
     message: 'difyctl has no built-in business commands; every server operation is a command',
     help: 'difyctl help',
-    skill: 'difyctl install skills <dir>',
+    skill: 'difyctl install skills <skills root>',
   })
   expect(pointed.text(plain).split('\n')).toEqual(Object.values(pointed.json))
 })
