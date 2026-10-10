@@ -20,7 +20,7 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import credentials, diagnostic_context, graph_ops, preflight
+from services.dify_builder import credentials, diagnostic_context, graph_ops, mutation_policy, preflight
 from services.dify_builder.agent import graph_prompt, llm
 
 _SEVERITIES = {"low", "medium", "high"}
@@ -287,10 +287,13 @@ def _shape_risk(intents: list[MutationIntent], graph: Graph, llm_risk: Risk) -> 
     structural = any(i.op in graph_ops.STRUCTURAL_OPS for i in intents)
     touched_external = bool(_touched_node_types(intents, graph) & _EXTERNAL_SIDE_EFFECT_TYPES)
     external = touched_external or llm_risk.has_external_side_effect
-    if structural or external:
+    sensitive_reasons = mutation_policy.sensitive_change_reasons(graph, intents)
+    if structural or external or sensitive_reasons:
         return Risk(
             level="high",
-            reason=llm_risk.reason or "Structural or side-effecting change — needs review.",
+            reason="\n".join(sensitive_reasons)
+            or llm_risk.reason
+            or "Structural or side-effecting change — needs review.",
             has_external_side_effect=external,
         )
     return Risk(
