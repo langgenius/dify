@@ -31,7 +31,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from core.dify_builder.execution_policy import HttpFixtureSetV1
+from core.dify_builder.execution_policy import BuilderExecutionRefusal, HttpFixtureSetV1
 from core.dify_builder.state import PcState
 
 
@@ -128,6 +128,7 @@ class PublicationDecision:
 
 @dataclass(kw_only=True)
 class Run:
+    execution_refusal: BuilderExecutionRefusal | None = None
     id: str = ""
     session_id: str = ""
     verification: RunVerification | None = None

@@ -53,16 +53,22 @@ def test_all_test_flows_forward_native_events(handler, state, mode):
         now=lambda: datetime.min,
         emit_workflow=received.append,
     )
-    session = Session(app_id="app", tenant_id="tenant", entry_mode=mode, current_state=state)
+    session = Session(id="real-session", app_id="app", tenant_id="tenant", entry_mode=mode, current_state=state)
+    context = saved_test_context(env.repo, session.id)
+    port.run_draft = MagicMock(wraps=port.run_draft)
 
     handler(
         env,
         Turn(actor=Actor(account_id="account", tenant_id="tenant")),
         session,
-        saved_test_context(env.repo, session.id),
+        context,
     )
 
     assert received == port.workflow_events
+    assert port.run_draft.call_args.kwargs["session_id"] == "real-session"
+    test_input_id = port.run_draft.call_args.kwargs["test_input_id"]
+    assert test_input_id == context.test_input_ref
+    assert env.repo.get_test_input(test_input_id).session_id == "real-session"
 
 
 @pytest.mark.parametrize(

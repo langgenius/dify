@@ -364,8 +364,11 @@ class FakeDifyPort:
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
+        session_id: str,
+        test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
     ) -> Run:
+        self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
         if on_workflow_event is not None:
             for event in self.workflow_events:
@@ -610,8 +613,11 @@ class FakeBuildDifyPort:
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
+        session_id: str,
+        test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
     ) -> Run:
+        self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
         if on_workflow_event is not None:
             for event in self.workflow_events:

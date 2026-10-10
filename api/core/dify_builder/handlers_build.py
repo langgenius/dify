@@ -792,7 +792,15 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     raw = None
     try:
         validate_runtime_inputs(schema, inputs, ti)
-        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+        raw = env.dify.run_draft(
+            s.app_id,
+            turn.actor,
+            inputs,
+            emit,
+            session_id=s.id,
+            test_input_id=fc.test_input_ref,
+            on_workflow_event=env.emit_workflow,
+        )
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
         # Never crash the advance; capture the launch error (log + store) instead

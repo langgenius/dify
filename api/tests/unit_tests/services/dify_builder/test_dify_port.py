@@ -62,6 +62,9 @@ def _actor() -> Actor:
 
 
 def _configure_session_get(session: MagicMock, *, account=None, app=None) -> None:
+    if app is not None and not hasattr(app, "tracing"):
+        app.tracing = None
+
     def _get(model, _id):
         if model is Account:
             return account
@@ -111,6 +114,32 @@ def _default_draft_for_native_runs():
     # Stream fixtures now also read a real draft to establish launch identity.
     with patch("services.dify_builder.dify_port.WorkflowService") as service:
         service.return_value.get_draft_workflow.return_value = _workflow()
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_execution_preparation():
+    """Stream mapping tests isolate admission; real rows/normalization live in test_native_execution_admission."""
+    from services.dify_builder.revision import executable_graph_revision
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
+
+    def prepare(**kwargs):
+        return context().model_copy(
+            update={
+                "execution_revision": execution_revision(kwargs["workflow"]),
+                "graph_revision": executable_graph_revision(kwargs["workflow"].graph_dict),
+            }
+        )
+
+    with (
+        patch("services.dify_builder.dify_port.BuilderExecutionPolicyService") as policy,
+        patch("services.dify_builder.dify_port.admitted_node_bindings"),
+        patch(
+            "services.dify_builder.dify_port.BaseAppGenerator._prepare_user_inputs",
+            side_effect=lambda **kw: kw["user_inputs"],
+        ),
+    ):
+        policy.return_value.prepare.side_effect = prepare
         yield
 
 
@@ -753,7 +782,9 @@ def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session
         mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"q": "hi"}, events.append)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {"q": "hi"}, events.append, session_id="session-1", test_input_id="test-1"
+        )
 
     _, kwargs = mock_ags.generate.call_args
     assert kwargs["app_model"] is app
@@ -806,7 +837,9 @@ def test_run_draft_consumes_the_stream_after_the_session_is_closed(mock_session:
         repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         repo.get_executions_by_workflow_run.return_value = []
 
-        WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     # generate() itself was called while the session was open...
     assert mock_ags.generate.call_args.kwargs["session"] is mock_session
@@ -834,7 +867,9 @@ def test_run_draft_accepts_raw_mapping_chunks(mock_session: MagicMock):
         repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         repo.get_executions_by_workflow_run.return_value = []
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda e: seen.append(e.status))
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda e: seen.append(e.status), session_id="session-1", test_input_id="test-1"
+        )
 
     assert seen == ["running", "succeeded"]
     assert run.status == "succeeded"
@@ -864,7 +899,15 @@ def test_run_draft_forwards_full_payloads_synchronously_without_reconstruction(
         generate.generate.return_value = stream()
         node_repo = repositories.create_api_workflow_node_execution_repository.return_value
         node_repo.get_executions_by_workflow_run.return_value = []
-        WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, summaries.append, on_workflow_event=received.append)
+        WorkflowServiceDifyPort().run_draft(
+            "app-1",
+            _actor(),
+            {},
+            summaries.append,
+            on_workflow_event=received.append,
+            session_id="session-1",
+            test_input_id="test-1",
+        )
 
     assert received == payloads
     assert summaries  # Backend progress and diagnosis still receive node summaries.
@@ -895,7 +938,9 @@ def test_run_draft_maps_a_paused_stream_to_a_failed_run(mock_session: MagicMock)
         repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         repo.get_executions_by_workflow_run.return_value = []
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-9")
     assert run.status == "failed"
@@ -943,7 +988,9 @@ def test_a_truncated_stream_reports_the_runs_real_status_from_the_database(mock_
             id="run-1", status="succeeded", error=None, elapsed_time=361.0, total_tokens=99
         )
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     # The run id came off a non-terminal frame, so both reads could still happen.
     node_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
@@ -971,7 +1018,9 @@ def test_a_truncated_stream_reports_a_real_database_failure_as_failed(mock_sessi
             id="run-1", status="failed", error="node blew up", elapsed_time=1.0, total_tokens=1
         )
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     assert run.status == "failed"
     assert run.dify_run_id == "run-1"
@@ -993,7 +1042,9 @@ def test_a_truncated_stream_over_a_still_running_run_is_unknown_not_failed(mock_
             id="run-1", status="running", error=None, elapsed_time=300.0, total_tokens=5
         )
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     assert run.status == "running"
     assert run.status != "failed"
@@ -1014,7 +1065,9 @@ def test_a_truncated_stream_with_no_run_row_is_unknown_not_failed(mock_session: 
         run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
         run_repo.get_workflow_run_by_id.return_value = None
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     assert run.status == "running"
     assert run.error == run_mapping.TRUNCATED_STREAM_ERROR
@@ -1032,7 +1085,9 @@ def test_a_stream_of_nothing_but_keep_alives_is_unknown_not_failed(mock_session:
         node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     node_repo.get_executions_by_workflow_run.assert_not_called()
     run_repo.get_workflow_run_by_id.assert_not_called()
@@ -1058,7 +1113,9 @@ def test_run_draft_closes_the_stream_when_the_callback_raises(mock_session: Magi
     ):
         mock_ags.generate.return_value = response
         with pytest.raises(RuntimeError, match="callback exploded"):
-            WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, _boom)
+            WorkflowServiceDifyPort().run_draft(
+                "app-1", _actor(), {}, _boom, session_id="session-1", test_input_id="test-1"
+            )
 
     response.close.assert_called_once_with()
 
@@ -1154,7 +1211,9 @@ def test_run_draft_reads_a_blocking_dict_response(mock_session: MagicMock):
         mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
 
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"q": "hi"}, events.append)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {"q": "hi"}, events.append, session_id="session-1", test_input_id="test-1"
+        )
 
     assert run.status == "succeeded"
     assert run.dify_run_id == "run-1"
@@ -1176,7 +1235,9 @@ def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: MagicMock
         mock_ags.generate.return_value = iter([_sse(_FINISHED_CHUNK)])
         node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
         node_repo.get_executions_by_workflow_run.return_value = []
-        WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _e: None)
+        WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
+        )
 
     _, kwargs = mock_ags.generate.call_args
     assert kwargs["streaming"] is True
@@ -1221,7 +1282,13 @@ def _run_stream(chunks: list, *, node_execs: list | None = None, run_row=None):
         run_repo = mock_repo_factory.create_api_workflow_run_repository.return_value
         run_repo.get_workflow_run_by_id.return_value = run_row
         run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, on_workflow_event=forwarded.append
+            "app-1",
+            _actor(),
+            {},
+            lambda _e: None,
+            on_workflow_event=forwarded.append,
+            session_id="session-1",
+            test_input_id="test-1",
         )
     return run, forwarded, node_repo
 
@@ -1325,7 +1392,7 @@ def test_no_terminal_frame_and_no_error_frame_is_still_unknown(mock_session: Mag
 
 
 @pytest.mark.parametrize("custom", [{}, {"query": "custom Start query", "file": {"id": "file-1"}}])
-def test_chatflow_routes_system_message_separately_from_start_inputs(mock_session, custom):
+def test_chatflow_is_unsupported_even_with_valid_system_message(mock_session, custom):
     _configure_session_get(
         mock_session,
         account=SimpleNamespace(id="acc-1"),
@@ -1335,8 +1402,12 @@ def test_chatflow_routes_system_message_separately_from_start_inputs(mock_sessio
     with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
         generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
         with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
-            WorkflowServiceDifyPort().run_draft("app-1", _actor(), inputs, lambda _event: None)
-    assert generate.generate.call_args.kwargs["args"] == {"query": "User system message", "inputs": custom}
+            run = WorkflowServiceDifyPort().run_draft(
+                "app-1", _actor(), inputs, lambda _event: None, session_id="session-1", test_input_id="test-1"
+            )
+    assert run.execution_refusal.reason_code == "unsupported_workflow"
+    assert run.dify_run_id == ""
+    generate.generate.assert_not_called()
     assert inputs == {**custom, "sys.query": "User system message"}
 
 
@@ -1350,8 +1421,10 @@ def test_chatflow_rejects_invalid_system_query_before_native_launch(mock_session
         app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="advanced-chat"),
     )
     with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
-        with pytest.raises(ValueError, match="query is required"):
-            WorkflowServiceDifyPort().run_draft("app-1", _actor(), inputs, lambda _event: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), inputs, lambda _event: None, session_id="session-1", test_input_id="test-1"
+        )
+        assert run.execution_refusal.reason_code == "unsupported_workflow"
     generate.generate.assert_not_called()
 
 
@@ -1364,7 +1437,14 @@ def test_workflow_keeps_query_as_an_ordinary_start_input(mock_session):
     with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
         generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
         with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
-            WorkflowServiceDifyPort().run_draft("app-1", _actor(), {"query": "custom"}, lambda _event: None)
+            WorkflowServiceDifyPort().run_draft(
+                "app-1",
+                _actor(),
+                {"query": "custom"},
+                lambda _event: None,
+                session_id="session-1",
+                test_input_id="test-1",
+            )
     assert generate.generate.call_args.kwargs["args"] == {"inputs": {"query": "custom"}}
 
 
@@ -1415,7 +1495,9 @@ def test_verification_binds_actual_native_graph(mock_session, native_graph, chan
         node_repo.get_executions_by_workflow_run.return_value = []
         repo = factory.create_api_workflow_run_repository.return_value
         repo.get_workflow_run_by_id.return_value = SimpleNamespace(graph_dict=native) if native else None
-        run = WorkflowServiceDifyPort().run_draft("app-1", _actor(), {}, lambda _: None)
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1", _actor(), {}, lambda _: None, session_id="session-1", test_input_id="test-1"
+        )
         repo.get_workflow_run_by_id.assert_called_once_with(tenant_id="tenant-1", app_id="app-1", run_id="native")
     assert run.status == "succeeded"
     assert run.verification.terminal_outputs == {"result": None}

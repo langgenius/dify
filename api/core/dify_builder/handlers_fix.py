@@ -1092,7 +1092,15 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     try:
         validate_runtime_inputs(schema, inputs, ti)
-        result = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
+        result = env.dify.run_draft(
+            s.app_id,
+            turn.actor,
+            inputs,
+            emit,
+            session_id=s.id,
+            test_input_id=fc.test_input_ref,
+            on_workflow_event=env.emit_workflow,
+        )
     except Exception as exc:
         # Same degrade as Build/Edit: never crash the advance; the launch error
         # is captured on the Run (log + store) so the decision gate can show it.
