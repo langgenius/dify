@@ -18,12 +18,19 @@ export default defineConfig(({ command, mode, isPreview }) => {
     process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
+    build: {
+      // Match package.json's browserslist; these targets support native top-level await.
+      target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
+    },
     plugins: lazyPlugins(async () => {
-      const { default: react } = await import('@vitejs/plugin-react')
+      const [{ default: react }, { default: wasm }] = await Promise.all([
+        import('@vitejs/plugin-react'),
+        import('vite-plugin-wasm'),
+      ])
 
-      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
+      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react(), wasm()]
 
-      if (isStorybook) return [react()]
+      if (isStorybook) return [react(), wasm()]
 
       const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
         await Promise.all([
@@ -62,6 +69,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         inspector,
         tailwindcss(),
         react(),
+        wasm(),
         vinext({ react: false }),
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
@@ -72,11 +80,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [
-        { find: '~@', replacement: projectRoot },
-        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
-        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
-      ],
+      alias: [{ find: '~@', replacement: projectRoot }],
     },
     // vinext related config
     ...(!isTest && !isStorybook
