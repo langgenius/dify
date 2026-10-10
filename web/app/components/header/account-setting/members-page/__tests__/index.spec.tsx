@@ -44,6 +44,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         return {
           current: {
             summary: target.workspaces.current.summary,
+            permission: target.workspaces.current.permission,
             members: {
               inviteEmail: {
                 post: {
