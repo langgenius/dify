@@ -20,6 +20,7 @@ const mockHandleBatchDownload = vi.fn()
 const mockShowEditModal = vi.fn()
 const mockHideEditModal = vi.fn()
 const mockHandleSave = vi.fn()
+let mockIsLoadingMetadata = false
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -45,6 +46,8 @@ vi.mock('../document-list/hooks', async (importOriginal) => ({
 vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
   default: vi.fn(() => ({
     isShowEditModal: false,
+    isLoadingMetadata: mockIsLoadingMetadata,
+    documentCount: 0,
     showEditModal: mockShowEditModal,
     hideEditModal: mockHideEditModal,
     originalList: [],
@@ -141,6 +144,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsLoadingMetadata = false
   })
 
   // Verify the table renders with column headers
@@ -279,12 +283,15 @@ describe('DocumentList', () => {
       expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
     })
 
-    it('should call clearSelection when cancel is clicked in batch bar', () => {
+    it('cancels metadata loading before clearing the selection from the batch bar', async () => {
+      const user = userEvent.setup()
+      mockIsLoadingMetadata = true
       render(<DocumentList {...defaultProps} selectedIds={['doc-1']} />)
 
-      fireEvent.click(screen.getByTestId('cancel-selection'))
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
-      expect(mockClearSelection).toHaveBeenCalled()
+      expect(mockHideEditModal).toHaveBeenCalledOnce()
+      expect(mockClearSelection).toHaveBeenCalledOnce()
     })
   })
 

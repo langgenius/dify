@@ -130,6 +130,8 @@ vi.mock('@/service/use-base', () => ({
 vi.mock('../../metadata/hooks/use-edit-dataset-metadata', () => ({
   default: vi.fn(() => ({
     isShowEditModal: false,
+    isLoadingMetadata: false,
+    documentCount: 0,
     showEditModal: vi.fn(),
     hideEditModal: vi.fn(),
     datasetMetaData: [],
