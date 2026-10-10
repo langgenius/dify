@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import pytest
@@ -17,9 +17,11 @@ from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
+from core.provider_manager import ProviderConfigurationCacheSource
 from enums import DeploymentEdition
 from models import ProviderType
 from models.engine import db
@@ -499,10 +501,20 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = True
 
-        result = PluginService.uninstall(tenant_id, "install-1")
+        with (
+            patch("core.plugin.plugin_service.ProviderCredentialsCache") as credentials_cache,
+            patch("core.provider_manager.ProviderManager.invalidate_configurations_cache"),
+        ):
+            result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is True
         installer.uninstall.assert_called_once()
+        credentials_cache.assert_called_once_with(
+            tenant_id=tenant_id,
+            identity_id=provider_id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        )
+        credentials_cache.return_value.delete.assert_called_once_with()
 
         plugin_db.expire_all()
 
@@ -560,9 +572,11 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = True
 
-        result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
+        with patch("tasks.plugin_credential_cleanup_task.cleanup_plugin_credentials_task.delay") as cleanup_retry:
+            result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
 
         assert result is True
+        cleanup_retry.assert_not_called()
         plugin_db.expire_all()
         assert plugin_db.get(ProviderCredential, credential.id) is not None
         assert plugin_db.get(Provider, provider.id).credential_id == credential.id
@@ -588,8 +602,128 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = False
 
-        result = PluginService.uninstall(tenant_id, "install-1")
+        with patch("tasks.plugin_credential_cleanup_task.cleanup_plugin_credentials_task.delay") as cleanup_retry:
+            result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is False
+        cleanup_retry.assert_not_called()
         plugin_db.expire_all()
         assert plugin_db.get(ProviderCredential, credential.id) is not None
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_returns_success_and_queues_cleanup_retry_when_cleanup_fails(self, mock_installer_cls: MagicMock) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        cleanup_error = RuntimeError("cache unavailable")
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = True
+
+        with (
+            patch.object(PluginService, "_cleanup_plugin_credentials", side_effect=cleanup_error) as cleanup,
+            patch("tasks.plugin_credential_cleanup_task.cleanup_plugin_credentials_task.delay") as cleanup_retry,
+            patch.object(PluginService, "invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            result = PluginService.uninstall(tenant_id, "install-1")
+
+        assert result is True
+        installer.uninstall.assert_called_once_with(tenant_id, "install-1")
+        cleanup.assert_called_once_with(tenant_id, plugin_id)
+        cleanup_retry.assert_called_once_with(tenant_id, plugin_id)
+        invalidate_cache.assert_called_once_with(tenant_id)
+
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_cleanup_retry_dispatch_failure_does_not_fail_uninstall(
+        self, mock_installer_cls: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        plugin = MagicMock(installation_id="install-1", plugin_id=plugin_id)
+        installer = mock_installer_cls.return_value
+        installer.list_plugins.return_value = [plugin]
+        installer.uninstall.return_value = True
+
+        with (
+            patch.object(PluginService, "_cleanup_plugin_credentials", side_effect=RuntimeError("cleanup failed")),
+            patch(
+                "tasks.plugin_credential_cleanup_task.cleanup_plugin_credentials_task.delay",
+                side_effect=RuntimeError("broker unavailable"),
+            ),
+            patch.object(PluginService, "invalidate_plugin_model_providers_cache") as invalidate_cache,
+            caplog.at_level("ERROR", logger="core.plugin.plugin_service"),
+        ):
+            result = PluginService.uninstall(tenant_id, "install-1")
+
+        assert result is True
+        invalidate_cache.assert_called_once_with(tenant_id)
+        assert f"tenant_id={tenant_id}" in caplog.text
+        assert f"plugin_id={plugin_id}" in caplog.text
+        assert "Failed to schedule plugin credential cleanup retry" in caplog.text
+
+    def test_cleanup_retry_is_idempotent_after_database_cleanup(self, plugin_db: Session) -> None:
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        provider_name = f"{plugin_id}/model-provider"
+
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        plugin_db.add(credential)
+        plugin_db.flush()
+        credential_id = credential.id
+        provider = Provider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_id=credential_id,
+        )
+        preferred_provider = TenantPreferredModelProvider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        plugin_db.add_all([provider, preferred_provider])
+        plugin_db.commit()
+        provider_id = provider.id
+        preferred_provider_id = preferred_provider.id
+
+        with (
+            patch("core.plugin.plugin_service.ProviderCredentialsCache") as credentials_cache,
+            patch("core.provider_manager.ProviderManager.invalidate_configurations_cache") as invalidate_configurations,
+        ):
+            credentials_cache.return_value.delete.side_effect = [RuntimeError("cache unavailable"), None]
+
+            with pytest.raises(RuntimeError, match="cache unavailable"):
+                PluginService._cleanup_plugin_credentials(tenant_id, plugin_id)
+
+            plugin_db.expire_all()
+            assert plugin_db.get(ProviderCredential, credential_id) is None
+            persisted_provider = plugin_db.get(Provider, provider_id)
+            assert persisted_provider is not None
+            assert persisted_provider.credential_id is None
+            assert plugin_db.get(TenantPreferredModelProvider, preferred_provider_id) is None
+
+            PluginService._cleanup_plugin_credentials(tenant_id, plugin_id)
+
+        assert credentials_cache.call_args_list == [
+            call(
+                tenant_id=tenant_id,
+                identity_id=provider_id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER,
+            ),
+            call(
+                tenant_id=tenant_id,
+                identity_id=provider_id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER,
+            ),
+        ]
+        invalidate_configurations.assert_called_once_with(
+            tenant_id,
+            sources=(
+                ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
+                ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
+            ),
+        )
