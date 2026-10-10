@@ -27,8 +27,8 @@ The skill is a tree of linked docs, so an agent reads only the branch it needs.
 
 `cli/test/skills/tree.test.ts` checks links, depth, sizes, and every `difyctl`
 command, in backticks or in code blocks. Each command must exist locally or in
-`cli/test/fixtures/catalog.json`, and each flag on an operation must be one of
-its input fields or a CLI flag. Add an op's descriptor there when a doc starts
+`cli/test/fixtures/catalog.json`, and each flag must be one that command
+parses. Add an op's descriptor there when a doc starts
 naming it.
 
 A change here reaches users with the next difyctl build.

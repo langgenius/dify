@@ -71,10 +71,6 @@ A fix that changes the plan or spec follows the next section.
 
 ## Changes to the plan or spec
 
-Never build a change first and report it later. For each change:
-
-1. Stop and tell the human what changes, why, and what it costs.
-2. On a yes, update the plan (and the spec, if it changes), then the YAML.
-3. Log it under "Changes during build" with when the human approved it.
+Never build a change first and report it later; ask as the rules in `build-workflow.md` say. On a yes, update the plan (and the spec, if it changes), then the YAML. Log it under "Changes during build" with when the human approved it.
 
 The build phase never publishes.

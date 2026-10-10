@@ -2,20 +2,20 @@
 
 ## Log in
 
-`login` uses the device flow: it prints a URL and a code, the user approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the old one, and it replaces the code the user is looking at.
+`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the old one, and it replaces the code the human is looking at.
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
-**Server.** Always pass `--server <url>`; `login` fails with `usage_missing_arg` without it. If the user has not named a server, ask which one. Never guess one.
+**Server.** Always pass `--server <url>`; `login` fails with `usage_missing_arg` without it. If the human has not named a server, ask which one. Never guess one.
 
 Log in only this way:
 
 1. `difyctl login --server <url> --no-browser --no-wait`. It saves a pending login and prints `verification_uri`, `user_code` and `expires_in` (seconds), then exits.
-2. Give the user the URL and the code. Ask them to reply when they have approved. Then end your turn. Do not poll, do not sleep, and do not start a background job.
-3. When the user replies, run `difyctl login --resume` once. If it prints the account `email`, you are logged in. If it prints `status: pending`, tell the user it is not approved yet and end your turn again.
-4. If the code expires or the user denies it, `--resume` fails. Start again from step 1.
+2. Give the human the URL and the code. Ask them to reply when they have approved. Then end your turn. Do not poll, do not sleep, and do not start a background job.
+3. When the human replies, run `difyctl login --resume` once. If it prints the account `email`, you are logged in. If it prints `status: pending`, tell the human it is not approved yet and end your turn again.
+4. If the code expires or the human denies it, `--resume` fails. Start again from step 1.
 
-Never run `login` without `--no-wait`. It blocks until the user approves.
+Never run `login` without `--no-wait`. It blocks until the human approves.
 
 A script that already has a token skips login: set `DIFY_SERVER` and `DIFY_TOKEN`.
 
