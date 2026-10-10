@@ -65,6 +65,13 @@ export const getMetricVisual = (metricId: string): { icon: string; tone: MetricV
 
   if (metricId === 'task_completion') return { icon: 'i-ri-task-line', tone: 'indigo' }
 
+  if (metricId === 'trajectory_quality') return { icon: 'i-ri-route-line', tone: 'indigo' }
+
+  if (metricId === 'tool_selection_correctness') return { icon: 'i-ri-tools-line', tone: 'indigo' }
+
+  if (metricId === 'tool_argument_correctness')
+    return { icon: 'i-ri-scales-3-line', tone: 'indigo' }
+
   if (metricId === 'argument_correctness') return { icon: 'i-ri-scales-3-line', tone: 'indigo' }
 
   return { icon: 'i-ri-checkbox-circle-line', tone: 'indigo' }

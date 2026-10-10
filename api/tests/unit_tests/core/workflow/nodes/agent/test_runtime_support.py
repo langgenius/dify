@@ -1,8 +1,11 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from core.tools.entities.common_entities import I18nObject as ToolI18nObject
+from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity, ToolParameter
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -156,3 +159,57 @@ def test_extract_default_completion_params_empty_when_no_defaults():
         parameter_rules=[],
     )
     assert AgentRuntimeSupport._extract_default_completion_params(schema) == {}
+
+
+def test_build_model_visible_tool_snapshots_excludes_runtime_values() -> None:
+    city = ToolParameter.get_simple_instance(
+        name="city",
+        llm_description="City name",
+        typ=ToolParameter.ToolParameterType.STRING,
+        required=True,
+    )
+    api_key = ToolParameter.get_simple_instance(
+        name="api_key",
+        llm_description="Hidden credential",
+        typ=ToolParameter.ToolParameterType.SECRET_INPUT,
+        required=True,
+    )
+    api_key.form = ToolParameter.ToolParameterForm.FORM
+    tool = ToolEntity(
+        identity=ToolIdentity(
+            author="Dify",
+            name="weather",
+            label=ToolI18nObject(en_US="Weather", zh_Hans="天气"),
+            provider="weather-provider",
+        ),
+        parameters=[city, api_key],
+        description=ToolDescription(
+            human=ToolI18nObject(en_US="Weather", zh_Hans="天气"),
+            llm="Get the current weather.",
+        ),
+    )
+    serialized_tool = {
+        **tool.model_dump(mode="json"),
+        "runtime_parameters": {"api_key": "must-not-leak"},
+        "credential_id": "credential-id",
+    }
+
+    snapshots = AgentRuntimeSupport.build_model_visible_tool_snapshots(
+        agent_parameters=[SimpleNamespace(name="tools", type="array[tools]")],  # type: ignore[list-item]
+        resolved_parameters={"tools": [serialized_tool]},
+    )
+
+    assert snapshots == [
+        {
+            "tool_ref": "weather-provider/weather",
+            "name": "weather",
+            "display_name": "Weather",
+            "description": "Get the current weather.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"city": {"type": "string", "description": "City name"}},
+                "required": ["city"],
+            },
+            "schema_available": True,
+        }
+    ]

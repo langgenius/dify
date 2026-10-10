@@ -74,6 +74,10 @@ class BaseEvaluationInstance(ABC):
         """Return whether a metric requires reference tool calls in the dataset."""
         return False
 
+    def metric_accepts_success_criteria(self, metric_name: str) -> bool:
+        """Return whether a metric accepts optional Agent outcome criteria."""
+        return False
+
     def evaluate_with_customized_workflow(
         self,
         node_run_result_mapping_list: list[dict[str, NodeRunResult]],

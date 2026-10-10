@@ -833,7 +833,7 @@ class EvaluationMetricsApi(Resource):
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
         metrics = {
-            category.value: EvaluationService.get_supported_metrics(category)
+            category.value: EvaluationService.get_console_supported_metrics(category)
             for category in (EvaluationCategory.LLM, EvaluationCategory.RETRIEVAL, EvaluationCategory.AGENT)
         }
         return dump_response(EvaluationMetricsResponse, {"metrics": metrics})

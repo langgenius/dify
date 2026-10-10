@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any, cast
 
 from packaging.version import Version
@@ -15,7 +16,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
-from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from extensions.ext_database import db
@@ -219,6 +220,87 @@ class AgentRuntimeSupport:
             result[parameter_name] = value
 
         return result
+
+    @staticmethod
+    def build_model_visible_tool_snapshots(
+        *,
+        agent_parameters: Sequence[AgentStrategyParameter],
+        resolved_parameters: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Build credential-free snapshots of the exact tool declarations exposed to the model."""
+        snapshots: list[dict[str, Any]] = []
+        for agent_parameter in agent_parameters:
+            if agent_parameter.type != "array[tools]":
+                continue
+            raw_tools = resolved_parameters.get(agent_parameter.name)
+            if not isinstance(raw_tools, list):
+                continue
+            for raw_tool in raw_tools:
+                if not isinstance(raw_tool, dict):
+                    continue
+                try:
+                    tool = ToolEntity.model_validate(raw_tool)
+                except ValidationError:
+                    continue
+                name = tool.identity.name.strip()
+                if not name:
+                    continue
+                provider = tool.identity.provider.strip()
+                snapshots.append(
+                    {
+                        "tool_ref": f"{provider}/{name}" if provider else name,
+                        "name": name,
+                        "display_name": tool.identity.label.en_US or tool.identity.label.zh_Hans or name,
+                        "description": tool.description.llm if tool.description else "",
+                        "input_schema": AgentRuntimeSupport._build_model_visible_input_schema(tool.parameters),
+                        "schema_available": True,
+                    }
+                )
+        return snapshots
+
+    @staticmethod
+    def _build_model_visible_input_schema(parameters: Sequence[ToolParameter]) -> dict[str, Any]:
+        """Mirror the tool runtime's model-facing JSON schema without runtime values."""
+        schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+        for parameter in parameters:
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                continue
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
+
+            is_multiple_select = parameter.multiple and parameter.type in {
+                ToolParameter.ToolParameterType.SELECT,
+                ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+            }
+            if is_multiple_select:
+                item_schema: dict[str, Any] = {"type": "string"}
+                if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+                    item_schema["enum"] = [option.value for option in parameter.options]
+                parameter_schema: dict[str, Any] = {"type": "array", "items": item_schema}
+            else:
+                parameter_schema = (
+                    {
+                        "type": parameter.type.as_normal_type(),
+                        "description": parameter.llm_description or "",
+                    }
+                    if parameter.input_schema is None
+                    else deepcopy(parameter.input_schema)
+                )
+            parameter_schema.setdefault("description", parameter.llm_description or "")
+            if (
+                not is_multiple_select
+                and parameter.type == ToolParameter.ToolParameterType.SELECT
+                and parameter.options
+            ):
+                parameter_schema["enum"] = [option.value for option in parameter.options]
+            schema["properties"][parameter.name] = parameter_schema
+            if parameter.required:
+                schema["required"].append(parameter.name)
+        return schema
 
     def build_credentials(self, *, parameters: dict[str, Any]) -> InvokeCredentials:
         credentials = InvokeCredentials()

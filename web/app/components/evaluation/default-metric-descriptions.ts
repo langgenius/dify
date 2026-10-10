@@ -15,6 +15,14 @@ const DEFAULT_METRIC_DESCRIPTION = {
     'Measures the proportion of ground-truth information that is covered by the retrieved context chunks (recall). A high score means the retrieval pipeline does not miss important supporting evidence.',
   CONTEXT_RELEVANCE:
     'Measures how relevant each individual retrieved chunk is to the query. Similar to CONTEXT_PRECISION but evaluated at the chunk level rather than against a reference answer.',
+  TASK_COMPLETION:
+    "Measures whether the agent's final output correctly and completely accomplishes the task. Optional success criteria define the desired outcome without requiring an exact answer.",
+  TRAJECTORY_QUALITY:
+    "Measures whether the agent's observable execution path is coherent, efficient, responsive to observations, and able to recover from errors.",
+  TOOL_SELECTION_CORRECTNESS:
+    'Measures whether the agent selects tools with capabilities appropriate for the task from the exact tools available at runtime.',
+  TOOL_ARGUMENT_CORRECTNESS:
+    'Measures whether model-controlled tool arguments conform to the tool schema and are semantically correct for the task and prior observations.',
   ARGUMENT_CORRECTNESS:
     'Measures whether an agent supplies the expected arguments when invoking a tool.',
   TOOL_CALL_ACCURACY: 'Measures whether an agent selects and invokes the expected tools.',
@@ -31,6 +39,10 @@ const DEFAULT_METRIC_DESCRIPTION_KEYS = {
   CONTEXT_PRECISION: 'metrics.builtin.description.contextPrecision',
   CONTEXT_RECALL: 'metrics.builtin.description.contextRecall',
   CONTEXT_RELEVANCE: 'metrics.builtin.description.contextRelevance',
+  TASK_COMPLETION: 'metrics.builtin.description.taskCompletion',
+  TRAJECTORY_QUALITY: 'metrics.builtin.description.trajectoryQuality',
+  TOOL_SELECTION_CORRECTNESS: 'metrics.builtin.description.toolSelectionCorrectness',
+  TOOL_ARGUMENT_CORRECTNESS: 'metrics.builtin.description.toolArgumentCorrectness',
   ARGUMENT_CORRECTNESS: 'metrics.builtin.description.argumentCorrectness',
   TOOL_CALL_ACCURACY: 'metrics.builtin.description.toolCallAccuracy',
 } as const
@@ -46,6 +58,10 @@ const DEFAULT_METRIC_DESCRIPTIONS: Record<string, DefaultMetricDescription> = {
   'context-precision': DEFAULT_METRIC_DESCRIPTION.CONTEXT_PRECISION,
   'context-recall': DEFAULT_METRIC_DESCRIPTION.CONTEXT_RECALL,
   'context-relevance': DEFAULT_METRIC_DESCRIPTION.CONTEXT_RELEVANCE,
+  'task-completion': DEFAULT_METRIC_DESCRIPTION.TASK_COMPLETION,
+  'trajectory-quality': DEFAULT_METRIC_DESCRIPTION.TRAJECTORY_QUALITY,
+  'tool-selection-correctness': DEFAULT_METRIC_DESCRIPTION.TOOL_SELECTION_CORRECTNESS,
+  'tool-argument-correctness': DEFAULT_METRIC_DESCRIPTION.TOOL_ARGUMENT_CORRECTNESS,
   'argument-correctness': DEFAULT_METRIC_DESCRIPTION.ARGUMENT_CORRECTNESS,
   'tool-call-accuracy': DEFAULT_METRIC_DESCRIPTION.TOOL_CALL_ACCURACY,
   relevance: DEFAULT_METRIC_DESCRIPTION.ANSWER_RELEVANCY,
@@ -59,6 +75,10 @@ const DEFAULT_METRIC_DESCRIPTION_I18N_KEYS: Record<string, DefaultMetricDescript
   'context-precision': DEFAULT_METRIC_DESCRIPTION_KEYS.CONTEXT_PRECISION,
   'context-recall': DEFAULT_METRIC_DESCRIPTION_KEYS.CONTEXT_RECALL,
   'context-relevance': DEFAULT_METRIC_DESCRIPTION_KEYS.CONTEXT_RELEVANCE,
+  'task-completion': DEFAULT_METRIC_DESCRIPTION_KEYS.TASK_COMPLETION,
+  'trajectory-quality': DEFAULT_METRIC_DESCRIPTION_KEYS.TRAJECTORY_QUALITY,
+  'tool-selection-correctness': DEFAULT_METRIC_DESCRIPTION_KEYS.TOOL_SELECTION_CORRECTNESS,
+  'tool-argument-correctness': DEFAULT_METRIC_DESCRIPTION_KEYS.TOOL_ARGUMENT_CORRECTNESS,
   'argument-correctness': DEFAULT_METRIC_DESCRIPTION_KEYS.ARGUMENT_CORRECTNESS,
   'tool-call-accuracy': DEFAULT_METRIC_DESCRIPTION_KEYS.TOOL_CALL_ACCURACY,
   relevance: DEFAULT_METRIC_DESCRIPTION_KEYS.ANSWER_RELEVANCY,

@@ -1,0 +1,306 @@
+import pytest
+
+from core.evaluation.agent import agent_judge_evaluator
+from core.evaluation.agent.agent_judge_evaluator import (
+    AgentLLMJudgeEvaluator,
+    CriterionAssessment,
+    TaskCompletionCriteria,
+    TaskCompletionJudgeOutput,
+    ToolArgumentCriteria,
+    ToolArgumentJudgeOutput,
+    ToolCallArgumentAssessment,
+    ToolSelectionCriteria,
+    ToolSelectionJudgeOutput,
+    _sanitize_value,
+    _tool_selection_payload,
+)
+from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
+from core.evaluation.entities.evaluation_entity import (
+    AgentEvaluationItem,
+    AgentToolCall,
+    AgentToolDefinition,
+    AgentTrajectory,
+    AgentTrajectoryStep,
+)
+
+
+class _FakeJudgeModel:
+    model_identifier = "provider/model"
+
+    def __init__(self, output: object) -> None:
+        self.output = output
+        self.payload: dict[str, object] | None = None
+        self.system_prompt = ""
+
+    def generate(self, *, system_prompt, payload, schema):
+        self.system_prompt = system_prompt
+        self.payload = dict(payload)
+        assert isinstance(self.output, schema)
+        return self.output
+
+
+def _criterion(score: float | None, *, applicable: bool = True) -> CriterionAssessment:
+    return CriterionAssessment(
+        applicable=applicable,
+        score=score,
+        reason="Evidence-based reason.",
+        evidence_step_ids=["final-output"],
+    )
+
+
+def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = _FakeJudgeModel(
+        TaskCompletionJudgeOutput(
+            score=0.99,
+            reason="The task is mostly complete.",
+            criteria=TaskCompletionCriteria(
+                goal_satisfaction=_criterion(0.75),
+                correctness_and_evidence_consistency=_criterion(0.5),
+                completeness=_criterion(1.0),
+            ),
+            failed_criteria=["correctness_and_evidence_consistency"],
+        )
+    )
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Find the shipment status."},
+        output="The order shipped.",
+        success_criteria=["Use the real shipment status."],
+        trajectory=AgentTrajectory(
+            source="legacy",
+            steps=[
+                AgentTrajectoryStep(
+                    step_id="final-output",
+                    sequence=0,
+                    step_type="final_output",
+                    content="The order shipped.",
+                    status="succeeded",
+                )
+            ],
+        ),
+    )
+
+    result = AgentLLMJudgeEvaluator().evaluate(
+        [item],
+        ["task_completion"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.error is None
+    assert result.metrics[0].value == 0.7125
+    assert result.metrics[0].details["reported_score"] == 0.99
+    assert result.metrics[0].details["prompt_version"] == "agent.task_completion.v1"
+    assert fake_model.payload is not None
+    assert fake_model.payload["success_criteria"] == ["Use the real shipment status."]
+    assert "TARGET METRIC: task_completion" in fake_model.system_prompt
+
+
+def test_tool_argument_correctness_scores_each_assessable_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = _FakeJudgeModel(
+        ToolArgumentJudgeOutput(
+            score=1,
+            reason="One argument is partially correct.",
+            call_assessments=[
+                ToolCallArgumentAssessment(
+                    tool_call_id="call-1",
+                    tool_ref="time/convert",
+                    score=1,
+                    reason="The timezone is ambiguous.",
+                    criteria=ToolArgumentCriteria(
+                        schema_conformance=_criterion(1),
+                        required_parameter_coverage=_criterion(1),
+                        semantic_value_correctness=_criterion(0.5),
+                        context_consistency=_criterion(0.75),
+                    ),
+                    failed_parameter_paths=["$.destination_timezone"],
+                )
+            ],
+        )
+    )
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Convert 09:00 Shanghai time to London time."},
+        output="01:00",
+        tool_calls=[
+            AgentToolCall(
+                name="convert",
+                call_id="call-1",
+                tool_ref="time/convert",
+                arguments={"source_timezone": "Asia/Shanghai", "destination_timezone": "London"},
+            )
+        ],
+        available_tools=[
+            AgentToolDefinition(
+                tool_ref="time/convert",
+                name="convert",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_timezone": {"type": "string"},
+                        "destination_timezone": {"type": "string"},
+                    },
+                    "required": ["source_timezone", "destination_timezone"],
+                },
+            )
+        ],
+        trajectory=AgentTrajectory(
+            source="legacy",
+            steps=[
+                AgentTrajectoryStep(
+                    step_id="step-1",
+                    sequence=0,
+                    step_type="tool_call",
+                    tool_call_id="call-1",
+                    tool_ref="time/convert",
+                    tool_name="convert",
+                    arguments={"source_timezone": "Asia/Shanghai", "destination_timezone": "London"},
+                )
+            ],
+        ),
+    )
+
+    metric = (
+        AgentLLMJudgeEvaluator()
+        .evaluate(
+            [item],
+            ["tool_argument_correctness"],
+            "provider",
+            "model",
+            "tenant",
+        )[0]
+        .metrics[0]
+    )
+
+    assert metric.value == 0.7375
+    assert metric.details["call_assessments"][0]["reported_score"] == 1
+    assert metric.details["call_assessments"][0]["score"] == 0.7375
+    assert fake_model.payload is not None
+    assert fake_model.payload["tool_calls"][0]["tool_description"] == ""
+
+
+def test_tool_argument_correctness_is_not_applicable_without_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_if_model_is_loaded(*_args):
+        raise AssertionError("The judge model must not be loaded for a non-applicable row.")
+
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", fail_if_model_is_loaded)
+    item = AgentEvaluationItem(index=0, inputs={"task": "Say hello."}, output="Hello!", available_tools=[])
+
+    result = AgentLLMJudgeEvaluator().evaluate(
+        [item],
+        ["tool_argument_correctness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.error is None
+    assert result.metrics[0].value is None
+    assert result.metrics[0].details["status"] == "not_applicable"
+
+
+def test_tool_selection_evaluates_hallucinated_call_when_no_tools_were_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = _FakeJudgeModel(
+        ToolSelectionJudgeOutput(
+            score=0,
+            reason="The selected tool was not available.",
+            criteria=ToolSelectionCriteria(
+                required_capability_coverage=_criterion(0),
+                selected_tool_fit=_criterion(0),
+                irrelevant_selection_avoidance=_criterion(0),
+            ),
+        )
+    )
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Say hello."},
+        output="Hello!",
+        tool_calls=[AgentToolCall(name="made_up_tool", call_id="call-1")],
+        available_tools=[],
+    )
+
+    result = AgentLLMJudgeEvaluator().evaluate(
+        [item],
+        ["tool_selection_correctness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.error is None
+    assert result.metrics[0].value == 0
+
+
+def test_tool_selection_payload_excludes_arguments_and_tool_schemas() -> None:
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Get the weather."},
+        output="Sunny",
+        tool_calls=[AgentToolCall(name="weather", call_id="call-1", arguments={"city": "Paris"})],
+        available_tools=[
+            AgentToolDefinition(
+                tool_ref="weather/weather",
+                name="weather",
+                description="Get weather.",
+                input_schema={"type": "object", "properties": {"city": {"type": "string"}}},
+            )
+        ],
+    )
+
+    payload = _tool_selection_payload(item)
+
+    serialized = str(payload)
+    assert "Paris" not in serialized
+    assert "input_schema" not in serialized
+    assert payload["tool_selection_events"][0]["selected_tool_ref"] == "weather"
+
+
+def test_agent_judge_sanitizer_redacts_secrets_and_truncates_large_values() -> None:
+    warnings: list[str] = []
+
+    sanitized = _sanitize_value(
+        {
+            "api_key": "secret",
+            "result": "x" * 8_100,
+            "model_visible_input_schema": {
+                "properties": {"api_key": {"type": "string"}},
+            },
+        },
+        warnings,
+    )
+
+    assert sanitized["api_key"] == "[REDACTED]"
+    assert sanitized["result"].endswith("...[truncated]")
+    assert sanitized["model_visible_input_schema"]["properties"]["api_key"] == {"type": "string"}
+    assert len(warnings) == 2
+
+
+def test_agent_judge_sanitizer_enforces_a_total_payload_budget() -> None:
+    warnings: list[str] = []
+
+    sanitized = _sanitize_value(
+        {"observations": [{"content": "x" * 8_000} for _ in range(80)]},
+        warnings,
+    )
+
+    assert len(str(sanitized)) < 70_000
+    assert any("payload size limit" in warning for warning in warnings)
+
+
+def test_agent_judge_prompts_are_english_and_contain_injection_defenses() -> None:
+    version, prompt = get_agent_judge_prompt("trajectory_quality")
+
+    assert version == "agent.trajectory_quality.v1"
+    assert "untrusted evidence" in prompt
+    assert "private chain-of-thought" in prompt
+    assert "TARGET METRIC: trajectory_quality" in prompt
