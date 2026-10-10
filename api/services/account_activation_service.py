@@ -108,8 +108,7 @@ class AccountActivationService:
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)
-        raw_role = invitation.role
-        role = raw_role if raw_role is not None and raw_role in _NON_OWNER_ROLES else _DEFAULT_ROLE
+        role = self._membership_role(invitation.role)
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
         self._tokens.revoke(
@@ -125,6 +124,19 @@ class AccountActivationService:
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
+
+    def ensure_membership(self, *, email: str, token: str) -> bool:
+        invitation = self._resolve(InvitationLookup(workspace_id=None, email=email, token=token))
+        if invitation is None:
+            return False
+
+        result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
+        if result is None:
+            return False
+        if result.membership_created:
+            self._membership_cache.invalidate(invitation.workspace_id)
+            self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
+        return True
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)
@@ -145,6 +157,12 @@ class AccountActivationService:
         if token is None:
             return None
         return self._accounts.resolve(token)
+
+    @staticmethod
+    def _membership_role(role: str | None) -> str:
+        if role is not None and role in _NON_OWNER_ROLES:
+            return role
+        return _DEFAULT_ROLE
 
     @staticmethod
     def _requires_setup(invitation: AccountInvitation) -> bool:

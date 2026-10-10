@@ -276,3 +276,72 @@ class TestActivateInvitation:
             assert len(memberships) == 1
             assert memberships[0].role == TenantAccountRole.EDITOR
             assert memberships[0].current is True
+
+
+class TestEnsureMembership:
+    def test_missing_token_returns_false_without_revoking(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+    ) -> None:
+        redis_transport[1].return_value = None
+
+        assert service.ensure_membership(email="invitee@example.com", token="missing") is False
+
+        boundaries["revoke"].assert_not_called()
+        boundaries["activate"].assert_not_called()
+        boundaries["cache"].assert_not_called()
+        boundaries["sync"].assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("role", "stored_role"),
+        [
+            ("editor", TenantAccountRole.EDITOR),
+            (None, TenantAccountRole.NORMAL),
+            ("owner", TenantAccountRole.NORMAL),
+        ],
+    )
+    def test_restores_membership_without_changing_active_account_or_consuming_token(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        sqlite_session_factory: sessionmaker[Session],
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+        role: str | None,
+        stored_role: TenantAccountRole,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            account = session.get(Account, "account-1")
+            assert account is not None
+            account.status = AccountStatus.ACTIVE
+        role_json = f',"role":"{role}"' if role is not None else ""
+        redis_transport[1].return_value = (
+            '{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1"'
+            f'{role_json},"requires_setup":false}}'
+        ).encode()
+
+        restored = service.ensure_membership(email="Invitee@Example.com", token="token-1")
+
+        assert restored is True
+        boundaries["revoke"].assert_not_called()
+        boundaries["activate"].assert_called_once_with(
+            _invitation(account_status="active", role=role, requires_setup=False),
+            role=stored_role,
+            setup=None,
+        )
+        boundaries["cache"].assert_called_once_with("workspace-1")
+        boundaries["sync"].assert_called_once_with("workspace-1", "account-1", operator_account_id=None)
+        with sqlite_session_factory() as session:
+            account = session.get(Account, "account-1")
+            membership = session.scalar(select(TenantAccountJoin))
+            assert account is not None
+            assert account.id == "account-1"
+            assert account.status == AccountStatus.ACTIVE
+            assert account.name == "Test User"
+            assert membership is not None
+            assert membership.role == stored_role
+            assert membership.current is True
+        check = service.check(InvitationLookup(workspace_id=None, email=None, token="token-1"))
+        assert check.is_valid is True
+        boundaries["revoke"].assert_not_called()

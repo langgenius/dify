@@ -15,8 +15,17 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from services import account_errors
 from services.account import login_adapters as adapters
+from services.account.adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
@@ -57,6 +66,52 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
+
+
+def test_invitation_gateway_restores_editor_membership_without_revoking_token(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = (
+        b'{"account_id":"account-1","email":"user@example.com","workspace_id":"workspace-1",'
+        b'"role":"editor","requires_setup":false}'
+    )
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+        account.id = "account-1"
+        tenant = Tenant(name="Workspace")
+        tenant.id = "workspace-1"
+        session.add_all([account, tenant])
+    tokens = RedisInvitationTokenStore(redis=redis)
+    accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    activation = AccountActivationService(
+        tokens=tokens,
+        accounts=accounts,
+        workspace_policy=DeploymentWorkspaceInvitePolicy(),
+        eligibility=BillingAccountActivationEligibility(enabled=False),
+        membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+        member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+    )
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=accounts,
+        activation=activation,
+    )
+
+    assert gateway.ensure_membership(email="user@example.com", token="token-1") is True
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(Account, "account-1")
+        membership = session.scalar(select(TenantAccountJoin))
+        assert persisted is not None
+        assert persisted.id == "account-1"
+        assert persisted.status == AccountStatus.ACTIVE
+        assert persisted.name == "User"
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
+        assert membership.current is True
+    assert not any(command.args and command.args[0] == "DEL" for command in commands.call_args_list)
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
