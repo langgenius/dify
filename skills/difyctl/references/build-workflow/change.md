@@ -8,13 +8,12 @@ Use this path when the app already exists. It reuses the four phases.
    difyctl get console_app --name <name> --json
    ```
 
-   An app whose Service API is off does not show up here, and `describe console_app` cannot read it. If the app is missing, ask the human for its id and whether its Service API is off.
+   If the app is missing, its Service API may be off (see Limits in `build-workflow.md`). Ask the human for its id.
 
 2. Export first.
    - List the versions. Note the `id` of the row with `current: true`: that is the live version.
    - Export that version and save it as `difyctl/<app-slug>/live.yml`. This is the live baseline.
    - Export the draft separately and keep its `draft_hash`. An export without `--workflow-id` returns the draft, not the live version.
-   - Export exits 4 when the app's Service API is off. Ask an admin to turn it on.
 
    ```bash
    difyctl get console_app version --app-id <app_id> --json

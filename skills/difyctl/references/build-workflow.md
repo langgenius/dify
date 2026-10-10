@@ -15,6 +15,7 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - Nothing goes live without the human's yes.
 - **Report problems; never work around them.** When something blocks the agreed design, stop and tell the human what you found and the options. Examples: a tool that isn't configured, a missing credential or plugin, a requirement a node can't meet, a check you can't pass. Never swap in a substitute on your own: an HTTP Request or Code node in place of a tool, prompt text in place of a knowledge base, a dropped or weakened requirement.
 - **Every change from the approved spec or plan needs the human's yes before you build it.** List each one: what changes, why, and what it costs. "Use defaults" or "go" approves only the options you already showed with your recommendation. It never approves a substitute you didn't show.
+- **Prefer an existing tool; the human picks.** For each outside service or model, rank the options: an installed and configured tool, then an official or partner plugin, then a workflow tool. HTTP Request or Code comes last. A missing key is not a reason to pick HTTP Request or Code: ask the human for it.
 
 ## Read next
 
@@ -31,3 +32,4 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - A draft run paused on a human-input node can't be resumed over difyctl.
 - Trigger-started workflows (webhook, schedule, plugin) can't be draft-tested.
 - Loop and iteration nodes can't be tested alone; use a full draft run.
+- With an app's Service API off, difyctl can't find, describe, export (exit 4), test, run or publish it; only import works. An admin turns it on with `difyctl set service_api --app-id <app_id> --enabled`.
