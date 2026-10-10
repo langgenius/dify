@@ -201,6 +201,43 @@ class TestCotAgentOutputParser:
         assert "x" in "".join(map(str, result))
 
     # --------------------------------------------------------
+    # Trailing incomplete marker prefixes (issue #43350)
+    # --------------------------------------------------------
+
+    @pytest.mark.parametrize("marker", ["action:", "thought:", "ACTION:", "THOUGHT:"])
+    @pytest.mark.parametrize("prefix_len", range(1, 7))
+    def test_trailing_incomplete_prefix_is_flushed(self, make_chunk, usage_dict, marker, prefix_len) -> None:
+        text = f"hello {marker[:prefix_len]}"
+        chunks = [make_chunk(text)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert "".join(result) == text
+
+    @pytest.mark.parametrize("marker", ["action:", "thought:"])
+    def test_trailing_incomplete_prefix_is_flushed_char_by_char(self, make_chunk, usage_dict, marker) -> None:
+        for prefix_len in range(1, len(marker)):
+            text = f"hello {marker[:prefix_len]}"
+            chunks = [make_chunk(char) for char in text]
+            result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+            assert "".join(result) == text
+
+    def test_trailing_incomplete_prefix_after_complete_marker(self, make_chunk, usage_dict) -> None:
+        text = "thought: ok\nhello acti"
+        chunks = [make_chunk(text)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        joined = "".join(result)
+        assert "ok" in joined
+        assert "hello acti" in joined
+
+    @pytest.mark.parametrize("marker", ["action:", "thought:", "ACTION:", "THOUGHT:"])
+    def test_complete_trailing_marker_still_consumed(self, make_chunk, usage_dict, marker) -> None:
+        chunks = [make_chunk(f"hello {marker}")]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        joined = "".join(result).lower()
+        assert "hello" in joined
+        assert "action:" not in joined
+        assert "thought:" not in joined
+
+    # --------------------------------------------------------
     # Mixed streaming scenarios
     # --------------------------------------------------------
 
