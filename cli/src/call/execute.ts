@@ -23,7 +23,6 @@ import { flagToken } from '@/util/flag-name'
 export type CallRequest = Readonly<{
   id: string
   op: CatalogOp
-  positional: readonly string[]
   flags: CallFlags
   fields: Record<string, unknown>
 }>
@@ -64,12 +63,7 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
   const fields = await resolveFileRefs(req.fields, req.op.input, source)
   const workspaceId = await (await ctx.get(session)).workspaceId()
   const body = applyPins({ ...whole, ...fields }, req.op.input, { [PIN.Workspace]: workspaceId })
-  assertValidInput({
-    command: commandWords(req.id),
-    schema: req.op.input,
-    positional: req.positional,
-    input: body,
-  })
+  assertValidInput({ command: commandWords(req.id), schema: req.op.input, input: body })
 
   if (req.op.deprecated) out.notice(`${DEPRECATED_NOTICE}: ${req.id}`)
 

@@ -58,7 +58,6 @@ export function opCommand(id: string, op: CatalogOp): CommandConstructor {
   return class OpCommand extends Command {
     static override summary = op.summary
     static override effect = effectOf(op.method)
-    static override positional = [] as const
     static override examples = op.examples
     static override hidden = op.internal
 
@@ -100,7 +99,7 @@ export function opCommand(id: string, op: CatalogOp): CommandConstructor {
       const fields = Object.fromEntries(
         Object.entries(input).filter(([key]) => !(key in CALL_FLAGS)),
       )
-      return executeCall({ id, op, positional: OpCommand.positional, flags, fields }, ctx)
+      return executeCall({ id, op, flags, fields }, ctx)
     }
   }
 }
