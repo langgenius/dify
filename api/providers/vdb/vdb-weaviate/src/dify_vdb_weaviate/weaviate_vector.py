@@ -549,7 +549,7 @@ class WeaviateVector(BaseVector):
         """
         Performs BM25 full-text search on document content.
 
-        Filters by document IDs if provided and returns matching documents with vectors.
+        Filters by document IDs if provided and returns matching documents with vectors and BM25 scores.
         """
         if not self._client.collections.exists(self._collection_name):
             return []
@@ -570,6 +570,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -580,6 +581,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -592,6 +594,10 @@ class WeaviateVector(BaseVector):
             vec = obj.vector
             if isinstance(vec, dict):
                 vec = vec.get("default") or next(iter(vec.values()), None)
+
+            score = getattr(getattr(obj, "metadata", None), "score", None)
+            if isinstance(score, (int, float, str)):
+                properties["score"] = float(score)
 
             docs.append(Document(page_content=text, vector=vec, metadata=properties))
         return docs
