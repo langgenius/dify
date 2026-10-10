@@ -1,11 +1,6 @@
+import type { Hint } from '@/protocol/hint'
+import { parseHints } from '@/protocol/hint'
 import { isRecord } from '@/util/is-record'
-
-export type Hint = {
-  summary: string
-  op: string
-  input: Record<string, unknown>
-  form?: unknown
-}
 
 export type FoldResult = {
   status: FoldStatus
@@ -51,7 +46,7 @@ function asString(value: unknown): string | undefined {
 }
 
 function appendHints(result: FoldResult, hints: unknown): void {
-  if (Array.isArray(hints)) result.hints.push(...(hints as Hint[]))
+  result.hints.push(...parseHints(hints))
 }
 
 function appendAnswer(result: FoldResult, event: Record<string, unknown>): void {

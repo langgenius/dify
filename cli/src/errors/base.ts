@@ -1,14 +1,18 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
-import type { Hint } from '@/protocol/fold'
+import type { Hint } from '@/protocol/hint'
 import { BINARY } from '@/version/info'
 import { ErrorCode, exitFor } from './codes'
+
+export const LOC_SEPARATOR = '.'
 
 export type ServerErrorDetail = {
   readonly type: string
   readonly loc?: (string | number)[]
   readonly msg: string
-  readonly field?: string
 }
+
+/** A detail the CLI reports; `field` is the input as the user typed it. */
+export type ErrorDetail = ServerErrorDetail & { readonly field?: string }
 
 export type ServerErrorBody = {
   readonly code?: string
@@ -24,7 +28,7 @@ export type ErrorEnvelope = {
     code: string
     message: string
     hint?: string
-    details?: ServerErrorDetail[]
+    details?: ErrorDetail[]
     schema?: unknown
     http_status?: number
     method?: string
@@ -39,14 +43,14 @@ export type BaseErrorOptions = {
   readonly message: string
   readonly hint?: string
   readonly cause?: unknown
-  readonly details?: ServerErrorDetail[]
+  readonly details?: ErrorDetail[]
   readonly schema?: unknown
 }
 
 export class BaseError extends Error {
   readonly code: ErrorCodeValue
   readonly hint?: string
-  readonly details?: ServerErrorDetail[]
+  readonly details?: ErrorDetail[]
   readonly schema?: unknown
 
   constructor(opts: BaseErrorOptions) {

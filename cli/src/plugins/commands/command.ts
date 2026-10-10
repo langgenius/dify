@@ -5,7 +5,7 @@ import type { Example, JsonSchema } from '@/plugins/catalog'
 import type { Printable } from '@/sys/io/view'
 import { z } from 'zod'
 import { validateInput } from '@/call/validate'
-import { BaseError } from '@/errors/base'
+import { BaseError, LOC_SEPARATOR } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { inputSchema } from '@/plugins/argv/parse'
 import { COMMAND_SEPARATOR } from '@/protocol/op-id'
@@ -24,16 +24,14 @@ export function helpHint(...words: readonly string[]): string {
   return ['run', BINARY, HELP_WORD, ...words].join(COMMAND_SEPARATOR)
 }
 
-const LOC_SEPARATOR = '.'
-
 type InputCheck = Readonly<{
   command: readonly string[]
   schema: JsonSchema
-  positional: readonly string[]
+  positional?: readonly string[]
   input: Record<string, unknown>
 }>
 
-function typedField(loc: readonly (string | number)[], positional: readonly string[]) {
+function typedField(loc: readonly (string | number)[], positional: readonly string[] = []) {
   const [head, ...rest] = loc
   if (typeof head !== 'string') return undefined
   return [typedName(head, positional), ...rest].join(LOC_SEPARATOR)

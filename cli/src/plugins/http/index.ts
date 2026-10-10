@@ -12,6 +12,7 @@ import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
+import { parseHints } from '@/protocol/hint'
 import { userAgent } from '@/version/info'
 
 export type HttpRequest = Readonly<{
@@ -75,7 +76,8 @@ function parseServerErrorBody(raw: string): ServerErrorBody | undefined {
   if (record.code !== undefined && typeof record.code !== 'string') return undefined
   const message = typeof record.message === 'string' ? record.message : record.error
   if (typeof message !== 'string') return undefined
-  return { ...record, message } as ServerErrorBody
+  const body = { ...record, message } as ServerErrorBody
+  return record.hints === undefined ? body : { ...body, hints: parseHints(record.hints) }
 }
 
 function appendQuery(url: URL, query: HttpRequest['query']): void {
