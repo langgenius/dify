@@ -26,6 +26,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '.'
+import { DirectionProvider } from '../direction-provider'
 
 function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
   return (
@@ -146,6 +147,78 @@ export const WithSubmenu: Story = {
       </DropdownMenuContent>
     </DropdownMenu>
   ),
+}
+
+export const RTL: Story = {
+  parameters: {
+    docs: {
+      story: { autoplay: false },
+      description: {
+        story:
+          'DirectionProvider controls keyboard navigation and placement. Set dir on the trigger wrapper and each portaled content when using a local RTL region. Submenus open with ArrowLeft and close with ArrowRight.',
+      },
+    },
+  },
+  render: () => (
+    <DirectionProvider direction="rtl">
+      <div
+        lang="ar"
+        dir="rtl"
+        className="flex min-h-64 w-[min(36rem,calc(100vw-2rem))] items-start"
+      >
+        <DropdownMenu>
+          <TriggerButton label="الإجراءات" />
+          <DropdownMenuContent lang="ar" dir="rtl">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <span>مشاركة</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent lang="ar" dir="rtl">
+                <DropdownMenuItem>البريد الإلكتروني</DropdownMenuItem>
+                <DropdownMenuItem>نسخ الرابط</DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem>تنزيل</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </DirectionProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'الإجراءات' })
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const share = await body.findByRole('menuitem', { name: 'مشاركة' })
+    await waitFor(() => expect(share).toHaveFocus())
+
+    const arrow = share.querySelector('[aria-hidden]')!
+    await expect(getComputedStyle(arrow).scale).toBe('-1 1')
+    await expect(arrow.getBoundingClientRect().right).toBeLessThanOrEqual(
+      within(share).getByText('مشاركة').getBoundingClientRect().left,
+    )
+
+    await userEvent.keyboard('{ArrowLeft}')
+    const submenu = await body.findByRole('menu', { name: 'مشاركة' })
+    await waitFor(() =>
+      expect(body.getByRole('menuitem', { name: 'البريد الإلكتروني' })).toHaveFocus(),
+    )
+    await waitFor(() => {
+      expect(submenu.getBoundingClientRect().right).toBeLessThanOrEqual(
+        share.getBoundingClientRect().left,
+      )
+    })
+
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(share).toHaveFocus())
+    await waitFor(() =>
+      expect(body.queryByRole('menu', { name: 'مشاركة' })).not.toBeInTheDocument(),
+    )
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  },
 }
 
 type Density = 'compact' | 'comfortable' | 'spacious'

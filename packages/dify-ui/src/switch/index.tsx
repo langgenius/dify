@@ -36,10 +36,10 @@ const switchThumbVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5',
-        sm: 'h-2 w-1.75 rounded-xs data-checked:translate-x-2.25',
-        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-3.5',
-        lg: 'size-3.5 rounded-sm data-checked:translate-x-4',
+        xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5 data-checked:[&:dir(rtl)]:-translate-x-1.5',
+        sm: 'h-2 w-1.75 rounded-xs data-checked:translate-x-2.25 data-checked:[&:dir(rtl)]:-translate-x-2.25',
+        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-3.5 data-checked:[&:dir(rtl)]:-translate-x-3.5',
+        lg: 'size-3.5 rounded-sm data-checked:translate-x-4 data-checked:[&:dir(rtl)]:-translate-x-4',
       },
     },
     defaultVariants: {
@@ -48,14 +48,17 @@ const switchThumbVariants = cva(
   },
 )
 
-const switchSpinnerVariants = cva('absolute top-1/2 -translate-x-1/2 -translate-y-1/2', {
-  variants: {
-    size: {
-      md: 'left-[calc(50%+6px)] size-2 group-data-checked:left-[calc(50%-6px)]',
-      lg: 'left-[calc(50%+8px)] size-2.5 group-data-checked:left-[calc(50%-8px)]',
+const switchSpinnerVariants = cva(
+  'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 [&:dir(rtl)]:translate-x-1/2',
+  {
+    variants: {
+      size: {
+        md: 'start-[calc(50%+6px)] size-2 group-data-checked:start-[calc(50%-6px)]',
+        lg: 'start-[calc(50%+8px)] size-2.5 group-data-checked:start-[calc(50%-8px)]',
+      },
     },
   },
-})
+)
 
 type ControlledSwitchProps = {
   checked: boolean

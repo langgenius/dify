@@ -251,7 +251,12 @@ function PaginationPrevious({
         if (!event.defaultPrevented && !disabled) pagination.onPageChange(pagination.page - 1)
       }}
     >
-      {children ?? <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-left-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }
@@ -281,7 +286,12 @@ function PaginationNext({
         if (!event.defaultPrevented && !disabled) pagination.onPageChange(pagination.page + 1)
       }}
     >
-      {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-right-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }

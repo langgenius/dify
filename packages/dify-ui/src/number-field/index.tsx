@@ -98,7 +98,7 @@ function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUn
 }
 
 const numberFieldControlsVariants = cva(
-  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-s border-divider-subtle bg-transparent text-text-tertiary',
 )
 
 type NumberFieldControlsProps = React.ComponentProps<'div'>

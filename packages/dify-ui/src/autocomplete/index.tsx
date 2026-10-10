@@ -390,7 +390,12 @@ function AutocompleteItemIndicator({
 }: AutocompleteItemIndicatorProps) {
   return (
     <span className={cn(floatingItemIndicatorClassName, className)} {...props}>
-      {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-right-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </span>
   )
 }
