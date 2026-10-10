@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, Session
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState
 from graphon.variables import SecretVariable, StringVariable
@@ -156,7 +156,17 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     repo = MagicMock(spec=Repository)
     repo.get_session.return_value = (
         session,
-        DifyBuilderContext(last_snapshot_hash=execution_revision(builder_workflow)),
+        DifyBuilderContext(
+            last_snapshot_hash=execution_revision(builder_workflow),
+            staged_repair=[
+                MutationIntent(
+                    op="set_node_config",
+                    args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
+                )
+            ]
+            if kind == "approve_repair"
+            else [],
+        ),
     )
     repo.get_latest_conversation_item.return_value = None
     lock = MagicMock(spec=SessionLock)
