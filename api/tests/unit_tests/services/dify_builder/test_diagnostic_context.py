@@ -88,3 +88,22 @@ def test_short_graph_credential_does_not_corrupt_an_inserted_sentinel():
     safe_run, _ = redact_run_context(Run(error="private-long refused DIFY"), graph, [])
 
     assert safe_run.error == f"{REDACTED} refused {REDACTED}"
+
+
+def test_structured_redaction_preserves_exact_sentinels_when_a_credential_matches_part_of_them():
+    output = NodeOutput(
+        inputs={"api_key": "DIFY", "nested": [{"password": "DIFY"}]},
+        outputs={"headers": "Authorization: DIFY", "body": f"existing {REDACTED}; rejected DIFY"},
+    )
+    run = Run(per_node=[output], immutable=True)
+    before = deepcopy((run, output))
+
+    safe_run, safe_outputs = redact_run_context(run, {}, [output])
+
+    assert safe_outputs[0].inputs == {"api_key": REDACTED, "nested": [{"password": REDACTED}]}
+    assert safe_outputs[0].outputs == {
+        "headers": f"Authorization:{REDACTED}",
+        "body": f"existing {REDACTED}; rejected {REDACTED}",
+    }
+    assert safe_run.per_node == safe_outputs
+    assert (run, output) == before

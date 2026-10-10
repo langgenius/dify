@@ -120,9 +120,11 @@ def _structured(value: Any, known: set[str]) -> Any:
 def _replace_text(text: str, known: list[str]) -> str:
     if not known:
         return text
-    # One pass prevents a shorter credential from matching inside a sentinel
-    # inserted for an earlier match. Longest first handles overlapping values.
-    return re.sub("|".join(re.escape(secret) for secret in known), lambda _: REDACTED, text)
+    # Match whole existing sentinel spans before shorter secrets within them,
+    # including sentinels inserted during structured redaction. One pass also
+    # protects newly inserted sentinels. Longest first handles overlaps.
+    protected = sorted({REDACTED, *known}, key=len, reverse=True)
+    return re.sub("|".join(re.escape(secret) for secret in protected), lambda _: REDACTED, text)
 
 
 def _replace_known(value: Any, known: list[str]) -> Any:
@@ -138,17 +140,25 @@ def _replace_known(value: Any, known: list[str]) -> Any:
     return value
 
 
-def redact_diagnostic_text(text: str, graph: Graph) -> str:
-    """Remove graph credentials repeated in compact graph labels/handles."""
+def _known_credentials(failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> set[str]:
+    """Collect from raw provenance before any projection discards values."""
     known: set[str] = set()
     _structured(graph, known)
+    for output in [*failed_run.per_node, *node_outputs]:
+        _structured(output.inputs, known)
+        _structured(output.outputs, known)
+    return known
+
+
+def redact_diagnostic_text(text: str, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> str:
+    """Apply the complete graph/runtime credential policy to rendered prompt text."""
+    known = _known_credentials(failed_run, graph, node_outputs)
     return _replace_text(text, sorted(known, key=len, reverse=True))
 
 
 def redact_run_context(failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> tuple[Run, list[NodeOutput]]:
     """Return independent, sanitized diagnostic evidence before prompt truncation."""
-    known: set[str] = set()
-    _structured(graph, known)
+    known = _known_credentials(failed_run, graph, node_outputs)
     safe_run, safe_outputs = deepcopy((failed_run, node_outputs))
     # Gather structured secrets first, so earlier error/body text can safely
     # repeat a credential held by a later node or output.
