@@ -128,6 +128,7 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Graph:
         """
         Init graph
@@ -150,6 +151,7 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,

@@ -549,7 +549,8 @@ class TestWorkflowAppGeneratorGenerate:
         prepare_inputs = pytest.fail
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: prepare_inputs())
 
-        monkeypatch.setattr(generator, "_generate", lambda **kwargs: {"ok": True})
+        captured: dict[str, object] = {}
+        monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
 
         result = generator.generate(
             app_model=app,
@@ -559,9 +560,13 @@ class TestWorkflowAppGeneratorGenerate:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
             call_depth=0,
+            capture_agent_evaluation_trace=True,
         )
 
         assert result == {"ok": True}
+        generate_entity = captured["application_generate_entity"]
+        assert isinstance(generate_entity, WorkflowAppGenerateEntity)
+        assert generate_entity.extras["capture_agent_evaluation_trace"] is True
         assert len(repository_session_makers) == 2
         assert all(factory.kw["bind"] is sqlite_session.get_bind() for factory in repository_session_makers)
 

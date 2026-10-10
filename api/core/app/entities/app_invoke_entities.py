@@ -103,6 +103,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    capture_agent_evaluation_trace: bool = False
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -129,6 +130,7 @@ def build_dify_run_context(
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
+    capture_agent_evaluation_trace: bool = False,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -147,6 +149,7 @@ def build_dify_run_context(
         app_type=normalize_credit_usage_app_type(app_type) if app_type is not None else None,
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
+        capture_agent_evaluation_trace=capture_agent_evaluation_trace,
     )
     return run_context
 

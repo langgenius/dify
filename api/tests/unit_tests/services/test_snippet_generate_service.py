@@ -216,6 +216,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["streaming"] is False
     assert kwargs["call_depth"] == 0
+    assert kwargs["capture_agent_evaluation_trace"] is False
 
 
 def test_run_published_loads_requested_workflow_snapshot(monkeypatch: pytest.MonkeyPatch):
@@ -238,11 +239,13 @@ def test_run_published_loads_requested_workflow_snapshot(monkeypatch: pytest.Mon
         invoke_from="service-api",
         workflow_id="workflow-version-7",
         task_id="evaluation-task-1",
+        capture_agent_evaluation_trace=True,
     )
 
     snippet_service.get_published_workflow_by_id.assert_called_once_with(snippet, "workflow-version-7")
     snippet_service.get_published_workflow.assert_not_called()
     assert generator.generate.call_args.kwargs["task_id"] == "evaluation-task-1"
+    assert generator.generate.call_args.kwargs["capture_agent_evaluation_trace"] is True
 
 
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):

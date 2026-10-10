@@ -2,6 +2,7 @@ import type { EvaluationResourceState } from '../types'
 import {
   buildEvaluationConfigPayload,
   buildEvaluationTemplateConfigPayload,
+  buildStateFromEvaluationConfig,
   createBuiltinMetric,
   createCustomMetric,
   isEvaluationRunnable,
@@ -113,7 +114,7 @@ describe('evaluation store utils', () => {
     })
   })
 
-  it('never serializes custom workflow evaluators for Agent V2 targets', () => {
+  it('serializes custom workflow evaluators for Agent V2 targets', () => {
     const customMetric = createCustomMetric()
     const resource = createResource({
       judgeModelId: 'openai::gpt-4o-mini',
@@ -127,6 +128,13 @@ describe('evaluation store utils', () => {
             ...customMetric.customConfig!,
             workflowId: 'workflow-1',
             workflowAppId: 'app-1',
+            mappings: [
+              {
+                id: 'mapping-1',
+                inputVariableId: 'answer',
+                outputVariableId: 'agent.output',
+              },
+            ],
             outputs: [{ id: 'score', valueType: 'number' }],
           },
         },
@@ -143,7 +151,43 @@ describe('evaluation store utils', () => {
           value_type: 'number',
         },
       ],
-      customized_metrics: null,
+      customized_metrics: {
+        evaluation_workflow_id: 'app-1',
+        input_fields: {
+          answer: '{{#agent.output#}}',
+        },
+        output_fields: [{ variable: 'score', value_type: 'number' }],
+      },
+    })
+  })
+
+  it('restores a custom workflow evaluator for an Agent V2 target', () => {
+    const resource = buildStateFromEvaluationConfig('agents', 'agent-1', {
+      default_metrics: [],
+      customized_metrics: {
+        evaluation_workflow_id: 'evaluator-app',
+        input_fields: {
+          answer: '{{#agent.output#}}',
+        },
+        output_fields: [{ variable: 'score', value_type: 'number' }],
+      },
+      judgment_config: null,
+    })
+
+    expect(resource.metrics).toHaveLength(1)
+    expect(resource.metrics[0]).toMatchObject({
+      kind: 'custom-workflow',
+      customConfig: {
+        workflowId: 'evaluator-app',
+        workflowAppId: 'evaluator-app',
+        mappings: [
+          {
+            inputVariableId: 'answer',
+            outputVariableId: '{{#agent.output#}}',
+          },
+        ],
+        outputs: [{ id: 'score', valueType: 'number' }],
+      },
     })
   })
 })

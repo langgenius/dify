@@ -87,6 +87,7 @@ from .dify_tools_builder import (
 )
 from .output_failure_orchestrator import retry_idempotency_key
 from .runtime_feature_manifest import build_runtime_feature_manifest
+from .tool_snapshot import AgentRuntimeToolDefinition, build_runtime_tool_definitions
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
@@ -149,6 +150,7 @@ class WorkflowAgentRuntimeRequest:
     agent_soul: AgentSoulConfig
     node_job: WorkflowNodeJobConfig
     metadata: dict[str, Any]
+    available_tools: tuple[AgentRuntimeToolDefinition, ...] = ()
 
 
 class WorkflowAgentRuntimeRequestBuilder:
@@ -227,6 +229,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
         )
+        ask_human_config = build_ask_human_layer_config(agent_soul)
+        shell_config = build_shell_layer_config(agent_soul)
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
@@ -268,9 +272,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
+                ask_human_config=ask_human_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
-                shell_config=build_shell_layer_config(agent_soul),
+                shell_config=shell_config,
                 session_snapshot=context.session_snapshot,
                 deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
@@ -284,6 +288,15 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul=agent_soul,
             node_job=node_job,
             metadata=metadata,
+            available_tools=(
+                build_runtime_tool_definitions(
+                    tool_layers=tool_layers,
+                    include_shell=dify_config.AGENT_SHELL_ENABLED,
+                    ask_human_enabled=ask_human_config is not None,
+                )
+                if context.dify_context.capture_agent_evaluation_trace
+                else ()
+            ),
         )
 
     def _build_tool_layers(

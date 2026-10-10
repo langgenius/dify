@@ -263,6 +263,15 @@ class AgentEvaluationItem(EvaluationItemInput):
     trajectory: AgentTrajectory | None = None
 
 
+class AgentEvaluationTraceSnapshot(BaseModel):
+    """Serializable Agent V2 trace captured only for evaluation executions."""
+
+    schema_version: str = "1.0"
+    tool_calls: list[AgentToolCall] = Field(default_factory=list)
+    available_tools: list[AgentToolDefinition] = Field(default_factory=list)
+    trajectory: AgentTrajectory
+
+
 class EvaluationDatasetInput(BaseModel):
     """Parsed dataset row used throughout evaluation execution.
 

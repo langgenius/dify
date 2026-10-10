@@ -365,6 +365,73 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
     ]
 
 
+def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
+    columns = EvaluationService.get_dataset_column_names(
+        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        "agents",
+        EvaluationConfigData(
+            customized_metrics=CustomizedMetrics(
+                evaluation_workflow_id="evaluator-app",
+                input_fields={
+                    "answer": "{{#agent.expected_output#}}",
+                    "criteria": "{{#agent.success_criteria_json#}}",
+                    "trace": "{{#agent.trajectory_json#}}",
+                    "calls": "{{#agent.expected_tool_calls_json#}}",
+                },
+                output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+            )
+        ),
+        MagicMock(),
+    )
+
+    assert columns == [
+        {"name": "index", "type": "number"},
+        {"name": "query", "type": "string"},
+        {"name": "expected_output", "type": "string"},
+        {"name": "success_criteria", "type": "string"},
+        {"name": "expected_tool_calls", "type": "string"},
+    ]
+
+
+def test_agent_custom_evaluator_reuses_native_success_criteria_column(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.return_value = False
+    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
+    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
+    monkeypatch.setattr(
+        EvaluationManager,
+        "get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+
+    columns = EvaluationService.get_dataset_column_names(
+        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        "agents",
+        EvaluationConfigData(
+            default_metrics=[
+                DefaultMetric(
+                    metric="task_completion",
+                    node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Research Agent")],
+                )
+            ],
+            customized_metrics=CustomizedMetrics(
+                evaluation_workflow_id="evaluator-app",
+                input_fields={"criteria": "{{#agent.success_criteria_json#}}"},
+                output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+            ),
+        ),
+        MagicMock(),
+    )
+
+    assert columns == [
+        {"name": "index", "type": "number"},
+        {"name": "query", "type": "string"},
+        {"name": "Research Agent : success_criteria", "type": "string"},
+    ]
+
+
 def test_console_supported_metrics_hide_legacy_agent_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         EvaluationService,
@@ -473,7 +540,7 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
         )
 
 
-def test_validate_config_rejects_agent_v2(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_accepts_native_metric_for_agent_v2_node(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
     workflow = SimpleNamespace(
@@ -488,7 +555,7 @@ def test_validate_config_rejects_agent_v2(monkeypatch: pytest.MonkeyPatch) -> No
         user_input_form=lambda: [],
     )
     monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["argument_correctness"]))
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["task_completion"]))
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_embeddings.return_value = False
     monkeypatch.setattr(
@@ -500,20 +567,19 @@ def test_validate_config_rejects_agent_v2(monkeypatch: pytest.MonkeyPatch) -> No
         evaluation_model="model",
         default_metrics=[
             DefaultMetric(
-                metric="argument_correctness",
+                metric="task_completion",
                 node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Agent")],
             )
         ],
     )
 
-    with pytest.raises(ValueError, match="Agent V2.*does not support"):
-        EvaluationService.validate_evaluation_config(
-            session=session,
-            tenant_id="tenant-1",
-            target_type="apps",
-            target_id="app-1",
-            data=config,
-        )
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        data=config,
+    )
 
 
 def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
@@ -577,22 +643,73 @@ def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
         )
 
 
-def test_validate_agent_target_rejects_customized_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_agent_target_accepts_customized_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
         MagicMock(return_value=SimpleNamespace(agent_name="Research Agent")),
     )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="evaluator-app")
+    evaluator_workflow = SimpleNamespace(
+        type=WorkflowType.WORKFLOW,
+        resolved_kind=WorkflowKind.EVALUATION,
+        user_input_form=lambda: [{"variable": "answer", "required": True}],
+        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
+    )
+    workflow_service = MagicMock()
+    workflow_service.get_published_workflow.return_value = evaluator_workflow
+    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
-            input_fields={},
+            input_fields={"answer": "{{#agent.output#}}"},
             output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
         )
     )
 
-    with pytest.raises(ValueError, match="not supported for Agent V2 targets"):
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        data=config,
+    )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    ["{{#agent.text#}}", "{{#agent.output.nested#}}"],
+)
+def test_validate_agent_target_rejects_unknown_customized_output(
+    monkeypatch: pytest.MonkeyPatch,
+    selector: str,
+) -> None:
+    monkeypatch.setattr(
+        "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
+        MagicMock(return_value=SimpleNamespace(agent_name="Research Agent")),
+    )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="evaluator-app")
+    evaluator_workflow = SimpleNamespace(
+        type=WorkflowType.WORKFLOW,
+        resolved_kind=WorkflowKind.EVALUATION,
+        user_input_form=lambda: [{"variable": "answer", "required": True}],
+        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
+    )
+    workflow_service = MagicMock()
+    workflow_service.get_published_workflow.return_value = evaluator_workflow
+    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+    config = EvaluationConfigData(
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            input_fields={"answer": selector},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        )
+    )
+
+    with pytest.raises(ValueError, match="must use one of"):
         EvaluationService.validate_evaluation_config(
-            session=MagicMock(),
+            session=session,
             tenant_id="tenant-1",
             target_type="agents",
             target_id="agent-1",
@@ -631,7 +748,7 @@ def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.Monke
     assert all(metric.node_info_list == [expected_node] for metric in metrics)
 
 
-def test_agent_node_discovery_includes_legacy_agent_and_excludes_agent_v2() -> None:
+def test_agent_node_discovery_scopes_agent_v2_to_native_metrics() -> None:
     workflow = SimpleNamespace(
         walk_nodes=lambda: iter(
             [
@@ -649,9 +766,18 @@ def test_agent_node_discovery_includes_legacy_agent_and_excludes_agent_v2() -> N
         )
     )
 
-    nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["argument_correctness"])
+    nodes = EvaluationService._nodes_for_metrics_from_workflow(
+        workflow,
+        ["argument_correctness", "task_completion"],
+    )
 
-    assert nodes == {"argument_correctness": [{"node_id": "legacy-agent", "type": "agent", "title": "Legacy Agent"}]}
+    assert nodes == {
+        "argument_correctness": [{"node_id": "legacy-agent", "type": "agent", "title": "Legacy Agent"}],
+        "task_completion": [
+            {"node_id": "legacy-agent", "type": "agent", "title": "Legacy Agent"},
+            {"node_id": "agent-v2", "type": "agent", "title": "Agent V2"},
+        ],
+    }
 
 
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
@@ -1166,7 +1292,7 @@ def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.Monkey
     assert run.heartbeat_at is None
 
 
-def test_cancel_agent_run_stops_backend_without_touching_workflow_tasks(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cancel_agent_run_stops_backend_and_customized_evaluator_tasks(monkeypatch: pytest.MonkeyPatch) -> None:
     run = SimpleNamespace(
         id="run-1",
         status="running",
@@ -1179,9 +1305,9 @@ def test_cancel_agent_run_stops_backend_without_touching_workflow_tasks(monkeypa
     )
     session = MagicMock()
     monkeypatch.setattr(EvaluationService, "get_evaluation_run_detail", MagicMock(return_value=run))
-    stop_agent_runs = MagicMock()
+    stop_agent_evaluation_tasks = MagicMock()
     stop_workflow_tasks = MagicMock()
-    monkeypatch.setattr(EvaluationService, "_stop_agent_runs", stop_agent_runs)
+    monkeypatch.setattr(EvaluationService, "_stop_agent_evaluation_tasks", stop_agent_evaluation_tasks)
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_workflow_tasks)
     celery_control = MagicMock()
     monkeypatch.setattr("celery.current_app.control", celery_control)
@@ -1194,7 +1320,11 @@ def test_cancel_agent_run_stops_backend_without_touching_workflow_tasks(monkeypa
         run_id="run-1",
     )
 
-    stop_agent_runs.assert_called_once_with(tenant_id="tenant-1", evaluation_run_id="run-1")
+    stop_agent_evaluation_tasks.assert_called_once_with(
+        tenant_id="tenant-1",
+        evaluation_run_id="run-1",
+        total_items=2,
+    )
     stop_workflow_tasks.assert_not_called()
     celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
     assert run.execution_token is None
@@ -1792,6 +1922,7 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
     )
     assert generator.generate.call_args.kwargs["workflow"] is workflow
     assert generator.generate.call_args.kwargs["task_id"] == "evaluation:run-1:target:0"
+    assert generator.generate.call_args.kwargs["capture_agent_evaluation_trace"] is True
 
 
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(

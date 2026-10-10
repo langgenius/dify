@@ -7,24 +7,34 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
+import AgentVariablePicker from './agent-variable-picker'
 import PublishedGraphVariablePicker from './published-graph-variable-picker'
+
+type MappingSource =
+  | {
+      type: 'agent'
+    }
+  | {
+      type: 'workflow'
+      publishedGraph: {
+        nodes: Node[]
+        edges: Edge[]
+        environmentVariables: EnvironmentVariable[]
+        conversationVariables: ConversationVariable[]
+      }
+    }
 
 type MappingRowProps = {
   inputVariable: {
     id: string
     valueType: string
   }
-  publishedGraph: {
-    nodes: Node[]
-    edges: Edge[]
-    environmentVariables: EnvironmentVariable[]
-    conversationVariables: ConversationVariable[]
-  }
+  source: MappingSource
   value: string | null
   onUpdate: (outputVariableId: string | null) => void
 }
 
-const MappingRow = ({ inputVariable, publishedGraph, value, onUpdate }: MappingRowProps) => {
+const MappingRow = ({ inputVariable, source, value, onUpdate }: MappingRowProps) => {
   const { t } = useTranslation('evaluation')
 
   return (
@@ -46,16 +56,25 @@ const MappingRow = ({ inputVariable, publishedGraph, value, onUpdate }: MappingR
         <span aria-hidden="true">→</span>
       </div>
 
-      <PublishedGraphVariablePicker
-        className="grow"
-        nodes={publishedGraph.nodes}
-        edges={publishedGraph.edges}
-        environmentVariables={publishedGraph.environmentVariables}
-        conversationVariables={publishedGraph.conversationVariables}
-        value={value}
-        placeholder={t(($) => $['metrics.custom.outputPlaceholder'])}
-        onChange={onUpdate}
-      />
+      {source.type === 'agent' ? (
+        <AgentVariablePicker
+          className="grow"
+          value={value}
+          placeholder={t(($) => $['metrics.custom.outputPlaceholder'])}
+          onChange={onUpdate}
+        />
+      ) : (
+        <PublishedGraphVariablePicker
+          className="grow"
+          nodes={source.publishedGraph.nodes}
+          edges={source.publishedGraph.edges}
+          environmentVariables={source.publishedGraph.environmentVariables}
+          conversationVariables={source.publishedGraph.conversationVariables}
+          value={value}
+          placeholder={t(($) => $['metrics.custom.outputPlaceholder'])}
+          onChange={onUpdate}
+        />
+      )}
     </div>
   )
 }

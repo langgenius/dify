@@ -53,6 +53,10 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from core.workflow.nodes.agent_v2.tool_snapshot import (
+    AgentRuntimeToolDefinition,
+    build_runtime_tool_definitions,
+)
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
@@ -93,16 +97,7 @@ class AgentAppRuntimeBuildContext:
     deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class AgentAppRuntimeToolDefinition:
-    """Credential-free description of one model-visible runtime tool."""
-
-    tool_ref: str
-    name: str
-    display_name: str
-    description: str
-    input_schema: dict[str, Any]
-    schema_available: bool = True
+AgentAppRuntimeToolDefinition = AgentRuntimeToolDefinition
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,7 +234,7 @@ class AgentAppRuntimeRequestBuilder:
             metadata=metadata,
             binding_id=context.binding_id,
             available_tools=(
-                self._runtime_tool_definitions(
+                build_runtime_tool_definitions(
                     tool_layers=tool_layers,
                     include_shell=dify_config.AGENT_SHELL_ENABLED,
                     ask_human_enabled=ask_human_config is not None,
@@ -248,54 +243,6 @@ class AgentAppRuntimeRequestBuilder:
                 else ()
             ),
         )
-
-    @staticmethod
-    def _runtime_tool_definitions(
-        *,
-        tool_layers: WorkflowAgentToolLayers,
-        include_shell: bool,
-        ask_human_enabled: bool,
-    ) -> tuple[AgentAppRuntimeToolDefinition, ...]:
-        """Capture the exact non-secret tool surface used by Agent evaluation."""
-        definitions: list[AgentAppRuntimeToolDefinition] = []
-        if tool_layers.plugin_tools is not None:
-            for tool in tool_layers.plugin_tools.tools:
-                name = tool.name or tool.tool_name
-                definitions.append(
-                    AgentAppRuntimeToolDefinition(
-                        tool_ref=f"plugin:{tool.plugin_id}/{tool.provider}/{tool.tool_name}",
-                        name=name,
-                        display_name=name,
-                        description=tool.description or "",
-                        input_schema=tool.parameters_json_schema or {},
-                    )
-                )
-        if tool_layers.core_tools is not None:
-            for tool in tool_layers.core_tools.tools:
-                name = tool.name or tool.tool_name
-                definitions.append(
-                    AgentAppRuntimeToolDefinition(
-                        tool_ref=f"core:{tool.provider_type}/{tool.provider_id}/{tool.tool_name}",
-                        name=name,
-                        display_name=name,
-                        description=tool.description or "",
-                        input_schema=tool.parameters_json_schema or {},
-                    )
-                )
-        if include_shell:
-            definitions.extend(_shell_runtime_tool_definitions())
-        if ask_human_enabled:
-            definitions.append(
-                AgentAppRuntimeToolDefinition(
-                    tool_ref="dify.ask_human/ask_human",
-                    name="ask_human",
-                    display_name="Ask human",
-                    description="Request structured input from a human when the task cannot continue autonomously.",
-                    input_schema={},
-                    schema_available=False,
-                )
-            )
-        return tuple(definitions)
 
     @staticmethod
     def _build_user_files(
@@ -416,60 +363,6 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
                 f"User file transfer method '{file.transfer_method.value}' is unsupported.",
             )
     return DifyUserPromptDownloadConfig(type=file_type, transfer_method=transfer_method, reference=reference)
-
-
-def _shell_runtime_tool_definitions() -> tuple[AgentAppRuntimeToolDefinition, ...]:
-    """Return the stable model-visible tools supplied by the shell layer."""
-    return (
-        AgentAppRuntimeToolDefinition(
-            tool_ref="dify.shell/shell_run",
-            name="shell_run",
-            display_name="Run shell command",
-            description="Start a command or script in the isolated Agent workspace.",
-            input_schema={
-                "type": "object",
-                "properties": {"script": {"type": "string"}, "timeout": {"type": "number"}},
-                "required": ["script"],
-            },
-        ),
-        AgentAppRuntimeToolDefinition(
-            tool_ref="dify.shell/shell_wait",
-            name="shell_wait",
-            display_name="Wait for shell command",
-            description="Wait for more output or completion from an existing shell job.",
-            input_schema={
-                "type": "object",
-                "properties": {"job_id": {"type": "string"}, "timeout": {"type": "number"}},
-                "required": ["job_id"],
-            },
-        ),
-        AgentAppRuntimeToolDefinition(
-            tool_ref="dify.shell/shell_input",
-            name="shell_input",
-            display_name="Send shell input",
-            description="Send standard-input text to a running shell job.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string"},
-                    "text": {"type": "string"},
-                    "timeout": {"type": "number"},
-                },
-                "required": ["job_id", "text"],
-            },
-        ),
-        AgentAppRuntimeToolDefinition(
-            tool_ref="dify.shell/shell_interrupt",
-            name="shell_interrupt",
-            display_name="Interrupt shell command",
-            description="Interrupt a running shell job.",
-            input_schema={
-                "type": "object",
-                "properties": {"job_id": {"type": "string"}, "grace_seconds": {"type": "number"}},
-                "required": ["job_id"],
-            },
-        ),
-    )
 
 
 __all__ = [

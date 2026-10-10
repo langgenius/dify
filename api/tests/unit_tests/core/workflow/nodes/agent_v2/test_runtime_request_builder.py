@@ -306,6 +306,45 @@ def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_debu
     assert tools_builder.last_invoke_from == InvokeFrom.DEBUGGER
 
 
+def test_build_captures_credential_free_tool_snapshot_only_for_evaluation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False)
+    tools_builder = CapturingPluginLayerBuilder()
+    context = _context()
+    context.snapshot.config_snapshot.tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_type": "plugin",
+                    "provider_id": "langgenius/time/time",
+                    "tool_name": "current_time",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+    builder = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+    )
+
+    normal_result = builder.build(context)
+    evaluation_result = builder.build(
+        replace(
+            context,
+            dify_context=context.dify_context.model_copy(update={"capture_agent_evaluation_trace": True}),
+        )
+    )
+
+    assert normal_result.available_tools == ()
+    assert len(evaluation_result.available_tools) == 1
+    tool = evaluation_result.available_tools[0]
+    assert tool.tool_ref == "plugin:langgenius/time/time/current_time"
+    assert tool.name == "current_time"
+    assert tool.description == "Get current time."
+    assert tool.input_schema == {"type": "object", "properties": {}, "required": []}
+
+
 def test_build_forwards_service_api_invoke_from_to_injected_plugin_layer_builder():
     tools_builder = CapturingPluginLayerBuilder()
     context = _context()
