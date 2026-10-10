@@ -27,7 +27,9 @@ from enums import WebAppAccessMode
 from extensions.ext_application_services import application_services
 from models import AppMode
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import AppFieldChanges, AppRecord
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
 REGULAR_MODES: Final = (
@@ -41,6 +43,7 @@ REGULAR_MODES: Final = (
 _SETTABLE_ACCESS_MODES: Final = frozenset(
     {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE_ALL, WebAppAccessMode.SSO_VERIFIED}
 )
+_ACCESS_POLICY: Final = EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth)
 
 
 class WebAppPath(StrEnum):
@@ -210,7 +213,7 @@ def update_webapp_access(ctx: Context, body: WebAppAccessPayload) -> WebAppAcces
     if body.access_mode not in _SETTABLE_ACCESS_MODES:
         raise WebAppAccessModeConsoleOnly()
     try:
-        application_services().webapp_access.update_access_mode(app_id=ctx.app.id, access_mode=body.access_mode)
+        _ACCESS_POLICY.update_access_mode(ctx.app.id, body.access_mode)
     except WebAppAccessUnavailableError as error:
         raise WebAppAccessUnavailable() from error
     return WebAppAccess(access_mode=body.access_mode)

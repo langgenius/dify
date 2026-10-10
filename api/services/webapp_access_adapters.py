@@ -42,7 +42,6 @@ class EnterpriseWebAppAccessPolicyGateway(WebAppAccessPolicyGateway):
         except ValueError as error:
             raise WebAppAccessUnavailableError from error
 
-    @override
     def update_access_mode(self, app_id: str, access_mode: WebAppAccessMode) -> None:
         try:
             self._webapp_auth.update_app_access_mode(app_id, access_mode)
