@@ -1,5 +1,6 @@
 import importlib
 import pkgutil
+import secrets
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from copy import copy
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
     RestrictedAdmissionSnapshot,
-    admitted_node_bindings,
+    admit_restricted_workflow,
 )
 from core.dify_builder.input_schema import start_schema
 from core.file import remote_fetcher
@@ -62,6 +63,13 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRu
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
+from core.workflow.restricted_execution import (
+    RESTRICTED_HTTP_CONFIG,
+    DeniedHttpFiles,
+    RestrictedHttpClient,
+    validate_restricted_node,
+    validate_restricted_raw_node,
+)
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
@@ -322,7 +330,8 @@ class DefaultWorkflowCodeExecutor:
 @final
 class DifyNodeFactory(NodeFactory):
     """
-    Default implementation of NodeFactory that resolves node classes from the live registry.
+    Compose native nodes from the production registry. Builder restricted launches
+    receive only exact admitted implementations and their restricted collaborators.
     """
 
     @classmethod
@@ -357,6 +366,7 @@ class DifyNodeFactory(NodeFactory):
         execution_driver: "WorkflowRunDriver | None" = None,
         *,
         execution_recorder: BuilderExecutionRecorder | None = None,
+        _request_hmac_key: bytes | None = None,
     ) -> None:
         self.init_params = init_params
         self.runtime_state = runtime_state
@@ -396,10 +406,12 @@ class DifyNodeFactory(NodeFactory):
                 has_conversation_variables=False,
                 has_external_tracing=False,
             )
-            if admitted_node_bindings(snapshot) != context.admitted_nodes:
-                raise BuilderExecutionPolicyError("execution_binding_mismatch")
-            # Restricted capability construction must never fall through to live adapters.
-            raise BuilderExecutionPolicyError("restricted_capabilities_unavailable")
+            # Check every raw class/config binding before concrete validation.
+            for node_config in graph.get("nodes", []):
+                self._validate_restricted_raw_config(node_config)
+            admit_restricted_workflow(context, snapshot)
+            self._request_hmac_key = _request_hmac_key if _request_hmac_key is not None else secrets.token_bytes(32)
+            return
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -466,6 +478,7 @@ class DifyNodeFactory(NodeFactory):
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
             execution_recorder=self.execution_recorder,
+            _request_hmac_key=getattr(self, "_request_hmac_key", None),
             init_params=self.init_params,
             runtime_state=runtime_state,
             human_input_run_context=self._human_input_run_context,
@@ -511,6 +524,16 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
+        context = self._dify_context.builder_execution
+        if context is not None:
+            # Graph.init supplies its shared DTO. JSON restores native enum spellings
+            # while exclude_unset preserves the original raw config digest boundary.
+            if isinstance(node_config.get("data"), BaseNodeData):
+                node_config = {
+                    **node_config,
+                    "data": node_config["data"].model_dump(mode="json", by_alias=True, exclude_unset=True),
+                }
+            self._validate_restricted_raw_config(node_config)
         try:
             adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
             node_id = typed_node_config["id"]
@@ -523,6 +546,34 @@ class DifyNodeFactory(NodeFactory):
             # text of every graph-init failure, not only the Builder's.
             adapted_node_config = adapt_node_config_for_graph(node_config)
             raise _node_config_error(adapted_node_config, exc) from exc
+        if context is not None:
+            validate_restricted_node(
+                context=context, node_id=node_id, node_class=node_class, resolved_node_data=resolved_node_data
+            )
+            kwargs: dict[str, object] = {}
+            if node_data.type == BuiltinNodeTypes.HTTP_REQUEST:
+                assert self.execution_recorder is not None
+                client = RestrictedHttpClient(
+                    context=context,
+                    node_id=node_id,
+                    recorder=self.execution_recorder,
+                    request_hmac_key=self._request_hmac_key,
+                )
+                files = DeniedHttpFiles(client)
+                kwargs = {
+                    "http_request_config": RESTRICTED_HTTP_CONFIG,
+                    "http_client": client,
+                    "tool_file_manager_factory": files,
+                    "file_manager": files,
+                    "file_reference_factory": files,
+                }
+            return node_class(
+                node_id=node_id,
+                data=resolved_node_data.model_dump(mode="python", by_alias=True),
+                init_params=self.init_params,
+                runtime_state=self.runtime_state,
+                **kwargs,
+            )
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -640,6 +691,21 @@ class DifyNodeFactory(NodeFactory):
         )
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         return adapted_node_config, typed_node_config, node_class, resolved_node_data
+
+    def _validate_restricted_raw_config(
+        self, node_config: Mapping[str, Any], node_class: type[Node] | None = None
+    ) -> None:
+        context = self._dify_context.builder_execution
+        assert context is not None
+        data, node_id = node_config.get("data"), node_config.get("id")
+        if not isinstance(data, Mapping) or not isinstance(node_id, str):
+            raise BuilderExecutionPolicyError("invalid_node_configuration")
+        node_type, version = data.get("type"), data.get("version", "1")
+        if not isinstance(node_type, str) or node_type not in {"start", "end", "http-request"} or version != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        if node_class is None:
+            node_class = self._resolve_node_class(node_type=node_type, node_version=version, node_data=data)
+        validate_restricted_raw_node(context=context, node_id=node_id, node_class=node_class, raw_node_data=data)
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
@@ -914,6 +980,7 @@ def _validated_node_config(
     validate_resolved_node_data: Callable[[type[Node], BaseNodeData], BaseNodeData] = (
         DifyNodeFactory._validate_resolved_node_data
     ),
+    pre_validate_node_data: Callable[[Mapping[str, Any], type[Node] | None], None] | None = None,
 ) -> tuple[str, BaseNodeData, type[Node], BaseNodeData]:
     """Adapt-shaped node config in, fully validated node out -- the single
     sequence ``DifyNodeFactory.create_node`` and ``validate_node_config`` both
@@ -928,9 +995,15 @@ def _validated_node_config(
     tests monkeypatch them per-instance); ``validate_node_config`` has no
     instance, so it defaults to the class's own.
 
+    Restricted callers supply a callback to check raw bindings before common DTO
+    validation and the actual selected class immediately before concrete validation.
+    Its typed policy refusal is preserved without generic node error wrapping.
+
     Returns ``(node_id, shared node_data, resolved node_class, resolved_node_data)``.
-    Raises ``ValueError`` prefixed ``node '<id>' (<type>): ``.
+    Ordinary validation raises ``ValueError`` prefixed ``node '<id>' (<type>): ``.
     """
+    if pre_validate_node_data is not None:
+        pre_validate_node_data(adapted_node_config, None)
     try:
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
@@ -940,12 +1013,18 @@ def _validated_node_config(
             node_version=str(node_data.version),
             node_data=node_data,
         )
+        if pre_validate_node_data is not None:
+            # Guard the actual selected class too: the registry may change between lookups.
+            pre_validate_node_data(adapted_node_config, node_class)
         # Graph configs are initially validated against permissive shared node data.
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = validate_resolved_node_data(node_class, node_data)
         if node_data.type == BuiltinNodeTypes.HUMAN_INPUT:
             parse_human_input_delivery_methods(resolved_node_data)
+    except BuilderExecutionPolicyError:
+        # Preserve the typed, sanitized policy refusal for native routing.
+        raise
     except ValueError as exc:
         # pydantic's ValidationError subclasses ValueError. Its message names
         # only the model class ("... for HttpRequestNodeData"), so a run that

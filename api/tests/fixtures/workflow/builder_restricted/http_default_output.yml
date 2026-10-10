@@ -1,0 +1,44 @@
+nodes:
+- id: start
+  data:
+    type: start
+    variables:
+    - variable: path
+      label: Path
+      type: text-input
+- id: http
+  data:
+    type: http-request
+    method: GET
+    url: https://sample.invalid/{{#start.path#}}
+    authorization:
+      type: no-auth
+    body:
+      type: none
+    headers: ''
+    params: ''
+    error_strategy: default-value
+    default_value:
+    - key: status_code
+      type: number
+      value: 599
+    - key: body
+      type: string
+      value: denied default
+- id: end
+  data:
+    type: end
+    outputs:
+    - variable: status
+      value_selector:
+      - http
+      - status_code
+    - variable: text
+      value_selector:
+      - http
+      - body
+edges:
+- source: start
+  target: http
+- source: http
+  target: end
