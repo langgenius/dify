@@ -52,6 +52,7 @@ const ExternalMetadataSection = ({
     remove.reset()
   }
   const resetDraft = () => {
+    clearErrors()
     setName('')
     setEditingId(undefined)
   }
@@ -202,13 +203,13 @@ const ExternalMetadataSection = ({
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
               {editingId && (
-                <Button disabled={pending} onClick={resetDraft}>
+                <Button type="button" disabled={pending} onClick={resetDraft}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
               )}
             </form>
           )}
-          {mutationError && !deleting && <div role="alert">{String(mutationError.message)}</div>}
+          {mutationError && !deleting && <div role="alert">{mutationError.message}</div>}
         </>
       )}
     </section>

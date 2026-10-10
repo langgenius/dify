@@ -90,11 +90,6 @@ const ConditionItem = ({
           value: matched[0].slice(matchedStartNumber, -matchedStartNumber),
           valueMethod: 'variable',
         }
-      } else {
-        return {
-          value: condition.value,
-          valueMethod: 'constant',
-        }
       }
     }
 

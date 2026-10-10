@@ -61,26 +61,18 @@ METADATA_FILTER_ASSISTANT_PROMPT_4 = '{"metadata_map":[]}'
 METADATA_FILTER_USER_PROMPT_3 = '{{"input_text": {input_text}, "metadata_fields": {metadata_fields}}}'
 
 # Reuse the real Chat examples and instructions so Completion cannot drift from their contract.
-_METADATA_FILTER_COMPLETION_PREFIX = (
-    METADATA_FILTER_SYSTEM_PROMPT
-    + "\n### Examples\n<example>\n"
-    + "User:"
-    + METADATA_FILTER_USER_PROMPT_1
-    + "\nAssistant:"
-    + METADATA_FILTER_ASSISTANT_PROMPT_1
-    + "\n"
-    + "User:"
-    + METADATA_FILTER_USER_PROMPT_2
-    + "\nAssistant:"
-    + METADATA_FILTER_ASSISTANT_PROMPT_2
-    + "\n"
-    + "User:"
-    + METADATA_FILTER_USER_PROMPT_4
-    + "\nAssistant:"
-    + METADATA_FILTER_ASSISTANT_PROMPT_4
-    + "\n"
-    + "</example>\n### User Input\n"
-)
+_METADATA_FILTER_COMPLETION_PREFIX = f"""{METADATA_FILTER_SYSTEM_PROMPT}
+### Examples
+<example>
+User:{METADATA_FILTER_USER_PROMPT_1}
+Assistant:{METADATA_FILTER_ASSISTANT_PROMPT_1}
+User:{METADATA_FILTER_USER_PROMPT_2}
+Assistant:{METADATA_FILTER_ASSISTANT_PROMPT_2}
+User:{METADATA_FILTER_USER_PROMPT_4}
+Assistant:{METADATA_FILTER_ASSISTANT_PROMPT_4}
+</example>
+### User Input
+"""
 METADATA_FILTER_COMPLETION_PROMPT = (
     _METADATA_FILTER_COMPLETION_PREFIX.replace("{", "{{").replace("}", "}}")
     + METADATA_FILTER_USER_PROMPT_3

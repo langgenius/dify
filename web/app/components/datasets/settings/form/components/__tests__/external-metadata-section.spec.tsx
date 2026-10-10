@@ -102,6 +102,23 @@ describe('External field settings', () => {
     await waitFor(() => expect(api.remove).toHaveBeenCalled())
   })
 
+  it('clears a failed rename when cancelling the edit draft', async () => {
+    const user = userEvent.setup()
+    api.get.mockResolvedValue({
+      doc_metadata: [{ id: 'field-a', name: 'score', type: 'number', count: 0 }],
+      built_in_field_enabled: false,
+    })
+    api.patch.mockRejectedValueOnce(new Error('Rename failed'))
+    setup()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Rename failed')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('dataset.metadata.createMetadata.name')).toHaveValue('')
+    expect(screen.getByLabelText('dataset.metadata.createMetadata.type')).toBeInTheDocument()
+  })
+
   it('shows saved fields to readers without write actions', async () => {
     api.get.mockResolvedValue({
       doc_metadata: [{ id: 'field-a', name: 'score', type: 'number', count: 0 }],
