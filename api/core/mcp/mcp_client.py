@@ -115,7 +115,15 @@ class MCPClient:
         if not self._session:
             raise ValueError("Session not initialized.")
         response = self._session.list_tools()
-        return response.tools
+        tools = list(response.tools)
+        seen_cursors: set[str] = set()
+        while response.nextCursor is not None:
+            if response.nextCursor in seen_cursors:
+                raise MCPConnectionError("MCP tools/list returned a repeated pagination cursor.")
+            seen_cursors.add(response.nextCursor)
+            response = self._session.list_tools(cursor=response.nextCursor)
+            tools.extend(response.tools)
+        return tools
 
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
