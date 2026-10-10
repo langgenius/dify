@@ -11,9 +11,14 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { setSkillDetailCache } from '../detail/shared'
 import SkillsPage from '../page'
 
 type SkillResponse = ReturnType<typeof zSkillResponse.parse>
@@ -1038,6 +1043,66 @@ describe('SkillsPage', () => {
       expect(await downloads[0]?.blob.text()).toBe('skill archive')
     },
   )
+
+  it('computes deletion separately for maintained and other skills', async () => {
+    mocks.skills = [
+      createSkill({ maintainer: 'user-1' }),
+      createSkill({ id: 'skill-2', display_name: 'Other', maintainer: 'user-2' }),
+    ]
+    mocks.skillPages = [mocks.skills]
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    seedSystemFeatures(queryClient, { rbac_enabled: true })
+    renderSkillsPage(queryClient, ['skill.edit'])
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Other"}',
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('updates the delete menu when refreshed detail transfers or clears the maintainer', async () => {
+    const detail = { ...createSkill({ maintainer: 'user-1' }), files: [] }
+    mocks.skills = [detail]
+    mocks.skillPages = [mocks.skills]
+    const queryClient = createTestQueryClient()
+    const user = userEvent.setup()
+    seedSystemFeatures(queryClient, { rbac_enabled: true })
+    renderSkillsPage(queryClient, ['skill.edit'])
+    const openMenu = () =>
+      user.click(
+        screen.getByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+        }),
+      )
+    await screen.findByText('Refund approval')
+    await openMenu()
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    for (const maintainer of ['user-2', null]) {
+      setSkillDetailCache(queryClient, detail.id, { ...detail, maintainer })
+      await openMenu()
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+        ).not.toBeInTheDocument(),
+      )
+      await user.keyboard('{Escape}')
+    }
+    setSkillDetailCache(queryClient, detail.id, detail)
+    await openMenu()
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+  })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
     const user = userEvent.setup()
