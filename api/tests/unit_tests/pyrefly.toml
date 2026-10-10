@@ -18,7 +18,6 @@ project-excludes = [
   "commands/test_clean_expired_messages.py",
   "commands/test_data_migration_commands.py",
   "commands/test_data_migration_wizard.py",
-  "commands/test_fix_app_site_missing.py",
   "commands/test_generate_swagger_markdown_docs.py",
   "commands/test_generate_swagger_specs.py",
   "commands/test_lint_response_contracts.py",
