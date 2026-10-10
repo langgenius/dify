@@ -11,11 +11,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from models import Account
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from tasks.workflow_node_execution_tasks import (
     _create_node_execution_from_domain,
     _update_node_execution_from_domain,
@@ -338,4 +340,67 @@ def test_task_repeated_delivery_updates_one_row(
         persisted = observer.get(WorkflowNodeExecutionModel, EXECUTION_ID)
         assert persisted is not None
         assert persisted.outputs_dict == {"delivery": 2}
-        assert persisted.created_at == created_at.replace(tzinfo=None)
+    assert persisted.created_at == created_at.replace(tzinfo=None)
+
+
+@pytest.mark.parametrize("writer", ["celery", "sql", "sql-data"])
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED])
+def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_after_stop(
+    sqlite_session_factory: sessionmaker[Session], writer: str, existing: bool, status: WorkflowNodeExecutionStatus
+) -> None:
+    finished_at = datetime(2026, 8, 12, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id=WORKFLOW_RUN_ID,
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                workflow_id=WORKFLOW_ID,
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                status=WorkflowExecutionStatus.STOPPED,
+                error="User requested stop",
+                stop_requested_at=finished_at,
+                finished_at=finished_at,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=ACCOUNT_ID,
+            )
+        )
+        if existing:
+            node = _stored_execution()
+            node.status = WorkflowNodeExecutionStatus.FAILED
+            node.finished_at = finished_at
+            node.error = "User requested stop"
+            session.add(node)
+    execution = _execution(status=status)
+    if writer == "celery":
+        kwargs: _ExecutionTaskKwargs = {
+            "tenant_id": TENANT_ID,
+            "app_id": APP_ID,
+            "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            "creator_user_id": ACCOUNT_ID,
+            "creator_user_role": CreatorUserRole.ACCOUNT.value,
+        }
+        assert save_workflow_node_execution_task.run(execution_data=execution.model_dump(), **kwargs)
+    else:
+        user = Account(name="Test", email="test@example.com")
+        user.id = ACCOUNT_ID
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            user=user,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        if writer == "sql":
+            repository.save(execution)
+        else:
+            repository.save_execution_data(execution)
+    with sqlite_session_factory() as session:
+        stored = session.get(WorkflowNodeExecutionModel, EXECUTION_ID)
+        assert stored is not None
+        assert stored.status == WorkflowNodeExecutionStatus.FAILED
+        assert stored.finished_at == finished_at
+        assert stored.error == "User requested stop"

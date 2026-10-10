@@ -53,6 +53,149 @@ def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
 class TestWorkflowEntry:
     """Test WorkflowEntry class methods."""
 
+    @pytest.mark.parametrize("value", [0, False, "", [], {}])
+    def test_qualified_input_preserves_falsy_values(self, value):
+        variable_pool = VariablePool()
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping={"node.value": ["source", "value"]},
+            user_inputs={"node.value": value, "value": "fallback"},
+            variable_pool=variable_pool,
+            tenant_id="tenant",
+        )
+
+        variable = variable_pool.get(["source", "value"])
+        assert variable is not None
+        assert variable.value == value
+
+    @pytest.mark.parametrize("root_name", ["object", "structured_output"])
+    @pytest.mark.parametrize("value", [0, False, "", [], {}])
+    def test_nested_input_overrides_preserve_siblings(self, root_name, value):
+        variable_pool = VariablePool()
+        original = {"keep": "root sibling", "nested": {"leaf": "old", "keep": "nested sibling"}}
+        variable_pool.add(["source", root_name], original)
+        key = f"node.#source.{root_name}.nested.leaf#"
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping={key: ["source", root_name, "nested", "leaf"]},
+            user_inputs={key: value, key.split(".", 1)[1]: "fallback"},
+            variable_pool=variable_pool,
+            tenant_id="tenant",
+        )
+
+        variable = variable_pool.get(["source", root_name])
+        assert variable is not None
+        assert variable.value == {"keep": "root sibling", "nested": {"leaf": value, "keep": "nested sibling"}}
+        assert original["nested"]["leaf"] == "old"
+
+    def test_nested_inputs_build_missing_root_and_preserve_other_explicit_inputs(self):
+        variable_pool = VariablePool()
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping={
+                "node.#source.object.leaf#": ["source", "object", "leaf"],
+                "node.#source.object.nested.other#": ["source", "object", "nested", "other"],
+            },
+            user_inputs={"#source.object.leaf#": 0, "#source.object.nested.other#": False},
+            variable_pool=variable_pool,
+            tenant_id="tenant",
+        )
+
+        variable = variable_pool.get(["source", "object"])
+        assert variable is not None
+        assert variable.value == {"leaf": 0, "nested": {"other": False}}
+
+    @pytest.mark.parametrize("descendant_first", [False, True])
+    @pytest.mark.parametrize("value", ["Alice", 0, False, "", [], {}])
+    def test_nested_overrides_take_precedence_over_explicit_ancestors_in_either_order(self, descendant_first, value):
+        variable_pool = VariablePool()
+        mappings = [
+            ("node.#source.object#", ["source", "object"]),
+            ("node.#source.object.name#", ["source", "object", "name"]),
+        ]
+        if descendant_first:
+            mappings.reverse()
+        root_input = {"other": "kept", "name": "old"}
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=dict(mappings),
+            user_inputs={"#source.object#": root_input, "#source.object.name#": value},
+            variable_pool=variable_pool,
+            tenant_id="tenant",
+        )
+
+        variable = variable_pool.get(["source", "object"])
+        assert variable is not None
+        assert variable.value == {"other": "kept", "name": value}
+        assert root_input == {"other": "kept", "name": "old"}
+
+    @pytest.mark.parametrize(
+        ("data", "inputs", "expected"),
+        [
+            (
+                {"type": "end", "outputs": [{"variable": "result", "value_selector": ["source", "value"]}]},
+                {"#source.value#": "end input"},
+                "end input",
+            ),
+            (
+                {
+                    "type": "variable-aggregator",
+                    "output_type": "string",
+                    "variables": [["missing", "value"], ["source", "value"]],
+                },
+                {"#source.value#": "second branch"},
+                "second branch",
+            ),
+            (
+                {
+                    "type": "variable-assigner",
+                    "output_type": "string",
+                    "variables": [["source", "value"]],
+                },
+                {"#source.value#": "legacy branch"},
+                "legacy branch",
+            ),
+            (
+                {
+                    "type": "list-operator",
+                    "variable": ["source", "value"],
+                    "filter_by": {"enabled": False},
+                    "order_by": {"enabled": False},
+                    "limit": {"enabled": False},
+                },
+                {"#source.value#": [3, 1, 2]},
+                [3, 1, 2],
+            ),
+        ],
+    )
+    def test_single_step_loads_explicit_inputs_for_nodes_without_graphon_extractors(self, data, inputs, expected):
+        workflow = Workflow.new(
+            tenant_id="tenant",
+            app_id="app",
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [{"id": "node", "data": {"title": "Node", **data}}], "edges": []}),
+            features="{}",
+            created_by="account",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow.id = "workflow"
+        variable_pool = VariablePool()
+
+        WorkflowEntry.single_step_run(
+            workflow=workflow,
+            node_id="node",
+            user_id="user",
+            user_inputs=inputs,
+            variable_pool=variable_pool,
+        )
+
+        variable = variable_pool.get(["source", "value"])
+        assert variable is not None
+        assert variable.value == expected
+
     def test_mapping_user_inputs_to_variable_pool_with_system_variables(self):
         """Test mapping system variables from user inputs to variable pool."""
         # Initialize variable pool with system variables

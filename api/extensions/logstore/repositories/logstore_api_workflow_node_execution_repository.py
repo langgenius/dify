@@ -21,6 +21,7 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
 
     finished_at = data.get("finished_at")
     match finished_at:
-        case None:
+        case None | "":
             ...
         case str():
             model.finished_at = ensure_naive_utc(datetime.fromisoformat(finished_at))
@@ -131,6 +132,17 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+        self._session_maker = session_maker
+
+    def _apply_stopped_run(
+        self, executions: Sequence[WorkflowNodeExecutionModel], tenant_id: str, workflow_run_id: str
+    ) -> None:
+        if self._session_maker is None:
+            return
+        with self._session_maker() as session:
+            stopped = get_stopped_workflow_run(session, tenant_id=tenant_id, workflow_run_id=workflow_run_id)
+            for execution in executions:
+                apply_workflow_stop_to_node(execution, stopped)
 
     @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
@@ -340,6 +352,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
 
+            self._apply_stopped_run(models, tenant_id, workflow_run_id)
             models = [model for model in models if model.status != WorkflowNodeExecutionStatus.PAUSED]
 
             # Sort by index DESC for trace visualization
@@ -417,10 +430,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # For PG mode, result is already the latest version
             # For SDK mode, if multiple results, select the one with max log_version
             if self.logstore_client.supports_pg_protocol or len(results) == 1:
-                return _dict_to_workflow_node_execution_model(results[0])
+                execution = _dict_to_workflow_node_execution_model(results[0])
             else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
-                return _dict_to_workflow_node_execution_model(max_result)
+                execution = _dict_to_workflow_node_execution_model(max_result)
+            if execution.workflow_run_id is not None:
+                self._apply_stopped_run([execution], execution.tenant_id, execution.workflow_run_id)
+            return execution
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)

@@ -35,6 +35,7 @@ from models import (
 from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
@@ -390,6 +391,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model: The database model to persist
         """
         with self._session_factory() as session:
+            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             # Check if record already exists
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
@@ -479,6 +487,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             session.merge(db_model)
             session.flush()
 
@@ -486,7 +501,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -512,9 +529,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from == triggered_from,
-                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionModel.triggered_from
+                == (triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
             )
+
+            if not include_paused:
+                stmt = stmt.where(WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED)
 
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
@@ -548,7 +568,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
@@ -565,7 +587,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Returns:
             A list of node execution instances
         """
-        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, order_config, triggered_from)
+        db_models = self.get_db_models_by_workflow_run(
+            workflow_execution_id, order_config, triggered_from, include_paused=include_paused
+        )
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)

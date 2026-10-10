@@ -45,7 +45,7 @@ from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPaus
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -539,6 +539,22 @@ class APIWorkflowRunRepository(Protocol):
         # while creating pause.
         ...
 
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        """Bind the public task before its workflow-started event is exposed."""
+        ...
+
+    def stop_paused_workflow_task(
+        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+    ) -> WorkflowRun | None:
+        """Admit a task by its durable owner, record stop intent, and finish a paused run."""
+        ...
+
+    def backfill_workflow_pause_task_id(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
+    ) -> None:
+        """Index a legacy pause after its already-authorized snapshot is read."""
+        ...
+
     def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
         """Retrieve the current pause for a workflow execution.
 
@@ -550,6 +566,8 @@ class APIWorkflowRunRepository(Protocol):
         self,
         workflow_run_id: str,
         pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
     ) -> WorkflowPauseEntity:
         """
         Resume a paused workflow.

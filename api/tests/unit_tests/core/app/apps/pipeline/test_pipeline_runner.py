@@ -24,7 +24,8 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.graph_events import GraphRunFailedEvent
+from graphon.engine_events import GraphRunFailedEvent
+from graphon.runtime import RuntimeState, VariablePool
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DocumentCreatedFrom
 from models.model import EndUser
@@ -123,8 +124,6 @@ def runner(sqlite_engine: Engine):
     queue_manager = MagicMock()
     variable_loader = MagicMock()
     workflow = _workflow()
-    workflow_execution_repository = MagicMock()
-    workflow_node_execution_repository = MagicMock()
 
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
@@ -132,8 +131,6 @@ def runner(sqlite_engine: Engine):
         variable_loader=variable_loader,
         workflow=workflow,
         system_user_id="sys",
-        workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
 
@@ -171,6 +168,28 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
 
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+
+
+def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "parentId": "stale-owner",
+                    "data": {"type": "start", "title": "Start", "variables": [], "container_id": ""},
+                },
+                {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0.0)
+
+    graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=runtime_state)
+
+    assert graph.root_node.id == "start"
+    assert set(graph.nodes) == {"start", "end"}
 
 
 def test_update_document_status_on_failure(runner, sqlite_session: Session):
@@ -239,13 +258,11 @@ def test_run_pipeline_not_found(sqlite_engine: Engine):
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
 
     with pytest.raises(ValueError):
-        runner.run()
+        runner.prepare()
 
 
 def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sqlite_session: Session):
@@ -254,7 +271,7 @@ def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sql
     sqlite_session.commit()
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        runner.run()
+        runner.prepare()
 
 
 @pytest.mark.parametrize(
@@ -278,7 +295,7 @@ def test_run_rejects_unowned_pipeline_dataset(
     runner.get_workflow = MagicMock()
 
     with pytest.raises(ValueError, match="Pipeline dataset not found"):
-        runner.run()
+        runner.prepare()
 
     runner.get_workflow.assert_not_called()
 
@@ -293,7 +310,7 @@ def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
     runner.get_workflow = MagicMock()
 
     with pytest.raises(ValueError, match="Pipeline document not found"):
-        runner.run()
+        runner.prepare()
 
     runner.get_workflow.assert_not_called()
 
@@ -308,7 +325,7 @@ def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boun
     runner.get_workflow = MagicMock()
 
     with pytest.raises(ValueError, match="Pipeline original document not found"):
-        runner.run()
+        runner.prepare()
 
     runner.get_workflow.assert_not_called()
 
@@ -328,12 +345,10 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
     with pytest.raises(ValueError):
-        runner.run()
+        runner.prepare()
 
 
 def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
@@ -348,15 +363,15 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         variable_loader=MagicMock(),
         workflow=_workflow(),
         system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
+    runtime_state = RuntimeState(workflow_id="wf", variable_pool=VariablePool(), start_at=0.0)
+    runner._prepare_single_node_execution = MagicMock(
+        return_value=("graph", runtime_state.variable_pool, runtime_state)
+    )
     runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
 
     event = MagicMock()
     workflow_entry = MagicMock()
@@ -364,10 +379,12 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
     workflow_entry.run.return_value = [event]
     mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
 
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
+    handle_event = mocker.patch.object(module.WorkflowBasedAppRunner, "handle_event")
+    prepared = runner.prepare()
+    assert prepared is not None
+    runner.handle_event(prepared.entry, event)
 
-    runner.run()
-
+    handle_event.assert_called_once_with(prepared.entry, event)
     runner._prepare_single_node_execution.assert_called_once()
     runner._update_document_status.assert_called_once_with(
         event,
@@ -375,7 +392,6 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         dataset_id=dataset.id,
         document_id="doc",
     )
-    runner._handle_event.assert_called()
 
 
 def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
@@ -405,15 +421,12 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
     runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
     runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
 
     class FakeVariablePool:
         def add(self, selector, value):
@@ -423,16 +436,17 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
 
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
+    workflow_entry.run.side_effect = lambda **_kwargs: events.append("workflow_run") or []
     mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
     def record_checkin(*_args) -> None:
         events.append("session_checkin")
 
     event.listen(sqlite_engine, "checkin", record_checkin)
     try:
-        runner.run()
+        prepared = runner.prepare()
+        assert prepared is not None
+        list(prepared.entry.run())
     finally:
         event.remove(sqlite_engine, "checkin", record_checkin)
 

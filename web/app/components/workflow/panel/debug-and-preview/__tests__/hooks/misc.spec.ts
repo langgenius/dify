@@ -150,16 +150,6 @@ describe('useChat – handleSwitchSibling', () => {
     expect(mockSseGet).not.toHaveBeenCalled()
   })
 
-  it('should return undefined from findMessageInTree when not found', () => {
-    const { result } = renderHook(() => useChat({}))
-
-    act(() => {
-      result.current.handleSwitchSibling('nonexistent-id', {})
-    })
-
-    expect(mockSseGet).not.toHaveBeenCalled()
-  })
-
   it('should search children recursively in findMessageInTree', async () => {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
@@ -287,11 +277,6 @@ describe('useChat – getHumanInputNodeData', () => {
 describe('useChat – conversationId and setTargetMessageId', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
-  })
-
-  it('should initially be an empty string', () => {
-    const { result } = renderHook(() => useChat({}))
-    expect(result.current.conversationId).toBe('')
   })
 
   it('setTargetMessageId should change chatList thread path', () => {

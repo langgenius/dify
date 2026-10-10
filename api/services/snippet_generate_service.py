@@ -37,6 +37,7 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -167,7 +168,7 @@ class SnippetGenerateService:
         # Adapt snippet to App-like interface for WorkflowAppGenerator
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
+        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=app_proxy,
             workflow=workflow,
             user=user,
@@ -212,7 +213,7 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
+        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=app_proxy,
             workflow=workflow,
             user=user,
@@ -404,7 +405,7 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_iteration_generate(
+                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
@@ -451,7 +452,7 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_loop_generate(
+                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,

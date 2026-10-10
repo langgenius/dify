@@ -6,10 +6,10 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, Us
 from core.workflow.nodes.agent_v2 import workspace_retirement_layer as layer_module
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import WorkflowAgentWorkspaceRetirementLayer
 from core.workflow.system_variables import build_system_variables
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunStartedEvent
 from graphon.enums import BuiltinNodeTypes
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import GraphRunSucceededEvent, NodeRunStartedEvent
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 
 
@@ -24,9 +24,10 @@ def _run_context() -> DifyRunContext:
 
 
 @pytest.fixture
-def runtime_state() -> ReadOnlyGraphRuntimeStateWrapper:
-    return ReadOnlyGraphRuntimeStateWrapper(
-        GraphRuntimeState(
+def runtime_state() -> ReadOnlyRuntimeStateWrapper:
+    return ReadOnlyRuntimeStateWrapper(
+        RuntimeState(
+            workflow_id="workflow-1",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="workflow-run-1")
             ),
@@ -36,7 +37,7 @@ def runtime_state() -> ReadOnlyGraphRuntimeStateWrapper:
 
 
 def test_terminal_event_retires_workflow_workspace(
-    monkeypatch: pytest.MonkeyPatch, runtime_state: ReadOnlyGraphRuntimeStateWrapper
+    monkeypatch: pytest.MonkeyPatch, runtime_state: ReadOnlyRuntimeStateWrapper
 ) -> None:
     store = MagicMock()
     events: list[str] = []
@@ -77,7 +78,7 @@ def test_non_terminal_event_does_not_retire_workspace(monkeypatch: pytest.Monkey
 
 
 def test_terminal_retirement_failure_does_not_replace_terminal_event(
-    monkeypatch: pytest.MonkeyPatch, runtime_state: ReadOnlyGraphRuntimeStateWrapper
+    monkeypatch: pytest.MonkeyPatch, runtime_state: ReadOnlyRuntimeStateWrapper
 ) -> None:
     store = MagicMock()
     store.retire_workflow_run.side_effect = RuntimeError("database unavailable")

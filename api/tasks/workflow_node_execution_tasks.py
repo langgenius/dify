@@ -17,9 +17,11 @@ from core.workflow.node_execution_process_data import preserve_workflow_agent_bi
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,14 @@ def save_workflow_node_execution_task(
         with session_factory.create_session() as session:
             # Deserialize execution data
             execution = WorkflowNodeExecution.model_validate(execution_data)
+
+            if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                apply_workflow_stop_to_node(
+                    execution,
+                    get_stopped_workflow_run(
+                        session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
+                    ),
+                )
 
             # Check if node execution already exists
             existing_execution = session.scalar(
@@ -147,6 +157,13 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
+    # Cleanup can insert the terminal row before its queued start is delivered.
+    if (
+        node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        and node_execution.finished_at is not None
+        and execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED)
+    ):
+        return
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"

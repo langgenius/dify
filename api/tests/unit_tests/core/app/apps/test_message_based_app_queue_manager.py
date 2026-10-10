@@ -93,7 +93,7 @@ class TestMessageBasedAppQueueManager:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = MessageBasedAppQueueManager(
@@ -115,4 +115,4 @@ class TestMessageBasedAppQueueManager:
             assert isinstance(messages[0].event, QueueWorkflowPausedEvent)
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()

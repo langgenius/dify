@@ -97,20 +97,15 @@ import {
 } from './zod.gen.ts'
 
 /**
- * Stop a running snippet workflow task
- *
- * Uses both the legacy stop flag mechanism and the graph engine
- * command channel for backward compatibility.
+ * Stop a running or paused task belonging to this snippet
  */
 export const post = oc
   .route({
-    description:
-      'Uses both the legacy stop flag mechanism and the graph engine\ncommand channel for backward compatibility.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStop',
     path: '/snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop',
-    summary: 'Stop a running snippet workflow task',
+    summary: 'Stop a running or paused task belonging to this snippet',
     tags: ['console'],
   })
   .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopPath }))

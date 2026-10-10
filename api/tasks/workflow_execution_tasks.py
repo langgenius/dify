@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
@@ -51,7 +52,7 @@ def save_workflow_execution_task(
             execution = WorkflowExecution.model_validate(execution_data)
 
             # Check if workflow run already exists
-            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
+            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
 
             if existing_run:
                 # Update existing workflow run
@@ -125,6 +126,8 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     """
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """
+    if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
+        return
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.status = execution.status
     workflow_run.outputs = (

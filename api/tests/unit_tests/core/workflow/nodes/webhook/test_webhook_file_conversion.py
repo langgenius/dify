@@ -18,9 +18,8 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -30,7 +29,7 @@ def create_webhook_node(
     tenant_id: str = "test-tenant",
 ) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="test-workflow",
         graph_config={},
         run_context={
@@ -45,7 +44,8 @@ def create_webhook_node(
         call_depth=0,
     )
 
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=variable_pool,
         start_at=0,
     )
@@ -53,8 +53,8 @@ def create_webhook_node(
     node = TriggerWebhookNode(
         node_id="webhook-node-1",
         data=webhook_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     # Attach a lightweight app_config onto runtime state for tenant lookups

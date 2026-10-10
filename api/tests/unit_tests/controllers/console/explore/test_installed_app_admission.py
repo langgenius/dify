@@ -2,6 +2,7 @@ import json
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
 from operator import itemgetter
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -28,10 +29,12 @@ from controllers.console.explore.installed_app_admission import get_installed_ap
 from controllers.console.flask_admission import console_account_admission
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
-from models import Account, App, AppMode, InstalledApp, Tenant
+from models import Account, App, AppMode, InstalledApp, Tenant, WorkflowRun
 from models.account import AccountStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
@@ -554,6 +557,32 @@ class _StopServices:
 
 
 _TASK_ID = "task-with-non-uuid-id"
+_WORKFLOW_TASK_ID = "22222222-2222-4222-8222-222222222222"
+
+
+@pytest.fixture
+def running_workflow(
+    harness: _Harness,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> WorkflowRun:
+    run = WorkflowRun(
+        id=str(uuid4()),
+        tenant_id=harness.target_app.tenant_id,
+        app_id=harness.target_app.id,
+        workflow_id=str(uuid4()),
+        task_id=_WORKFLOW_TASK_ID,
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.RUNNING,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=harness.account.id,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(run)
+    monkeypatch.setattr(app_task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    return run
 
 
 @pytest.fixture
@@ -594,8 +623,8 @@ def stop_redis(
     return redis
 
 
-def _stop_url(harness: _Harness, message_kind: str) -> str:
-    return f"/installed-apps/{harness.installed_app.id}/{message_kind}-messages/{_TASK_ID}/stop"
+def _stop_url(harness: _Harness, message_kind: str, task_id: str = _TASK_ID) -> str:
+    return f"/installed-apps/{harness.installed_app.id}/{message_kind}-messages/{task_id}/stop"
 
 
 def _set_app_mode(harness: _Harness, session_factory: sessionmaker[Session], mode: AppMode) -> None:
@@ -617,24 +646,30 @@ def _set_app_mode(harness: _Harness, session_factory: sessionmaker[Session], mod
 def test_stop_handlers_preserve_mode_specific_commands_and_response(
     harness: _Harness,
     stop_redis: _StopRedis,
+    running_workflow: WorkflowRun,
     sqlite_session_factory: sessionmaker[Session],
     message_kind: str,
     mode: AppMode,
 ) -> None:
     _set_app_mode(harness, sqlite_session_factory, mode)
+    task_id = _WORKFLOW_TASK_ID if mode == AppMode.ADVANCED_CHAT else _TASK_ID
 
-    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+    response = harness.app.test_client().post(_stop_url(harness, message_kind, task_id))
 
     _assert_json_response(response, status=200, body={"result": "success"})
-    assert stop_redis.reads == [f"generate_task_belong:{_TASK_ID}"]
-    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
-    assert stop_redis.expirations[f"generate_task_stopped:{_TASK_ID}"] == 600
+    assert stop_redis.reads == ([] if mode == AppMode.ADVANCED_CHAT else [f"generate_task_belong:{task_id}"])
+    assert stop_redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+    assert stop_redis.expirations[f"generate_task_stopped:{task_id}"] == 600
     if mode == AppMode.ADVANCED_CHAT:
-        command_key = f"workflow:{_TASK_ID}:commands"
+        command_key = f"workflow:{task_id}:commands"
         assert set(stop_redis.commands) == {command_key}
         assert [json.loads(command) for command in stop_redis.commands[command_key]] == [
-            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+            {"command_type": "abort", "reason": "User requested stop"}
         ]
+        with sqlite_session_factory() as session:
+            run = session.get(WorkflowRun, running_workflow.id)
+            assert run is not None
+            assert run.stop_requested_at is not None
     else:
         assert stop_redis.commands == {}
     assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
@@ -647,33 +682,48 @@ def test_stop_handlers_preserve_mode_specific_commands_and_response(
 def test_stop_handlers_preserve_mode_specific_behavior_when_task_ownership_does_not_match(
     harness: _Harness,
     stop_redis: _StopRedis,
+    running_workflow: WorkflowRun,
     sqlite_session_factory: sessionmaker[Session],
     message_kind: str,
     mode: AppMode,
     ownership: str,
 ) -> None:
     _set_app_mode(harness, sqlite_session_factory, mode)
-    owner_key = f"generate_task_belong:{_TASK_ID}"
-    if ownership == "missing":
+    task_id = _WORKFLOW_TASK_ID if mode == AppMode.ADVANCED_CHAT else _TASK_ID
+    owner_key = f"generate_task_belong:{task_id}"
+    if mode == AppMode.ADVANCED_CHAT:
+        stop_redis.values[owner_key] = f"account-{harness.account.id}".encode()
+        with sqlite_session_factory.begin() as session:
+            run = session.get(WorkflowRun, running_workflow.id)
+            assert run is not None
+            if ownership == "missing":
+                session.delete(run)
+            elif ownership == "different-account":
+                run.created_by = str(uuid4())
+            else:
+                run.created_by_role = CreatorUserRole.END_USER
+    elif ownership == "missing":
         stop_redis.values.pop(owner_key)
     elif ownership == "different-account":
         stop_redis.values[owner_key] = b"account-someone-else"
     else:
         stop_redis.values[owner_key] = f"end-user-{harness.account.id}".encode()
 
-    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+    response = harness.app.test_client().post(_stop_url(harness, message_kind, task_id))
 
     _assert_json_response(response, status=200, body={"result": "success"})
-    assert stop_redis.reads == [owner_key]
-    assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
+    assert stop_redis.reads == ([] if mode == AppMode.ADVANCED_CHAT else [owner_key])
+    assert f"generate_task_stopped:{task_id}" not in stop_redis.values
+    assert stop_redis.operations == []
+    assert stop_redis.commands == {}
     if mode == AppMode.ADVANCED_CHAT:
-        assert stop_redis.operations == ["graph_command"]
-        assert [json.loads(command) for command in stop_redis.commands[f"workflow:{_TASK_ID}:commands"]] == [
-            {"command_type": "abort", "payload": None, "reason": "User requested stop"}
-        ]
-    else:
-        assert stop_redis.operations == []
-        assert stop_redis.commands == {}
+        with sqlite_session_factory() as session:
+            run = session.get(WorkflowRun, running_workflow.id)
+            if ownership == "missing":
+                assert run is None
+            else:
+                assert run is not None
+                assert run.stop_requested_at is None
 
 
 @pytest.mark.parametrize(
@@ -709,11 +759,13 @@ def test_stop_handlers_reject_wrong_modes_without_sending_commands(
 def test_stop_handlers_use_admitted_mode_when_app_is_removed(
     harness: _Harness,
     stop_redis: _StopRedis,
+    running_workflow: WorkflowRun,
     sqlite_session_factory: sessionmaker[Session],
     message_kind: str,
     mode: AppMode,
 ) -> None:
     _set_app_mode(harness, sqlite_session_factory, mode)
+    task_id = _WORKFLOW_TASK_ID if mode == AppMode.ADVANCED_CHAT else _TASK_ID
 
     def remove_app() -> None:
         with sqlite_session_factory.begin() as session:
@@ -723,15 +775,20 @@ def test_stop_handlers_use_admitted_mode_when_app_is_removed(
 
     harness.state.permission_action = remove_app
 
-    response = harness.app.test_client().post(_stop_url(harness, message_kind))
+    response = harness.app.test_client().post(_stop_url(harness, message_kind, task_id))
 
     _assert_json_response(response, status=200, body={"result": "success"})
     assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
-    assert stop_redis.reads == [f"generate_task_belong:{_TASK_ID}"]
-    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
+    assert stop_redis.reads == ([] if mode == AppMode.ADVANCED_CHAT else [f"generate_task_belong:{task_id}"])
+    assert stop_redis.values[f"generate_task_stopped:{task_id}"] == b"1"
     assert stop_redis.operations == (
         ["legacy_flag", "graph_command"] if mode == AppMode.ADVANCED_CHAT else ["legacy_flag"]
     )
+    if mode == AppMode.ADVANCED_CHAT:
+        with sqlite_session_factory() as session:
+            run = session.get(WorkflowRun, running_workflow.id)
+            assert run is not None
+            assert run.stop_requested_at is not None
 
 
 @pytest.mark.parametrize("message_kind", ["completion", "chat"])
@@ -765,12 +822,14 @@ def test_stop_handlers_enforce_admission_before_sending_commands(
 def test_stop_handlers_propagate_redis_failure_to_existing_http_error_handler(
     harness: _Harness,
     stop_redis: _StopRedis,
+    running_workflow: WorkflowRun,
     sqlite_session_factory: sessionmaker[Session],
     message_kind: str,
     mode: AppMode,
     failure_stage: str,
 ) -> None:
     _set_app_mode(harness, sqlite_session_factory, mode)
+    task_id = _WORKFLOW_TASK_ID if mode == AppMode.ADVANCED_CHAT else _TASK_ID
     failure = RedisConnectionError("Redis unavailable")
     if failure_stage == "read":
         stop_redis.read_error = failure
@@ -782,7 +841,7 @@ def test_stop_handlers_propagate_redis_failure_to_existing_http_error_handler(
         exceptions.append(exception)
 
     with got_request_exception.connected_to(capture_exception):
-        response = harness.app.test_client().post(_stop_url(harness, message_kind))
+        response = harness.app.test_client().post(_stop_url(harness, message_kind, task_id))
 
     _assert_json_response(
         response,
@@ -790,14 +849,21 @@ def test_stop_handlers_propagate_redis_failure_to_existing_http_error_handler(
         body={"code": "unknown", "message": "Internal Server Error", "status": 500},
     )
     assert any(exception is failure for exception in exceptions)
-    assert f"generate_task_stopped:{_TASK_ID}" not in stop_redis.values
+    assert f"generate_task_stopped:{task_id}" not in stop_redis.values
     assert stop_redis.commands == {}
     assert stop_redis.operations == (["legacy_flag"] if failure_stage == "flag" else [])
+    if mode == AppMode.ADVANCED_CHAT:
+        assert stop_redis.reads == []
+        with sqlite_session_factory() as session:
+            run = session.get(WorkflowRun, running_workflow.id)
+            assert run is not None
+            assert run.stop_requested_at is not None
 
 
 def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     harness: _Harness,
     stop_redis: _StopRedis,
+    running_workflow: WorkflowRun,
     sqlite_session_factory: sessionmaker[Session],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -805,11 +871,16 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     failure = RedisConnectionError("Graph channel unavailable")
     stop_redis.command_error = failure
 
-    response = harness.app.test_client().post(_stop_url(harness, "chat"))
+    response = harness.app.test_client().post(_stop_url(harness, "chat", _WORKFLOW_TASK_ID))
 
     _assert_json_response(response, status=200, body={"result": "success"})
+    assert stop_redis.reads == []
     assert stop_redis.operations == ["legacy_flag", "graph_command"]
-    assert stop_redis.values[f"generate_task_stopped:{_TASK_ID}"] == b"1"
-    assert stop_redis.expirations[f"generate_task_stopped:{_TASK_ID}"] == 600
+    assert stop_redis.values[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == b"1"
+    assert stop_redis.expirations[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == 600
     assert stop_redis.commands == {}
     assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    with sqlite_session_factory() as session:
+        run = session.get(WorkflowRun, running_workflow.id)
+        assert run is not None
+        assert run.stop_requested_at is not None

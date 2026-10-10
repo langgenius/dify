@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -20,10 +19,12 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
-from models.enums import MessageStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message
+from models.workflow import WorkflowRun
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
 def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
@@ -63,13 +64,10 @@ def _message(*, status: MessageStatus, answer: str = "") -> Message:
     )
 
 
-def test_persist_human_input_extra_content_adds_record(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_persist_human_input_extra_content_adds_record(sqlite_session: Session) -> None:
     pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: "form-1")
 
-    pipeline._persist_human_input_extra_content(node_id="node-1")
+    pipeline._persist_human_input_extra_content(form_id="form-1")
 
     content = sqlite_session.scalar(select(HumanInputContent))
     assert content is not None
@@ -78,37 +76,45 @@ def test_persist_human_input_extra_content_adds_record(
     assert content.form_id == "form-1"
 
 
-def test_persist_human_input_extra_content_skips_when_form_missing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_persist_human_input_extra_content_skips_when_existing(sqlite_session: Session) -> None:
     pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: None)
-
-    pipeline._persist_human_input_extra_content(node_id="node-1")
-
-    assert sqlite_session.scalar(select(HumanInputContent)) is None
-
-
-def test_persist_human_input_extra_content_skips_when_existing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    pipeline = _build_pipeline()
-    monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: "form-1")
     existing = HumanInputContent.new(workflow_run_id="run-1", message_id="message-1", form_id="form-1")
     sqlite_session.add(existing)
     sqlite_session.commit()
 
-    pipeline._persist_human_input_extra_content(node_id="node-1")
+    pipeline._persist_human_input_extra_content(form_id="form-1")
 
     contents = list(sqlite_session.scalars(select(HumanInputContent)))
     assert [content.id for content in contents] == [existing.id]
 
 
-def test_handle_workflow_paused_event_persists_human_input_extra_content(unbound_session: Session) -> None:
+@pytest.mark.parametrize("stop_after_pause", [False, True])
+def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    stop_after_pause: bool,
+) -> None:
+    run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        task_id="task-1",
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.PAUSED,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="user-1",
+    )
+    sqlite_session.add(run)
+    sqlite_session.commit()
     pipeline = _build_pipeline()
-    pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
+    pipeline._application_generate_entity = SimpleNamespace(
+        task_id="task-1", app_config=SimpleNamespace(app_id="app-1")
+    )
     pipeline._workflow_response_converter = mock.Mock()
-    pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = []
+    pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = ["pause"]
     pipeline._ensure_graph_runtime_initialized = mock.Mock(
         return_value=SimpleNamespace(
             total_tokens=0,
@@ -123,8 +129,6 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content(unbound
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
     pipeline._message_saved_on_pause = False
 
-    pipeline._database_session = lambda: nullcontext(unbound_session)  # type: ignore[method-assign]
-
     reason = HumanInputRequired(
         form_id="form-1",
         form_content="content",
@@ -136,10 +140,15 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content(unbound
     )
     event = QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=["node-1"])
 
-    list(pipeline._handle_workflow_paused_event(event))
+    events = pipeline._handle_workflow_paused_event(event)
+    assert next(events) == "pause"
+    if stop_after_pause:
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+        repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=None)
+    assert list(events) == []
 
-    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1", node_id="node-1")
-    assert message.status == MessageStatus.PAUSED
+    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1")
+    assert message.status == (MessageStatus.NORMAL if stop_after_pause else MessageStatus.PAUSED)
 
 
 def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> None:

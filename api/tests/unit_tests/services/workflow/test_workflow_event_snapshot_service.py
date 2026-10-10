@@ -26,15 +26,16 @@ from core.workflow.nodes.human_input.entities import SelectInputConfig, StringLi
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPause, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services import workflow_event_snapshot_service as service_module
 from services.workflow_event_snapshot_service import (
     BufferState,
@@ -141,7 +142,7 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
     runtime_state.set_output("result", "value")
@@ -248,7 +249,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -277,7 +278,7 @@ def _build_advanced_chat_resumption_context(conversation_id: str | None) -> Work
         workflow_run_id="run-1",
         query="hello",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -1313,3 +1314,62 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
+
+
+@pytest.mark.parametrize("saved_run_id", ["run-1", "other-run"])
+@pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_authorized_snapshot_indexes_legacy_pause_for_stop(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    saved_run_id: str,
+    app_mode: AppMode,
+) -> None:
+    task_id = "ccbd2ed3-013f-4de1-82b5-a38356203f8f"
+    run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="legacy-state")
+    sqlite_session.add_all([run, pause])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    assert (
+        repository.stop_paused_workflow_task(tenant_id=run.tenant_id, app_id=run.app_id, task_id=task_id, owner=None)
+        is None
+    )
+    context = (
+        _build_resumption_context(task_id)
+        if app_mode == AppMode.WORKFLOW
+        else _build_advanced_chat_resumption_context("conv-1")
+    )
+    generate_entity = context.get_generate_entity()
+    generate_entity.task_id = task_id
+    if isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+        generate_entity.workflow_run_id = saved_run_id
+    else:
+        generate_entity.workflow_execution_id = saved_run_id
+    monkeypatch.setattr(service_module, "_load_resumption_context", lambda _: context)
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository
+    )
+    node_repository = MagicMock()
+    node_repository.get_execution_snapshots_by_workflow_run.return_value = []
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_node_execution_repository",
+        lambda _: node_repository,
+    )
+    stream = build_workflow_event_stream(
+        app_mode=app_mode,
+        workflow_run=run,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        session_maker=sqlite_session_factory,
+    )
+    stream.close()
+    sqlite_session.expire_all()
+    assert run.task_id == (task_id if saved_run_id == run.id else None)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", MagicMock())
+    stopped = repository.stop_paused_workflow_task(
+        tenant_id=run.tenant_id, app_id=run.app_id, task_id=task_id, owner=None
+    )
+    assert (stopped is not None) is (saved_run_id == run.id)

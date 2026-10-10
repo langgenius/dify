@@ -43,10 +43,8 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
-from extensions.ext_redis import redis_client
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -56,13 +54,14 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
-from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
+from models.model import AppMode
 from models.snippet import CustomizedSnippet
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService
@@ -852,17 +851,13 @@ class SnippetWorkflowTaskStopApi(Resource):
     @get_snippet
     @edit_permission_required
     def post(self, snippet: CustomizedSnippet, task_id: str):
-        """
-        Stop a running snippet workflow task.
-
-        Uses both the legacy stop flag mechanism and the graph engine
-        command channel for backward compatibility.
-        """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        """Stop a running or paused task belonging to this snippet."""
+        AppTaskService.stop_workflow_task(
+            tenant_id=snippet.tenant_id,
+            app_id=snippet.id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
         return {"result": "success"}

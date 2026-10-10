@@ -13,7 +13,7 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
@@ -23,6 +23,7 @@ from controllers.openapi._models import (
     WorkflowRunPayload,
 )
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
+from controllers.openapi.auth.subjects import ResourceAccessSubject
 from graphon.file import FileType
 from models import Account
 from models.enums import CreatorUserRole
@@ -73,27 +74,73 @@ def test_chat_payload_normalizes_conversation_id():
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
     queue_mock = Mock()
-    graph_mock = Mock()
-    graph_instance = Mock()
-    graph_mock.return_value = graph_instance
+    send_abort_command = Mock()
 
     run_module = sys.modules["controllers.openapi.app_run"]
     monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
-    monkeypatch.setattr(run_module, "redis_client", object())
+    monkeypatch.setattr(run_module, "send_abort_command", send_abort_command)
 
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
         result = api.post.__handler__(
             api,
-            _SealableContext(subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT)),
+            _SealableContext(
+                subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
+                app=SimpleNamespace(mode="chat"),
+            ),
             app_id="app-1",
             task_id="task-1",
         )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    graph_instance.send_stop_command.assert_called_once_with("task-1")
+    send_abort_command.assert_called_once_with("task-1")
     assert result == TaskStopResponse(result="success")
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("resource_subject", [False, True])
+def test_workflow_task_stop_uses_durable_app_and_resource_owner(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, mode: AppMode, resource_subject: bool
+):
+    run_module = sys.modules["controllers.openapi.app_run"]
+    stop_task = Mock(return_value=True)
+    monkeypatch.setattr(run_module.AppTaskService, "stop_workflow_task", stop_task)
+    redis = Mock()
+    monkeypatch.setattr(run_module, "redis_client", redis)
+    subject = (
+        ResourceAccessSubject(Mock()) if resource_subject else SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT)
+    )
+    ctx = _SealableContext(
+        subject=subject,
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=mode),
+        end_user=SimpleNamespace(id="user-1"),
+    )
+    api = AppRunTaskStopApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
+        result = api.post.__handler__(api, ctx, app_id="app-1", task_id="task-1")
+    stop_task.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        task_id="task-1",
+        app_mode=mode,
+        owner=(CreatorUserRole.END_USER, "user-1") if resource_subject else None,
+    )
+    assert result == TaskStopResponse(result="success")
+    redis.get.assert_not_called()
+
+
+def test_resource_stop_hides_workflow_task_outside_durable_owner(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    run_module = sys.modules["controllers.openapi.app_run"]
+    monkeypatch.setattr(run_module.AppTaskService, "stop_workflow_task", Mock(return_value=False))
+    ctx = _SealableContext(
+        subject=ResourceAccessSubject(Mock()),
+        app=SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW),
+        end_user=SimpleNamespace(id="user-1"),
+    )
+    api = AppRunTaskStopApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
+        with pytest.raises(NotFound, match="Task not found"):
+            api.post.__handler__(api, ctx, app_id="app-1", task_id="task-1")
 
 
 class _SealableContext:

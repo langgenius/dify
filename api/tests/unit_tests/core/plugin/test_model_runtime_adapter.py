@@ -29,6 +29,7 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 
 
 def _recording_model_client(
@@ -515,7 +516,7 @@ class TestPluginModelRuntime:
             voice="alloy",
         )
 
-        assert list(result) == [b"chunk"]
+        assert list(result) == [TTSChunk(data=b"chunk", mime_type=None)]
         assert client_calls["invoke_tts"] == [
             call(
                 tenant_id="tenant",

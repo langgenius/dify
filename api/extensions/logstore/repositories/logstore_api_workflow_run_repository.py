@@ -16,21 +16,25 @@ Key Features:
 import logging
 import os
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast, override
 
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -161,11 +165,78 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         logger.debug("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+        if session_maker is None:
+            from extensions.ext_database import db
+
+            session_maker = sessionmaker(db.engine)
+        self._control_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker)
 
         # Control flag for dual-read (fallback to PostgreSQL when LogStore returns no results)
         # Set to True to enable fallback for safe migration from PostgreSQL to LogStore
         # Set to False for new deployments without legacy data in PostgreSQL
         self._enable_dual_read = os.environ.get("LOGSTORE_DUAL_READ_ENABLED", "true").lower() == "true"
+
+    # Pause state and task ownership are transactional control data, independent
+    # of the append-only backend used for workflow history.
+    @override
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+    ) -> WorkflowPauseEntity:
+        return self._control_repository.create_workflow_pause(
+            workflow_run_id, state_owner_user_id, state, pause_reasons
+        )
+
+    @override
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        self._control_repository.bind_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, task_id=task_id
+        )
+
+    @override
+    def backfill_workflow_pause_task_id(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
+    ) -> None:
+        self._control_repository.backfill_workflow_pause_task_id(
+            tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, pause_id=pause_id, task_id=task_id
+        )
+
+    @override
+    def stop_paused_workflow_task(
+        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+    ) -> WorkflowRun | None:
+        return self._control_repository.stop_paused_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+        )
+
+    @override
+    def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
+        return self._control_repository.get_workflow_pause(workflow_run_id)
+
+    @override
+    def resume_workflow_pause(
+        self,
+        workflow_run_id: str,
+        pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
+    ) -> WorkflowPauseEntity:
+        return self._control_repository.resume_workflow_pause(
+            workflow_run_id, pause_entity, before_resume=before_resume
+        )
+
+    @override
+    def delete_workflow_pause(self, pause_entity: WorkflowPauseEntity) -> None:
+        self._control_repository.delete_workflow_pause(pause_entity)
+
+    @override
+    def prune_pauses(
+        self, expiration: datetime, resumption_expiration: datetime, limit: int | None = None
+    ) -> Sequence[str]:
+        return self._control_repository.prune_pauses(expiration, resumption_expiration, limit)
 
     @override
     def get_paginated_workflow_runs(
@@ -278,6 +349,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         logger.debug("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
 
+        control = self._control_repository.get_workflow_run_by_id(tenant_id, app_id, run_id)
+        if control is not None and control.task_id is not None:
+            return control
+
         try:
             # Escape parameters to prevent SQL injection
             escaped_run_id = escape_identifier(run_id)
@@ -382,6 +457,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Falls back to PostgreSQL if not found in LogStore (controlled by LOGSTORE_DUAL_READ_ENABLED).
         """
         logger.debug("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
+
+        control = self._control_repository.get_workflow_run_by_id_without_tenant(run_id)
+        if control is not None and control.task_id is not None:
+            return control
 
         try:
             # Escape parameter to prevent SQL injection

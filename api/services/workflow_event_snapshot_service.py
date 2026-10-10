@@ -8,6 +8,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -40,8 +41,8 @@ from core.workflow.nodes.human_input.pause_reason import (
 )
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
@@ -97,6 +98,32 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    if pause_entity is not None and resumption_context is not None:
+        saved_generate_entity = resumption_context.get_generate_entity()
+        try:
+            UUID(saved_generate_entity.task_id)
+        except ValueError:
+            pass
+        else:
+            saved_run_id = (
+                saved_generate_entity.workflow_run_id
+                if isinstance(saved_generate_entity, AdvancedChatAppGenerateEntity)
+                else saved_generate_entity.workflow_execution_id
+            )
+            if (
+                saved_run_id == workflow_run.id
+                and saved_generate_entity.app_config.tenant_id == tenant_id
+                and saved_generate_entity.app_config.app_id == app_id
+            ):
+                # The authorized snapshot is already loaded. Index its trusted
+                # task ID without scanning or re-reading historical state files.
+                workflow_run_repo.backfill_workflow_pause_task_id(
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_run_id=workflow_run.id,
+                    pause_id=pause_entity.id,
+                    task_id=saved_generate_entity.task_id,
+                )
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
         if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -511,7 +538,7 @@ def _load_variable_pool_from_resumption_context(
 ) -> ReadOnlyVariablePool | None:
     if resumption_context is None:
         return None
-    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
     return state.variable_pool
 
@@ -565,7 +592,7 @@ def _build_pause_event(
     outputs: dict[str, Any] = {}
     variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
-        state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
         variable_pool = state.variable_pool
 

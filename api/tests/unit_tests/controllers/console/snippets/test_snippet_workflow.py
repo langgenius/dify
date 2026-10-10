@@ -591,18 +591,12 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
             handler(api, snippet=snippet, node_id="llm-1")
 
 
-def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    set_stop_flag = Mock()
-    send_stop_command = Mock()
+def test_workflow_task_stop_uses_snippet_owner_scope(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    stop_task = Mock()
     monkeypatch.setattr(
-        snippet_workflow_module.AppQueueManager,
-        "set_stop_flag_no_user_check",
-        set_stop_flag,
-    )
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "GraphEngineManager",
-        Mock(return_value=Mock(send_stop_command=send_stop_command)),
+        snippet_workflow_module.AppTaskService,
+        "stop_workflow_task",
+        stop_task,
     )
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
@@ -612,5 +606,10 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkey
         result = handler(api, snippet=_snippet(), task_id="task-1")
 
     assert result == {"result": "success"}
-    set_stop_flag.assert_called_once_with("task-1")
-    send_stop_command.assert_called_once_with("task-1")
+    stop_task.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        task_id="task-1",
+        app_mode=snippet_workflow_module.AppMode.WORKFLOW,
+        owner=None,
+    )

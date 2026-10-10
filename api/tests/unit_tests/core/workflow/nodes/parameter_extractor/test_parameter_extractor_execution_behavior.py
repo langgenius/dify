@@ -19,7 +19,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemory
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.unit_tests.core.model_fixtures import make_model_instance
 from tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -77,14 +77,16 @@ def init_parameter_extractor_node(
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     run_context = resolve_dify_run_context(init_params.run_context)
     node = ParameterExtractorNode(
         node_id=str(uuid.uuid4()),
         data=ParameterExtractorNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=DifyCredentialsProvider(run_context=run_context),
         model_factory=DifyModelFactory(run_context=run_context),
         model_instance=DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo")),

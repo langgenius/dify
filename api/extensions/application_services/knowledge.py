@@ -52,6 +52,7 @@ from services.knowledge.segments.application import DatasetSegmentApplicationSer
 from services.knowledge.segments.indexing import SegmentIndexingGateway
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
+from services.workflow_run_agg import WorkflowRunAgg
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
@@ -145,7 +146,9 @@ def build_knowledge_services(
             operations=SQLAlchemyDocumentOperations(session_factory=database_client),
             metadata_schema=DocumentService.DOCUMENT_METADATA_SCHEMA,
         ),
-        pipeline_generator=PipelineGenerator(documents=documents, datasource_providers=providers),
+        pipeline_generator=PipelineGenerator(
+            execution_driver=WorkflowRunAgg.run, documents=documents, datasource_providers=providers
+        ),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,
             documents=documents,

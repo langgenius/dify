@@ -8,7 +8,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from pydantic import BaseModel
@@ -858,7 +858,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -871,7 +871,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
 
     _resume_app_execution({"workflow_run_id": workflow_run_id})
 
-    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity)
+    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity, before_resume=ANY)
     resume_advanced_chat.assert_called_once()
     assert resume_advanced_chat.call_args.kwargs["conversation"].id == conversation_id
     assert resume_advanced_chat.call_args.kwargs["message"].id == "expected-message-id"
@@ -906,7 +906,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -957,7 +957,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -966,6 +966,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
 
     calls: list[str] = []
     clear_signals = MagicMock(side_effect=lambda task_id: calls.append(f"clear:{task_id}"))
+    workflow_run_repo.resume_workflow_pause.side_effect = lambda *_, before_resume: before_resume()
     resume_workflow = MagicMock(side_effect=lambda **_kwargs: calls.append("resume"))
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task.clear_app_task_cancellation_signals", clear_signals)
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_workflow", resume_workflow)
@@ -1008,7 +1009,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -1038,7 +1039,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.AdvancedChatAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1094,7 +1095,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1152,7 +1153,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
