@@ -143,21 +143,25 @@ def configure(owner, name, *, fixture=False):
     with factory.begin() as session:
         session.get(Workflow, workflow.id).graph = workflow.graph
         session.get(DifyBuilderTestInput, tid).inputs = inputs
-        if fixture:
-            envelope = BuilderExecutionPolicyService(factory).stamp_http_fixtures(
-                app.id,
-                actor,
-                base_app_revision=execution_revision(workflow),
-                fixtures=(
-                    HttpResponseFixtureV1(
-                        node_id="http",
-                        source="user_sample",
-                        status_code=200,
-                        content_type="text/plain",
-                        body="native fixture ✓",
-                    ),
+    if fixture:
+        # Stamping rereads the draft in its own session, so commit the graph first.
+        with factory() as session:
+            committed_revision = execution_revision(session.get(Workflow, workflow.id))
+        envelope = BuilderExecutionPolicyService(factory).stamp_http_fixtures(
+            app.id,
+            actor,
+            base_app_revision=committed_revision,
+            fixtures=(
+                HttpResponseFixtureV1(
+                    node_id="http",
+                    source="user_sample",
+                    status_code=200,
+                    content_type="text/plain",
+                    body="native fixture ✓",
                 ),
-            )
+            ),
+        )
+        with factory.begin() as session:
             session.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
     return inputs
 
