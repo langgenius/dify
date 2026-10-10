@@ -9,6 +9,24 @@ describe('More', () => {
     time: '2023-10-27 10:00:00',
   }
 
+  it('should render workflow elapsed label when latencyIsWorkflowTime is true', () => {
+    render(
+      <More
+        more={{
+          ...mockMoreData,
+          latency: '12.50',
+          latencyIsWorkflowTime: true,
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('more-latency')).toHaveAttribute(
+      'title',
+      'appLog.detail.workflowTimeConsumingTip',
+    )
+    expect(screen.getByText(/appLog.detail.workflowTimeConsuming/i)).toBeInTheDocument()
+  })
+
   it('should render all details when all data is provided', () => {
     render(<More more={mockMoreData} />)
 

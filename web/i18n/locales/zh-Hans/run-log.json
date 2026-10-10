@@ -17,5 +17,7 @@
   "resultPanel.status": "状态",
   "resultPanel.time": "运行时间",
   "resultPanel.tokens": "总 token 数",
-  "tracing": "追踪"
+  "tracing": "追踪",
+  "tracing.totalTime": "工作流总耗时",
+  "tracing.totalTimeTip": "工作流墙钟执行时间。各节点耗时之和可能因并行分支、重试或折叠的迭代/循环明细而偏高或偏低。"
 }

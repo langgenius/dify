@@ -20581,6 +20581,7 @@ Enum class for large language model mode.
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | status | string |  | Yes |
+| workflow_run_elapsed_time | number |  | No |
 | workflow_run_id | string |  | No |
 
 #### MessageDetailResponse
@@ -20610,6 +20611,7 @@ Enum class for large language model mode.
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | status | string |  | Yes |
+| workflow_run_elapsed_time | number |  | No |
 | workflow_run_id | string |  | No |
 
 #### MessageFeedbackPayload

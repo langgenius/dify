@@ -60,6 +60,7 @@ type MessageContent = {
   answer_tokens: number
   answer: string
   provider_response_latency: number
+  workflow_run_elapsed_time?: number | null
   created_at: number
   annotation: LogAnnotation
   annotation_hit_history: {
