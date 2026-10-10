@@ -718,7 +718,6 @@ project-excludes = [
   "services/auth/test_firecrawl_auth.py",
   "services/auth/test_jina_auth.py",
   "services/auth/test_jina_auth_standalone_module.py",
-  "services/auth/test_watercrawl_auth.py",
   "services/controller_api.py",
   "services/data_migration/test_dependency_discovery_service.py",
   "services/data_migration/test_entities.py",
