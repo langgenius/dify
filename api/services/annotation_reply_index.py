@@ -39,6 +39,25 @@ class AnnotationVectorIndex:
             duplicate_check=True,
         )
 
+    def replace(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entry: AnnotationIndexEntry
+    ) -> None:
+        vector = self._vector(tenant_id=tenant_id, app_id=app_id, binding=binding)
+        vector.delete_by_metadata_field("annotation_id", entry.id)
+        vector.add_texts(
+            [
+                Document(
+                    page_content=entry.question,
+                    metadata={"annotation_id": entry.id, "app_id": app_id, "doc_id": entry.id},
+                )
+            ]
+        )
+
+    def remove(self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, annotation_id: str) -> None:
+        self._vector(tenant_id=tenant_id, app_id=app_id, binding=binding).delete_by_metadata_field(
+            "annotation_id", annotation_id
+        )
+
     def rebuild(
         self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
     ) -> None:

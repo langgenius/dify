@@ -205,6 +205,7 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
         annotation_queries=annotations,
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
+            index=AnnotationVectorIndex(session_factory=factory),
             add_index=tasks["add"].delay,
             update_index=tasks["update"].delay,
             delete_index=tasks["delete"].delay,

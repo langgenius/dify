@@ -529,6 +529,7 @@ def build_application_services(
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
+            index=annotation_index,
             add_index=add_annotation_to_index_task.delay,
             update_index=update_annotation_to_index_task.delay,
             delete_index=delete_annotation_index_task.delay,

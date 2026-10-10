@@ -17,6 +17,7 @@ from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Mes
 from repositories.app.console_repository import find_console_app
 from services.annotation_command_service import (
     AnnotationDeletionResult,
+    AnnotationIndexWritePlan,
     AnnotationSettingNotFoundError,
     AnnotationWriteResult,
     AnnotationWriteStore,
@@ -293,6 +294,49 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
             setting.updated_at = naive_utc_now()
             session.flush()
             return self._setting_record(session, setting)
+
+    @override
+    def prepare_index_write(
+        self, *, tenant_id: str, app_id: str, annotation_id: str, collection_binding_id: str
+    ) -> AnnotationIndexWritePlan | None:
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            annotation = session.scalar(
+                select(MessageAnnotation).where(
+                    MessageAnnotation.id == annotation_id, MessageAnnotation.app_id == app_id
+                )
+            )
+            if annotation is None or self._binding_id(session, app_id=app_id) != collection_binding_id:
+                return None
+            binding = self._annotation_binding(session, binding_id=collection_binding_id)
+            if binding is None:
+                raise AnnotationSettingNotFoundError(
+                    f"Annotation collection binding {collection_binding_id} is unavailable for app {app_id}"
+                )
+            return AnnotationIndexWritePlan(
+                binding=self._index_binding(binding), question=annotation.question or "", content=annotation.content
+            )
+
+    @override
+    def prepare_index_delete(
+        self, *, tenant_id: str, app_id: str, annotation_id: str, collection_binding_id: str
+    ) -> AnnotationIndexBinding | None:
+        with self._session_factory() as session:
+            # Disabling the app must not prevent already queued index cleanup.
+            # After app deletion, a separate cleanup path must retain the owner reference.
+            if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
+                raise AnnotationAppNotFoundError(f"App {app_id} is unavailable in workspace {tenant_id}")
+            # SQL deletion precedes dispatch; an existing ID may now belong to
+            # another app or a restored row and must not have its index removed.
+            if session.get(MessageAnnotation, annotation_id) is not None:
+                return None
+            # The queued collection may no longer be the app's active setting.
+            binding = self._annotation_binding(session, binding_id=collection_binding_id)
+            if binding is None:
+                raise AnnotationSettingNotFoundError(
+                    f"Annotation collection binding {collection_binding_id} is unavailable for app {app_id}"
+                )
+            return self._index_binding(binding)
 
     @override
     def prepare_enable_reply(
