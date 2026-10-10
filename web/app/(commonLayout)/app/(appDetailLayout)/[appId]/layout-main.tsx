@@ -87,6 +87,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const shouldBlockAgentResourceAccess =
     routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
+  const shouldRedirectAgentAccessPoint =
+    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-point')
   const canViewAccessPoint =
     routeAppDetail?.id === appId &&
     currentWorkspace.id &&
@@ -154,6 +156,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     if (routeAppDetail.id !== appId) return
 
+    if (shouldRedirectAgentAccessPoint) {
+      router.replace(
+        routeAppDetail.bound_agent_id
+          ? `/agents/${routeAppDetail.bound_agent_id}/access`
+          : '/agents',
+      )
+      return
+    }
+
     const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
       currentUserId,
       resourceMaintainer: routeAppDetail.maintainer,
@@ -220,12 +231,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     routeAppDetail,
     router,
     setAppDetail,
+    shouldRedirectAgentAccessPoint,
     workspacePermissionKeys,
   ])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+    !appDetail ||
+    shouldBlockAgentResourceAccess ||
+    shouldRedirectAgentAccessPoint ||
+    shouldBlockAccessPointAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>
