@@ -6,7 +6,7 @@ max_workers: 4
 max_requests: 50
 worker_timeout: 5
 enable_network: True # please make sure there is no network risk in your environment
-allowed_syscalls: # please leave it empty if you have no idea how seccomp works
+allowed_syscalls: # In 0.2.15, non-empty values replace defaults; leave empty unless providing a complete least-privilege allowlist.
 proxy:
   socks5: ''
   http: ''
