@@ -134,7 +134,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.editDone))
           setIsEditDialogOpen(false)
           onRefresh?.()
         },

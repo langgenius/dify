@@ -37,7 +37,6 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
         documentId,
         name: newName,
       })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSaved()
       onClose()
     } catch (error) {
