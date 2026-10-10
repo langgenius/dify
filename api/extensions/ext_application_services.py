@@ -101,6 +101,7 @@ from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
 from services.annotation_query import AnnotationQuery
+from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
@@ -546,7 +547,8 @@ def build_application_services(
             ),
         ),
         annotation_reply=AnnotationReplyService(
-            apps=annotations,
+            annotations=annotations,
+            index=AnnotationVectorIndex(session_factory=database_client),
             jobs=RedisAnnotationReplyJobRepository(redis=redis),
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,

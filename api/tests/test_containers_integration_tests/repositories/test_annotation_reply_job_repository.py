@@ -16,6 +16,7 @@ from repositories.annotation_reply_job_repository import (
     annotation_reply_job_owner_key,
 )
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyJob
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @dataclass(frozen=True)
@@ -150,3 +151,112 @@ def test_creation_cannot_overwrite_another_owner(store: JobStore, different_owne
     assert store.repository.get(
         tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id
     ) == AnnotationReplyJob(job_id=store.job_id, job_status="waiting")
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("error", [None, "", "模型配置错误：embedding model is unavailable"])
+def test_finish_publishes_terminal_state_and_expiry_and_releases_its_processing_key(
+    store: JobStore, action: AnnotationReplyAction, error: str | None
+) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id)
+    processing_key = f"{action}_app_annotation_{store.app_id}"
+    error_key = f"{action}_app_annotation_error_{store.job_id}"
+    store.redis.set(processing_key, store.job_id)
+    store.redis.set(error_key, "previous attempt failed")
+
+    store.repository.finish(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id, error=error
+    )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id
+    ) == AnnotationReplyJob(
+        job_id=store.job_id, job_status="completed" if error is None else "error", error_msg=error or ""
+    )
+    assert store.redis.get(processing_key) is None
+    assert 0 < store.redis.ttl(annotation_reply_job_owner_key(action=action, job_id=store.job_id)) <= 600
+    assert 0 < store.redis.ttl(f"{action}_app_annotation_job_{store.job_id}") <= 600
+    if error is None:
+        assert store.redis.get(error_key) is None
+    else:
+        assert 0 < store.redis.ttl(error_key) <= 600
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_finish_keeps_a_newer_jobs_processing_key(store: JobStore, action: AnnotationReplyAction) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id)
+    newer_job_id = str(uuid4())
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=newer_job_id)
+    store.redis.set(f"{action}_app_annotation_{store.app_id}", newer_job_id)
+
+    store.repository.finish(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id, error=None
+    )
+
+    assert (
+        store.repository.get_processing(tenant_id=store.tenant_id, app_id=store.app_id, action=action) == newer_job_id
+    )
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=newer_job_id
+    ) == AnnotationReplyJob(job_id=newer_job_id, job_status="waiting")
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_finish_establishes_owner_for_a_legacy_queued_job(store: JobStore, action: AnnotationReplyAction) -> None:
+    store.redis.set(f"{action}_app_annotation_job_{store.job_id}", "waiting")
+
+    store.repository.finish(
+        tenant_id=store.tenant_id,
+        app_id=store.app_id,
+        action=action,
+        job_id=store.job_id,
+        error="App is no longer available",
+    )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id
+    ) == AnnotationReplyJob(job_id=store.job_id, job_status="error", error_msg="App is no longer available")
+    assert 0 < store.redis.ttl(annotation_reply_job_owner_key(action=action, job_id=store.job_id)) <= 600
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("different_owner", ["tenant", "app"])
+def test_finish_cannot_change_another_owners_job_or_release_processing(
+    store: JobStore, action: AnnotationReplyAction, different_owner: Literal["tenant", "app"]
+) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id)
+    tenant_id = str(uuid4()) if different_owner == "tenant" else store.tenant_id
+    app_id = str(uuid4()) if different_owner == "app" else store.app_id
+    processing_key = f"{action}_app_annotation_{app_id}"
+    error_key = f"{action}_app_annotation_error_{store.job_id}"
+    store.redis.set(processing_key, store.job_id)
+    store.redis.set(error_key, "original error")
+    original_processing = store.redis.get(processing_key)
+    original_error = store.redis.get(error_key)
+
+    with pytest.raises(RuntimeError, match="already belongs to another app or tenant"):
+        store.repository.finish(
+            tenant_id=tenant_id, app_id=app_id, action=action, job_id=store.job_id, error="foreign job failed"
+        )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id
+    ) == AnnotationReplyJob(job_id=store.job_id, job_status="waiting")
+    assert store.redis.get(processing_key) == original_processing
+    assert store.redis.get(error_key) == original_error
+    assert store.redis.ttl(annotation_reply_job_owner_key(action=action, job_id=store.job_id)) == -1
+
+
+def test_finish_scripts_honor_the_configured_redis_key_prefix(store: JobStore) -> None:
+    with config_overrides_context(REDIS_KEY_PREFIX=f"annotation-finish-{uuid4()}"):
+        store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id)
+        store.redis.set(f"enable_app_annotation_{store.app_id}", store.job_id)
+
+        store.repository.finish(
+            tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id, error=None
+        )
+
+        assert store.repository.get(
+            tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id
+        ) == AnnotationReplyJob(job_id=store.job_id, job_status="completed")
+        assert store.redis.get(f"enable_app_annotation_{store.app_id}") is None

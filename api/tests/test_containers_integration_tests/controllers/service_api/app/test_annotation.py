@@ -44,6 +44,7 @@ from repositories.annotation_reply_job_repository import (
 )
 from repositories.annotation_repository import AnnotationRepository
 from services.annotation_command_service import AnnotationCommandService
+from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyService
 from services.api_token_service import ApiTokenCache
 from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
@@ -209,7 +210,8 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
             delete_index=tasks["delete"].delay,
         ),
         annotation_reply=AnnotationReplyService(
-            apps=annotations,
+            annotations=annotations,
+            index=AnnotationVectorIndex(session_factory=factory),
             jobs=RedisAnnotationReplyJobRepository(redis=redis),
             enable_task=tasks["enable"].delay,
             disable_task=tasks["disable"].delay,

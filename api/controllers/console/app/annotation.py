@@ -209,7 +209,7 @@ class AnnotationReplyActionApi(Resource):
         service = application_services().annotation_reply
         try:
             if validated_action == "enable":
-                result = service.enable(
+                result = service.request_enable(
                     tenant_id=context.active_workspace_id,
                     app_id=str(app_id),
                     account_id=context.account_id,
@@ -218,7 +218,7 @@ class AnnotationReplyActionApi(Resource):
                     embedding_model_name=req_data.embedding_model_name,
                 )
             else:
-                result = service.disable(tenant_id=context.active_workspace_id, app_id=str(app_id))
+                result = service.request_disable(tenant_id=context.active_workspace_id, app_id=str(app_id))
         except AnnotationAppNotFoundError as exc:
             raise NotFoundError("App not found") from exc
         return dump_response(AnnotationJobStatusResponse, result), HTTPStatus.OK

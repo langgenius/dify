@@ -3,15 +3,16 @@
 from collections.abc import Sequence
 from itertools import batched
 from typing import override
+from uuid import uuid4
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
-from models.dataset import DatasetCollectionBinding
-from models.enums import AppStatus
+from models.dataset import Dataset, DatasetCollectionBinding
+from models.enums import AppStatus, CollectionBindingType
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from repositories.app.console_repository import find_console_app
 from services.annotation_command_service import (
@@ -22,7 +23,6 @@ from services.annotation_command_service import (
 )
 from services.annotation_query import (
     AnnotationAppNotFoundError,
-    AnnotationAppQuery,
     AnnotationEmbeddingModel,
     AnnotationHitHistoryRecord,
     AnnotationNotFoundError,
@@ -31,10 +31,19 @@ from services.annotation_query import (
     AnnotationRecord,
     AnnotationSettingRecord,
 )
+from services.annotation_reply_service import (
+    AnnotationIndexBinding,
+    AnnotationIndexEntry,
+    AnnotationReplyChangedError,
+    AnnotationReplyDisablePlan,
+    AnnotationReplyEnablePlan,
+    AnnotationReplyRevision,
+    AnnotationReplyStore,
+)
 from services.errors.message import MessageNotExistsError
 
 
-class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQuery):
+class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationReplyStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -277,6 +286,175 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQ
             setting.updated_at = naive_utc_now()
             session.flush()
             return self._setting_record(session, setting)
+
+    @override
+    def prepare_enable_reply(
+        self, *, tenant_id: str, app_id: str, provider_name: str, model_name: str
+    ) -> AnnotationReplyEnablePlan:
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            binding = session.scalar(
+                select(DatasetCollectionBinding)
+                .where(
+                    DatasetCollectionBinding.provider_name == provider_name,
+                    DatasetCollectionBinding.model_name == model_name,
+                    DatasetCollectionBinding.type == CollectionBindingType.ANNOTATION,
+                )
+                .order_by(DatasetCollectionBinding.created_at)
+                .limit(1)
+            )
+            target = (
+                self._index_binding(binding)
+                if binding is not None
+                else AnnotationIndexBinding(
+                    id=str(uuid4()),
+                    provider_name=provider_name,
+                    model_name=model_name,
+                    collection_name=Dataset.gen_collection_name_by_id(str(uuid4())),
+                )
+            )
+            setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1))
+            previous_binding = None
+            if setting is not None and setting.collection_binding_id != target.id:
+                previous = self._annotation_binding(session, binding_id=setting.collection_binding_id)
+                if previous is None:
+                    raise AnnotationSettingNotFoundError(
+                        f"Annotation collection binding {setting.collection_binding_id} is unavailable for app {app_id}"
+                    )
+                previous_binding = self._index_binding(previous)
+            annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id))
+            return AnnotationReplyEnablePlan(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                revision=self._reply_revision(setting) if setting is not None else None,
+                binding=target,
+                binding_is_new=binding is None,
+                previous_binding=previous_binding,
+                annotations=tuple(
+                    AnnotationIndexEntry(id=annotation.id, question=annotation.question_text)
+                    for annotation in annotations
+                ),
+            )
+
+    @override
+    def complete_enable_reply(
+        self, *, plan: AnnotationReplyEnablePlan, account_id: str, score_threshold: float
+    ) -> None:
+        with self._session_factory.begin() as session:
+            self._lock_app(session, tenant_id=plan.tenant_id, app_id=plan.app_id)
+            setting = self._require_reply_revision(
+                session, app_id=plan.app_id, revision=plan.revision, allow_missing=False
+            )
+            binding = session.get(DatasetCollectionBinding, plan.binding.id)
+            if binding is None:
+                if not plan.binding_is_new:
+                    raise AnnotationReplyChangedError(
+                        f"Annotation collection binding {plan.binding.id} disappeared during indexing"
+                    )
+                binding = DatasetCollectionBinding(
+                    provider_name=plan.binding.provider_name,
+                    model_name=plan.binding.model_name,
+                    collection_name=plan.binding.collection_name,
+                    type=CollectionBindingType.ANNOTATION,
+                )
+                binding.id = plan.binding.id
+                session.add(binding)
+            elif binding.type != CollectionBindingType.ANNOTATION or self._index_binding(binding) != plan.binding:
+                raise AnnotationReplyChangedError(
+                    f"Annotation collection binding {plan.binding.id} changed during indexing"
+                )
+            if setting is None:
+                session.add(
+                    AppAnnotationSetting(
+                        app_id=plan.app_id,
+                        score_threshold=score_threshold,
+                        collection_binding_id=plan.binding.id,
+                        created_user_id=account_id,
+                        updated_user_id=account_id,
+                    )
+                )
+            else:
+                setting.score_threshold = score_threshold
+                setting.collection_binding_id = plan.binding.id
+                setting.updated_user_id = account_id
+                setting.updated_at = naive_utc_now()
+
+    @override
+    def prepare_disable_reply(self, *, tenant_id: str, app_id: str) -> AnnotationReplyDisablePlan | None:
+        with self._session_factory() as session:
+            self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+            setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1))
+            if setting is None:
+                return None
+            binding = self._annotation_binding(session, binding_id=setting.collection_binding_id)
+            return AnnotationReplyDisablePlan(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                revision=self._reply_revision(setting),
+                binding=self._index_binding(binding) if binding is not None else None,
+                has_annotations=bool(session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))),
+            )
+
+    @override
+    def complete_disable_reply(self, *, plan: AnnotationReplyDisablePlan) -> None:
+        with self._session_factory.begin() as session:
+            self._lock_app(session, tenant_id=plan.tenant_id, app_id=plan.app_id)
+            setting = self._require_reply_revision(
+                session, app_id=plan.app_id, revision=plan.revision, allow_missing=True
+            )
+            if setting is not None:
+                session.delete(setting)
+
+    @staticmethod
+    def _index_binding(binding: DatasetCollectionBinding) -> AnnotationIndexBinding:
+        return AnnotationIndexBinding(
+            id=binding.id,
+            provider_name=binding.provider_name,
+            model_name=binding.model_name,
+            collection_name=binding.collection_name,
+        )
+
+    @staticmethod
+    def _annotation_binding(session: Session, *, binding_id: str) -> DatasetCollectionBinding | None:
+        return session.scalar(
+            select(DatasetCollectionBinding).where(
+                DatasetCollectionBinding.id == binding_id,
+                DatasetCollectionBinding.type == CollectionBindingType.ANNOTATION,
+            )
+        )
+
+    @staticmethod
+    def _reply_revision(setting: AppAnnotationSetting) -> AnnotationReplyRevision:
+        return AnnotationReplyRevision(
+            id=setting.id,
+            collection_binding_id=setting.collection_binding_id,
+        )
+
+    @classmethod
+    def _require_reply_revision(
+        cls, session: Session, *, app_id: str, revision: AnnotationReplyRevision | None, allow_missing: bool
+    ) -> AppAnnotationSetting | None:
+        setting = session.scalar(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1).with_for_update()
+        )
+        if setting is None and allow_missing:
+            return None
+        current = cls._reply_revision(setting) if setting is not None else None
+        if current != revision:
+            raise AnnotationReplyChangedError(f"Annotation reply settings for app {app_id} changed during indexing")
+        return setting
+
+    @staticmethod
+    def _lock_app(session: Session, *, tenant_id: str, app_id: str) -> None:
+        # A setting may not exist yet, so lock the parent to serialize worker
+        # completions for this app, including concurrent first-time enables.
+        found_app_id = session.scalar(
+            select(App.id)
+            .where(App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL)
+            .with_for_update()
+        )
+        if found_app_id is None:
+            raise AnnotationAppNotFoundError(f"App {app_id} is unavailable in workspace {tenant_id}")
 
     @staticmethod
     def _setting_record(session: Session, setting: AppAnnotationSetting) -> AnnotationSettingRecord:
