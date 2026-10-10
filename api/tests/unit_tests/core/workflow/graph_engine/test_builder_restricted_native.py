@@ -229,6 +229,35 @@ def test_native_dynamic_http_fixture_outputs_and_durable_binding(owned, body, co
     assert recorder.healthy
 
 
+@pytest.mark.parametrize(
+    "headers",
+    [
+        "Content-Type: application/json; charset=utf-8",
+        "Content-Type: APPLICATION/JSON; CHARSET=UTF-8",
+        "CONTENT-TYPE: APPLICATION/JSON",
+        "Content-Type: TEXT/PLAIN; CHARSET=UTF-8",
+        "content-type: TEXT/PLAIN",
+    ],
+)
+def test_admitted_fixed_header_case_serves_actual_native_fixture(owned, headers):
+    body = '{"sample":true}'
+    factory, _, recorder = prepare_native(
+        owned,
+        "http_text.yml",
+        samples=(fixture(body=body, content_type="application/json"),),
+        http_data={"headers": headers},
+    )
+    graph, events, error = execute_native(factory)
+    assert type(graph.nodes["http"]) is HttpRequestNode
+    assert error is None
+    assert [e.outputs for e in events if isinstance(e, GraphRunSucceededEvent)] == [{"status": 201, "text": body}]
+    assert {e.node_id for e in events if isinstance(e, NodeRunSucceededEvent)} == {"start", "http", "end"}
+    observations = receipts(owned)
+    assert len(observations) == 1
+    assert observations[0]["kind"] == "fixture_served"
+    assert recorder.healthy
+
+
 @pytest.mark.parametrize("throwing", [False, True])
 def test_reached_native_http_denial_has_durable_evidence(owned, throwing):
     factory, context, recorder = prepare_native(owned, "http_text.yml")

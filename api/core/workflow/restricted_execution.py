@@ -162,7 +162,7 @@ def _valid_request(url: Any, kwargs: Mapping[str, Any]) -> bool:
         type(headers) is not dict
         or len(headers) > 1
         or any(
-            type(k) is not str or k.lower() != "content-type" or type(v) is not str or v not in _CONTENT_TYPES
+            type(k) is not str or k.lower() != "content-type" or type(v) is not str or v.lower() not in _CONTENT_TYPES
             for k, v in headers.items()
         )
     ):
