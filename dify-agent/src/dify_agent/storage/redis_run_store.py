@@ -14,7 +14,7 @@ from typing import cast
 
 from redis.asyncio import Redis
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     RUN_EVENT_ADAPTER,
@@ -297,7 +297,7 @@ class RedisRunStore(RunEventSink):
         run_id: str,
         intent: RunCancellationIntent,
         *,
-        session_snapshot: CompositorSessionSnapshot | None = None,
+        session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         """Atomically publish cancellation after the owner runner has exited."""

@@ -1,75 +1,37 @@
-"""Agenton layer exposing one operation-scoped RuntimeLease."""
+"""Acquire an operation lease without owning Binding or Workspace retirement."""
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from typing import ClassVar
+from pydantic import BaseModel, ConfigDict
+from pydantic_ai import RunContext
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.capabilities.abstract import WrapRunHandler
+from pydantic_ai.run import AgentRunResult
 
-from agenton.layers import EmptyRuntimeState, NoLayerDeps, PlainLayer
-from typing_extensions import Self, override
-
-from dify_agent.layers.runtime.configs import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
-from dify_agent.runtime_backend import ExecutionBindingBackend, RuntimeLease
+from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
+from dify_agent.runtime.context import Deps
 from dify_agent.runtime_backend.leases import open_runtime_lease
 
 
-@dataclass(slots=True)
-class DifyRuntimeLayer(PlainLayer[NoLayerDeps, DifyRuntimeLayerConfig, EmptyRuntimeState]):
-    """Acquire/release a Binding without owning its product lifecycle."""
+class Config(DifyRuntimeLayerConfig):
+    pass
 
-    type_id: ClassVar[str | None] = DIFY_RUNTIME_LAYER_TYPE_ID
-    config: DifyRuntimeLayerConfig
-    backend: ExecutionBindingBackend
-    _lease: RuntimeLease | None = field(default=None, init=False)
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyRuntimeLayerConfig) -> Self:
-        del config
-        raise TypeError("DifyRuntimeLayer requires a server-injected ExecutionBindingBackend")
+class State(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @classmethod
-    def from_config_with_backend(
-        cls,
-        config: DifyRuntimeLayerConfig,
-        *,
-        backend: ExecutionBindingBackend,
-    ) -> Self:
-        return cls(config=DifyRuntimeLayerConfig.model_validate(config), backend=backend)
 
-    @property
-    def lease(self) -> RuntimeLease:
-        if self._lease is None:
-            raise RuntimeError("DifyRuntimeLayer lease is only available inside resource_context()")
-        return self._lease
+class Capability(AbstractCapability[Deps]):
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
 
-    @override
-    @asynccontextmanager
-    async def resource_context(self) -> AsyncGenerator[None]:
-        if self._lease is not None:
-            raise RuntimeError("DifyRuntimeLayer resource_context() is already active")
-        async with open_runtime_lease(self.backend, self.config.backend_binding_ref) as lease:
-            self._lease = lease
+    async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
+        config = Config.model_validate(ctx.deps.layers[self.name]["config"])
+        profile = ctx.deps.services.runtime_backend_profile
+        if profile is None:
+            raise ValueError("Runtime module requires a configured runtime backend.")
+        async with open_runtime_lease(profile.execution_bindings, config.backend_binding_ref) as lease:
+            ctx.deps.resources.leases[self.name] = lease
             try:
-                yield
+                return await handler()
             finally:
-                self._lease = None
-
-    @override
-    async def on_context_create(self) -> None:
-        _ = self.lease
-
-    @override
-    async def on_context_resume(self) -> None:
-        _ = self.lease
-
-    @override
-    async def on_context_suspend(self) -> None:
-        _ = self.lease
-
-    @override
-    async def on_context_delete(self) -> None:
-        _ = self.lease
-
-
-__all__ = ["DifyRuntimeLayer"]
+                del ctx.deps.resources.leases[self.name]

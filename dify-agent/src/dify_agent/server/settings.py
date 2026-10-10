@@ -2,7 +2,7 @@
 
 Outbound HTTP client settings describe the FastAPI lifespan-owned
 ``httpx.AsyncClient`` instances shared by local run tasks for plugin-daemon and
-Dify API inner calls. Layers and Agenton providers do not own those clients, so
+Dify API inner calls. Native modules borrow those clients, so
 these settings are process resource limits rather than per-run lifecycle knobs.
 Endpoint URLs and API keys stay service-specific. The Agent Stub also uses this
 settings model directly: the public Agent Stub API base URL, server secret,

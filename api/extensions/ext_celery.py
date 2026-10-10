@@ -184,7 +184,6 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
-        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
