@@ -97,6 +97,10 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_spec_mock.py
 
+      - name: Run No New Test Doubles Guard
+        if: inputs.run-python-style || inputs.run-dify-agent-style
+        run: uv run --project api python scripts/check_no_new_test_doubles.py --base-rev "${{ inputs.base-rev }}"
+
       - name: Run Type Checks
         if: inputs.run-python-style
         env:
