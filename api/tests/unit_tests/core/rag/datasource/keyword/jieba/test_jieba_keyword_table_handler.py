@@ -120,6 +120,25 @@ def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch: pytest.
     assert tfidf.extract_tags("ignored", topK=1) == ["foo"]
 
 
+def test_extract_keywords_honors_explicit_zero(monkeypatch: pytest.MonkeyPatch):
+    """An explicit max_keywords_per_chunk=0 must be passed through to jieba
+    instead of being replaced by the default 10 (`x or 10` collapses 0)."""
+    captured = {}
+
+    class _RecordingTFIDF:
+        def extract_tags(self, sentence: str, topK: int | None = 10, **kwargs):
+            captured["topK"] = topK
+            return []
+
+    analyse_module = types.ModuleType("jieba.analyse")
+    analyse_module.default_tfidf = _RecordingTFIDF()
+    _install_fake_jieba_modules(monkeypatch, analyse_module)
+
+    handler = JiebaKeywordTableHandler()
+    handler.extract_keywords("input text", max_keywords_per_chunk=0)
+
+    assert captured["topK"] == 0
+
 def test_extract_keywords_expands_subtokens():
     handler = JiebaKeywordTableHandler.__new__(JiebaKeywordTableHandler)
     handler._tfidf = SimpleNamespace(extract_tags=lambda *_args, **_kwargs: ["alpha-beta", "during", "gamma"])
