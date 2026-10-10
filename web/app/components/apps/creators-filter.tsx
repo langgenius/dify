@@ -4,6 +4,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
+  ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -86,6 +87,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
       .filter((creator): creator is CreatorOption => Boolean(creator))
   }, [creatorMap, value])
 
+  // Clears the query only. `ComboboxClear` would clear the selected creators in `multiple` mode.
   const clearCreatorQuery = useCallback(() => {
     setKeywords('')
     searchInputRef.current?.focus()
@@ -172,34 +174,31 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
             aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
             className="w-[min(280px,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))] bg-components-panel-bg-blur text-sm text-text-secondary backdrop-blur-[5px]"
           >
-            <div className="p-2 pb-1">
-              <ComboboxInputGroup className="h-8 min-h-8 px-2">
-                <ComboboxInput
-                  ref={searchInputRef}
-                  type="search"
-                  name="creator-query"
-                  enterKeyHint="search"
-                  aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-                  className="block h-4.5 grow px-1 py-0 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-                  placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-                />
-                <span
-                  aria-hidden
-                  className="order-first me-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-                />
-                {!!keywords && (
-                  <IconButton
-                    size="sm"
-                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                    className="me-0 shrink-0 text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
-                    onClick={clearCreatorQuery}
-                  >
-                    <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                  </IconButton>
-                )}
-              </ComboboxInputGroup>
-            </div>
-            <ComboboxList<CreatorOption> className="max-h-60 px-1 pt-0 pb-1">
+            <ComboboxInputGroup>
+              <span
+                aria-hidden
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
+              <ComboboxInput
+                ref={searchInputRef}
+                name="creator-query"
+                enterKeyHint="search"
+                aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+                placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+              />
+              {!!keywords && (
+                <IconButton
+                  size="sm"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="shrink-0 text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+                  onClick={clearCreatorQuery}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                </IconButton>
+              )}
+            </ComboboxInputGroup>
+            <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
+            <ComboboxList<CreatorOption> className="max-h-60">
               {(creator) => (
                 <ComboboxItem<string>
                   key={creator.id}

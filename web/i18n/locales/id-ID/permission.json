@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Izin akses",
   "accessRule.actions": "Tindakan",
-  "accessRule.addMemberAria": "Tambahkan {{name}}",
   "accessRule.addMembersTitle": "Tambahkan anggota",
   "accessRule.agentDescription": "Kelola siapa yang dapat mengakses agen ini beserta izinnya.",
   "accessRule.agentTitle": "Set izin Agen",

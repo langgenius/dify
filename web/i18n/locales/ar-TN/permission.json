@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "إذن الوصول",
   "accessRule.actions": "الإجراءات",
-  "accessRule.addMemberAria": "إضافة {{name}}",
   "accessRule.addMembersTitle": "إضافة أعضاء",
   "accessRule.agentDescription": "إدارة من يمكنه الوصول إلى هذا الوكيل وأذوناتهم.",
   "accessRule.agentTitle": "مجموعة أذونات الوكيل",

@@ -282,7 +282,9 @@ function PickerTrigger({
       className={(state) =>
         cn(
           'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
-          'hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
+          'hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+          'aria-invalid:not-data-disabled:bg-components-input-bg-destructive aria-invalid:not-data-disabled:inset-ring-1 aria-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
+          'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
           resolveClassName(className, state),
         )

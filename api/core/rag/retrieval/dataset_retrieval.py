@@ -1657,7 +1657,7 @@ class DatasetRetrieval:
         try:
             # handle invoke result
             invoke_result = cast(
-                Generator[LLMResult, None, None],
+                Generator[LLMResult],
                 model_instance.invoke_llm(
                     prompt_messages=prompt_messages,
                     model_parameters=model_config.parameters,

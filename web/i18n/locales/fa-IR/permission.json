@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "مجوز دسترسی",
   "accessRule.actions": "اقدامات",
-  "accessRule.addMemberAria": "افزودن {{name}}",
   "accessRule.addMembersTitle": "افزودن اعضا",
   "accessRule.agentDescription": "دسترسی کاربران به این عامل و مجوزهای آن‌ها را مدیریت کنید.",
   "accessRule.agentTitle": "مجموعه مجوز عامل",

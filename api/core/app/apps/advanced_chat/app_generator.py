@@ -103,7 +103,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -118,7 +118,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
         self,
@@ -132,7 +132,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
 
@@ -327,7 +327,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -422,7 +422,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -523,7 +523,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -760,11 +760,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        ChatbotAppBlockingResponse
-        | AdvancedChatPausedBlockingResponse
-        | Generator[ChatbotAppStreamResponse, None, None]
-    ):
+    ) -> ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | Generator[ChatbotAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

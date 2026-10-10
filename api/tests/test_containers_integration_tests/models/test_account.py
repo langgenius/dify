@@ -58,7 +58,7 @@ class _DBTrackingTestBase:
     _tracked: list[TrackedRow]
 
     @pytest.fixture(autouse=True)
-    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None]:
         self._tracked = []
         yield
         _cleanup_tracked_rows(db_session_with_containers, self._tracked)

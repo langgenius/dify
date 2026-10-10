@@ -266,12 +266,12 @@ describe('Blocks', () => {
       await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }),
+      screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }),
     ).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -347,7 +347,7 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(
@@ -405,7 +405,7 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     await waitFor(() =>
       expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
@@ -446,14 +446,14 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('link', {
+    const consoleLink = await screen.findByRole('menuitem', {
       name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('menuitem', {
         name: 'agentRoster.roster.nodeSelector.startFromScratch',
       }),
     )
@@ -467,7 +467,7 @@ describe('Blocks', () => {
     })
   })
 
-  it('closes the agent selector when Escape closes the combobox', async () => {
+  it('closes the agent selector when Escape closes the menu', async () => {
     const user = userEvent.setup()
     mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
@@ -504,7 +504,7 @@ describe('Blocks', () => {
       await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentRoster.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
 
     await waitFor(() => {

@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, RecipientType
 from tasks import mail_human_input_delivery_task as task_module
 
 
@@ -178,3 +179,23 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
     )
 
     assert mail.sent[0]["subject"] == "Notice BCC:attacker@example.com Alert"
+
+
+def test_parse_recipient_payload_reads_email_and_type():
+    payload = json.dumps({"email": "user@example.com", "TYPE": RecipientType.EMAIL_MEMBER.value})
+
+    assert task_module._parse_recipient_payload(payload) == ("user@example.com", RecipientType.EMAIL_MEMBER)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "not json",
+        json.dumps({"TYPE": RecipientType.EMAIL_MEMBER.value}),
+        json.dumps({"email": "user@example.com", "TYPE": "unknown-channel"}),
+        json.dumps({"email": 42, "TYPE": RecipientType.EMAIL_MEMBER.value}),
+    ],
+)
+def test_parse_recipient_payload_rejects_unusable_payloads(payload: str):
+    """Payloads the recipients layer cannot produce must degrade to a skipped recipient."""
+    assert task_module._parse_recipient_payload(payload) == (None, None)

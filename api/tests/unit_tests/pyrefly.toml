@@ -2,7 +2,7 @@ preset = "strict"
 project-includes = ["."]
 search-path = ["../.."]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.13.0"
 infer-with-first-use = true
 min-severity = "warn"
 
@@ -452,7 +452,6 @@ project-excludes = [
   "core/rag/indexing/processor/test_qa_index_processor.py",
   "core/rag/indexing/test_index_processor.py",
   "core/rag/indexing/test_index_processor_base.py",
-  "core/rag/pipeline/test_queue.py",
   "core/rag/rerank/test_reranker.py",
   "core/rag/retrieval/test_dataset_retrieval.py",
   "core/rag/retrieval/test_dataset_retrieval_methods.py",
@@ -475,7 +474,6 @@ project-excludes = [
   "core/telemetry/test_gateway_integration.py",
   "core/test_file.py",
   "core/test_model_manager.py",
-  "core/test_provider_configuration.py",
   "core/test_provider_manager.py",
   "core/test_trigger_debug_event_selectors.py",
   "core/tools/entities/test_api_entities.py",
@@ -601,8 +599,6 @@ project-excludes = [
   "enterprise/telemetry/test_event_handlers.py",
   "enterprise/telemetry/test_exporter.py",
   "enterprise/telemetry/test_gateway.py",
-  "enterprise/telemetry/test_metric_handler.py",
-  "enums/test_quota_type.py",
   "events/event_handlers/test_clean_when_document_deleted.py",
   "events/event_handlers/test_delete_tool_parameters_cache_when_sync_draft_workflow.py",
   "events/test_app_event_signals.py",
@@ -658,7 +654,6 @@ project-excludes = [
   "libs/test_oauth_base.py",
   "libs/test_oauth_bearer.py",
   "libs/test_oauth_bearer_rate_limit_ordering.py",
-  "libs/test_oauth_clients.py",
   "libs/test_orjson.py",
   "libs/test_pagination.py",
   "libs/test_pandas.py",
@@ -735,7 +730,6 @@ project-excludes = [
   "services/document_service_validation.py",
   "services/enterprise/test_account_deletion_sync.py",
   "services/enterprise/test_app_permitted_service.py",
-  "services/enterprise/test_enterprise_service.py",
   "services/enterprise/test_plugin_manager_service.py",
   "services/enterprise/test_rbac_service.py",
   "services/enterprise/test_traceparent_propagation.py",

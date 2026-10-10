@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "액세스 권한",
   "accessRule.actions": "작업",
-  "accessRule.addMemberAria": "{{name}} 추가",
   "accessRule.addMembersTitle": "멤버 추가",
   "accessRule.agentDescription": "이 에이전트에 접근할 수 있는 멤버와 권한을 관리합니다.",
   "accessRule.agentTitle": "에이전트 권한 집합",

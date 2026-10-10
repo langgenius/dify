@@ -18,6 +18,8 @@ import {
 import { parsePlacement } from '../placement'
 
 type SelectActions = BaseSelect.Root.Actions
+type SelectChangeEventDetails = BaseSelect.Root.ChangeEventDetails
+type SelectOpenChangeEventDetails = BaseSelect.Root.OpenChangeEventDetails
 
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
@@ -68,8 +70,9 @@ const selectTriggerVariants = cva(
     'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+    'data-invalid:not-data-disabled:bg-components-input-bg-destructive data-invalid:not-data-disabled:inset-ring-1 data-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
     'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
+    'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:not-data-invalid:bg-components-input-bg-normal data-readonly:not-data-disabled:not-data-invalid:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
     'data-disabled:data-placeholder:text-components-input-text-disabled',
   ],
@@ -290,6 +293,7 @@ export {
 
 export type {
   SelectActions,
+  SelectChangeEventDetails,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,
@@ -298,6 +302,7 @@ export type {
   SelectItemTextProps,
   SelectLabelProps,
   SelectListProps,
+  SelectOpenChangeEventDetails,
   SelectPopupProps,
   SelectPortalProps,
   SelectPositionerProps,
