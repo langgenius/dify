@@ -33,10 +33,10 @@ describe('getPurifyHref', () => {
 
 describe('fetchWithRetry', () => {
   it('returns the resolved value or the final rejection', async () => {
-    await expect(fetchWithRetry(Promise.resolve('ok'))).resolves.toEqual([null, 'ok'])
+    await expect(fetchWithRetry(() => Promise.resolve('ok'))).resolves.toEqual([null, 'ok'])
 
     const error = new Error('failed')
-    await expect(fetchWithRetry(Promise.reject(error), 1)).resolves.toEqual([error])
+    await expect(fetchWithRetry(() => Promise.reject(error), 1)).resolves.toEqual([error])
   })
 })
 
@@ -59,4 +59,28 @@ describe('provider normalization', () => {
     expect(canFindTool('langgenius/tool-id_tool/tool-id', 'tool-id')).toBe(true)
     expect(canFindTool('provider-a', 'tool-b')).toBe(false)
   })
+})
+
+it('reissues a failed operation rather than reawaiting its rejected promise', async () => {
+  const request = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('temporary network failure'))
+    .mockResolvedValue('ok')
+  expect(await fetchWithRetry(request, 1)).toEqual([null, 'ok'])
+  expect(request).toHaveBeenCalledTimes(2)
+})
+
+it('stops after the configured retries and returns the last error', async () => {
+  const error = new Error('offline')
+  const request = vi.fn().mockRejectedValue(error)
+  expect(await fetchWithRetry(request, 2)).toEqual([error])
+  expect(request).toHaveBeenCalledTimes(3)
+})
+it('handles synchronous operation failures', async () => {
+  const error = new Error('synchronous failure')
+  expect(
+    await fetchWithRetry(() => {
+      throw error
+    }, 0),
+  ).toEqual([error])
 })

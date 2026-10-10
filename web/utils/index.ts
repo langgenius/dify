@@ -31,10 +31,10 @@ export const getPurifyHref = (href: string) => {
 }
 
 export async function fetchWithRetry<T = any>(
-  fn: Promise<T>,
+  fn: () => Promise<T>,
   retries = 3,
 ): Promise<[Error] | [null, T]> {
-  const [error, res] = await asyncRunSafe(fn)
+  const [error, res] = await asyncRunSafe(Promise.resolve().then(fn))
   if (error) {
     if (retries > 0) {
       const res = await fetchWithRetry(fn, retries - 1)
