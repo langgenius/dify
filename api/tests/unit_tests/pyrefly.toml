@@ -432,7 +432,6 @@ project-excludes = [
   "core/rag/datasource/vdb/test_field.py",
   "core/rag/datasource/vdb/test_vector_base.py",
   "core/rag/datasource/vdb/test_vector_factory.py",
-  "core/rag/embedding/test_cached_embedding.py",
   "core/rag/embedding/test_embedding_base.py",
   "core/rag/embedding/test_embedding_service.py",
   "core/rag/extractor/blob/test_blob.py",
