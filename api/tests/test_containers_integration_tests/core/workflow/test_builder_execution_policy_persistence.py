@@ -17,6 +17,7 @@ from core.dify_builder.execution_policy import (
     TrustedExecutionCompletion,
 )
 from models.dify_builder import DifyBuilderExecutionRequest
+from models.workflow import Workflow
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import configure
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
@@ -27,13 +28,16 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_restrict
 def prepare(owner, http=False):
     inputs = configure(owner, "http_text.yml" if http else "scalar.yml")
     factory, actor, app, workflow, sid, tid = owner
+    with factory() as session:
+        committed_workflow = session.get(Workflow, workflow.id)
+        assert committed_workflow is not None
     service = BuilderExecutionPolicyService(factory)
     context = service.prepare(
         session_id=sid,
         test_input_id=tid,
         app_id=app.id,
         actor=actor,
-        workflow=workflow,
+        workflow=committed_workflow,
         submitted_inputs=inputs,
         effective_inputs=inputs,
     )
