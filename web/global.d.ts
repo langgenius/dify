@@ -17,6 +17,10 @@ declare global {
   interface Window {
     gtag?: Gtag
     dataLayer?: unknown[]
+    MonacoEnvironment?: {
+      getWorkerUrl?: (workerId: string, label: string) => string
+      getWorker?: (workerId: string, label: string) => Worker
+    }
     /**
      * Optional analytics bridge injected by the standalone Marketplace host.
      * Absent in Dify console builds; see `utils/marketplace-site-track.ts`.
