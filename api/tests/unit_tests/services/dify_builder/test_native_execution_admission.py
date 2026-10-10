@@ -207,7 +207,7 @@ def test_port_preserves_worker_policy_refusal_without_allocating_native_result(o
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
 
     def generate(**kwargs):
-        kwargs["builder_execution_admit"].on_refusal(BuilderExecutionPolicyError("restricted_capabilities_unavailable"))
+        kwargs["builder_execution_admit"].on_refusal(BuilderExecutionPolicyError("unsupported_node_implementation"))
         return iter([{"event": "error", "code": "invalid_param", "message": "policy error"}])
 
     monkeypatch.setattr(module.AppGenerateService, "generate", generate)
@@ -215,7 +215,7 @@ def test_port_preserves_worker_policy_refusal_without_allocating_native_result(o
         app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
     )
     assert result.dify_run_id == ""
-    assert result.execution_refusal.reason_code == "restricted_capabilities_unavailable"
+    assert result.execution_refusal.reason_code == "unsupported_node_implementation"
     assert result.error == ""
 
 
