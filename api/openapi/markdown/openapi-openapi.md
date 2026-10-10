@@ -2351,20 +2351,6 @@ Enum representing the deployment edition of the platform.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
-#### DraftChanges
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| edges_added | [ string ] |  | Yes |
-| edges_removed | [ string ] |  | Yes |
-| env_added | [ string ] |  | Yes |
-| env_removed | [ string ] |  | Yes |
-| features_changed | boolean |  | Yes |
-| nodes_added | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
-| nodes_changed | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
-| nodes_removed | [ [NodeChangeRow](#nodechangerow) ] |  | Yes |
-| published | boolean | false when the app was never published; then everything counts as added | Yes |
-
 #### DraftWorkflowRunPayload
 
 | Name | Type | Description | Required |
@@ -2738,7 +2724,7 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. | Yes |
 | model | string | Model name, as in get.model | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 | name | string |  | No |
@@ -2747,7 +2733,7 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
 | model | string | Model name, as in get.model | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 | name | string |  | No |
@@ -2833,7 +2819,7 @@ Enum class for model type.
 | reranking_enable | boolean |  | No |
 | top_k | integer, <br>**Default:** 4 |  | No |
 
-#### NodeChangeRow
+#### NodeChange
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -3012,14 +2998,14 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. | Yes |
 | name | string | Credential name; the server makes one when absent | No |
 
 #### ProviderCredentialUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
 | name | string |  | No |
 
 #### PublishPayload
@@ -3047,7 +3033,7 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| changes | [DraftChanges](#draftchanges) |  | Yes |
+| changes | [WorkflowDiff](#workflowdiff) |  | Yes |
 | checks | [ [ReleaseCheckRow](#releasecheckrow) ] |  | Yes |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | issues | [ [DslIssueRow](#dslissuerow) ] |  | Yes |
@@ -3217,14 +3203,14 @@ types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. | Yes |
 | name | string |  | No |
 
 #### ToolCredentialUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| credentials | object | Secret values, keyed by the field names in credential_form of the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
 | name | string |  | No |
 
 #### ToolInputType
@@ -3438,6 +3424,20 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | access_token | string |  | No |
 | app_base_url | string |  | Yes |
 | url | string |  | No |
+
+#### WorkflowDiff
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edges_added | [ string ] |  | Yes |
+| edges_removed | [ string ] |  | Yes |
+| env_added | [ string ] |  | Yes |
+| env_removed | [ string ] |  | Yes |
+| features_changed | boolean |  | Yes |
+| nodes_added | [ [NodeChange](#nodechange) ] |  | Yes |
+| nodes_changed | [ [NodeChange](#nodechange) ] |  | Yes |
+| nodes_removed | [ [NodeChange](#nodechange) ] |  | Yes |
+| published | boolean | false when the app was never published; then everything counts as added | Yes |
 
 #### WorkflowRunData
 

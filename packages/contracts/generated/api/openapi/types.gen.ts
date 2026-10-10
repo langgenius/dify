@@ -443,18 +443,6 @@ export type DeviceTokenResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
-export type DraftChanges = {
-  edges_added: Array<string>
-  edges_removed: Array<string>
-  env_added: Array<string>
-  env_removed: Array<string>
-  features_changed: boolean
-  nodes_added: Array<NodeChangeRow>
-  nodes_changed: Array<NodeChangeRow>
-  nodes_removed: Array<NodeChangeRow>
-  published: boolean
-}
-
 export type DraftWorkflowRunPayload = {
   attachments?: Array<Blob | File> | null
   files?: {
@@ -816,7 +804,7 @@ export type MultipleRetrievalFragment = {
   top_k?: number
 }
 
-export type NodeChangeRow = {
+export type NodeChange = {
   fields: Array<string>
   id: string
   title: string
@@ -854,6 +842,7 @@ export type NodeTypeRow = {
 
 export type OpenApiErrorCode =
   | 'agent_not_published'
+  | 'app_mode_mismatch'
   | 'app_unavailable'
   | 'bad_gateway'
   | 'bad_request'
@@ -1040,7 +1029,7 @@ export type PublishResponse = {
 export type ReleaseCheckName = 'draft_valid' | 'tested'
 
 export type ReleaseCheckResponse = {
-  changes: DraftChanges
+  changes: WorkflowDiff
   checks: Array<ReleaseCheckRow>
   hints?: Array<Hint>
   issues: Array<DslIssueRow>
@@ -1319,6 +1308,18 @@ export type WebAppToken = {
   access_token?: string | null
   app_base_url: string
   url?: string | null
+}
+
+export type WorkflowDiff = {
+  edges_added: Array<string>
+  edges_removed: Array<string>
+  env_added: Array<string>
+  env_removed: Array<string>
+  features_changed: boolean
+  nodes_added: Array<NodeChange>
+  nodes_changed: Array<NodeChange>
+  nodes_removed: Array<NodeChange>
+  published: boolean
 }
 
 export type WorkflowRunData = {

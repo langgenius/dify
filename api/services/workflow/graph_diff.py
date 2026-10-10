@@ -28,7 +28,7 @@ class NodeChange(BaseModel):
     id: str
     type: str
     title: str
-    fields: list[str] = Field(default_factory=list)
+    fields: list[str]
 
 
 class WorkflowDiff(BaseModel):

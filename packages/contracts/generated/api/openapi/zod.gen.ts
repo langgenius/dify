@@ -1068,28 +1068,13 @@ export const zKnowledgeBaseListResponse = z.object({
 })
 
 /**
- * NodeChangeRow
+ * NodeChange
  */
-export const zNodeChangeRow = z.object({
+export const zNodeChange = z.object({
   fields: z.array(z.string()),
   id: z.string(),
   title: z.string(),
   type: z.string(),
-})
-
-/**
- * DraftChanges
- */
-export const zDraftChanges = z.object({
-  edges_added: z.array(z.string()),
-  edges_removed: z.array(z.string()),
-  env_added: z.array(z.string()),
-  env_removed: z.array(z.string()),
-  features_changed: z.boolean(),
-  nodes_added: z.array(zNodeChangeRow),
-  nodes_changed: z.array(zNodeChangeRow),
-  nodes_removed: z.array(zNodeChangeRow),
-  published: z.boolean(),
 })
 
 /**
@@ -1138,6 +1123,7 @@ export const zNodeTypeListResponse = z.object({
  */
 export const zOpenApiErrorCode = z.enum([
   'agent_not_published',
+  'app_mode_mismatch',
   'app_unavailable',
   'bad_gateway',
   'bad_request',
@@ -1420,18 +1406,6 @@ export const zReleaseCheckRow = z.object({
 export const zReleaseState = z.object({
   service_api_enabled: z.boolean(),
   webapp_enabled: z.boolean(),
-})
-
-/**
- * ReleaseCheckResponse
- */
-export const zReleaseCheckResponse = z.object({
-  changes: zDraftChanges,
-  checks: z.array(zReleaseCheckRow),
-  hints: z.array(zHint).optional(),
-  issues: z.array(zDslIssueRow),
-  ready: z.boolean(),
-  state: zReleaseState,
 })
 
 /**
@@ -1857,6 +1831,33 @@ export const zWebAppToken = z.object({
   access_token: z.string().nullish(),
   app_base_url: z.string(),
   url: z.string().nullish(),
+})
+
+/**
+ * WorkflowDiff
+ */
+export const zWorkflowDiff = z.object({
+  edges_added: z.array(z.string()),
+  edges_removed: z.array(z.string()),
+  env_added: z.array(z.string()),
+  env_removed: z.array(z.string()),
+  features_changed: z.boolean(),
+  nodes_added: z.array(zNodeChange),
+  nodes_changed: z.array(zNodeChange),
+  nodes_removed: z.array(zNodeChange),
+  published: z.boolean(),
+})
+
+/**
+ * ReleaseCheckResponse
+ */
+export const zReleaseCheckResponse = z.object({
+  changes: zWorkflowDiff,
+  checks: z.array(zReleaseCheckRow),
+  hints: z.array(zHint).optional(),
+  issues: z.array(zDslIssueRow),
+  ready: z.boolean(),
+  state: zReleaseState,
 })
 
 /**

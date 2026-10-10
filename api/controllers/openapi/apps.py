@@ -143,11 +143,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
         except AppUnavailableError:
             input_schema = dict(EMPTY_INPUT_SCHEMA)
 
-    return AppDescribeResponse(
-        info=info,
-        parameters=parameters,
-        input_schema=input_schema,
-    )
+    return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
 
 
 @openapi_ns.route("/apps/<string:app_id>")

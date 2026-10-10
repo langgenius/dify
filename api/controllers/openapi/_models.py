@@ -15,6 +15,7 @@ from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
+from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes
@@ -841,7 +842,7 @@ class NodeTypeDetailResponse(BaseModel):
 
     type: str
     version: str
-    schema_: dict[str, Any] = Field(alias="schema", serialization_alias="schema")
+    schema_: dict[str, Any] = Field(alias="schema")
     default_config: dict[str, Any]
 
 
@@ -1093,10 +1094,7 @@ class ModelProviderDetailResponse(ModelProviderRow, Hinted):
     custom_models: list[CustomModelRow]
 
 
-_CREDENTIALS_DESCRIPTION: Final = (
-    "Secret values. Pass with --credentials @- (stdin) or @file, never inline. "
-    "Field names come from credential_form in the describe op."
-)
+_CREDENTIALS_DESCRIPTION: Final = "Secret values, keyed by the field names in credential_form of the describe op."
 _CREDENTIALS_UPDATE_DESCRIPTION: Final = (
     _CREDENTIALS_DESCRIPTION + " Send [__HIDDEN__] for a secret you keep unchanged."
 )
@@ -1152,10 +1150,10 @@ class ToolCredentialUpdatePayload(BaseModel):
 class ToolSource(StrEnum):
     """Tool provider types a workflow tool node can call; values match the node's provider_type."""
 
-    BUILTIN = "builtin"
-    WORKFLOW = "workflow"
-    API = "api"
-    MCP = "mcp"
+    BUILTIN = ToolProviderType.BUILT_IN.value
+    WORKFLOW = ToolProviderType.WORKFLOW.value
+    API = ToolProviderType.API.value
+    MCP = ToolProviderType.MCP.value
 
 
 class ToolListQuery(PageQuery):

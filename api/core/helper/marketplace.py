@@ -97,27 +97,40 @@ class MarketplaceSearchPage(BaseModel):
     total: int
 
 
+class _MarketplaceSearchResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    data: MarketplaceSearchPage
+
+
+class MarketplaceSearchUnavailableError(Exception):
+    """The marketplace could not be reached or answered with something other than a search page."""
+
+
 def search_plugins(*, query: str, category: str, page: int, page_size: int) -> MarketplaceSearchPage:
     """The marketplace's own search, with the body the web plugin page sends."""
     url = str(marketplace_api_url / "api/v1/plugins/search/advanced")
-    response = httpx.post(
-        url,
-        json={
-            "page": page,
-            "page_size": page_size,
-            "query": query,
-            "category": category,
-            "sort_by": "install_count",
-            "sort_order": "DESC",
-            "tags": [],
-            "exclude": [],
-            "type": "plugin",
-        },
-        headers={"X-Dify-Version": dify_config.project.version},
-        timeout=MARKETPLACE_TIMEOUT,
-    )
-    response.raise_for_status()
-    return MarketplaceSearchPage.model_validate(response.json()["data"])
+    try:
+        response = httpx.post(
+            url,
+            json={
+                "page": page,
+                "page_size": page_size,
+                "query": query,
+                "category": category,
+                "sort_by": "install_count",
+                "sort_order": "DESC",
+                "tags": [],
+                "exclude": [],
+                "type": "plugin",
+            },
+            headers={"X-Dify-Version": dify_config.project.version},
+            timeout=MARKETPLACE_TIMEOUT,
+        )
+        response.raise_for_status()
+        return _MarketplaceSearchResponse.model_validate_json(response.content).data
+    except (httpx.HTTPError, ValueError) as error:
+        raise MarketplaceSearchUnavailableError(str(error)) from error
 
 
 def record_install_plugin_event(plugin_unique_identifier: str) -> None:

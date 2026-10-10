@@ -47,7 +47,7 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.model_providers import ModelProviderApi
 from controllers.openapi.tool_providers import ToolProviderApi
-from core.helper.marketplace import search_plugins
+from core.helper.marketplace import MarketplaceSearchUnavailableError, search_plugins
 from core.plugin.entities.plugin import PluginEntity
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalError
@@ -172,7 +172,7 @@ class MarketplacePluginsApi(Resource):
                 page=query.page,
                 page_size=query.limit,
             )
-        except (httpx.HTTPError, KeyError, ValueError) as error:
+        except MarketplaceSearchUnavailableError as error:
             raise MarketplaceUnavailable() from error
         installed = _installed_by_id(ctx.workspace.id)
         language = ctx.account.interface_language
