@@ -5,7 +5,7 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, func, select
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
@@ -437,6 +437,15 @@ class AgentMessageApi(Resource):
         return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
+def _older_than(message: Message) -> ColumnElement[bool]:
+    # Keyset cursor on (created_at, id). Messages sent within the same second share
+    # created_at, so comparing created_at alone skips the other rows in that second.
+    return or_(
+        Message.created_at < message.created_at,
+        and_(Message.created_at == message.created_at, Message.id < message.id),
+    )
+
+
 def _list_chat_messages(
     *,
     args: ChatMessagesQuery,
@@ -476,17 +485,16 @@ def _list_chat_messages(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
-                Message.created_at < first_message.created_at,
-                Message.id != first_message.id,
+                _older_than(first_message),
             )
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(args.limit)
         ).all()
     else:
         history_messages = session.scalars(
             select(Message)
             .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(args.limit)
         ).all()
 
@@ -498,8 +506,7 @@ def _list_chat_messages(
             select(
                 exists().where(
                     Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+                    _older_than(current_page_first_message),
                 )
             )
         )
