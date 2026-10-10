@@ -3014,7 +3014,9 @@ export default interface Resources {
     'studio.accessControl.paywallDescription': 'Restrict this app to IP addresses you trust.'
     'studio.accessControl.paywallTitle': 'Access Control'
     'studio.accessControl.policyChanged': 'This policy changed. Review the warning before saving again.'
-    'studio.accessControl.policySummaryMany': 'Allows {{listed}} and {{count}} more addresses'
+    'studio.accessControl.policySummaryMany':
+      | 'Allows {{listed}} and {{count}} more address'
+      | 'Allows {{listed}} and {{count}} more addresses'
     'studio.accessControl.policySummaryNone': 'Allows no addresses'
     'studio.accessControl.policySummaryOne': 'Allows {{address}}'
     'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}'

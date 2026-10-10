@@ -9,7 +9,14 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createInstance } from 'i18next'
+import { initReactI18next } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import appOverviewTranslations from '@/i18n/locales/en-US/app-overview.json'
+import commonTranslations from '@/i18n/locales/en-US/common.json'
+import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
+import navigationTranslations from '@/i18n/locales/en-US/navigation.json'
+import toolsTranslations from '@/i18n/locales/en-US/tools.json'
 import { consoleQuery } from '@/service/console'
 import {
   createNetworkAccessGroupFixture,
@@ -23,29 +30,7 @@ import { AccessControlEntry } from '..'
 const mockSetPricing = vi.fn()
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 const mockSetSettingsDestination = vi.fn()
-const accessControlTranslations = vi.hoisted(() => ({
-  'operation.back': 'Back',
-  'operation.cancel': 'Cancel',
-  'operation.close': 'Close',
-  'operation.save': 'Save',
-  'overview.apiInfo.title': 'Backend Service API',
-  'overview.appInfo.title': 'Web App',
-  'mcp.server.title': 'MCP Server',
-  'settings.ipPolicies': 'IP Policies',
-  'settings.ipPolicyAddEntry': 'Add',
-  'settings.ipPolicyAllowlist': 'Allowlist',
-  'settings.ipPolicyAllowlistHelp':
-    'Single addresses (203.0.113.42) or CIDR ranges (10.0.0.0/8). IPv4 and IPv6 are both accepted.',
-  'settings.ipPolicyCreate': 'Create',
-  'settings.ipPolicyDialogDescription':
-    'Specify which IP addresses or ranges can access your apps.',
-  'settings.ipPolicyName': 'Name',
-  'settings.ipPolicyNamePlaceholder': 'e.g. Internal Network',
-  'settings.ipPolicyNewTitle': 'New IP Policy',
-  'settings.ipPolicyRemoveEntry': 'Remove entry',
-  'settings.trigger': 'Trigger',
-  'operation.edit': 'Edit',
-}))
+vi.unmock('react-i18next')
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
@@ -56,17 +41,6 @@ vi.mock('nuqs', async (importOriginal) => {
       return [null, mockSetSettingsDestination]
     },
   }
-})
-
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: deploymentTranslations } = await import('@/i18n/locales/en-US/deployments.json')
-  const { default: commonTranslations } = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({
-    ...commonTranslations,
-    ...accessControlTranslations,
-    ...deploymentTranslations,
-  })
 })
 
 const renderEntry = ({
@@ -136,7 +110,24 @@ const metadataResponse = (request: Request) => {
     return Response.json({ client_ip: '203.0.113.42' })
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await createInstance()
+    .use(initReactI18next)
+    .init({
+      lng: 'en-US',
+      fallbackLng: 'en-US',
+      keySeparator: false,
+      interpolation: { escapeValue: false },
+      resources: {
+        'en-US': {
+          appOverview: appOverviewTranslations,
+          common: commonTranslations,
+          deployments: deploymentTranslations,
+          navigation: navigationTranslations,
+          tools: toolsTranslations,
+        },
+      },
+    })
   const fallback = vi.mocked(globalThis.fetch).getMockImplementation()!
   vi.mocked(globalThis.fetch).mockImplementation(
     async (input, init) => metadataResponse(new Request(input, init)) ?? fallback(input, init),
@@ -555,11 +546,23 @@ describe('AccessControlEntry', () => {
     expect(mockSetPricing).not.toHaveBeenCalled()
   })
 
-  it('shows the saved binding status for a paid workspace', async () => {
+  it.each([
+    { addressCount: 3, remainder: '1 more address' },
+    { addressCount: 4, remainder: '2 more addresses' },
+  ])('shows a saved policy summary with $remainder', async ({ addressCount, remainder }) => {
     const user = userEvent.setup()
     renderEntry({
       plan: 'professional',
-      groups: [createNetworkAccessGroupFixture()],
+      groups: [
+        createNetworkAccessGroupFixture({
+          allowed_cidrs: [
+            '203.0.113.42/32',
+            '198.51.100.0/24',
+            '192.0.2.1/32',
+            '192.0.2.2/32',
+          ].slice(0, addressCount),
+        }),
+      ],
       binding: {
         id: 'binding-1',
         tenant_id: 'workspace-1',
@@ -576,6 +579,9 @@ describe('AccessControlEntry', () => {
     expect(within(getChip()).getByText('On')).toBeInTheDocument()
     await user.click(getChip())
     expect(screen.getByText('Restricted to Internal Network')).toBeInTheDocument()
+    expect(
+      screen.getByText(`Allows 203.0.113.42/32, 198.51.100.0/24 and ${remainder}`),
+    ).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeChecked()
   })
 

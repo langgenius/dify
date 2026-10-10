@@ -3,8 +3,15 @@ import type { AccessControlDraft, AccessControlPolicy } from '../draft'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createInstance } from 'i18next'
 import { useState } from 'react'
+import { initReactI18next } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
+import appOverviewTranslations from '@/i18n/locales/en-US/app-overview.json'
+import commonTranslations from '@/i18n/locales/en-US/common.json'
+import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
+import navigationTranslations from '@/i18n/locales/en-US/navigation.json'
+import toolsTranslations from '@/i18n/locales/en-US/tools.json'
 import { render } from '@/test/console/render'
 import { AccessControlConfigPanel } from '../config-panel'
 import { createDefaultAccessControlDraft } from '../draft'
@@ -22,20 +29,26 @@ const policies: AccessControlPolicy[] = [
   },
 ]
 
-const translations = vi.hoisted(() => ({
-  'operation.cancel': 'Cancel',
-  'operation.save': 'Save',
-  'overview.apiInfo.title': 'Backend Service API',
-  'overview.appInfo.title': 'Web App',
-  'mcp.server.title': 'MCP Server',
-  'settings.ipPolicies': 'IP Policies',
-  'settings.trigger': 'Trigger',
-}))
+vi.unmock('react-i18next')
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: deploymentTranslations } = await import('@/i18n/locales/en-US/deployments.json')
-  return createReactI18nextMock({ ...translations, ...deploymentTranslations })
+beforeEach(async () => {
+  await createInstance()
+    .use(initReactI18next)
+    .init({
+      lng: 'en-US',
+      fallbackLng: 'en-US',
+      keySeparator: false,
+      interpolation: { escapeValue: false },
+      resources: {
+        'en-US': {
+          appOverview: appOverviewTranslations,
+          common: commonTranslations,
+          deployments: deploymentTranslations,
+          navigation: navigationTranslations,
+          tools: toolsTranslations,
+        },
+      },
+    })
 })
 
 function PanelHarness({
@@ -46,6 +59,7 @@ function PanelHarness({
   onManagePolicies = vi.fn(),
   canManagePolicies = true,
   readOnly = false,
+  availablePolicies = policies,
 }: {
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   initialDraft?: AccessControlDraft
@@ -54,6 +68,7 @@ function PanelHarness({
   onManagePolicies?: () => void
   canManagePolicies?: boolean
   readOnly?: boolean
+  availablePolicies?: AccessControlPolicy[]
 }) {
   const [draft, setDraft] = useState(initialDraft)
   const onCancel = vi.fn()
@@ -68,7 +83,7 @@ function PanelHarness({
           appIcon={{}}
           canManagePolicies={canManagePolicies}
           readOnly={readOnly}
-          policies={policies}
+          policies={availablePolicies}
           ipCheck={ipCheck}
           onCancel={onCancel}
           onCreatePolicy={onCreatePolicy}
@@ -102,26 +117,40 @@ describe('AccessControlConfigPanel', () => {
     expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('enables save after a policy is selected', async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn()
-    render(<PanelHarness onSave={onSave} />)
+  it.each([
+    { addressCount: 3, remainder: '1 more address' },
+    { addressCount: 4, remainder: '2 more addresses' },
+  ])(
+    'summarizes $remainder and enables save after selecting a policy',
+    async ({ addressCount, remainder }) => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <PanelHarness
+          availablePolicies={policies.map((policy) => ({
+            ...policy,
+            allowed_cidrs: policy.allowed_cidrs.slice(0, addressCount),
+          }))}
+          onSave={onSave}
+        />,
+      )
 
-    await user.click(await screen.findByRole('option', { name: /Internal Network/ }))
+      await user.click(await screen.findByRole('option', { name: /Internal Network/ }))
 
-    expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
-    expect(
-      screen.getByText('Allows 203.0.113.42/32, 198.51.100.0/24 and 2 more addresses'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+      expect(screen.queryByText('Please select an IP policy.')).not.toBeInTheDocument()
+      expect(
+        screen.getByText(`Allows 203.0.113.42/32, 198.51.100.0/24 and ${remainder}`),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      expect(screen.getByRole('switch', { name: 'Web App' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
 
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave).toHaveBeenCalledTimes(1)
-  })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(onSave).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it.each([null, 'internal-network'])(
     'opens policy creation from the policy list with selected policy %s',
