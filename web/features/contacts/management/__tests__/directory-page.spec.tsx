@@ -4,7 +4,7 @@ import type { ContactsManagementRepository } from '../repository'
 import type { ContactIMChannel, ContactIMIdentity, ContactView } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
@@ -64,7 +64,54 @@ async function findLoadedDetails(content: string) {
 }
 
 describe('ContactsDirectoryPage', () => {
+  it('keeps loaded contact photos visible while refreshed signatures load after a name change', async () => {
+    const complete = vi
+      .spyOn(HTMLImageElement.prototype, 'complete', 'get')
+      .mockImplementation(function (this: HTMLImageElement) {
+        return !this.src.includes('nonce=new')
+      })
+    const naturalWidth = vi
+      .spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get')
+      .mockReturnValue(128)
+    const alice = 'https://example.com/files/alice/file-preview'
+    const bob = 'https://example.com/files/bob/file-preview'
+
+    try {
+      const { rerender } = render(
+        <>
+          <ContactAvatar name="Alice" avatar={`${alice}?nonce=old`} />
+          <ContactAvatar name="Bob" avatar={`${bob}?nonce=old`} />
+        </>,
+      )
+      const alicePhoto = await screen.findByRole('img', { name: 'Alice' })
+      const bobPhoto = await screen.findByRole('img', { name: 'Bob' })
+
+      rerender(
+        <>
+          <ContactAvatar name="Alice renamed" avatar={`${alice}?nonce=new`} />
+          <ContactAvatar name="Bob" avatar={`${bob}?nonce=new`} />
+        </>,
+      )
+
+      expect(alicePhoto).toBeVisible()
+      expect(bobPhoto).toBeVisible()
+      expect(screen.queryByText('A')).not.toBeInTheDocument()
+      expect(screen.queryByText('B')).not.toBeInTheDocument()
+      fireEvent.load(alicePhoto)
+      fireEvent.load(bobPhoto)
+      expect(await screen.findByRole('img', { name: 'Alice renamed' })).toHaveAttribute(
+        'src',
+        `${alice}?nonce=new`,
+      )
+      expect(screen.getByRole('img', { name: 'Bob' })).toHaveAttribute('src', `${bob}?nonce=new`)
+    } finally {
+      complete.mockRestore()
+      naturalWidth.mockRestore()
+    }
+  })
+
   it('keeps contact initials hidden while loading without changing shared avatar fallback behavior', async () => {
+    const complete = vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(false)
     const OriginalImage = window.Image
     const images: HTMLImageElement[] = []
     window.Image = class extends OriginalImage {
@@ -85,23 +132,32 @@ describe('ContactsDirectoryPage', () => {
           <Avatar name="Shared" avatar="https://example.com/shared-avatar.png" />
         </>,
       )
-      await waitFor(() => expect(images).toHaveLength(2))
+      await waitFor(() => expect(images).toHaveLength(1))
       expect(screen.queryByText('A')).not.toBeInTheDocument()
       expect(screen.getByText('S')).toBeInTheDocument()
 
-      act(() => images[0]!.dispatchEvent(new Event('error')))
+      fireEvent.error(screen.getByAltText('Alice'))
       expect(await screen.findByText('A')).toBeInTheDocument()
 
       rerender(<ContactAvatar name="Alice" avatar="https://example.com/new-avatar.png" />)
-      await waitFor(() => expect(images).toHaveLength(3))
       expect(screen.queryByText('A')).not.toBeInTheDocument()
-      act(() => images[2]!.dispatchEvent(new Event('load')))
-      expect(await screen.findByRole('img', { name: 'Alice' })).toBeInTheDocument()
+      fireEvent.load(screen.getByAltText('Alice'))
+      const loadedPhoto = await screen.findByRole('img', { name: 'Alice' })
+
+      rerender(<ContactAvatar name="Alice" avatar="https://example.com/replaced-avatar.png" />)
+      expect(loadedPhoto).not.toBeInTheDocument()
+      expect(screen.getByAltText('Alice')).toHaveAttribute(
+        'src',
+        'https://example.com/replaced-avatar.png',
+      )
+      expect(screen.queryByText('A')).not.toBeInTheDocument()
 
       rerender(<ContactAvatar name="Alice" avatar={null} />)
       expect(screen.getByText('A')).toBeInTheDocument()
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
     } finally {
       window.Image = OriginalImage
+      complete.mockRestore()
     }
   })
 

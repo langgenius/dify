@@ -118,7 +118,12 @@ describe('Contacts IM platform management surface', () => {
     expect(
       await screen.findByRole('heading', { name: 'contacts.imPlatform.title' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('contacts.imPlatform.chooseProvider')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.chooseProvider', level: 3 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.chooseProvider' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('Email')).toBeInTheDocument()
     expect(screen.getByText('Slack')).toBeInTheDocument()
     expect(screen.getByText('Feishu')).toBeInTheDocument()
@@ -195,6 +200,35 @@ describe('Contacts IM platform management surface', () => {
         name: /Feishu.*replace/i,
       }),
     ).toBeEnabled()
+  })
+
+  it('collapses only the remaining connect options and restores them when expanded', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    const trigger = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.connectMore',
+    })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('group', { name: 'Feishu' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'DingTalk' })).toBeVisible()
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => {
+      expect(screen.queryByRole('group', { name: 'Feishu' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'DingTalk' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('group', { name: 'Email' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'Slack' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' })).toBeVisible()
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('group', { name: 'Feishu' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'DingTalk' })).toBeVisible()
   })
 })
 

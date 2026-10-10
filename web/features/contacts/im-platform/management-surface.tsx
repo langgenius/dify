@@ -240,6 +240,36 @@ export function ContactsImPlatformManagementSurface() {
     return integration.displayIdentifier ?? statusLabels[integration.status]
   }
 
+  const availableProviderCards = availableProviders.map((provider) => {
+    const unavailable = provider.availability === ContactImProviderAvailability.Unavailable
+    const isReplacement =
+      provider.provider !== ContactImProvider.Email && Boolean(activeImIntegration)
+    const actionLabel = isReplacement
+      ? t(($) => $['imPlatform.action.replace'])
+      : t(($) => $['imPlatform.action.connect'])
+
+    return (
+      <ContactImProviderCard
+        key={provider.provider}
+        actionAriaLabel={`${provider.displayName} — ${
+          unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
+        }`}
+        actionDisabled={unavailable || !organization.canManage}
+        actionLabel={unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel}
+        description={providerDescriptions[provider.provider]}
+        mode="available"
+        provider={provider}
+        showAddIcon={!unavailable && !isReplacement}
+        unavailableReason={
+          provider.unavailableReason
+            ? unavailableReasonLabels[provider.unavailableReason]
+            : undefined
+        }
+        onAction={() => openProvider(provider)}
+      />
+    )
+  })
+
   return (
     <section className="max-w-[760px] pb-8" aria-labelledby="contacts-channels-title">
       <h2 id="contacts-channels-title" className="sr-only">
@@ -281,58 +311,29 @@ export function ContactsImPlatformManagementSurface() {
         <ContactImDirectorySyncSection integration={syncIntegration} onViewDetails={setSyncRunId} />
       )}
 
-      {availableProviders.length > 0 && (
+      {availableProviders.length > 0 && configuredProviders.length > 0 && (
         <Collapsible
           defaultOpen
-          className={
-            configuredProviders.length > 0
-              ? 'mt-4 pt-4 shadow-[inset_0_1px_0_0_var(--color-divider-subtle)]'
-              : ''
-          }
+          className="mt-4 pt-4 shadow-[inset_0_1px_0_0_var(--color-divider-subtle)]"
         >
-          <CollapsibleTrigger className="mb-2 min-h-4 justify-start gap-1 rounded-sm px-0 system-sm-medium-uppercase text-text-tertiary hover:not-data-disabled:bg-transparent data-panel-open:text-text-tertiary">
+          <CollapsibleTrigger className="group/collapsible mb-2 flex min-h-4 items-center gap-1 rounded-sm text-start system-sm-medium-uppercase text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid">
             <span
               aria-hidden
-              className="i-ri-arrow-down-s-line size-4 shrink-0 -rotate-90 group-data-panel-open:rotate-0"
+              className="i-ri-arrow-down-s-line size-4 shrink-0 -rotate-90 group-data-panel-open/collapsible:rotate-0"
             />
-            {configuredProviders.length > 0
-              ? t(($) => $['imPlatform.connectMore'])
-              : t(($) => $['imPlatform.chooseProvider'])}
+            {t(($) => $['imPlatform.connectMore'])}
           </CollapsibleTrigger>
-          <CollapsiblePanel className="space-y-2">
-            {availableProviders.map((provider) => {
-              const unavailable =
-                provider.availability === ContactImProviderAvailability.Unavailable
-              const isReplacement =
-                provider.provider !== ContactImProvider.Email && Boolean(activeImIntegration)
-              const actionLabel = isReplacement
-                ? t(($) => $['imPlatform.action.replace'])
-                : t(($) => $['imPlatform.action.connect'])
-              return (
-                <ContactImProviderCard
-                  key={provider.provider}
-                  actionAriaLabel={`${provider.displayName} — ${
-                    unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
-                  }`}
-                  actionDisabled={unavailable || !organization.canManage}
-                  actionLabel={
-                    unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
-                  }
-                  description={providerDescriptions[provider.provider]}
-                  mode="available"
-                  provider={provider}
-                  showAddIcon={!unavailable && !isReplacement}
-                  unavailableReason={
-                    provider.unavailableReason
-                      ? unavailableReasonLabels[provider.unavailableReason]
-                      : undefined
-                  }
-                  onAction={() => openProvider(provider)}
-                />
-              )
-            })}
-          </CollapsiblePanel>
+          <CollapsiblePanel className="space-y-2">{availableProviderCards}</CollapsiblePanel>
         </Collapsible>
+      )}
+
+      {availableProviders.length > 0 && configuredProviders.length === 0 && (
+        <div className="space-y-2 pt-2">
+          <h3 className="system-sm-medium-uppercase text-text-tertiary">
+            {t(($) => $['imPlatform.chooseProvider'])}
+          </h3>
+          {availableProviderCards}
+        </div>
       )}
 
       {bindingTarget?.provider.provider === ContactImProvider.Email && (
