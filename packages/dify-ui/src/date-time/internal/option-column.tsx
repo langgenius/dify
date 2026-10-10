@@ -5,10 +5,7 @@ import { useTimeout } from '@base-ui/utils/useTimeout'
 import * as React from 'react'
 import { cn } from '../../cn'
 
-type OptionColumnHandle = { settle: () => number }
-
 type OptionColumnProps = {
-  ref?: React.Ref<OptionColumnHandle>
   label: string
   normalizeDigits: (text: string) => string
   value: number
@@ -20,7 +17,6 @@ type OptionColumnProps = {
 }
 
 function OptionColumn({
-  ref: handleRef,
   label,
   normalizeDigits,
   value,
@@ -38,17 +34,22 @@ function OptionColumn({
   React.useEffect(() => {
     searchRef.current = { text: '', time: 0, startIndex: 0 }
   }, [normalizeDigits])
-  const gestureRef = React.useRef({ active: false, moved: false, touching: false })
+  // At rest the scroll position is the selection. Only scrolls this column starts are positioning.
+  const scrollRef = React.useRef<{ moved: boolean; target: number | null }>({
+    moved: false,
+    target: null,
+  })
   const quietTimer = useTimeout()
   const cancelGesture = useStableCallback(() => {
     quietTimer.clear()
-    gestureRef.current.active = false
-    gestureRef.current.moved = false
+    scrollRef.current.moved = false
   })
 
-  function scrollToOption(option: HTMLElement, smooth = false) {
+  const scrollToOption = useStableCallback((option: HTMLElement, smooth = false) => {
     const column = ref.current
     if (!column) return
+    scrollRef.current.target =
+      Math.abs(column.scrollTop - option.offsetTop) < 1 ? null : option.offsetTop
     column.scrollTo({
       top: option.offsetTop,
       behavior:
@@ -57,10 +58,10 @@ function OptionColumn({
           ? 'smooth'
           : 'instant',
     })
-  }
+  })
   function nearestOption() {
     const column = ref.current
-    if (!column) return undefined
+    if (!column?.clientHeight) return undefined
     return Array.from(column.querySelectorAll<HTMLElement>('[role="option"]')).reduce<
       HTMLElement | undefined
     >(
@@ -73,108 +74,52 @@ function OptionColumn({
       undefined,
     )
   }
-  React.useImperativeHandle(handleRef, () => ({
-    settle() {
-      const option =
-        gestureRef.current.active && gestureRef.current.moved ? nearestOption() : undefined
-      cancelGesture()
-      if (option) {
-        scrollToOption(option)
-        return Number(option.dataset.optionValue)
-      }
-      return value
-    },
-  }))
-  const finishGesture = React.useEffectEvent(() => {
-    if (!gestureRef.current.active || gestureRef.current.touching) return
-    const option = gestureRef.current.moved ? nearestOption() : undefined
-    cancelGesture()
-    if (!option) return
-    const next = Number(option.dataset.optionValue)
-    if (next !== value) onValueChange(next)
-    if (ref.current?.contains(ref.current.ownerDocument.activeElement))
-      option.focus({ preventScroll: true })
-    scrollToOption(option, true)
-  })
-  const updateGesture = React.useEffectEvent(() => {
+  const selectNearest = React.useEffectEvent(() => {
     const option = nearestOption()
-    if (!option) return
+    if (!option) return undefined
     const next = Number(option.dataset.optionValue)
     if (next !== value) onValueChange(next)
+    return option
+  })
+  const finishScroll = React.useEffectEvent(() => {
+    cancelGesture()
+    scrollRef.current.target = null
+    const option = selectNearest()
+    if (option && ref.current?.contains(ref.current.ownerDocument.activeElement))
+      option.focus({ preventScroll: true })
   })
   React.useEffect(() => {
     const column = ref.current
     if (!column) return
     const supportsScrollEnd = 'onscrollend' in column
-    function begin() {
-      quietTimer.clear()
-      if (!gestureRef.current.active) {
-        gestureRef.current = {
-          ...gestureRef.current,
-          active: true,
-          moved: false,
-        }
-      }
-      quietTimer.start(150, () => {
-        if (gestureRef.current.touching) return
-        if (!gestureRef.current.moved) cancelGesture()
-        else if (!supportsScrollEnd) finishGesture()
-      })
-    }
-    function onWheel(event: WheelEvent) {
-      if (!event.ctrlKey && event.deltaY !== 0) begin()
-    }
-    function onTouchStart() {
-      gestureRef.current.touching = true
-      begin()
-    }
-    function onTouchEnd() {
-      gestureRef.current.touching = false
-      if (!gestureRef.current.moved) cancelGesture()
-      if (!supportsScrollEnd && gestureRef.current.moved) scheduleFinish()
-    }
-    function scheduleFinish() {
-      quietTimer.clear()
-      quietTimer.start(150, () => finishGesture())
-    }
     function onScroll() {
-      if (!gestureRef.current.active) return
-      gestureRef.current.moved = true
-      updateGesture()
-      if (!supportsScrollEnd) scheduleFinish()
+      const positioning = scrollRef.current.target !== null
+      if (!positioning) {
+        scrollRef.current.moved = true
+        selectNearest()
+      }
+      // A positioning scroll that never reaches its target was taken over; rest decides.
+      if (positioning || !supportsScrollEnd) quietTimer.start(150, () => finishScroll())
     }
     function onScrollEnd() {
-      finishGesture()
+      const { target } = scrollRef.current
+      if (target === null || Math.abs(column!.scrollTop - target) < 1) finishScroll()
     }
-    column.addEventListener('wheel', onWheel, { passive: true })
-    column.addEventListener('touchstart', onTouchStart, { passive: true })
-    column.addEventListener('touchend', onTouchEnd, { passive: true })
-    column.addEventListener('touchcancel', onTouchEnd, { passive: true })
     column.addEventListener('scroll', onScroll, { passive: true })
     if (supportsScrollEnd) column.addEventListener('scrollend', onScrollEnd)
     return () => {
       cancelGesture()
-      column.removeEventListener('wheel', onWheel)
-      column.removeEventListener('touchstart', onTouchStart)
-      column.removeEventListener('touchend', onTouchEnd)
-      column.removeEventListener('touchcancel', onTouchEnd)
       column.removeEventListener('scroll', onScroll)
       column.removeEventListener('scrollend', onScrollEnd)
     }
   }, [cancelGesture, quietTimer])
 
-  // Entry and Now are explicit positioning commands, never gesture-driven selections.
+  // Entry and Now are explicit positioning commands, never scroll-driven selections.
   React.useLayoutEffect(() => {
     cancelGesture()
-    const column = ref.current
-    const selected = column?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (selected && column) {
-      column.scrollTo({
-        top: selected.offsetTop,
-        behavior: 'instant',
-      })
-    }
-  }, [scrollRequest, cancelGesture])
+    const selected = ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (selected) scrollToOption(selected)
+  }, [scrollRequest, cancelGesture, scrollToOption])
 
   React.useEffect(() => {
     if (!focusOnMount) return
@@ -202,7 +147,7 @@ function OptionColumn({
       aria-orientation="vertical"
       ref={ref}
       aria-label={label}
-      className="relative flex h-full min-h-0 min-w-0 flex-1 scrollbar-none flex-col items-stretch gap-0.5 overflow-y-auto overscroll-none scroll-auto after:pointer-events-none after:h-[max(0px,calc(100%-1.625rem))] after:shrink-0 after:content-['']"
+      className="relative flex h-full min-h-0 min-w-0 flex-1 snap-y snap-mandatory scrollbar-none flex-col items-stretch gap-0.5 overflow-y-auto overscroll-none scroll-auto after:pointer-events-none after:h-[max(0px,calc(100%-1.625rem))] after:shrink-0 after:content-['']"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           searchRef.current = { text: '', time: 0, startIndex: 0 }
@@ -221,10 +166,9 @@ function OptionColumn({
         if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) {
           event.preventDefault()
           event.stopPropagation()
-          const currentOption =
-            gestureRef.current.active && gestureRef.current.moved
-              ? nearestOption()
-              : (event.target as HTMLElement)
+          const currentOption = scrollRef.current.moved
+            ? nearestOption()
+            : (event.target as HTMLElement)
           const currentValue = Number(currentOption?.dataset.optionValue)
           const currentIndex = Math.max(
             0,
@@ -299,7 +243,7 @@ function OptionColumn({
           onClick={(event) => focusValue(option.value, event.detail > 0)}
           className={cn(
             'aria-selected:bg-components-button-ghost-bg-hover',
-            'flex min-h-6 shrink-0 items-center justify-center rounded-md px-1 system-xs-medium text-text-secondary tabular-nums hover:not-aria-selected:bg-state-base-hover-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid forced-colors:aria-selected:outline forced-colors:aria-selected:outline-[Highlight]',
+            'flex min-h-6 shrink-0 snap-start items-center justify-center rounded-md px-1 system-xs-medium text-text-secondary tabular-nums hover:not-aria-selected:bg-state-base-hover-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid forced-colors:aria-selected:outline forced-colors:aria-selected:outline-[Highlight]',
           )}
         >
           {option.label}
@@ -310,4 +254,3 @@ function OptionColumn({
 }
 
 export { OptionColumn }
-export type { OptionColumnHandle }

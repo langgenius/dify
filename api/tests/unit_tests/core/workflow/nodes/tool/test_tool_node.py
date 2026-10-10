@@ -47,7 +47,7 @@ class _StubToolRuntime:
         tool_parameters: dict[str, Any],
         workflow_call_depth: int,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         yield from ()
 
     def get_usage(self, *, tool_runtime: ToolRuntimeHandle) -> LLMUsage:

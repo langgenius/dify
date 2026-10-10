@@ -59,7 +59,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
-        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None],
+        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse]],
     ]:
         """
         Handle response.
@@ -321,7 +321,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         workflow_run_id: str,
         idle_timeout=300,
         on_subscribe: Callable[[], None] | None = None,
-    ) -> Generator[Mapping | str, None, None]:
+    ) -> Generator[Mapping | str]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         subscriber = topic.as_subscriber()
         subscription = (

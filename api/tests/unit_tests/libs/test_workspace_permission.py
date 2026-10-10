@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import Forbidden
@@ -9,6 +9,7 @@ from libs.workspace_permission import (
     check_workspace_member_invite_permission,
     check_workspace_owner_transfer_permission,
 )
+from services.enterprise.enterprise_service import WorkspacePermission
 
 
 class TestWorkspacePermissionHelper:
@@ -37,8 +38,7 @@ class TestWorkspacePermissionHelper:
         """Enterprise edition should block invitations when workspace policy is False."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_permission = Mock()
-        mock_permission.allow_member_invite = False
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowMemberInvite=False)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         with pytest.raises(Forbidden, match="Workspace policy prohibits member invitations"):
@@ -51,8 +51,7 @@ class TestWorkspacePermissionHelper:
         """Enterprise edition should allow invitations when workspace policy is True."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_permission = Mock()
-        mock_permission.allow_member_invite = True
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowMemberInvite=True)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         # Should not raise
@@ -74,8 +73,7 @@ class TestWorkspacePermissionHelper:
     def test_enterprise_blocks_transfer_when_disabled(self, mock_enterprise_service, config_overrides):
         """Enterprise edition should block transfer when workspace policy is False."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        mock_permission = Mock()
-        mock_permission.allow_owner_transfer = False  # Workspace policy blocks
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowOwnerTransfer=False)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         with pytest.raises(Forbidden, match="Workspace policy prohibits ownership transfer"):
@@ -87,8 +85,7 @@ class TestWorkspacePermissionHelper:
     def test_enterprise_allows_transfer_when_both_enabled(self, mock_enterprise_service, config_overrides):
         """Enterprise edition should allow transfer when both billing and workspace policy allow."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        mock_permission = Mock()
-        mock_permission.allow_owner_transfer = True  # Workspace policy allows
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowOwnerTransfer=True)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         # Should not raise
