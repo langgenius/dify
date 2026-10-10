@@ -935,6 +935,10 @@ export type DocumentResponse = {
   word_count?: number | null
 }
 
+export type DocumentRetryPayload = {
+  document_ids: Array<string>
+}
+
 export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
 }
@@ -3259,6 +3263,29 @@ export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponse =
   PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
+
+export type PostDatasetsByDatasetIdDocumentsRetryData = {
+  body: DocumentRetryPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/documents/retry'
+}
+
+export type PostDatasetsByDatasetIdDocumentsRetryErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type PostDatasetsByDatasetIdDocumentsRetryResponses = {
+  204: void
+}
+
+export type PostDatasetsByDatasetIdDocumentsRetryResponse =
+  PostDatasetsByDatasetIdDocumentsRetryResponses[keyof PostDatasetsByDatasetIdDocumentsRetryResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
   body: DocumentStatusPayload

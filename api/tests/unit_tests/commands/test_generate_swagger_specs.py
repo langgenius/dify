@@ -120,6 +120,24 @@ def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
         assert json.loads(path.read_text(encoding="utf-8")) == live_payloads[path.name]
 
 
+def test_service_document_retry_schema_matches_batch_validation(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+    module.generate_specs(tmp_path)
+    payload = json.loads((tmp_path / "service-openapi.json").read_text(encoding="utf-8"))
+    operation = payload["paths"]["/datasets/{dataset_id}/documents/retry"]["post"]
+
+    assert operation["operationId"] == "retry_document_indexing"
+    assert set(operation["responses"]) == {"204", "400", "401", "403", "404"}
+    assert "content" not in operation["responses"]["204"]
+    assert _request_schema(operation) == {"$ref": "#/components/schemas/DocumentRetryPayload"}
+    schema = payload["components"]["schemas"]["DocumentRetryPayload"]
+    assert schema["required"] == ["document_ids"]
+    document_ids = schema["properties"]["document_ids"]
+    assert document_ids["minItems"] == 1
+    assert document_ids["maxItems"] == 100
+    assert document_ids["items"] == {"format": "uuid", "type": "string"}
+
+
 def test_generate_specs_after_controllers_were_imported_with_swagger_disabled(tmp_path: Path):
     api_dir = Path(__file__).resolve().parents[3]
     script = """

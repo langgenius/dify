@@ -60,8 +60,10 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.logging.context import get_request_id, get_trace_id
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.document_fields import (
@@ -74,6 +76,7 @@ from fields.document_fields import (
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
+from machinery.context import RequestContext
 from models.dataset import Dataset, Document
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
@@ -84,6 +87,7 @@ from repositories.knowledge.dataset_read_repository import (
 )
 from services.feature_service import FeatureService
 from services.file_service import FileService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import (
     get_document_metadata_details,
     get_document_source_detail,
@@ -91,6 +95,11 @@ from services.knowledge.dataset_read_service import (
     load_document_details,
 )
 from services.knowledge.dataset_service import DatasetService, DocumentService
+from services.knowledge.documents.application import (
+    DocumentArchivedError,
+    DocumentIndexingStateError,
+    DocumentNotFoundError,
+)
 from services.knowledge.entities.knowledge_entities import (
     DocForm,
     IndexingTechnique,
@@ -255,6 +264,14 @@ class DocumentListQuery(BaseModel):
     status: DocumentDisplayStatus = Field(default=None, description="Filter by display status.")
 
 
+class DocumentRetryPayload(BaseModel):
+    document_ids: list[UUID] = Field(
+        min_length=1,
+        max_length=100,
+        description="IDs of failed documents to retry in this knowledge base. Duplicate IDs are retried once.",
+    )
+
+
 class DocumentGetQuery(BaseModel):
     metadata: Literal["all", "only", "without"] = Field(
         default="all",
@@ -384,6 +401,7 @@ register_schema_models(
     DocumentListQuery,
     DocumentGetQuery,
     DocumentBatchDownloadZipPayload,
+    DocumentRetryPayload,
     Rule,
     PreProcessingRule,
     Segmentation,
@@ -1123,6 +1141,54 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             response.call_on_close(cleanup.close)
         # response-contract:ignore binary send_file response
         return response
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/retry")
+class DocumentRetryApi(DatasetApiResource):
+    @service_api_ns.doc(
+        "retry_document_indexing",
+        summary="Retry Failed Document Indexing",
+        description=(
+            "Retry indexing using the existing stored source without changing document IDs or batch IDs. "
+            "Every requested document must belong to this knowledge base, have indexing_status `error` "
+            "and be neither archived nor paused. An invalid batch is rejected before any retries are scheduled. "
+            "A 204 response acknowledges asynchronous scheduling; poll the existing indexing-status endpoint "
+            "with each document's batch ID to track completion."
+        ),
+        tags=["Documents"],
+        params={"dataset_id": "Knowledge base ID."},
+        responses={
+            400: "Invalid document IDs, document state or a retry already in progress.",
+            403: "Dataset access denied, an archived document or knowledge request rate limit exceeded.",
+            404: "Dataset or document not found.",
+        },
+    )
+    @service_api_ns.expect(service_api_ns.models[DocumentRetryPayload.__name__])
+    @service_api_ns.response(204, "Document indexing retries scheduled.")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id: str, dataset_id: UUID):
+        payload = DocumentRetryPayload.model_validate(service_api_ns.payload or {})
+        if not current_user:
+            raise ValueError("current_user is required")
+        context = RequestContext(
+            request_id=get_request_id(),
+            trace_id=get_trace_id(),
+            account_id=current_user.id,
+            active_workspace_id=str(tenant_id),
+        )
+        try:
+            application_services().knowledge.documents.retry_failed_documents(
+                context, dataset_id=str(dataset_id), document_ids=[str(value) for value in payload.document_ids]
+            )
+        except (DatasetNotFoundError, DocumentNotFoundError) as error:
+            raise NotFound(str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise Forbidden(str(error)) from error
+        except DocumentArchivedError as error:
+            raise ArchivedDocumentImmutableError() from error
+        except DocumentIndexingStateError as error:
+            raise DocumentIndexingError(str(error)) from error
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")

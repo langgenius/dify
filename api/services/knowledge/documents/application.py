@@ -1,4 +1,4 @@
-"""Console document use cases, independent of HTTP and persistence frameworks."""
+"""Document use cases, independent of HTTP and persistence frameworks."""
 
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
@@ -282,6 +282,20 @@ class DatasetDocumentApplicationService:
             and not state.archived
             and state.indexing_status != "completed"
         ]
+        self._operations.retry_documents(ref, retry_ids, actor_id=context.account_id)
+
+    def retry_failed_documents(self, context: RequestContext, *, dataset_id: str, document_ids: Sequence[str]) -> None:
+        """Validate the complete Service API retry batch before scheduling it."""
+        ref = self._dataset(context, dataset_id)
+        retry_ids = list(dict.fromkeys(document_ids))
+        states = {state.id: state for state in self._operations.get_states(ref, retry_ids)}
+        for document_id in retry_ids:
+            state = states.get(document_id)
+            if state is None:
+                raise DocumentNotFoundError("Document not found.")
+            self._require_mutable(state)
+            if state.indexing_status != "error" or state.is_paused:
+                raise DocumentIndexingStateError("Only failed documents that are not paused can be retried.")
         self._operations.retry_documents(ref, retry_ids, actor_id=context.account_id)
 
     def rename_document(
