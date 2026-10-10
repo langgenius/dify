@@ -36,6 +36,7 @@ from .schemas import (
     RunSucceededEvent,
     RunSucceededEventData,
     normalize_composition,
+    resolve_run_failure_type,
     utc_now,
 )
 from .execution_binding import (
@@ -103,5 +104,6 @@ __all__ = [
     "RunSucceededEvent",
     "RunSucceededEventData",
     "normalize_composition",
+    "resolve_run_failure_type",
     "utc_now",
 ]

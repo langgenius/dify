@@ -259,7 +259,7 @@ class FailingObserverStore(FakeStore):
 
 class CancellationDuringShutdownFailureStore(FakeStore):
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
-        if isinstance(event, RunFailedEvent) and event.data.reason == "shutdown":
+        if isinstance(event, RunFailedEvent) and event.data.error_type == RunFailureType.AGENT_SHUTDOWN:
             _ = await self.request_cancellation(
                 event.run_id,
                 CancelRunRequest(reason="concurrent_shutdown_cancel"),
