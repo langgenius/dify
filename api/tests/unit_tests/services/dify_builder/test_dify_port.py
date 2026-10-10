@@ -431,7 +431,7 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Ma
     ("node_type", "expected_event"),
     [
         ("start", "add_start_node"),
-        ("knowledge-retrieval", "add_knowledge_node"),
+        ("knowledge-retrieval", None),
         ("llm", "add_llm_node"),
         ("end", "add_output_node"),
         ("code", "apply_edit_plan"),  # unmapped node type falls back to the generic batch-mutate event
@@ -455,6 +455,17 @@ def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
         mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        if expected_event is None:
+            from services.dify_builder.errors import PreflightError
+
+            with pytest.raises(PreflightError, match="first phase"):
+                WorkflowServiceDifyPort().apply_repair(
+                    "app-1", _actor(), intents, on_canvas=events.append, expected_revision=execution_revision(workflow)
+                )
+            assert events == []
+            mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
+            return
 
         WorkflowServiceDifyPort().apply_repair(
             "app-1", _actor(), intents, on_canvas=events.append, expected_revision=execution_revision(workflow)

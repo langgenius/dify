@@ -19,24 +19,11 @@ _GEN_GRAPH = {
                     "context": {"enabled": False},
                 },
             },
-            {
-                "id": "kb1",
-                "type": "custom",
-                "data": {
-                    "type": "knowledge-retrieval",
-                    "title": "KB",
-                    "dataset_ids": [],
-                    "retrieval_mode": "multiple",
-                    "query_variable_selector": ["llm1", "text"],
-                    "multiple_retrieval_config": {"top_k": 3, "reranking_enable": False},
-                },
-            },
             {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
         ],
         "edges": [
             {"id": "e1", "source": "s", "target": "llm1"},
-            {"id": "e2", "source": "llm1", "target": "kb1"},
-            {"id": "e3", "source": "kb1", "target": "e"},
+            {"id": "e2", "source": "llm1", "target": "e"},
         ],
     },
     "error": "",
@@ -50,7 +37,7 @@ def _fake_mc(provider, name):
     return ModelConfig.model_validate({"provider": provider, "name": name, "mode": "chat", "completion_params": {}})
 
 
-def test_build_nodes_grounds_model_and_dataset():
+def test_build_nodes_grounds_model_without_adding_dataset_nodes():
     fake_resources = resources.TenantResources(
         models=[], datasets=[resources.ResourceRef(id="kb-real", label="Company KB")], tools=[]
     )
@@ -73,7 +60,7 @@ def test_build_nodes_grounds_model_and_dataset():
     # no fabricated params: the fixture's llm node carried no completion_params, and none
     # should be synthesized (e.g. a guessed temperature) during grounding.
     assert "completion_params" not in by_type["llm"]["model"]
-    assert by_type["knowledge-retrieval"]["dataset_ids"] == ["kb-real"]  # dataset injected by label match
+    assert "knowledge-retrieval" not in by_type
 
 
 def test_build_nodes_grounds_to_selected_model_resource():
@@ -421,7 +408,7 @@ def test_build_nodes_grounds_model_on_question_classifier_node():
     assert "completion_params" not in by_type["question-classifier"]["model"]
 
 
-def test_build_nodes_dataset_ids_are_independent_lists_per_node():
+def test_build_nodes_refuses_generated_retrieval_nodes_through_corrective_path():
     gen_graph_two_kb = {
         "graph": {
             "nodes": [
@@ -472,17 +459,13 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
         ),
         patch.object(build.resources, "list_tenant_resources", return_value=fake_resources),
     ):
-        intents = build.build_nodes("t1", {}, ["Retrieve from Company KB"]).intents
+        result = build.build_nodes("t1", {}, ["Retrieve from Company KB"])
 
-    kb_configs = [
-        intent.args["config"]
-        for intent in intents
-        if intent.op == "create_node" and intent.args["node_type"] == "knowledge-retrieval"
-    ]
-    assert len(kb_configs) == 2
-    assert kb_configs[0]["dataset_ids"] == ["kb-real"]
-    assert kb_configs[1]["dataset_ids"] == ["kb-real"]
-    assert kb_configs[0]["dataset_ids"] is not kb_configs[1]["dataset_ids"]
+    assert result.intents == []
+    assert "first phase" in result.error
+    assert "knowledge-retrieval" in result.error
+    assert len(result.diagnostics) == build._MAX_GENERATION_ATTEMPTS
+    assert gen_graph_two_kb["graph"]["nodes"][1]["data"]["dataset_ids"] == []
 
 
 def test_build_nodes_logs_when_generator_reports_error(caplog):
