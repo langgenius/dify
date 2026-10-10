@@ -627,7 +627,6 @@ project-excludes = [
   "factories/test_build_from_mapping.py",
   "factories/test_file_factory.py",
   "factories/test_file_validation.py",
-  "factories/test_variable_factory.py",
   "fields/test_dataset_fields.py",
   "fields/test_file_fields.py",
   "fields/test_message_fields.py",
