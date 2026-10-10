@@ -51,6 +51,7 @@ from services.app.query_service import AppQueryStore
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.entities.app_entities import (
     RECENT_APP_MODES,
+    AppAgentBinding,
     AppChange,
     AppCreationSettings,
     AppDeletion,
@@ -116,6 +117,21 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
 class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == workspace_id))
+            if app is None:
+                return None
+            binding = app.agent_app_binding_with_session(session=session, include_archived=True)
+            return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
+        statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
+        if normal_only:
+            statement = statement.where(App.status == AppStatus.NORMAL)
+        with self._session_factory() as session:
+            return session.scalar(statement)
 
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:

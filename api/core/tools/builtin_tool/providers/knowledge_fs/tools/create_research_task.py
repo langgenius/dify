@@ -23,7 +23,7 @@ class KnowledgeFSCreateResearchTaskTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         _ = (user_id, conversation_id, app_id, message_id)
         run_context = self.runtime.dify_run_context
         if run_context is None or self.runtime.tenant_id != run_context.tenant_id:

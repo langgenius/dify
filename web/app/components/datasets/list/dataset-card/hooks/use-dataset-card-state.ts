@@ -126,12 +126,11 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           dataset_id: dataset.id,
         },
       })
-      toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
       onSuccess?.()
     } finally {
       closeConfirmDelete()
     }
-  }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])
+  }, [dataset.id, deleteDatasetMutation, onSuccess, closeConfirmDelete])
 
   return {
     // Modal state

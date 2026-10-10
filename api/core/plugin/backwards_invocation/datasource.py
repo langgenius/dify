@@ -35,7 +35,7 @@ class PluginDatasourceBackwardsInvocation(BaseBackwardsInvocation):
         user_id: str,
         tenant: Tenant,
         payload: RequestInvokeDatasource,
-    ) -> Generator[BaseModel | dict[str, Any], None, None]:
+    ) -> Generator[BaseModel | dict[str, Any]]:
         """Yield datasource messages for one validated inner-runtime request."""
         provider_id = DatasourceProviderID(payload.provider)
         canonical_provider_id = str(provider_id)

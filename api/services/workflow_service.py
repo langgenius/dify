@@ -1655,7 +1655,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]],
         ],
         start_at: float,
         node_id: str,
@@ -1695,7 +1695,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]],
         ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """

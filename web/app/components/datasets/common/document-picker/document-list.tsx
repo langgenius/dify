@@ -20,7 +20,7 @@ function getDocumentExtension(document: SimpleDocumentDetail) {
 
 export default function DocumentList({ className }: Props) {
   return (
-    <ComboboxList<SimpleDocumentDetail> className={cn('max-h-[calc(100vh-120px)] p-0', className)}>
+    <ComboboxList<SimpleDocumentDetail> className={cn('max-h-[calc(100vh-120px)]', className)}>
       {(item) => {
         const extension = getDocumentExtension(item)
         return (

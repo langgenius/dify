@@ -92,7 +92,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $.editDone))
             setIsEditDialogOpen(false)
           },
           onError: (error) => {

@@ -3,10 +3,9 @@
 This module is intentionally an adapter, not a wire DTO package. The emitted
 object is always ``dify_agent.protocol.CreateRunRequest`` so the Agent backend
 protocol has a single owner. API-only context such as Agent Soul vs workflow job
-prompt is preserved in layer names and metadata until the dedicated product
-schemas land in later phases. Dify-owned execution identifiers are emitted as an
-explicit ``dify.execution_context`` layer so the run request stays fully
-composition-driven.
+prompt is preserved in registered module names. Execution identifiers live in
+execution_context Config; model, tool and resource references are explicit Config
+fields. The wire request contains current Config and optional state-only snapshot.
 """
 
 from __future__ import annotations
@@ -15,30 +14,22 @@ import re
 from collections.abc import Mapping
 from typing import ClassVar, Literal
 
-from agenton.compositor import CompositorSessionSnapshot
-from agenton.layers import ExitIntent
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
-from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
-from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
-from dify_agent.layers.config import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
-from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
+from dify_agent.layers.config import DifyConfigLayerConfig
+from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
 from dify_agent.layers.execution_context import (
-    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
-from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
-from dify_agent.layers.knowledge_fs import DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID, DifyKnowledgeFsLayerConfig
-from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
+from dify_agent.layers.output import DifyOutputLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.runtime import DifyRuntimeLayerConfig
+from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.user_prompt import (
-    DIFY_USER_PROMPT_LAYER_TYPE_ID,
     DifyUserPromptFileConfig,
     DifyUserPromptLayerConfig,
 )
@@ -47,11 +38,10 @@ from dify_agent.protocol import (
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
-    DeferredToolResultsPayload,
-    LayerExitSignals,
     RunComposition,
     RunLayerSpec,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
@@ -64,30 +54,17 @@ DIFY_CONFIG_LAYER_ID = "config"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
-DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
+DIFY_KNOWLEDGE_FS_LAYER_ID = "knowledge_fs"
 DIFY_SHELL_LAYER_ID = "shell"
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
-def _shell_layer_deps() -> dict[str, str]:
-    return {
-        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "runtime": DIFY_RUNTIME_LAYER_ID,
-    }
-
-
-def _config_layer_deps() -> dict[str, str]:
-    return {"shell": DIFY_SHELL_LAYER_ID}
-
-
 def _knowledge_fs_spec(run_input: AgentBackendWorkflowNodeRunInput | AgentBackendAgentAppRunInput) -> RunLayerSpec:
-    if not run_input.include_shell or run_input.knowledge is not None:
+    if not run_input.include_shell or run_input.knowledge is not None or run_input.knowledge_fs is None:
         raise ValueError("KnowledgeFS requires shell and cannot be combined with legacy knowledge retrieval")
     return RunLayerSpec(
-        name="knowledge_fs",
-        type=DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID,
-        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID, "shell": DIFY_SHELL_LAYER_ID},
-        config=run_input.knowledge_fs,
+        name=DIFY_KNOWLEDGE_FS_LAYER_ID,
+        config=run_input.knowledge_fs.model_dump(mode="json"),
     )
 
 
@@ -226,18 +203,9 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
-    # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
-    # the Agent Soul configures human involvement; a deferred call ends the run and
-    # the workflow pauses via the existing HITL form mechanism (ENG-635).
-    ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
-    # backend plus the product-resolved persistent Binding.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # Human tool results fed back into a continuation run after a HITL submission
-    # (ENG-638). Keyed by the original deferred tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
     include_history: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
@@ -274,17 +242,9 @@ class AgentBackendAgentAppRunInput(BaseModel):
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
-    # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
-    # the Agent Soul configures human involvement (ENG-635).
-    ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
-    # backend plus the product-resolved persistent Binding.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # Human tool results fed back into a continuation run after a HITL submission
-    # (ENG-638). Keyed by the original deferred tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
     include_history: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
@@ -307,7 +267,7 @@ class AgentBackendRunRequestBuilder:
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional shell / config / history
         (multi-turn) → LLM → optional plugin-direct tools / core-routed tools /
-        knowledge search / ask_human / structured output. Mirrors the
+        knowledge search / structured output. Mirrors the
         workflow-node layer ordering minus the workflow-job / previous-node
         prompt.
         """
@@ -320,9 +280,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=agent_soul_prompt),
+                    config=(PromptConfig(prefix=agent_soul_prompt)).model_dump(mode="json"),
                 )
             )
 
@@ -330,15 +288,13 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=AGENT_APP_USER_PROMPT_LAYER_ID,
-                    type=DIFY_USER_PROMPT_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "agent_app_user_prompt"},
-                    config=DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files),
+                    config=(
+                        DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files)
+                    ).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=run_input.execution_context,
+                    config=(run_input.execution_context).model_dump(mode="json"),
                 ),
             ]
         )
@@ -348,9 +304,9 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_RUNTIME_LAYER_ID,
-                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref),
+                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                        mode="json"
+                    ),
                 )
             )
             # Sandboxed bash workspace (dify.shell). It enters before config so
@@ -358,10 +314,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps=_shell_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
+                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
                 )
             )
 
@@ -369,10 +322,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_CONFIG_LAYER_ID,
-                    type=DIFY_CONFIG_LAYER_TYPE_ID,
-                    deps=_config_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.config_layer_config,
+                    config=(run_input.config_layer_config).model_dump(mode="json"),
                 )
             )
 
@@ -380,38 +330,31 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_AGENT_HISTORY_LAYER_ID,
-                    type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "agent_session_history"},
                 )
             )
 
         layers.append(
             RunLayerSpec(
                 name=DIFY_AGENT_MODEL_LAYER_ID,
-                type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                metadata=run_input.metadata,
-                config=DifyPluginLLMLayerConfig(
-                    plugin_id=run_input.model.plugin_id,
-                    model_provider=run_input.model.model_provider,
-                    model=run_input.model.model,
-                    model_settings=_agent_model_settings(run_input.model.model_settings),
-                    context_window_tokens=run_input.model.context_window_tokens,
-                ),
+                config=(
+                    DifyPluginLLMLayerConfig(
+                        plugin_id=run_input.model.plugin_id,
+                        model_provider=run_input.model.model_provider,
+                        model=run_input.model.model,
+                        model_settings=_agent_model_settings(run_input.model.model_settings),
+                        context_window_tokens=run_input.model.context_window_tokens,
+                    )
+                ).model_dump(mode="json"),
             )
         )
 
         if run_input.tools is not None and run_input.tools.tools:
-            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-            if include_shell:
-                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
-                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps=plugin_tool_deps,
-                    metadata=run_input.metadata,
-                    config=run_input.tools,
+                    config=(
+                        run_input.tools.model_copy(update={"shell": DIFY_SHELL_LAYER_ID if include_shell else None})
+                    ).model_dump(mode="json"),
                 )
             )
 
@@ -419,10 +362,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_CORE_TOOLS_LAYER_ID,
-                    type=DIFY_CORE_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.core_tools,
+                    config=(run_input.core_tools).model_dump(mode="json"),
                 )
             )
 
@@ -432,23 +372,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
-                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.knowledge,
-                )
-            )
-
-        if run_input.ask_human_config is not None:
-            # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
-            # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
-            # later resumes with deferred_tool_results. Needs the history layer above.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_ASK_HUMAN_LAYER_ID,
-                    type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=run_input.ask_human_config,
+                    config=(run_input.knowledge).model_dump(mode="json"),
                 )
             )
 
@@ -456,13 +380,13 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_AGENT_OUTPUT_LAYER_ID,
-                    type=DIFY_OUTPUT_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=DifyOutputLayerConfig(
-                        json_schema=run_input.output.json_schema,
-                        description=run_input.output.description,
-                        strict=run_input.output.strict,
-                    ),
+                    config=(
+                        DifyOutputLayerConfig(
+                            json_schema=run_input.output.json_schema,
+                            description=run_input.output.description,
+                            strict=run_input.output.strict,
+                        )
+                    ).model_dump(mode="json"),
                 )
             )
 
@@ -471,8 +395,6 @@ class AgentBackendRunRequestBuilder:
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
-            deferred_tool_results=run_input.deferred_tool_results,
-            on_exit=LayerExitSignals(default=ExitIntent.SUSPEND),
         )
 
     def build_for_workflow_node(self, run_input: AgentBackendWorkflowNodeRunInput) -> CreateRunRequest:
@@ -481,7 +403,7 @@ class AgentBackendRunRequestBuilder:
         Layer graph mirrors the workflow surface: prompts → execution context →
         optional shell / config / history → LLM → optional
         plugin-direct tools / core-routed tools / knowledge search /
-        ask_human / structured output.
+        structured output.
         """
         layers: list[RunLayerSpec] = []
         agent_soul_prompt = _agent_soul_prompt_for_layer(
@@ -492,9 +414,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=agent_soul_prompt),
+                    config=(PromptConfig(prefix=agent_soul_prompt)).model_dump(mode="json"),
                 )
             )
 
@@ -502,21 +422,15 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "workflow_node_job"},
-                    config=PromptLayerConfig(user=run_input.workflow_node_job_prompt),
+                    config=(PromptConfig(user=run_input.workflow_node_job_prompt)).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
                     name=WORKFLOW_USER_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "workflow_user_prompt"},
-                    config=PromptLayerConfig(user=run_input.user_prompt),
+                    config=(PromptConfig(user=run_input.user_prompt)).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=run_input.execution_context,
+                    config=(run_input.execution_context).model_dump(mode="json"),
                 ),
             ]
         )
@@ -526,9 +440,9 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_RUNTIME_LAYER_ID,
-                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref),
+                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                        mode="json"
+                    ),
                 )
             )
             # Sandboxed bash workspace (dify.shell). It enters before config so
@@ -536,10 +450,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps=_shell_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
+                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
                 )
             )
 
@@ -547,10 +458,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_CONFIG_LAYER_ID,
-                    type=DIFY_CONFIG_LAYER_TYPE_ID,
-                    deps=_config_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.config_layer_config,
+                    config=(run_input.config_layer_config).model_dump(mode="json"),
                 )
             )
 
@@ -558,8 +466,6 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_AGENT_HISTORY_LAYER_ID,
-                    type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID,
-                    metadata={**run_input.metadata, "origin": "agent_session_history"},
                 )
             )
 
@@ -567,31 +473,26 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
-                    type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=DifyPluginLLMLayerConfig(
-                        plugin_id=run_input.model.plugin_id,
-                        model_provider=run_input.model.model_provider,
-                        model=run_input.model.model,
-                        model_settings=_agent_model_settings(run_input.model.model_settings),
-                        context_window_tokens=run_input.model.context_window_tokens,
-                    ),
+                    config=(
+                        DifyPluginLLMLayerConfig(
+                            plugin_id=run_input.model.plugin_id,
+                            model_provider=run_input.model.model_provider,
+                            model=run_input.model.model,
+                            model_settings=_agent_model_settings(run_input.model.model_settings),
+                            context_window_tokens=run_input.model.context_window_tokens,
+                        )
+                    ).model_dump(mode="json"),
                 ),
             ]
         )
 
         if run_input.tools is not None and run_input.tools.tools:
-            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-            if include_shell:
-                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
-                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps=plugin_tool_deps,
-                    metadata=run_input.metadata,
-                    config=run_input.tools,
+                    config=(
+                        run_input.tools.model_copy(update={"shell": DIFY_SHELL_LAYER_ID if include_shell else None})
+                    ).model_dump(mode="json"),
                 )
             )
 
@@ -599,10 +500,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_CORE_TOOLS_LAYER_ID,
-                    type=DIFY_CORE_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.core_tools,
+                    config=(run_input.core_tools).model_dump(mode="json"),
                 )
             )
 
@@ -612,23 +510,7 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
-                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.knowledge,
-                )
-            )
-
-        if run_input.ask_human_config is not None:
-            # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
-            # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
-            # later resumes with deferred_tool_results. Needs the history layer above.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_ASK_HUMAN_LAYER_ID,
-                    type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=run_input.ask_human_config,
+                    config=(run_input.knowledge).model_dump(mode="json"),
                 )
             )
 
@@ -636,13 +518,13 @@ class AgentBackendRunRequestBuilder:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_AGENT_OUTPUT_LAYER_ID,
-                    type=DIFY_OUTPUT_LAYER_TYPE_ID,
-                    metadata=run_input.metadata,
-                    config=DifyOutputLayerConfig(
-                        json_schema=run_input.output.json_schema,
-                        description=run_input.output.description,
-                        strict=run_input.output.strict,
-                    ),
+                    config=(
+                        DifyOutputLayerConfig(
+                            json_schema=run_input.output.json_schema,
+                            description=run_input.output.description,
+                            strict=run_input.output.strict,
+                        )
+                    ).model_dump(mode="json"),
                 )
             )
 
@@ -651,8 +533,6 @@ class AgentBackendRunRequestBuilder:
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
-            deferred_tool_results=run_input.deferred_tool_results,
-            on_exit=LayerExitSignals(default=ExitIntent.SUSPEND),
         )
 
 

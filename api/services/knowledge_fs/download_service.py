@@ -35,7 +35,7 @@ class KnowledgeFSDownloadService:
     def __init__(self, *, object_storage: KnowledgeFSObjectStorageService | None = None) -> None:
         self._object_storage = object_storage or KnowledgeFSObjectStorageService()
 
-    def load_stream(self, descriptor: KnowledgeFSDocumentDownloadDescriptor) -> Generator[bytes, None, None]:
+    def load_stream(self, descriptor: KnowledgeFSDocumentDownloadDescriptor) -> Generator[bytes]:
         try:
             metadata = self._object_storage.head_object(key=descriptor.object_key)
             if metadata is None or metadata.size_bytes != descriptor.size_bytes:
@@ -50,9 +50,7 @@ class KnowledgeFSDownloadService:
             raise KnowledgeFSDownloadUnavailableError("KnowledgeFS object storage is unavailable") from exc
 
     @contextmanager
-    def build_zip_tempfile(
-        self, descriptors: Sequence[KnowledgeFSDocumentDownloadDescriptor]
-    ) -> Generator[str, None, None]:
+    def build_zip_tempfile(self, descriptors: Sequence[KnowledgeFSDocumentDownloadDescriptor]) -> Generator[str]:
         total_size = sum(item.size_bytes for item in descriptors)
         if total_size > KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_BYTES:
             raise KnowledgeFSDownloadTooLargeError("Agent Knowledge Base batch download exceeds the size limit")

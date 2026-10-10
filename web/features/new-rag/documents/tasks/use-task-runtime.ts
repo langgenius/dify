@@ -4,6 +4,7 @@ import type { BackgroundTask, DocumentProcessingTask } from '../models'
 import type { AuxiliaryTaskReadGuard } from './auxiliary-read-guard'
 import type { ProcessingTaskEvent } from './events'
 import type { AuxiliaryTaskReadDenial } from './recovery'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useAtomCallback } from 'jotai/utils'
@@ -16,7 +17,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskIsActive, taskVersionIsAfter } from '../model'
 import { documentTasksInfiniteOptions } from '../queries'
 import { responseStatus } from '../request-error'

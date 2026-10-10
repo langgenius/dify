@@ -809,7 +809,7 @@ def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_requ
 
     class RecordingAdmission:
         @contextmanager
-        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+        def admit(self, *, reserved_bytes: int) -> Generator[None]:
             assert broker.calls
             observed.append(f"admit:{reserved_bytes}")
             try:
@@ -882,7 +882,7 @@ def test_document_upload_refreshes_capability_after_waiting_for_buffer_admission
 
     class DelayedAdmission:
         @contextmanager
-        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+        def admit(self, *, reserved_bytes: int) -> Generator[None]:
             assert reserved_bytes == 15 * 1024 * 1024
             assert len(broker.calls) == 1
             clock.advance(seconds=46)
@@ -1128,7 +1128,7 @@ def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_requ
 
     class RecordingAdmission:
         @contextmanager
-        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+        def admit(self, *, reserved_bytes: int) -> Generator[None]:
             observed.append(f"admit:{reserved_bytes}")
             try:
                 yield

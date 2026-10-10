@@ -1,3 +1,3 @@
-from .configs import DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID, DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState
+from .configs import DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState
 
-__all__ = ["DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID", "DifyKnowledgeFsLayerConfig", "DifyKnowledgeFsRuntimeState"]
+__all__ = ["DifyKnowledgeFsLayerConfig", "DifyKnowledgeFsRuntimeState"]

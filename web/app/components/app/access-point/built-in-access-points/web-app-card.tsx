@@ -24,9 +24,8 @@ import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
-import SettingsModal from '@/app/components/app/overview/settings'
+import { SettingsDialog } from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -68,7 +67,7 @@ type WebAppAccessPointCardProps = {
   highlighted?: boolean
   showAccessControl: boolean
   onRefreshApp: () => Promise<void>
-  onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<void>
+  onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<boolean>
   workflow: PublishedWorkflow
 }
 
@@ -91,8 +90,6 @@ export function WebAppAccessPointCard({
     'deployments',
     'navigation',
   ])
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const [showSettings, setShowSettings] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
@@ -101,16 +98,6 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_site: updatedApp.enable_site,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -118,10 +105,7 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      onSuccess: async () => {
-        await onRefreshApp()
-        setShowRegenerate(false)
-      },
+      onSuccess: () => setShowRegenerate(false),
       onError: () => {
         toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
         setShowRegenerate(false)
@@ -242,15 +226,16 @@ export function WebAppAccessPointCard({
               mode={appInfo.mode}
               disabled={!actionsAvailable || !canManageAccessPoint}
             />
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
+            <SettingsDialog
+              key={appInfo.id}
+              isChat={
+                appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
+              }
+              canDeploy={canDeploy}
+              appInfo={site ? { id: appInfo.id, mode: appInfo.mode, site } : undefined}
               disabled={siteAvailability !== 'available' || !canManageAccessPoint}
-              onClick={() => setShowSettings(true)}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'navigation' })}
-            </Button>
+              onSave={onSaveSiteConfig}
+            />
           </>
         }
       >
@@ -292,16 +277,6 @@ export function WebAppAccessPointCard({
           ))}
       </AccessPointCard>
 
-      {site && (
-        <SettingsModal
-          isChat={appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW}
-          canDeploy={canDeploy}
-          appInfo={{ id: appInfo.id, mode: appInfo.mode, site }}
-          isShow={showSettings}
-          onClose={() => setShowSettings(false)}
-          onSave={onSaveSiteConfig}
-        />
-      )}
       {showAccess && (
         <AccessControl
           app={appInfo}

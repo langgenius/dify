@@ -11,7 +11,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
     "pydantic-ai-harness>=0.20.0,<0.21.0",
-    "pydantic-ai-slim>=2.30.0,<3.0.0",
+    "pydantic-ai-slim==2.31.0",
     "typing-extensions>=4.12.2,<5.0.0",
 }
 
@@ -25,7 +25,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
     "openshell>=0.0.106,<0.1.0",
     "pillow>=11.3.0,<13",
-    "pydantic-ai-slim[anthropic,google,openai]>=2.30.0,<3.0.0",
+    "pydantic-ai-slim[anthropic,google,openai]==2.31.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
     "uvicorn[standard]==0.46.0",

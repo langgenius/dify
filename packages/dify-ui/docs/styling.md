@@ -6,6 +6,12 @@ Prefer the primitive's data attributes for state styling, such as `data-checked:
 `data-disabled:`. Use its CSS variables for exposed dynamic values, such as popup anchor width
 and available height. Do not mirror primitive state in React solely to style it.
 
+Field validity has three states: `data-valid`, `data-invalid`, or neither before validation.
+`not-data-invalid` includes the unvalidated state; it is not equivalent to `data-valid`. Preserve
+existing interaction variants when adding error styles so call-site overrides keep merging.
+Disabled surfaces take precedence over invalid and read-only appearance. Keep invalid state and
+error associations intact while limiting error colors to enabled controls.
+
 Where supported by the upstream part, `className(state)` and `style(state)` read that part's state.
 At call sites, before using a callback or React state to calculate styles, check whether data attributes or CSS
 variables already express the requirement. When direct state access is needed, add a short comment
@@ -65,9 +71,19 @@ opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDial
 share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
 (Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
 
-Attach focus-visible styling to the element that visually represents focus. If a visible wrapper
-contains the native focus target, select that descendant state from the wrapper; for example,
-`SliderThumb` uses `has-[:focus-visible]` because its internal range input receives focus.
+Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
+groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
+keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
+the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
+highlight, so the group draws the ring on that state and drops it once the arrow keys move the
+highlight into the list.
+
+Attach the indicator to the element that visually represents focus. If a visible wrapper contains
+the native focus target, select that descendant state from the wrapper; for example, `SliderThumb`
+uses `has-[:focus-visible]` because its internal range input receives focus. Select
+`:focus-visible`, except on a text control, which selects `:focus` because it shows focus however
+it was reached.
 
 [Tailwind CSS functions and directives]: https://tailwindcss.com/docs/functions-and-directives
 [Tailwind CSS v4 upgrade guide]: https://tailwindcss.com/docs/upgrade-guide

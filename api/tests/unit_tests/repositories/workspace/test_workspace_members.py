@@ -36,6 +36,20 @@ def make_tenant(tenant_id: str) -> Tenant:
     return tenant
 
 
+def test_rbac_profile_batch_filters_requested_ids_and_workspace(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all([make_tenant("workspace"), make_tenant("other")])
+        for account_id, workspace in [("member", "workspace"), ("unrequested", "workspace"), ("foreign", "other")]:
+            session.add(make_account(account_id, status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)))
+            session.add(TenantAccountJoin(tenant_id=workspace, account_id=account_id, role=TenantAccountRole.NORMAL))
+
+    repository = WorkspaceRepository(sqlite_session_factory)
+    members = repository.list_for_workspace("workspace", account_ids=["member", "foreign", "missing"])
+    assert [member.id for member in members] == ["member"]
+    assert members[0].email == "member@example.com"
+    assert repository.list_for_workspace("workspace", account_ids=[]) == ()
+
+
 def test_list_for_workspace_uses_join_membership_and_preserves_account_lifecycle(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -182,9 +196,15 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
 
     class RoleResolver:
         def resolve_many(
-            self, workspace_id: str, actor_account_id: str, subjects: Sequence[WorkspaceMemberRoleSubject]
+            self,
+            workspace_id: str,
+            actor_account_id: str,
+            subjects: Sequence[WorkspaceMemberRoleSubject],
+            *,
+            language: str | None = None,
         ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
             assert not checked_out
+            assert language is None
             assert (workspace_id, actor_account_id) == ("workspace", "actor")
             assert subjects == (WorkspaceMemberRoleSubject("member", "editor"),)
             return {"member": (WorkspaceMemberRole("editor", "Editor"),)}

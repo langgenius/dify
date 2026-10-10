@@ -179,7 +179,7 @@ def _runtime(
     credential: SimpleNamespace | None | object = _DEFAULT_CREDENTIAL,
     state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
     knowledge_space_id: str | None = "space-1",
-) -> Generator[MagicMock, None, None]:
+) -> Generator[MagicMock]:
     session_context = MagicMock()
     session = MagicMock()
     session.scalar.return_value = (

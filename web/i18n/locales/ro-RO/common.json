@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Generare eșuată",
   "actionMsg.modifiedSuccessfully": "Modificat cu succes",
   "actionMsg.modifiedUnsuccessfully": "Modificare eșuată",
-  "actionMsg.noModification": "Nicio modificare în acest moment.",
   "actionMsg.payCancelled": "Plata a fost anulată",
   "actionMsg.paySucceeded": "Plata a reușit",
   "agentStrategyPage.description": "Definește cum raționează și ia decizii AI Agent — inclusiv cum selectează instrumente, gestionează rezultate și rezolvă autonom probleme.",

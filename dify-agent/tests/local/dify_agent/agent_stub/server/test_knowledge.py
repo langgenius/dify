@@ -383,77 +383,98 @@ def test_search_receipt_without_parse_id_reopens_and_pins_provenance():
         project_result(command("open", space="docs", receipt_id=RECEIPT), plan, raw, previous)
 
 
+def knowledge_capability(store, client, *, agent_supports_vision=False, **services):
+    from types import SimpleNamespace
+
+    from dify_agent.layers.knowledge_fs.layer import Capability, Config
+    from dify_agent.layers.shell.layer import ShellSession
+    from dify_agent.runtime.context import Deps, Services
+
+    deps = Deps(
+        layers={
+            "execution_context": {"config": CONTEXT.model_dump(mode="json"), "state": {}},
+            "shell": {"config": {}, "state": {}},
+            "knowledge_fs": {
+                "config": Config(spaces=[BINDING], agent_supports_vision=agent_supports_vision).model_dump(mode="json"),
+                "state": {},
+            },
+        },
+        services=Services(
+            client,
+            client,
+            agent_stub_api_base_url="http://stub",
+            agent_stub_token_factory=lambda *args, **kwargs: "secret-jwe",
+            knowledge_session_store=store,
+            **services,
+        ),
+        run_id="run",
+    )
+    shell = ShellSession("shell", deps)
+    deps.resources.shells["shell"] = shell
+    return Capability("knowledge_fs"), shell, SimpleNamespace(deps=deps, prompt="inspect evidence")
+
+
 def test_real_layer_delivers_images_as_model_parts_and_cleans_up(monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
     from pydantic_ai import Agent
     from pydantic_ai.models.test import TestModel
-    from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-    from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState
-    from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer, DifyKnowledgeFsDeps
-    from dify_agent.layers.shell.layer import DifyShellLayer
-    from dify_agent.layers.shell.configs import DifyShellLayerConfig
+    from dify_agent.layers.shell.layer import ShellSession
 
     async def scenario():
         redis, store, _ = await session_fixture()
-        shell = DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig(),
-            agent_stub_api_base_url="http://stub",
-            agent_stub_token_factory=lambda *args, **kwargs: "secret-jwe",
-        )
         remote = AsyncMock(
             side_effect=[
                 SimpleNamespace(exit_code=0, output_complete=True, output="1\n"),
                 SimpleNamespace(exit_code=0, output_complete=True, output=delivery().result.model_dump_json()),
             ]
         )
-        monkeypatch.setattr(DifyShellLayer, "run_remote_script", remote)
-        layer = DifyKnowledgeFsLayer(
-            config=DifyKnowledgeFsLayerConfig(spaces=[BINDING], agent_supports_vision=True), get_store=lambda: store
-        )
-        layer.runtime_state = DifyKnowledgeFsRuntimeState()
-        layer.deps = DifyKnowledgeFsDeps(
-            shell=shell,
-            execution_context=DifyExecutionContextLayer.from_config_with_settings(
-                CONTEXT, daemon_url="http://daemon", daemon_api_key="secret"
-            ),
-        )
-        async with layer.resource_context():
-            await layer.start(run_id="run", resume=False)
-            assert remote.await_count == 2
-            assert await layer.observe("no command") == "no command"
-            buffer = io.BytesIO()
-            Image.new("RGB", (2, 2)).save(buffer, format="PNG")
-            await store.deliver(
-                layer._session,
-                KnowledgeFsDelivery(
-                    result=delivery().result,
-                    image_base64=base64.b64encode(buffer.getvalue()).decode(),
-                    image_media_type="image/png",
-                ),
-            )
-            agent = Agent(TestModel(call_tools=["evidence"]))
+        monkeypatch.setattr(ShellSession, "run_remote_script", remote)
+        async with httpx.AsyncClient() as client:
+            capability, shell, ctx = knowledge_capability(store, client, agent_supports_vision=True)
+            session_ids = []
 
-            @agent.tool_plain
-            async def evidence():
-                return await layer.observe("shell output")
+            async def handler():
+                assert remote.await_count == 2
+                assert await capability.observe("no command") == "no command"
+                session = capability._session
+                assert session is not None
+                buffer = io.BytesIO()
+                Image.new("RGB", (2, 2)).save(buffer, format="PNG")
+                await store.deliver(
+                    session,
+                    KnowledgeFsDelivery(
+                        result=delivery().result,
+                        image_base64=base64.b64encode(buffer.getvalue()).decode(),
+                        image_media_type="image/png",
+                    ),
+                )
+                agent = Agent(TestModel(call_tools=["evidence"]))
 
-            result = await agent.run("inspect evidence")
-            parts = [part for message in result.all_messages() for part in message.parts]
-            assert any(
-                isinstance(part, ToolReturnPart) and part.metadata.get("knowledge_fs_citations") for part in parts
-            )
-            assert any(
-                isinstance(part, UserPromptPart)
-                and isinstance(part.content, list)
-                and any(isinstance(content, BinaryContent) for content in part.content)
-                for part in parts
-            )
-            session_id = layer._session.id
-            assert "secret" not in layer.runtime_state.model_dump_json()
+                @agent.tool_plain
+                async def evidence():
+                    return await shell._observe_knowledge("shell output")
+
+                result = await agent.run("inspect evidence")
+                parts = [part for message in result.all_messages() for part in message.parts]
+                assert any(
+                    isinstance(part, ToolReturnPart) and part.metadata.get("knowledge_fs_citations") for part in parts
+                )
+                assert any(
+                    isinstance(part, UserPromptPart)
+                    and isinstance(part.content, list)
+                    and any(isinstance(content, BinaryContent) for content in part.content)
+                    for part in parts
+                )
+                session_ids.append(session.id)
+                assert shell.agent_stub_session_id == session.id
+                return result
+
+            await capability.wrap_run(ctx, handler=handler)
+            assert "secret" not in json.dumps(ctx.deps.layers["knowledge_fs"]["state"])
         assert shell.agent_stub_session_id is None and shell.knowledge_observation is None
         with pytest.raises(KnowledgeFsError, match="expired"):
-            await store.load(session_id)
+            await store.load(session_ids[0])
         await redis.aclose()
 
     asyncio.run(scenario())
@@ -472,19 +493,10 @@ def test_layer_preflight_rejects_incompatible_deployments_and_closes_lease(
 ):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
-    from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-    from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState
-    from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer, DifyKnowledgeFsDeps
-    from dify_agent.layers.shell.layer import DifyShellLayer
-    from dify_agent.layers.shell.configs import DifyShellLayerConfig
+    from dify_agent.layers.shell.layer import ShellSession
 
     async def scenario():
         redis, store, _ = await session_fixture()
-        shell = DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig(),
-            agent_stub_api_base_url="http://stub",
-            agent_stub_token_factory=lambda *args, **kwargs: "private-token",
-        )
         output = gateway_output
         if output == "error-envelope":
             output = KnowledgeFsCommandResult(
@@ -496,20 +508,15 @@ def test_layer_preflight_rejects_incompatible_deployments_and_closes_lease(
                 SimpleNamespace(exit_code=0, output_complete=True, output=output),
             ]
         )
-        monkeypatch.setattr(DifyShellLayer, "run_remote_script", remote)
-        layer = DifyKnowledgeFsLayer(config=DifyKnowledgeFsLayerConfig(spaces=[BINDING]), get_store=lambda: store)
-        layer.runtime_state = DifyKnowledgeFsRuntimeState()
-        layer.deps = DifyKnowledgeFsDeps(
-            shell=shell,
-            execution_context=DifyExecutionContextLayer.from_config_with_settings(
-                CONTEXT, daemon_url="http://daemon", daemon_api_key="private-key"
-            ),
-        )
-        with pytest.raises(KnowledgeFsError) as raised:
-            async with layer.resource_context():
-                await layer.start(run_id="run", resume=False)
+        monkeypatch.setattr(ShellSession, "run_remote_script", remote)
+        handler = AsyncMock()
+        async with httpx.AsyncClient() as client:
+            capability, shell, ctx = knowledge_capability(store, client)
+            with pytest.raises(KnowledgeFsError) as raised:
+                await capability.wrap_run(ctx, handler=handler)
         assert raised.value.code == error
-        assert layer._session is None
+        handler.assert_not_awaited()
+        assert capability._session is None
         assert shell.agent_stub_session_id is None
         assert shell.knowledge_observation is None
         await redis.aclose()
@@ -578,8 +585,6 @@ def test_knowledge_handler_records_errors_without_turning_them_into_delivered_ev
 
 
 def test_final_report_retries_with_stable_identity_after_session_close():
-    from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig
-    from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer
     from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt
 
     async def scenario():
@@ -605,15 +610,13 @@ def test_final_report_retries_with_stable_identity_after_session_close():
             assert request.headers["X-Inner-Api-Key"] == "private"
             return httpx.Response(503 if len(requests) == 1 else 202)
 
-        layer = DifyKnowledgeFsLayer(
-            config=DifyKnowledgeFsLayerConfig(spaces=[BINDING]),
-            get_store=lambda: store,
-            inner_api_url="http://api",
-            inner_api_key="private",
-        )
-        layer._investigation_session = session
         async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
-            await layer.publish_investigation(client, status="completed", answer="No answer found")
+            capability, _, ctx = knowledge_capability(
+                store, client, inner_api_url="http://api", inner_api_key="private"
+            )
+            capability._store = store
+            capability._investigation_session = session
+            await capability.publish_investigation(ctx.deps.services, status="completed", answer="No answer found")
         assert len(requests) == 2 and requests[0] == requests[1]
         assert requests[0]["query"] == "refund"
         assert "private" not in json.dumps(requests)

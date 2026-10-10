@@ -912,7 +912,7 @@ def test_workspace_staging_upload_persists_before_space_creation(
         active = False
 
         @contextmanager
-        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+        def admit(self, *, reserved_bytes: int) -> Generator[None]:
             admission_events.append(f"admit:{reserved_bytes}")
             self.active = True
             try:

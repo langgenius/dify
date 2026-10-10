@@ -79,7 +79,7 @@ class TextIndexPendingError(Exception):
 
 
 @contextmanager
-def configured_text_client(tenant_id: str, *, allow_create: bool = False) -> "Generator[TextClient, None, None]":
+def configured_text_client(tenant_id: str, *, allow_create: bool = False) -> "Generator[TextClient]":
 
     from configs import dify_config
     from services.knowledge_fs.text_store_native import ElasticsearchTextStore, QdrantTextStore, WeaviateTextStore

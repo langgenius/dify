@@ -7,7 +7,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useMembers } from '@/service/use-common'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
@@ -61,7 +61,6 @@ export function BasicInformationSection() {
   )
   const membersQuery = useMembers()
   const [nameTouched, setNameTouched] = useState(false)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   if (!space || !current) return null
   if (membersQuery.isPending) return <BasicInformationSkeleton />
@@ -90,128 +89,122 @@ export function BasicInformationSection() {
   }
 
   return (
-    <>
-      <section className="flex flex-col gap-4 overflow-hidden pt-2">
-        <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
-          {t(($) => $['settings.basicInfo'], { ns: 'knowledgeSettings' })}
-        </h2>
+    <section className="flex flex-col gap-4 overflow-hidden pt-2">
+      <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
+        {t(($) => $['settings.basicInfo'], { ns: 'knowledgeSettings' })}
+      </h2>
 
-        <SettingsFieldRow label={tSettings(($) => $['form.nameAndIcon'])}>
-          <div className="flex items-start gap-2">
-            <button
-              type="button"
+      <SettingsFieldRow label={tSettings(($) => $['form.nameAndIcon'])}>
+        <div className="flex items-start gap-2">
+          <IconPicker
+            value={{ type: 'emoji', background: current.iconBackground, icon: current.icon }}
+            onValueChange={(selection) => {
+              if (selection.type !== 'emoji' || fieldsDisabled) return
+              updateDraft({
+                icon: selection.icon,
+                iconBackground: selection.background,
+              })
+            }}
+          >
+            <IconPickerTrigger
               aria-label={tSettings(($) => $['form.nameAndIcon'])}
               disabled={fieldsDisabled}
               className="shrink-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
-              onClick={() => setIconPickerOpen(true)}
             >
               <KnowledgeSpaceIcon
                 background={current.iconBackground}
                 icon={current.icon}
                 size="small"
               />
-            </button>
-            <div className="min-w-0 flex-1">
-              <Input
-                aria-label={tSettings(($) => $['form.name'])}
-                aria-describedby={nameTouched && nameInvalid ? NAME_ERROR_ID : undefined}
-                aria-invalid={nameTouched && nameInvalid}
-                autoComplete="off"
-                name="knowledge-name"
-                value={current.name}
-                maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
-                disabled={fieldsDisabled}
-                className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
-                onBlur={() => setNameTouched(true)}
-                onChange={(event) =>
-                  updateEditableDraft({
-                    name: event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH),
-                  })
-                }
-              />
-              {nameTouched && nameInvalid && (
-                <p
-                  id={NAME_ERROR_ID}
-                  className="mt-1 system-xs-regular text-text-destructive"
-                  role="alert"
-                >
-                  {t(($) => $['settings.nameRequired'], { ns: 'knowledgeSettings' })}
-                </p>
-              )}
-              {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
-                <p className="mt-1 text-right system-xs-medium text-text-warning-secondary">
-                  {current.name.length} / {KNOWLEDGE_NAME_MAX_LENGTH}
-                </p>
-              )}
-            </div>
-          </div>
-        </SettingsFieldRow>
-
-        <SettingsFieldRow label={tSettings(($) => $['form.desc'])}>
-          <div>
-            <Textarea
-              aria-label={tSettings(($) => $['form.desc'])}
-              aria-describedby={descriptionInvalid ? DESCRIPTION_ERROR_ID : undefined}
-              aria-invalid={descriptionInvalid}
+            </IconPickerTrigger>
+            <IconPickerContent enableImageUpload={false} />
+          </IconPicker>
+          <div className="min-w-0 flex-1">
+            <Input
+              aria-label={tSettings(($) => $['form.name'])}
+              aria-describedby={nameTouched && nameInvalid ? NAME_ERROR_ID : undefined}
+              aria-invalid={nameTouched && nameInvalid}
               autoComplete="off"
-              name="knowledge-description"
-              value={current.description}
+              name="knowledge-name"
+              value={current.name}
+              maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
               disabled={fieldsDisabled}
-              placeholder={t(($) => $['settings.descriptionPlaceholder'], {
-                ns: 'knowledgeSettings',
-              })}
-              className={cn(
-                'min-h-20 resize-none',
-                descriptionInvalid && 'ring-1 ring-text-destructive',
-              )}
-              onValueChange={(description) => updateEditableDraft({ description })}
+              className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
+              onBlur={() => setNameTouched(true)}
+              onChange={(event) =>
+                updateEditableDraft({
+                  name: event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH),
+                })
+              }
             />
-            {descriptionInvalid && (
+            {nameTouched && nameInvalid && (
               <p
-                id={DESCRIPTION_ERROR_ID}
+                id={NAME_ERROR_ID}
                 className="mt-1 system-xs-regular text-text-destructive"
                 role="alert"
               >
-                {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
-                  maxLength: KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
-                })}
+                {t(($) => $['settings.nameRequired'], { ns: 'knowledgeSettings' })}
+              </p>
+            )}
+            {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
+              <p className="mt-1 text-right system-xs-medium text-text-warning-secondary">
+                {current.name.length} / {KNOWLEDGE_NAME_MAX_LENGTH}
               </p>
             )}
           </div>
-        </SettingsFieldRow>
+        </div>
+      </SettingsFieldRow>
 
-        <SettingsFieldRow label={tSettings(($) => $['form.permissions'])}>
-          <KnowledgeSettingsMembers
-            disabled={!canManageAccess || interactionLocked}
-            hasError={membersInvalid}
-            members={membersQuery.data?.accounts ?? []}
-            ownerAccountId={space.owner_account_id}
-            selectedMemberIds={current.selectedMemberIds}
-            visibility={current.visibility}
-            visibilityDisabled={!canEdit || !canManageAccess || interactionLocked}
-            onSelectedMemberIdsChange={(selectedMemberIds) =>
-              !interactionLocked && canManageAccess && updateDraft({ selectedMemberIds })
-            }
-            onVisibilityChange={(visibility) => {
-              if (!interactionLocked && canEdit && canManageAccess) updateDraft({ visibility })
-            }}
+      <SettingsFieldRow label={tSettings(($) => $['form.desc'])}>
+        <div>
+          <Textarea
+            aria-label={tSettings(($) => $['form.desc'])}
+            aria-describedby={descriptionInvalid ? DESCRIPTION_ERROR_ID : undefined}
+            aria-invalid={descriptionInvalid}
+            autoComplete="off"
+            name="knowledge-description"
+            value={current.description}
+            disabled={fieldsDisabled}
+            placeholder={t(($) => $['settings.descriptionPlaceholder'], {
+              ns: 'knowledgeSettings',
+            })}
+            className={cn(
+              'min-h-20 resize-none',
+              descriptionInvalid && 'ring-1 ring-text-destructive',
+            )}
+            onValueChange={(description) => updateEditableDraft({ description })}
           />
-        </SettingsFieldRow>
-      </section>
+          {descriptionInvalid && (
+            <p
+              id={DESCRIPTION_ERROR_ID}
+              className="mt-1 system-xs-regular text-text-destructive"
+              role="alert"
+            >
+              {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                maxLength: KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
+              })}
+            </p>
+          )}
+        </div>
+      </SettingsFieldRow>
 
-      <IconPickerDialog
-        open={iconPickerOpen && !fieldsDisabled}
-        enableImageUpload={false}
-        defaultValue={{ type: 'emoji', background: current.iconBackground, icon: current.icon }}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={(selection) => {
-          if (selection.type !== 'emoji' || fieldsDisabled) return
-          updateDraft({
-            icon: selection.icon,
-            iconBackground: selection.background,
-          })
-        }}
-      />
-    </>
+      <SettingsFieldRow label={tSettings(($) => $['form.permissions'])}>
+        <KnowledgeSettingsMembers
+          disabled={!canManageAccess || interactionLocked}
+          hasError={membersInvalid}
+          members={membersQuery.data?.accounts ?? []}
+          ownerAccountId={space.owner_account_id}
+          selectedMemberIds={current.selectedMemberIds}
+          visibility={current.visibility}
+          visibilityDisabled={!canEdit || !canManageAccess || interactionLocked}
+          onSelectedMemberIdsChange={(selectedMemberIds) =>
+            !interactionLocked && canManageAccess && updateDraft({ selectedMemberIds })
+          }
+          onVisibilityChange={(visibility) => {
+            if (!interactionLocked && canEdit && canManageAccess) updateDraft({ visibility })
+          }}
+        />
+      </SettingsFieldRow>
+    </section>
   )
 }

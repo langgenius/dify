@@ -112,7 +112,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.deleted))
           setIsDeleteDialogOpen(false)
           onRefresh?.()
         },
@@ -134,7 +133,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.editDone))
           setIsEditDialogOpen(false)
           onRefresh?.()
         },

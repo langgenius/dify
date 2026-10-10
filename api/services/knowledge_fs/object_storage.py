@@ -63,7 +63,7 @@ class _StorageBackend(Protocol):
 
     def load_once(self, filename: str) -> bytes: ...
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
+    def load_stream(self, filename: str) -> Generator[bytes]: ...
 
     def exists(self, filename: str) -> bool: ...
 
@@ -220,7 +220,7 @@ class KnowledgeFSObjectStorageService:
             raise KnowledgeFSObjectStorageCorruptError("adopted object source is missing")
         return stored.metadata
 
-    def load_stream(self, *, key: str) -> Generator[bytes, None, None] | None:
+    def load_stream(self, *, key: str) -> Generator[bytes] | None:
         """Return the configured backend's stream for one logical object."""
         normalized_key = _normalize_key(key)
         stored = self._read_stored_metadata(normalized_key)

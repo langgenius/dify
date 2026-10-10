@@ -356,19 +356,13 @@ const renderVirtualizedOptionItem = (option: Option, index: number, itemCount: n
 
 function PopupSearchInput({ label, placeholder }: { label: string; placeholder: string }) {
   return (
-    <div className="p-1 pb-0">
-      <ComboboxInputGroup className="h-8 min-h-8 px-2">
-        <span
-          aria-hidden
-          className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-        />
-        <ComboboxInput
-          aria-label={label}
-          placeholder={`${placeholder}…`}
-          className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-        />
-      </ComboboxInputGroup>
-    </div>
+    <ComboboxInputGroup>
+      <span
+        aria-hidden
+        className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+      />
+      <ComboboxInput aria-label={label} placeholder={`${placeholder}…`} />
+    </ComboboxInputGroup>
   )
 }
 
@@ -774,6 +768,9 @@ export const InlineInPopover: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Choose reviewer' }))
     const reopenedPopover = await body.findByRole('dialog', { name: 'Choose reviewer' })
+    await waitFor(async () => {
+      await expect(reopenedPopover).toBeVisible()
+    })
     await expect(
       within(reopenedPopover).getByRole('combobox', { name: 'Search reviewers' }),
     ).toHaveValue('')

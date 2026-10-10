@@ -120,7 +120,7 @@ def configured_vector_client(
     tenant_id: str,
     *,
     allow_create: bool = False,
-) -> "Generator[QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore, None, None]":
+) -> "Generator[QdrantClient | ElasticsearchVectorStore | WeaviateVectorStore]":
     # Lazy dependency: installations using other backends can still boot Dify.
     from configs import dify_config
 

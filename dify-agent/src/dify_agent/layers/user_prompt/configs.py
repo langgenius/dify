@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import Annotated, ClassVar, Final, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
-from pydantic import ConfigDict, Field, model_validator
-
-from agenton.layers import LayerConfig
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-DIFY_USER_PROMPT_LAYER_TYPE_ID: Final[str] = "dify.user_prompt"
 type DifyUserPromptFileType = Literal["image", "document", "audio", "video", "custom"]
 
 
-class DifyUserPromptImageConfig(LayerConfig):
+class DifyUserPromptImageConfig(BaseModel):
     """One image delivered directly to the configured vision model.
 
     Callers provide either an HTTP(S) URL or base64 bytes. Opaque Dify file
@@ -47,7 +44,7 @@ class DifyUserPromptImageConfig(LayerConfig):
         return self
 
 
-class DifyUserPromptDownloadConfig(LayerConfig):
+class DifyUserPromptDownloadConfig(BaseModel):
     """A file locator, optionally named to match a directly attached image."""
 
     delivery: Literal["download"] = "download"
@@ -74,7 +71,7 @@ type DifyUserPromptFileConfig = Annotated[
 ]
 
 
-class DifyUserPromptLayerConfig(LayerConfig):
+class DifyUserPromptLayerConfig(BaseModel):
     """User text plus images that should be sent in the same model turn."""
 
     text: str = Field(min_length=1)
@@ -84,7 +81,6 @@ class DifyUserPromptLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_USER_PROMPT_LAYER_TYPE_ID",
     "DifyUserPromptDownloadConfig",
     "DifyUserPromptFileConfig",
     "DifyUserPromptFileType",

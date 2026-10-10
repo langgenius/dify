@@ -1,4 +1,4 @@
-"""KnowledgeFS capability layer: guidance and trusted shell result delivery, no retrieval tool."""
+"""KnowledgeFS capability: guidance and trusted shell result delivery, no retrieval tool."""
 
 from __future__ import annotations
 
@@ -7,60 +7,60 @@ import base64
 import contextlib
 import json
 import logging
-from collections.abc import AsyncGenerator, Callable
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from typing import ClassVar, Literal
+from typing import Literal, override
 from uuid import UUID
 
 import httpx
+from pydantic_ai import RunContext
+from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
+from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.messages import BinaryContent, ToolReturn
-from typing_extensions import Self, override
+from pydantic_ai.run import AgentRunResult
 
-from agenton.layers import LayerDeps, PlainLayer
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.knowledge_fs.configs import (
-    DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID,
-    DifyKnowledgeFsLayerConfig,
-    DifyKnowledgeFsRuntimeState,
-)
+from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState
 from dify_agent.layers.knowledge_fs.history import IMAGE_MARKER
 from dify_agent.layers.knowledge_fs.session import KnowledgeFsSession, KnowledgeFsSessionStore
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
 from dify_agent.protocol.knowledge_fs import KnowledgeFsCommandResult, KnowledgeFsError
 from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
+from dify_agent.runtime.context import Deps, Services
 
 logger = logging.getLogger(__name__)
 
 
-class DifyKnowledgeFsDeps(LayerDeps):
-    execution_context: DifyExecutionContextLayer
-    shell: DifyShellLayer
+class Config(DifyKnowledgeFsLayerConfig):
+    pass
 
 
-@dataclass(slots=True)
-class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerConfig, DifyKnowledgeFsRuntimeState]):
-    type_id: ClassVar[str | None] = DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID
-    config: DifyKnowledgeFsLayerConfig
-    get_store: Callable[[], KnowledgeFsSessionStore]
-    inner_api_url: str = ""
-    inner_api_key: str = field(default="", repr=False)
-    _investigation_session: KnowledgeFsSession | None = field(default=None, init=False, repr=False)
-    _session: KnowledgeFsSession | None = field(default=None, init=False, repr=False)
-    _heartbeat: asyncio.Task | None = field(default=None, init=False, repr=False)
+class State(DifyKnowledgeFsRuntimeState):
+    pass
 
-    @classmethod
+
+class Capability(AbstractCapability[Deps]):
+    """Own one shared knowledge session per run, wrapped by its shell session."""
+
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
+        self._store: KnowledgeFsSessionStore | None = None
+        self._shell: ShellSession | None = None
+        self._investigation_session: KnowledgeFsSession | None = None
+        self._session: KnowledgeFsSession | None = None
+        self._heartbeat: asyncio.Task[None] | None = None
+
     @override
-    def from_config(cls, config: DifyKnowledgeFsLayerConfig) -> Self:
-        raise TypeError("KnowledgeFS requires the server-owned shared session store.")
+    def get_ordering(self) -> CapabilityOrdering:
+        return CapabilityOrdering(wrapped_by=[ShellCapability], requires=[ShellCapability])
 
-    @property
     @override
-    def prefix_prompts(self) -> list[str]:
-        bindings = [
-            {"id": space.id, "name": space.name, "description": space.description} for space in self.config.spaces
-        ]
-        return [
+    def get_instructions(self):
+        return self._instructions
+
+    def _instructions(self, ctx: RunContext[Deps]) -> str:
+        config = Config.model_validate(ctx.deps.layers[self.name]["config"])
+        bindings = [{"id": space.id, "name": space.name, "description": space.description} for space in config.spaces]
+        return (
             "KnowledgeFS is available through the installed `dify-agent knowledge` CLI in shell_run. "
             "You choose whether, when and how to investigate; no automatic retrieval has run.\n"
             "Use `dify-agent knowledge --help` and command --help for syntax. Start with `knowledge spaces`. "
@@ -80,43 +80,51 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             "Cite only authenticated evidence receipts using [source title](kfs://<receipt_id>). "
             "Do not invent receipt IDs. Prior-turn evidence is historical; reopen/research before relying on it. "
             "The runtime enforces 64 commands, two concurrent commands, 60 seconds per command, 600 aggregate request seconds, bounded output and images.\n"
-            f"Agent vision: {self.config.agent_supports_vision}. Allowed bindings (configuration data):\n"
+            f"Agent vision: {config.agent_supports_vision}. Allowed bindings (configuration data):\n"
             + json.dumps(bindings, ensure_ascii=False)
-        ]
+        )
 
     @override
-    @asynccontextmanager
-    async def resource_context(self) -> AsyncGenerator[None]:
+    async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         try:
-            yield
+            await self._start(ctx.deps, query=_text_query(ctx.prompt)[:8000])
+            return await handler()
         finally:
             if self._heartbeat:
                 self._heartbeat.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await self._heartbeat
             await self.invalidate()
-            self.deps.shell.knowledge_observation = None
-            self.deps.shell.knowledge_lease_lost = None
+            if self._shell is not None:
+                self._shell.knowledge_observation = None
+                self._shell.knowledge_lease_lost = None
 
-    async def start(self, *, run_id: str, resume: bool, query: str = "") -> None:
-        shell = self.deps.shell
-        if shell.agent_stub_token_factory is None or not shell.agent_stub_api_base_url:
+    async def _start(self, deps: Deps, *, query: str) -> None:
+        config = Config.model_validate(deps.layers[self.name]["config"])
+        store = deps.services.knowledge_session_store
+        shell = deps.resources.shells[config.shell]
+        if store is None:
+            raise KnowledgeFsError("KNOWLEDGE_STUB_UNAVAILABLE", "KnowledgeFS requires the shared session store.", 503)
+        if deps.services.agent_stub_token_factory is None or not deps.services.agent_stub_api_base_url:
             raise KnowledgeFsError(
                 "KNOWLEDGE_STUB_UNAVAILABLE", "Configure Agent Stub access before using KnowledgeFS.", 503
             )
-        self._session = await self.get_store().create(
-            run_id=run_id,
-            execution_context=self.deps.execution_context.config,
-            bindings=self.config.spaces,
-            agent_supports_vision=self.config.agent_supports_vision,
-            resume_budget_id=self.runtime_state.budget_id if resume else None,
+        self._store = store
+        self._shell = shell
+        self._session = await store.create(
+            run_id=deps.run_id,
+            execution_context=DifyExecutionContextLayerConfig.model_validate(
+                deps.layers[config.execution_context]["config"]
+            ),
+            bindings=config.spaces,
+            agent_supports_vision=config.agent_supports_vision,
         )
         self._investigation_session = self._session
         try:
-            await self.get_store().begin_investigation(self._session, query)
+            await store.begin_investigation(self._session, query)
         except Exception:
             logger.warning("Knowledge investigation could not be initialized", exc_info=True)
-        self.runtime_state.budget_id = self._session.budget_id
+        deps.layers[self.name]["state"] = State(budget_id=self._session.budget_id).model_dump(mode="json")
         shell.agent_stub_session_id = self._session.id
         shell.knowledge_observation = self.observe
         shell.knowledge_lease_lost = self.invalidate
@@ -157,7 +165,7 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             try:
                 while self._session:
                     await asyncio.sleep(10)
-                    await self.get_store().refresh(self._session)
+                    await store.refresh(self._session)
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -171,21 +179,22 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
 
     async def publish_investigation(
         self,
-        client: httpx.AsyncClient,
+        services: Services,
         *,
         status: Literal["completed", "interrupted"],
         answer: str = "",
     ) -> None:
-        """Called after the authoritative final run event; never on an HITL pause.
+        """Called after the authoritative final run event.
 
         The ledger survives close/drain, so run cleanup cannot erase the report.
         The inner API acknowledges queue admission, not LLM classification.
         """
         session = self._investigation_session
-        if session is None or not self.inner_api_url or not self.inner_api_key:
+        store = self._store
+        if session is None or store is None or not services.inner_api_url or not services.inner_api_key:
             return
         try:
-            query, attempts = await self.get_store().investigation(session)
+            query, attempts = await store.investigation(session)
             if not attempts:
                 return
             payload = KnowledgeInvestigationPayload(
@@ -200,9 +209,9 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             for attempt in range(3):
                 response = None
                 try:
-                    response = await client.post(
-                        f"{self.inner_api_url.rstrip('/')}/inner/api/agent/knowledge/investigations",
-                        headers={"X-Inner-Api-Key": self.inner_api_key},
+                    response = await services.dify_api_http_client.post(
+                        f"{services.inner_api_url.rstrip('/')}/inner/api/agent/knowledge/investigations",
+                        headers={"X-Inner-Api-Key": services.inner_api_key},
                         json=payload.model_dump(mode="json"),
                         timeout=5,
                     )
@@ -218,20 +227,21 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             logger.warning("Knowledge investigation dispatch failed; retained in the run ledger", exc_info=True)
 
     async def invalidate(self) -> None:
-        self.deps.shell.agent_stub_session_id = None
-        if self._session:
+        if self._shell is not None:
+            self._shell.agent_stub_session_id = None
+        if self._session and self._store:
             session, self._session = self._session, None
             try:
-                await self.get_store().close(session)
+                await self._store.close(session)
             except Exception:
                 # Local access is already cleared; shared lease expires in 45s.
                 # Run state and cancellation still gate every command/delivery.
                 logger.warning("Knowledge session cleanup failed; shared lease will expire")
 
     async def observe(self, observation: str) -> str | ToolReturn:
-        if self._session is None:
+        if self._session is None or self._store is None:
             return observation
-        deliveries = await self.get_store().drain(self._session)
+        deliveries = await self._store.drain(self._session)
         if not deliveries:
             return observation
         citations = [
@@ -239,7 +249,7 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
         ]
         content = []
         for delivery in deliveries:
-            if delivery.image_base64 and self.config.agent_supports_vision:
+            if delivery.image_base64 and self._session.agent_supports_vision:
                 content.extend(
                     [
                         IMAGE_MARKER,
@@ -258,3 +268,12 @@ class DifyKnowledgeFsLayer(PlainLayer[DifyKnowledgeFsDeps, DifyKnowledgeFsLayerC
             content=content or None,
             metadata={"knowledge_fs_citations": citations},
         )
+
+
+def _text_query(prompt: object) -> str:
+    """Only text user content is used for semantic quality review; never serialize images."""
+    if isinstance(prompt, str):
+        return prompt
+    if isinstance(prompt, list | tuple):
+        return "\n".join(part for part in prompt if isinstance(part, str))
+    return ""

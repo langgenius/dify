@@ -8,7 +8,7 @@ import type {
   KnowledgeFsSpaceDetailResponse,
   KnowledgeFsSpaceUpdatePayload,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -232,23 +232,48 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   },
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => ({
-  IconPickerDialog: ({
-    open,
-    onConfirm,
-  }: {
+vi.mock('@/app/components/base/icon-picker', async () => {
+  const { createContext, use, useState } = await import('react')
+  type Selection = { background: string; icon: string; type: 'emoji' }
+  const PickerContext = createContext<{
     open: boolean
-    onConfirm?: (selection: { background: string; icon: string; type: 'emoji' }) => void
-  }) =>
-    open ? (
-      <button
-        type="button"
-        onClick={() => onConfirm?.({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })}
-      >
-        Select camera style
-      </button>
-    ) : null,
-}))
+    setOpen: (open: boolean) => void
+    onValueChange: (selection: Selection) => void
+  } | null>(null)
+  return {
+    IconPicker: ({
+      onValueChange,
+      children,
+    }: {
+      onValueChange: (selection: Selection) => void
+      children: ReactNode
+    }) => {
+      const [open, setOpen] = useState(false)
+      return <PickerContext value={{ open, setOpen, onValueChange }}>{children}</PickerContext>
+    },
+    IconPickerTrigger: ({ children, ...props }: ComponentProps<'button'>) => {
+      const picker = use(PickerContext)
+      return (
+        <button type="button" {...props} onClick={() => picker?.setOpen(true)}>
+          {children}
+        </button>
+      )
+    },
+    IconPickerContent: () => {
+      const picker = use(PickerContext)
+      return picker?.open ? (
+        <button
+          type="button"
+          onClick={() =>
+            picker.onValueChange({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })
+          }
+        >
+          Select camera style
+        </button>
+      ) : null
+    },
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,

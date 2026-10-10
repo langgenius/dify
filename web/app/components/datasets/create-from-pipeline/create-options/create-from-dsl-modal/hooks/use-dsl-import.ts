@@ -180,7 +180,6 @@ export const useDSLImport = ({
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.()
         setShowConfirmModal(false)
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
         if (pipeline_id) await handleCheckPluginDependencies(pipeline_id, true)
         push(`/datasets/${dataset_id}/pipeline`)
       } else if (status === DSLImportStatus.FAILED) {
@@ -191,7 +190,7 @@ export const useDSLImport = ({
     } finally {
       setIsConfirming(false)
     }
-  }, [importId, importDSLConfirm, notifyError, t, onSuccess, handleCheckPluginDependencies, push])
+  }, [importId, importDSLConfirm, notifyError, onSuccess, handleCheckPluginDependencies, push])
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
   }, [])

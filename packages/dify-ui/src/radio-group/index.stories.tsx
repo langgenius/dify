@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
+          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },

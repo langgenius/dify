@@ -40,7 +40,7 @@ class FakeObjectStorage(KnowledgeFSObjectStorageService):
         )
 
     @override
-    def load_stream(self, *, key: str) -> Generator[bytes, None, None] | None:
+    def load_stream(self, *, key: str) -> Generator[bytes] | None:
         body = self.objects.get(key)
         return None if body is None else (chunk for chunk in (body[:2], body[2:]))
 

@@ -42,13 +42,11 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential =>
   }) as Credential
 
 describe('useActivateCredential', () => {
-  const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
   const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsPending = false
-    toastSuccessSpy.mockClear()
     toastErrorSpy.mockClear()
   })
 
@@ -100,7 +98,6 @@ describe('useActivateCredential', () => {
       callbacks.onSuccess()
     })
 
-    expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
     expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, 'llm')
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')

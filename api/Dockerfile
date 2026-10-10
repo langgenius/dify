@@ -2,7 +2,7 @@
 # engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
 # Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 WORKDIR /app/api
 

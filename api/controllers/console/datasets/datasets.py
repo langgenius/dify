@@ -106,7 +106,7 @@ register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResp
 
 
 @contextmanager
-def _upgrade_errors() -> Generator[None, None, None]:
+def _upgrade_errors() -> Generator[None]:
     try:
         yield
     except (DatasetNotFoundError, DatasetAccessDeniedError) as error:

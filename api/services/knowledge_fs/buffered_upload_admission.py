@@ -46,7 +46,7 @@ class KnowledgeFSBufferedUploadAdmission:
         self._reserved_bytes = 0
 
     @contextmanager
-    def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+    def admit(self, *, reserved_bytes: int) -> Generator[None]:
         if reserved_bytes <= 0:
             raise ValueError("reserved_bytes must be greater than zero")
 

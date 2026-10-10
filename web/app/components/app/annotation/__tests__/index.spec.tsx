@@ -393,12 +393,7 @@ describe('Annotation', () => {
         AnnotationEnableStatus.disable,
         'job-1',
       )
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
     })
   })
 

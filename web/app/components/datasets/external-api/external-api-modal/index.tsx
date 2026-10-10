@@ -124,15 +124,11 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           ...formData,
           settings: { ...formData.settings, api_key: apiKeyToSend, endpoint },
         })
-        toast.success('External API updated successfully')
       } else {
         const res = await createExternalAPI({
           body: { ...formData, settings: { ...formData.settings, endpoint } },
         })
-        if (res && res.id) {
-          toast.success('External API saved successfully')
-          onSave(res)
-        }
+        if (res && res.id) onSave(res)
       }
       onCancel()
     } catch (error) {

@@ -33,7 +33,7 @@ class FakeStorage:
         except KeyError as exc:
             raise FileNotFoundError("missing") from exc
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.load_once(filename)
 
     def exists(self, filename: str) -> bool:
