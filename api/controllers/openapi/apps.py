@@ -165,7 +165,7 @@ class AppListApi(Resource):
             parsed_uuid = None
 
         access_filter = (
-            resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
+            resolve_app_access_filter(workspace_id, account_id)
             if dify_config.RBAC_ENABLED and isinstance(ctx.subject, AccountSubject)
             else AppAccessFilter.unrestricted()
         )

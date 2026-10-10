@@ -1,11 +1,11 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from collections.abc import Callable
 
 import pytest
 
-from services.enterprise.rbac_service import MemberRolesResponse, RBACRole
-from services.workspace import gateways
+from services.enterprise.base import EnterpriseRequest
 from services.workspace.contracts import WorkspaceMemberRole, WorkspaceMemberRoleSubject
+from services.workspace.gateways import DeploymentWorkspaceMemberRoleResolver
+from tests.unit_tests.rbac_fakes import RBACTransport
 
 
 def make_subject(account_id: str, *, legacy_role: str = "normal") -> WorkspaceMemberRoleSubject:
@@ -13,74 +13,45 @@ def make_subject(account_id: str, *, legacy_role: str = "normal") -> WorkspaceMe
 
 
 @pytest.fixture
-def batch_get(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    batch_get = MagicMock()
-    monkeypatch.setattr(
-        gateways.enterprise_rbac_service.RBACService.MemberRoles,
-        "batch_get",
-        batch_get,
-    )
-    return batch_get
+def transport(monkeypatch: pytest.MonkeyPatch) -> RBACTransport:
+    transport = RBACTransport()
+    monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
+    return transport
 
 
-def configure_rbac(monkeypatch: pytest.MonkeyPatch, *, enabled: bool) -> None:
-    monkeypatch.setattr(
-        gateways,
-        "dify_config",
-        SimpleNamespace(RBAC_ENABLED=enabled),
-    )
-
-
-def test_legacy_mode_projects_join_roles_without_enterprise_call(
-    monkeypatch: pytest.MonkeyPatch,
-    batch_get: MagicMock,
+def test_builtin_mode_projects_join_roles_without_enterprise_call(
+    config_overrides: Callable[..., None], transport: RBACTransport
 ) -> None:
-    configure_rbac(monkeypatch, enabled=False)
-    owner = make_subject("owner", legacy_role="owner")
-    member = make_subject("member")
+    config_overrides(RBAC_ENABLED=False)
 
-    result = gateways.DeploymentWorkspaceMemberRoleResolver().resolve_many(
-        "workspace-1",
-        "actor-1",
-        [owner, member],
+    result = DeploymentWorkspaceMemberRoleResolver().resolve_many(
+        "workspace-1", "actor-1", [make_subject("owner", legacy_role="owner"), make_subject("member")]
     )
 
     assert result == {
         "owner": (WorkspaceMemberRole(id="owner", name="owner"),),
         "member": (WorkspaceMemberRole(id="normal", name="normal"),),
     }
-    batch_get.assert_not_called()
+    assert transport.requests == []
 
 
-def test_rbac_mode_maps_batch_response_without_legacy_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-    batch_get: MagicMock,
+@pytest.mark.parametrize("language", [None, "ja"])
+def test_rbac_mode_maps_batch_response_without_builtin_fallback(
+    config_overrides: Callable[..., None], transport: RBACTransport, language: str | None
 ) -> None:
-    configure_rbac(monkeypatch, enabled=True)
-    owner = make_subject("owner", legacy_role="owner")
-    omitted = make_subject("omitted", legacy_role="admin")
-    batch_get.return_value = [
-        MemberRolesResponse(
-            account_id=owner.account_id,
-            roles=[
-                RBACRole(
-                    id="workspace.owner",
-                    name="Owner",
-                    type="builtin",
-                ),
-                RBACRole(
-                    id="workspace.editor",
-                    name="Editor",
-                    type="builtin",
-                ),
-            ],
-        )
-    ]
+    config_overrides(RBAC_ENABLED=True)
+    transport.response = {
+        "owner": [
+            {"id": "workspace.owner", "name": "Owner", "type": "builtin"},
+            {"id": "workspace.editor", "name": "Editor", "type": "builtin"},
+        ]
+    }
 
-    result = gateways.DeploymentWorkspaceMemberRoleResolver().resolve_many(
+    result = DeploymentWorkspaceMemberRoleResolver().resolve_many(
         "workspace-1",
         "actor-1",
-        [owner, omitted],
+        [make_subject("owner", legacy_role="owner"), make_subject("omitted", legacy_role="admin")],
+        language=language,
     )
 
     assert result == {
@@ -89,39 +60,28 @@ def test_rbac_mode_maps_batch_response_without_legacy_fallback(
             WorkspaceMemberRole(id="workspace.editor", name="Editor"),
         )
     }
-    assert "omitted" not in result
-    batch_get.assert_called_once_with("workspace-1", "actor-1", ["owner", "omitted"])
+    sent = transport.only_request
+    assert (sent.method, sent.endpoint) == ("POST", "/rbac/members/rbac-roles/batch")
+    assert (sent.tenant_id, sent.account_id) == ("workspace-1", "actor-1")
+    assert sent.json == {"member_ids": ["owner", "omitted"]}
+    assert sent.params == ({"language": language} if language else None)
 
 
-def test_rbac_failure_propagates(
-    monkeypatch: pytest.MonkeyPatch,
-    batch_get: MagicMock,
-) -> None:
-    configure_rbac(monkeypatch, enabled=True)
-    batch_get.side_effect = RoleResolutionError("enterprise unavailable")
+def test_rbac_failure_propagates(config_overrides: Callable[..., None], transport: RBACTransport) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    transport.failure = RoleResolutionError("enterprise unavailable")
 
     with pytest.raises(RoleResolutionError, match="enterprise unavailable"):
-        gateways.DeploymentWorkspaceMemberRoleResolver().resolve_many(
-            "workspace-1",
-            "actor-1",
-            [make_subject("member-1")],
-        )
+        DeploymentWorkspaceMemberRoleResolver().resolve_many("workspace-1", "actor-1", [make_subject("member-1")])
 
 
 def test_empty_member_list_skips_enterprise_call(
-    monkeypatch: pytest.MonkeyPatch,
-    batch_get: MagicMock,
+    config_overrides: Callable[..., None], transport: RBACTransport
 ) -> None:
-    configure_rbac(monkeypatch, enabled=True)
+    config_overrides(RBAC_ENABLED=True)
 
-    result = gateways.DeploymentWorkspaceMemberRoleResolver().resolve_many(
-        "workspace-1",
-        "actor-1",
-        [],
-    )
-
-    assert result == {}
-    batch_get.assert_not_called()
+    assert DeploymentWorkspaceMemberRoleResolver().resolve_many("workspace-1", "actor-1", []) == {}
+    assert transport.requests == []
 
 
 class RoleResolutionError(Exception):
