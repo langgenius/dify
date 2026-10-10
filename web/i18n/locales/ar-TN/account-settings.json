@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "احفظ رمز الوصول هذا في مكان آمن، فلن تتمكن من عرضه مرة أخرى. يمكن لأي شخص يملكه استخدام Difyctl لاكتشاف الموارد المصرح بها والوصول إليها. إذا فقدته، فأنشئ رمزًا جديدًا وألغِ الرمز القديم.",
   "resourceAccessToken.deleteDescription": "سيُعطَّل رمز الوصول فورًا. ستُرفض الطلبات التي تستخدمه، مما قد يوقف المهام الجارية أو يتسبب في فشلها. بعد حذفه، لن تتمكن من عرضه أو تعديله.",
   "resourceAccessToken.deleteTitle": "حذف رمز الوصول؟",
-  "resourceAccessToken.deleted": "تم حذف رمز الوصول",
   "resourceAccessToken.done": "تم",
   "resourceAccessToken.editTitle": "تعديل رمز الوصول",
   "resourceAccessToken.empty": "لا توجد رموز وصول بعد",

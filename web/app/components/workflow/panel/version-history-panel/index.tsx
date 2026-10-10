@@ -314,9 +314,6 @@ export const VersionHistoryPanel = ({
       await deleteWorkflow(deleteVersionUrl?.(id) || '', {
         onSuccess: () => {
           setDeleteConfirmOpen(false)
-          toast.success(
-            t(($) => $['versionHistory.action.deleteSuccess'], { ns: 'workflowHistory' }),
-          )
           resetWorkflowVersionHistory()
           deleteAllInspectVars()
           invalidAllLastRun()
@@ -355,9 +352,6 @@ export const VersionHistoryPanel = ({
         {
           onSuccess: () => {
             setEditModalOpen(false)
-            toast.success(
-              t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
-            )
             if (
               id === latestVersionId &&
               configsMap?.flowType === FlowType.appFlow &&

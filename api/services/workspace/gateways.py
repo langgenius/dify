@@ -8,7 +8,6 @@ from dataclasses import replace
 from typing import Literal, override
 from uuid import uuid4
 
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -36,7 +35,7 @@ from services.billing_service import BillingService
 from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.enterprise.rbac_service import ListOption, RBACService
+from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
@@ -50,6 +49,7 @@ from services.errors.workspace import (
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.rbac.contracts import ListOption
 from services.system_feature_service import SystemFeatureService
 from services.workspace.contracts import (
     CreatedWorkspace,
@@ -205,9 +205,6 @@ class WorkspaceInvitationGateway:
 
 
 class DeploymentWorkspaceMemberAccessGateway:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
-
     def ensure_role_enabled(self, role: str) -> None:
         _ensure_role_enabled(role)
 
@@ -216,17 +213,14 @@ class DeploymentWorkspaceMemberAccessGateway:
         return dify_config.RBAC_ENABLED
 
     def permission_keys(self, workspace_id: str, actor_id: str) -> set[str]:
-        with self._session_factory() as session:
-            permissions = RBACService.MyPermissions.get(workspace_id, actor_id, session=session)
-            return set(permissions.workspace.permission_keys)
+        permissions = RBACService.MyPermissions.get(workspace_id, actor_id)
+        return set(permissions.workspace.permission_keys)
 
     def is_owner(self, workspace_id: str, actor_id: str, member_id: str) -> bool:
-        with self._session_factory() as session:
-            roles = RBACService.MemberRoles.get(workspace_id, actor_id, member_id, session=session).roles
-            return any(
-                role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
-                for role in roles
-            )
+        roles = RBACService.MemberRoles.get(workspace_id, actor_id, member_id).roles
+        return any(
+            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner" for role in roles
+        )
 
     @staticmethod
     def _role_id(workspace_id: str, actor_id: str, tag: str) -> str:
@@ -250,15 +244,12 @@ class DeploymentWorkspaceMemberAccessGateway:
         return members[0].account_id
 
     def assign_role(self, workspace_id: str, actor_id: str, member_id: str, role_id: str) -> None:
-        with self._session_factory() as session:
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=member_id,
-                role_ids=[role_id],
-                session=session,
-            )
-            session.commit()
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=member_id,
+            role_ids=[role_id],
+        )
 
     def change_role(self, workspace_id: str, actor_id: str, member_id: str, role: TenantAccountRole) -> None:
         if not TenantAccountRole.is_non_owner_role(role):
@@ -269,25 +260,21 @@ class DeploymentWorkspaceMemberAccessGateway:
         owner_role_id = self._role_id(workspace_id, actor_id, "owner")
         old_owner_id = self.owner_id(workspace_id, actor_id)
         no_access_id = self._role_id(workspace_id, actor_id, "no_access")
-        # With RBAC enabled these calls update the enterprise service, not the local
-        # Session. Complete both before the repository commits local owner changes.
-        with self._session_factory() as session:
-            current = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id, session=session).roles
-            remaining = [str(item.id) for item in current if str(item.id) != owner_role_id]
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=old_owner_id,
-                role_ids=remaining or [no_access_id],
-                session=session,
-            )
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=member_id,
-                role_ids=[owner_role_id],
-                session=session,
-            )
+        # Complete the remote role changes before the repository commits local ownership.
+        current = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id).roles
+        remaining = [str(item.id) for item in current if str(item.id) != owner_role_id]
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=old_owner_id,
+            role_ids=remaining or [no_access_id],
+        )
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=member_id,
+            role_ids=[owner_role_id],
+        )
 
     def membership_changed(self, membership: WorkspaceMemberWrite, operator_account_id: str | None) -> None:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -553,6 +540,8 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
         workspace_id: str,
         actor_account_id: str,
         subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
         role_subjects = tuple(subjects)
         if not role_subjects:
@@ -568,6 +557,7 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
             workspace_id,
             actor_account_id,
             [subject.account_id for subject in role_subjects],
+            language=language,
         )
         return {
             item.account_id: tuple(WorkspaceMemberRole(id=role.id, name=role.name) for role in item.roles)
@@ -577,9 +567,6 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
 
 class WorkspaceProvisioningEffectsGateway:
     """Prepare external resources and publish committed workspace creation."""
-
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
 
     def prepare(self, name: str) -> WorkspaceCreation:
         workspace_id = str(uuid4())
@@ -599,16 +586,12 @@ class WorkspaceProvisioningEffectsGateway:
         if not dify_config.RBAC_ENABLED:
             return
         role_id = DeploymentWorkspaceMemberAccessGateway._role_id(workspace_id, account_id, "owner")
-        # RBAC uses the enterprise API here. Its shared signature requires a
-        # Session, but this call does not perform local database queries.
-        with self._session_factory() as session:
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=account_id,
-                member_account_id=account_id,
-                role_ids=[role_id],
-                session=session,
-            )
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=account_id,
+            member_account_id=account_id,
+            role_ids=[role_id],
+        )
 
     def created(self, workspace: CreatedWorkspace, *, owner_id: str | None) -> None:
         if owner_id is not None and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:

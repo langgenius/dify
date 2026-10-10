@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "За дозволами ролей",
   "accessRule.deleteDescription": "Це правило доступу буде остаточно видалено та вилучено зі списку авторизації ресурсу.",
   "accessRule.deleteTitle": "Видалити \"{{name}}\"?",
-  "accessRule.deleted": "Правило доступу успішно видалено",
   "accessRule.exceptionPermissionFor": "Винятковий дозвіл для {{name}}",
   "accessRule.expandSection": "Розгорнути {{title}}",
   "accessRule.maintainer": "Супроводжувач",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" призначено {{count}} учасникам. Чи хочете ви, щоб нова копія ролі включала тих самих учасників?",
   "role.copyMembersLoading": "Завантаження призначень учасників...",
   "role.copyMembersTitle": "Скопіювати призначення учасників?",
-  "role.created": "Роль успішно створено",
   "role.deleteDescription": "Цю роль буде остаточно видалено та вилучено з усіх учасників або правил доступу, які її використовують.",
   "role.deleteTitle": "Видалити \"{{name}}\"?",
-  "role.deleted": "Роль успішно видалено",
-  "role.duplicated": "Роль успішно продубльовано",
   "role.groups.builtin": "Системні ролі",
   "role.groups.custom": "Користувацькі ролі",
   "role.loading": "Завантаження ролей...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Немає опису",
   "role.noMatchingRoles": "Немає відповідних ролей",
   "role.searchPlaceholder": "Пошук ролей...",
-  "role.updated": "Роль успішно оновлено",
   "role.workspaceRoles.description": "Створюйте ролі та визначайте, що може робити кожна роль у цьому робочому просторі.",
   "role.workspaceRoles.title": "Ролі робочого простору"
 }

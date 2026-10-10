@@ -10,7 +10,6 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toast } from '@/app/notifications'
 import { PermissionLevel } from '@/models/permission'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
@@ -119,7 +118,6 @@ const ApiKeyModal = ({
           visibility: permission,
         })
       }
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
       onClose?.()
@@ -133,7 +131,6 @@ const ApiKeyModal = ({
     onOpenChange,
     onUpdate,
     updatePluginCredential,
-    t,
     editValues,
     handleSetDoingAction,
     permission,

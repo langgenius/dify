@@ -997,6 +997,107 @@ describe('HomeTrending', () => {
     expect(screen.queryByRole('button', { name: 'Duck Duck Go' })).not.toBeInTheDocument()
   })
 
+  describe('mobile swipe', () => {
+    const stubViewport = (isMobile: boolean) =>
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            matches: isMobile && query === '(max-width: 879px)',
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+          }) as MediaQueryList,
+      )
+
+    const swipe = (slide: HTMLElement, points: Array<[x: number, y: number]>) => {
+      const touch = { pointerId: 1, pointerType: 'touch', isPrimary: true }
+      const [start, ...moves] = points
+      fireEvent.pointerDown(slide, { ...touch, clientX: start![0], clientY: start![1] })
+      for (const [clientX, clientY] of moves)
+        fireEvent.pointerMove(slide, { ...touch, clientX, clientY })
+      const [clientX, clientY] = points.at(-1)!
+      fireEvent.pointerUp(slide, { ...touch, clientX, clientY })
+    }
+
+    const renderCarousel = () =>
+      render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('switches in both directions without activating a dragged link or clearing Pause', async () => {
+      const user = userEvent.setup()
+      stubViewport(true)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [
+        [480, 160],
+        [300, 166],
+      ])
+
+      expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox', hidden: true }))).toBe(
+        false,
+      )
+      expect(screen.getByRole('button', { name: 'Dify Updates' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
+      )
+      swipe(screen.getByRole('group', { name: 'Dify Updates' }), [
+        [260, 160],
+        [440, 166],
+      ])
+
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(
+        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }),
+      ).toBeInTheDocument()
+    })
+
+    it('suppresses the trailing click when a horizontal drag is pulled back before release', () => {
+      stubViewport(true)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [
+        [400, 160],
+        [280, 164],
+        [396, 162],
+      ])
+
+      expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox' }))).toBe(false)
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+
+    it.each([
+      { name: 'a vertical gesture on mobile', isMobile: true, end: [270, 300] as [number, number] },
+      { name: 'touch input on desktop', isMobile: false, end: [80, 160] as [number, number] },
+    ])('stays on the current slide for $name', ({ isMobile, end }) => {
+      stubViewport(isMobile)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [[300, 120], end])
+
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+  })
+
   it('renders no carousel when the API returns no banners', () => {
     render(<HomeTrending banners={[]} isMarketplacePlatform page="plugins" />)
 

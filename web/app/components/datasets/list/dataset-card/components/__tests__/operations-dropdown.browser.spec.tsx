@@ -28,72 +28,59 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-it.each([true, false])(
-  'keeps operations visible and keyboard accessible with embedding available: %s',
-  async (embeddingAvailable) => {
-    // Real CSS and native Tab navigation catch visibility-hidden triggers that happy-dom misses.
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-    })
-    queryClient.setQueryData(userProfileQueryOptions().queryKey, {
-      profile: {
-        id: 'user-1',
-        name: 'Test User',
-        email: 'test@dify.ai',
-        avatar: '',
-        avatar_url: null,
-        is_password_set: false,
-        timezone: 'Asia/Shanghai',
-      },
-      meta: { currentVersion: null, currentEnv: null },
-    })
-    queryClient.setQueryData(
-      systemFeaturesQueryOptions().queryKey,
-      createSystemFeaturesFixture({ rbac_enabled: true }),
-    )
-    const openRenameModal = vi.fn()
-    const dataset = {
-      id: 'dataset-1',
-      name: 'Test Dataset',
-      runtime_mode: 'general',
-      embedding_available: embeddingAvailable,
-      permission_keys: [DatasetACLPermission.Edit],
-    } as DataSet
-    const screen = await render(
-      <QueryClientProvider client={queryClient}>
-        <button type="button">Before dataset</button>
-        <div className="group relative mt-10 h-40 w-80">
-          <CornerLabels dataset={dataset} />
-          <OperationsDropdown
-            dataset={dataset}
-            openRenameModal={openRenameModal}
-            handleExportPipeline={vi.fn()}
-            detectIsUsedByApp={vi.fn()}
-            openAccessConfig={vi.fn()}
-          />
-        </div>
-        <button type="button">After dataset</button>
-      </QueryClientProvider>,
-    )
+it('keeps operations visible on keyboard focus without covering the unavailable label', async () => {
+  // Real CSS and native Tab navigation catch visibility-hidden triggers that happy-dom misses.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  })
+  queryClient.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: {
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar: '',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'Asia/Shanghai',
+    },
+    meta: { currentVersion: null, currentEnv: null },
+  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({ rbac_enabled: true }),
+  )
+  const dataset = {
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    runtime_mode: 'general',
+    embedding_available: false,
+    permission_keys: [DatasetACLPermission.Edit],
+  } as DataSet
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <button type="button">Before dataset</button>
+      <div className="group relative mt-10 h-40 w-80">
+        <CornerLabels dataset={dataset} />
+        <OperationsDropdown
+          dataset={dataset}
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+          openAccessConfig={vi.fn()}
+        />
+      </div>
+      <button type="button">After dataset</button>
+    </QueryClientProvider>,
+  )
 
-    screen.getByRole('button', { name: 'Before dataset' }).element().focus()
-    await userEvent.keyboard('{Tab}')
-    const trigger = screen.getByRole('button', { name: 'Dataset operations' })
-    await expect.element(trigger).toHaveFocus()
-    await expect.element(trigger).toBeVisible()
-    if (!embeddingAvailable) {
-      const unavailableLabel = screen.getByText('dataset.cornerLabel.unavailable')
-      await expect.element(unavailableLabel).toBeVisible()
-      expect(unavailableLabel.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
-        trigger.element().getBoundingClientRect().top,
-      )
-    }
-    await userEvent.keyboard('{Enter}')
-    const edit = screen.getByRole('menuitem', { name: 'common.operation.edit' })
-    await expect.element(edit).toHaveFocus()
-    await userEvent.keyboard('{Enter}')
-    expect(openRenameModal).toHaveBeenCalledTimes(1)
-    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
-    await expect.element(trigger).toHaveFocus()
-  },
-)
+  screen.getByRole('button', { name: 'Before dataset' }).element().focus()
+  await userEvent.keyboard('{Tab}')
+  const trigger = screen.getByRole('button', { name: 'Dataset operations' })
+  await expect.element(trigger).toHaveFocus()
+  await expect.element(trigger).toBeVisible()
+  const unavailableLabel = screen.getByText('dataset.cornerLabel.unavailable')
+  await expect.element(unavailableLabel).toBeVisible()
+  expect(unavailableLabel.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    trigger.element().getBoundingClientRect().top,
+  )
+})

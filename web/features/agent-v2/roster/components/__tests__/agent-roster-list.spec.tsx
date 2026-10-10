@@ -490,9 +490,6 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
-    })
   })
 
   it('duplicates an agent with the dialog name, role, and description when provided', async () => {
@@ -540,9 +537,6 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
-    })
   })
 
   it('duplicates an agent with an empty role when the role is cleared', async () => {

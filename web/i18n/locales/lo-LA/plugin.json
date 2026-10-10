@@ -3,7 +3,6 @@
   "action.delete": "ລຶບການເຊື່ອມຕໍ່",
   "action.deleteContentLeft": "ທ່ານຕ້ອງການລຶບ ",
   "action.deleteContentRight": " ອອກບໍ່?",
-  "action.deleteSuccess": "ລຶບການເຊື່ອມຕໍ່ສຳເລັດແລ້ວ",
   "action.pluginInfo": "ຂໍ້ມູນການເຊື່ອມຕໍ່",
   "allCategories": "ທຸກໝວດໝູ່",
   "auth.addApi": "ເພີ່ມ API Key",

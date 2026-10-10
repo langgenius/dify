@@ -1,5 +1,4 @@
 {
-  "workflowGenerator.applied": "應用",
   "workflowGenerator.appliedRefineHint": "已套用 — 隨時用 ⌘K → /refine 優化",
   "workflowGenerator.applyFailed": "應用工作流程失敗",
   "workflowGenerator.applyToNew": "創建新應用程式",

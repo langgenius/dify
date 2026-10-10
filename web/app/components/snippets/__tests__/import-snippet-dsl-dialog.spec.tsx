@@ -98,7 +98,6 @@ describe('ImportSnippetDSLDialog', () => {
         yamlUrl: 'https://example.com/snippet.yml',
       })
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(toastMocks.success).toHaveBeenCalledWith('snippet.importSuccess')
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
   })

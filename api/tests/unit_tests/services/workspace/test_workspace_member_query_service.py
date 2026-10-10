@@ -61,14 +61,18 @@ class RecordingRoleResolver:
     def __init__(self, roles: Mapping[str, Sequence[WorkspaceMemberRole]]) -> None:
         self.roles = roles
         self.calls: list[tuple[str, str, tuple[WorkspaceMemberRoleSubject, ...]]] = []
+        self.languages: list[str | None] = []
 
     def resolve_many(
         self,
         workspace_id: str,
         actor_account_id: str,
         subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
         self.calls.append((workspace_id, actor_account_id, tuple(subjects)))
+        self.languages.append(language)
         return self.roles
 
 
@@ -78,8 +82,10 @@ class FailingRoleResolver:
         workspace_id: str,
         actor_account_id: str,
         subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
-        del workspace_id, actor_account_id, subjects
+        del workspace_id, actor_account_id, subjects, language
         raise RoleResolutionError
 
 
@@ -87,7 +93,8 @@ class RoleResolutionError(Exception):
     pass
 
 
-def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
+@pytest.mark.parametrize("language", [None, "ja"])
+def test_list_current_projects_members_and_merges_roles_by_account_id(language: str | None) -> None:
     active = make_member("active", legacy_role="owner")
     pending = make_member("pending", status="pending")
     members = RecordingMemberQuery([active, pending])
@@ -101,7 +108,7 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
     )
     service = WorkspaceMemberQueryService(members=members, roles=roles)
 
-    result = service.list_current(make_context())
+    result = service.list_current(make_context(), language=language)
 
     by_id = {member.id: member for member in result}
     assert set(by_id) == {"active", "pending"}
@@ -123,6 +130,7 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
     assert by_id["pending"].status == "pending"
     assert by_id["pending"].roles == ()
     assert members.workspace_ids == ["workspace-1"]
+    assert roles.languages == [language]
     assert roles.calls == [
         (
             "workspace-1",

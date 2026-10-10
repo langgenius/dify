@@ -23,6 +23,7 @@ from graphon.variables.variables import RAGPipelineVariable
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services.app.access import AppAccessFilter
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -1100,27 +1101,36 @@ def test_trigger_run_loads_draft_with_request_session(
     get_draft_workflow.assert_called_once_with(app_model, session=session)
 
 
-def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_online_users_filters_inaccessible_workflow(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
-    sign_avatar = Mock(return_value=signed_avatar_url)
-    get_tenant_app_maintainers = Mock(return_value={app_id_1: "owner-1", app_id_2: "owner-2"})
-    monkeypatch.setattr(
-        workflow_module,
-        "WorkflowService",
-        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
-    )
-    access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
-    resolve_access = Mock(return_value=access_filter)
+    signed_ids: list[str] = []
+    queries: list[tuple[list[str], str, Session]] = []
+    actors: list[tuple[str, str]] = []
+
+    def sign_avatar(file_id: str) -> str:
+        signed_ids.append(file_id)
+        return signed_avatar_url
+
+    class WorkflowQueries:
+        def get_tenant_app_maintainers(self, app_ids: list[str], tenant_id: str, *, session: Session) -> dict[str, str]:
+            queries.append((app_ids, tenant_id, session))
+            return {app_id_1: "owner-1", app_id_2: "owner-2"}
+
+    def resolve_access(tenant_id: str, account_id: str) -> AppAccessFilter:
+        actors.append((tenant_id, account_id))
+        return AppAccessFilter(accessible_app_ids={app_id_1}, can_manage_own_apps=False)
+
+    monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
     monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
-    short_session = Mock()
-    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
-    redis_pipeline = Mock()
-    redis_pipeline.execute.return_value = [
+    redis_result = [
         {
             b"sid-1": json.dumps(
                 {
@@ -1154,8 +1164,23 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
             ),
         }
     ]
-    redis_pipeline_factory = Mock(return_value=redis_pipeline)
-    monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
+    redis_keys: list[str] = []
+    pipeline_transactions: list[bool] = []
+    executions: list[bool] = []
+
+    class PresencePipeline:
+        def hgetall(self, key: str) -> None:
+            redis_keys.append(key)
+
+        def execute(self) -> list[dict[bytes, str]]:
+            executions.append(True)
+            return redis_result
+
+    def pipeline(*, transaction: bool) -> PresencePipeline:
+        pipeline_transactions.append(transaction)
+        return PresencePipeline()
+
+    monkeypatch.setattr(workflow_module.redis_client, "pipeline", pipeline)
 
     api = workflow_module.WorkflowOnlineUsersApi()
     handler = inspect.unwrap(api.post)
@@ -1166,7 +1191,9 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         json={"app_ids": [app_id_1, app_id_2]},
     ):
         args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id_1, app_id_2]})
-        response = handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
+        actor = _account()
+        actor.id = "account-1"
+        response = handler(api, args, "tenant-1", actor)
 
     assert response == {
         "data": [
@@ -1187,15 +1214,12 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
             }
         ]
     }
-    redis_pipeline_factory.assert_called_once_with(transaction=False)
-    redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
-    redis_pipeline.execute.assert_called_once_with()
-    sign_avatar.assert_called_once_with("avatar-file-id")
-    get_tenant_app_maintainers.assert_called_once()
-    resolve_access.assert_called_once()
-    assert get_tenant_app_maintainers.call_args.args == ([app_id_1, app_id_2], "tenant-1")
-    assert resolve_access.call_args.args == ("tenant-1", "account-1")
-    assert get_tenant_app_maintainers.call_args.kwargs["session"] is resolve_access.call_args.kwargs["session"]
+    assert pipeline_transactions == [False]
+    assert redis_keys == [f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"]
+    assert executions == [True]
+    assert signed_ids == ["avatar-file-id"]
+    assert queries == [([app_id_1, app_id_2], "tenant-1", unbound_session)]
+    assert actors == [("tenant-1", "account-1")]
 
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

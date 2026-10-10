@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "請將此存取權杖儲存在安全的地方，你將無法再次查看。任何持有此權杖的人都可以使用 Difyctl 探索並存取此權杖授權的資源。如果遺失，請建立新權杖並撤銷舊權杖。",
   "resourceAccessToken.deleteDescription": "此存取權杖將立即停用。使用此權杖的請求會被拒絕，可能導致正在執行的工作中斷或失敗。刪除後，你將無法再查看或修改此權杖。",
   "resourceAccessToken.deleteTitle": "刪除存取權杖？",
-  "resourceAccessToken.deleted": "存取權杖已刪除",
   "resourceAccessToken.done": "完成",
   "resourceAccessToken.editTitle": "編輯存取權杖",
   "resourceAccessToken.empty": "尚無存取權杖",
