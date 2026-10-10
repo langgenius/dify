@@ -15,6 +15,32 @@ import {
 } from '../shared'
 
 describe('skill detail shared utilities', () => {
+  it.each(['bob', null])('propagates maintainer %s to normal and infinite lists', (maintainer) => {
+    const queryClient = new QueryClient()
+    const original: Parameters<typeof setSkillDetailCache>[2] = {
+      id: 'skill-1',
+      maintainer: 'alice',
+      files: [],
+      name: 'skill',
+      display_name: 'Skill',
+      icon: '📄',
+      description: '',
+      visibility: 'workspace',
+      created_at: 1,
+      updated_at: 1,
+    }
+    const other = { id: 'skill-2', maintainer: 'alice' }
+    const normalKey = consoleQuery.workspaces.current.skills.get.key({ type: 'query' })
+    const infiniteKey = consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' })
+    queryClient.setQueryData(normalKey, { data: [original, other] })
+    queryClient.setQueryData(infiniteKey, { pages: [{ data: [original, other] }], pageParams: [1] })
+    setSkillDetailCache(queryClient, original.id, { ...original, maintainer })
+    expect(queryClient.getQueryData(normalKey)).toMatchObject({ data: [{ maintainer }, other] })
+    expect(queryClient.getQueryData(infiniteKey)).toMatchObject({
+      pages: [{ data: [{ maintainer }, other] }],
+    })
+  })
+
   it('reads error codes and details from supported error shapes', () => {
     expect(getErrorCode({ code: 'direct' })).toBe('direct')
     expect(getErrorCode({ data: { code: 'data' } })).toBe('data')

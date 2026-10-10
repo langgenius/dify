@@ -61,6 +61,7 @@ class Skill(DefaultFieldsMixin, Base):
         sa.PrimaryKeyConstraint("id", name="skill_pkey"),
         UniqueConstraint("tenant_id", "name", name="skill_tenant_name_unique"),
         Index("skills_tenant_updated_at_idx", "tenant_id", "updated_at"),
+        Index("skills_tenant_maintainer_idx", "tenant_id", "maintainer"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -81,6 +82,7 @@ class Skill(DefaultFieldsMixin, Base):
         server_default="workspace",
     )
     latest_published_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 

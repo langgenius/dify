@@ -436,6 +436,7 @@ def test_delete_skill_passes_confirmation_name(app: Flask, request_context: Requ
     assert payload == {"id": "skill-1", "deleted": True}
     service.delete_skill.assert_called_once_with(
         tenant_id="tenant-1",
+        user_id="user-1",
         skill_id="skill-1",
         confirmation_name="finance-sop",
     )
@@ -1361,3 +1362,205 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
 
     assert status == 400
     assert payload["code"] == "invalid_request"
+
+
+@pytest.mark.parametrize(
+    ("rbac", "role", "maintainer", "global_delete", "allowed"),
+    [
+        (True, "normal", "user-1", False, True),
+        (True, "normal", "other", False, False),
+        (True, "normal", None, False, False),
+        (True, "normal", "other", True, True),
+        (False, "owner", "other", False, True),
+        (False, "admin", "other", False, True),
+        (False, "editor", "other", False, True),
+        (False, "normal", "user-1", False, False),
+        (False, "dataset_operator", "user-1", False, False),
+    ],
+)
+def test_delete_skill_authorization_through_admission(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    rbac: bool,
+    role: str,
+    maintainer: str | None,
+    global_delete: bool,
+    allowed: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    from werkzeug.exceptions import Forbidden
+
+    from controllers.console import wraps
+    from core.db.session_factory import session_factory
+    from core.rbac import RBACPermission
+    from libs import login as login_adapter
+    from models.account import Account, AccountStatus, Tenant, TenantAccountRole
+    from models.skill import Skill
+    from services.enterprise.rbac_service import RBACService
+
+    config_overrides(RBAC_ENABLED=rbac, LOGIN_DISABLED=False, INIT_PASSWORD="")
+    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+    account.id = "user-1"
+    account.role = TenantAccountRole(role)
+    account._current_tenant = Tenant(name="Workspace")
+    account._current_tenant.id = "tenant-1"
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    monkeypatch.setattr(login_adapter, "_resolve_current_user", lambda: account)
+    monkeypatch.setattr(login_adapter, "check_csrf_token", Mock())
+    remote = Mock(return_value=global_delete)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    with session_factory.create_session() as session:
+        skill = Skill(id="skill-1", tenant_id="tenant-1", name="test", display_name="Test", created_by="user-1")
+        skill.maintainer = maintainer
+        session.add(skill)
+        session.commit()
+    with app.test_request_context(method="DELETE", json={}):
+        if allowed:
+            result = WorkspaceSkillApi().delete(skill_id="skill-1")
+            assert result["deleted"] is True
+        else:
+            with pytest.raises(Forbidden):
+                WorkspaceSkillApi().delete(skill_id="skill-1")
+    with session_factory.create_session() as session:
+        assert (session.get(Skill, "skill-1") is None) == allowed
+    if rbac and maintainer != "user-1":
+        remote.assert_called_once_with(
+            "tenant-1", "user-1", scene=RBACPermission.SKILL_DELETE, resource_type=None, resource_id=None
+        )
+    else:
+        remote.assert_not_called()
+
+
+@pytest.mark.parametrize("failure", ["anonymous", "uninitialized", "no_workspace"])
+def test_delete_skill_rejects_invalid_admission(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    failure: str,
+) -> None:
+    from unittest.mock import Mock
+
+    from werkzeug.exceptions import Unauthorized
+
+    from controllers.console import wraps
+    from controllers.console.workspace.error import AccountNotInitializedError
+    from libs import login as login_adapter
+    from machinery.errors import ActiveWorkspaceRequiredError
+    from models.account import Account, AccountStatus, Tenant
+    from services.enterprise.rbac_service import RBACService
+    from services.skill_management_service import SkillManagementService
+
+    config_overrides(RBAC_ENABLED=True, LOGIN_DISABLED=False, INIT_PASSWORD="")
+    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+    account.id = "user-1"
+    if failure == "uninitialized":
+        account.status = AccountStatus.UNINITIALIZED
+    if failure != "no_workspace":
+        account._current_tenant = Tenant(name="Workspace")
+        account._current_tenant.id = "tenant-1"
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    identity = Mock(return_value=account, side_effect=Unauthorized() if failure == "anonymous" else None)
+    monkeypatch.setattr(login_adapter, "_resolve_current_user", identity)
+    monkeypatch.setattr(login_adapter, "check_csrf_token", Mock())
+    remote = Mock()
+    deletion = Mock()
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    monkeypatch.setattr(SkillManagementService, "delete_skill", deletion)
+    error = {
+        "anonymous": Unauthorized,
+        "uninitialized": AccountNotInitializedError,
+        "no_workspace": ActiveWorkspaceRequiredError,
+    }[failure]
+    with app.test_request_context(method="DELETE", json={}), pytest.raises(error):
+        WorkspaceSkillApi().delete(skill_id="skill-1")
+    remote.assert_not_called()
+    deletion.assert_not_called()
+
+
+@pytest.mark.parametrize("transferred", [False, True])
+def test_delete_skill_preserves_forbidden_http_response(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    transferred: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    from flask_restx import Resource
+    from werkzeug.exceptions import Forbidden
+
+    from controllers.console import wraps
+    from core.db.session_factory import session_factory
+    from libs import login as login_adapter
+    from libs.external_api import ExternalApi
+    from models.account import Account, AccountStatus, Tenant, TenantAccountRole
+    from models.skill import Skill
+    from services.enterprise.rbac_service import RBACService
+    from services.skill_management_service import SkillManagementService
+
+    config_overrides(RBAC_ENABLED=True, LOGIN_DISABLED=False, INIT_PASSWORD="")
+    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+    account.id = "user-1"
+    account.role = TenantAccountRole.NORMAL
+    account._current_tenant = Tenant(name="Workspace")
+    account._current_tenant.id = "tenant-1"
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    monkeypatch.setattr(login_adapter, "_resolve_current_user", lambda: account)
+    monkeypatch.setattr(login_adapter, "check_csrf_token", Mock())
+    remote = Mock(return_value=False)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    with session_factory.create_session() as session:
+        session.add(
+            Skill(
+                id="skill-1",
+                tenant_id="tenant-1",
+                name="test",
+                display_name="Test",
+                maintainer="user-1" if transferred else "other",
+            )
+        )
+        session.commit()
+
+    if transferred:
+        authorize = SkillManagementService._authorize_skill_delete
+
+        def transfer_after_check(self: SkillManagementService, *, tenant_id: str, user_id: str, skill_id: str) -> bool:
+            result = authorize(self, tenant_id=tenant_id, user_id=user_id, skill_id=skill_id)
+            with session_factory.create_session() as session:
+                skill = session.get(Skill, skill_id)
+                assert skill is not None
+                skill.maintainer = "other"
+                session.commit()
+            return result
+
+        monkeypatch.setattr(SkillManagementService, "_authorize_skill_delete", transfer_after_check)
+
+    references = Mock(side_effect=AssertionError("denied deletion must not query references"))
+    monkeypatch.setattr(SkillManagementService, "_reference_counts", references)
+
+    class OriginalForbiddenApi(Resource):
+        def delete(self) -> None:
+            raise Forbidden()
+
+    api = ExternalApi(app)
+    api.add_resource(WorkspaceSkillApi, "/skills/<string:skill_id>")
+    api.add_resource(OriginalForbiddenApi, "/original-forbidden")
+    client = app.test_client()
+    original = client.delete("/original-forbidden")
+    response = client.delete("/skills/skill-1", json={})
+    assert response.status_code == original.status_code == 403
+    assert (
+        response.get_json()
+        == original.get_json()
+        == {
+            "code": "forbidden",
+            "message": Forbidden.description,
+            "status": 403,
+        }
+    )
+    references.assert_not_called()
+    assert remote.call_count == (0 if transferred else 1)
+    with session_factory.create_session() as session:
+        assert session.get(Skill, "skill-1") is not None

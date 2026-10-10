@@ -5,11 +5,13 @@ import type {
   SkillTagResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
+import type { PermissionKey } from '@/models/access-control'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { setSkillDetailCache } from '../detail/shared'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -21,6 +23,7 @@ type SkillsInfiniteOptions = {
 }
 
 const mocks = vi.hoisted(() => ({
+  permissionKeys: ['skill.edit', 'skill.delete', 'skill.publish'] as PermissionKey[],
   createSkillMutationFn: vi.fn(),
   deleteSkillMutationFn: vi.fn(),
   downloadBlob: vi.fn(),
@@ -200,6 +203,7 @@ vi.mock('@/service/console', () => ({
             },
           },
           bySkillId: {
+            get: { key: () => ['skill-detail'] },
             delete: {
               mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
             },
@@ -220,9 +224,21 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
-vi.mock('../permissions', () => ({
-  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
-}))
+vi.mock('../permissions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../permissions')>()
+  return {
+    ...actual,
+    useSkillPermissions: () => ({
+      ...actual.getSkillPermissions(mocks.permissionKeys),
+      canDeleteSkill: (maintainer: string | null | undefined) =>
+        actual.getSkillPermissions(mocks.permissionKeys, {
+          currentUserId: 'user-1',
+          resourceMaintainer: maintainer,
+          isRbacEnabled: true,
+        }).canDelete,
+    }),
+  }
+})
 
 function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
   return {
@@ -282,6 +298,7 @@ async function openImportDialog(user: ReturnType<typeof userEvent.setup>) {
 
 describe('SkillsPage', () => {
   beforeEach(() => {
+    mocks.permissionKeys = ['skill.edit', 'skill.delete', 'skill.publish']
     vi.clearAllMocks()
     mocks.queryState.keyword = ''
     mocks.queryState.tag = []
@@ -1254,6 +1271,66 @@ describe('SkillsPage', () => {
     await waitFor(() => {
       expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
     })
+  })
+
+  it('computes deletion separately for maintained and other skills', async () => {
+    mocks.permissionKeys = ['skill.edit']
+    mocks.skills = [
+      createSkill({ maintainer: 'user-1' }),
+      createSkill({ id: 'skill-2', display_name: 'Other', maintainer: 'user-2' }),
+    ]
+    mocks.skillPages = [mocks.skills]
+    const user = userEvent.setup()
+    renderSkillsPage()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Other"}',
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('updates the delete menu when refreshed detail transfers or clears the maintainer', async () => {
+    mocks.permissionKeys = ['skill.edit']
+    mocks.skillsKey.mockImplementation(() => ['skills'])
+    const detail = { ...createSkill({ maintainer: 'user-1' }), files: [] }
+    mocks.skills = [detail]
+    mocks.skillPages = [mocks.skills]
+    const queryClient = createTestQueryClient()
+    const user = userEvent.setup()
+    renderSkillsPage(queryClient)
+    const openMenu = () =>
+      user.click(
+        screen.getByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+        }),
+      )
+    await screen.findByText('Refund approval')
+    await openMenu()
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    for (const maintainer of ['user-2', null]) {
+      setSkillDetailCache(queryClient, detail.id, { ...detail, maintainer })
+      await openMenu()
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+        ).not.toBeInTheDocument(),
+      )
+      await user.keyboard('{Escape}')
+    }
+    setSkillDetailCache(queryClient, detail.id, detail)
+    await openMenu()
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
   })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
