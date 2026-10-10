@@ -18,7 +18,6 @@ class UtmInfo(TypedDict, total=False):
     utm_content: str
     utm_term: str
 
-
 class OperationService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
@@ -31,6 +30,8 @@ class OperationService:
         response = httpx.request(
             method, url, json=json, params=params, headers=headers, timeout=OPERATION_REQUEST_TIMEOUT
         )
+
+        response.raise_for_status()
 
         return response.json()
 
