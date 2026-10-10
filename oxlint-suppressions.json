@@ -202,11 +202,6 @@
       "count": 8
     }
   },
-  "web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/app/configuration/config-prompt/__tests__/advanced-prompt-input.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 1

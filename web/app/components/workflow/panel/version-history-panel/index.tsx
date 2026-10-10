@@ -9,7 +9,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
+import { VersionInfoModal } from '@/app/components/app/app-publisher/version-info-modal'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
@@ -494,14 +494,14 @@ export const VersionHistoryPanel = ({
           onDelete={handleDelete}
         />
       )}
-      {editModalOpen && (
-        <VersionInfoModal
-          isOpen={editModalOpen}
-          versionInfo={operatedItem}
-          onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.edit)}
-          onPublish={handleUpdateWorkflow}
-        />
-      )}
+      <VersionInfoModal
+        open={editModalOpen}
+        versionInfo={operatedItem}
+        onOpenChange={(open) => {
+          if (!open) handleCancel(VersionHistoryContextMenuOptions.edit)
+        }}
+        onPublish={handleUpdateWorkflow}
+      />
     </div>
   )
 }

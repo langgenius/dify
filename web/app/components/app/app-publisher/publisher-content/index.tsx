@@ -24,7 +24,7 @@ import {
   selectedPublisherEnvironmentIdAtom,
 } from '../state'
 import { getDisabledFunctionTooltip, getPublisherAppUrl } from '../utils'
-import VersionInfoModal from '../version-info-modal'
+import { VersionInfoModal } from '../version-info-modal'
 import { PublisherPanel } from './publisher-panel'
 import { useMarketplacePublish } from './use-marketplace-publish'
 import { usePublishController } from './use-publish-controller'
@@ -270,14 +270,14 @@ export function PublisherContent({
         }}
         onOpenChange={handleOpenChange}
       />
-      {versionInfo.isOpen && (
-        <VersionInfoModal
-          isOpen={versionInfo.isOpen}
-          versionInfo={publish.publishedWorkflow ?? undefined}
-          onClose={versionInfo.closeEditor}
-          onPublish={versionInfo.updateVersionInfo}
-        />
-      )}
+      <VersionInfoModal
+        open={versionInfo.isOpen}
+        versionInfo={publish.publishedWorkflow ?? undefined}
+        onOpenChange={(open) => {
+          if (!open) versionInfo.closeEditor()
+        }}
+        onPublish={versionInfo.updateVersionInfo}
+      />
       {workflowTool.drawerOpen && workflowTool.canManageTools && (
         <WorkflowToolDrawer
           isAdd={!workflowTool.published}

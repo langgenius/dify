@@ -196,29 +196,6 @@ vi.mock('../restore-confirm-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
-  default: ({
-    versionInfo,
-    onPublish,
-  }: {
-    versionInfo: VersionHistory
-    onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
-  }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onPublish({
-          id: versionInfo.id,
-          title: 'Updated release',
-          releaseNotes: 'Updated notes',
-        })
-      }
-    >
-      submit version info
-    </button>
-  ),
-}))
-
 vi.mock('../version-history-item', () => ({
   default: (props: MockVersionHistoryItemProps) => {
     const MockVersionHistoryItem = () => {
@@ -513,7 +490,14 @@ describe('VersionHistoryPanel', () => {
     )
 
     fireEvent.click(screen.getByText('edit-published-version-id'))
-    fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
+    const user = userEvent.setup()
+    const title = screen.getByRole('textbox', { name: /editField.title$/ })
+    await user.clear(title)
+    await user.type(title, 'Updated release')
+    const notes = screen.getByRole('textbox', { name: /editField.releaseNotes$/ })
+    await user.clear(notes)
+    await user.type(notes, 'Updated notes')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
