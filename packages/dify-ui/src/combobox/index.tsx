@@ -112,7 +112,8 @@ const comboboxInputGroupVariants = cva(
   [
     textControlGroupClassName,
     'group/combobox items-center',
-    // Inside the popup the group is the search box: it lines up with the options on 4px gutters,
+    // Inside the popup the group is the search box, laid out like `DropdownMenuInputGroup`: it
+    // lines up with the options on 4px gutters,
     // hosts an inline icon, and takes over the horizontal padding from its input and controls.
     // The popup marks itself with a data attribute because a `role="dialog"` ancestor could also be
     // a Dialog hosting a field anchor.
@@ -212,6 +213,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
+// Same look as `DropdownMenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -406,6 +408,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
+// Same look as `DropdownMenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty
