@@ -42,7 +42,7 @@ class AnnotationReplyFeature:
         enabled_config = cast(AnnotationReplyEnabledConfig, annotation_reply_config)
 
         try:
-            score_threshold = enabled_config["score_threshold"] or 1
+            score_threshold = enabled_config["score_threshold"]
             embedding_provider_name = enabled_config["embedding_model"]["embedding_provider_name"]
             embedding_model_name = enabled_config["embedding_model"]["embedding_model_name"]
 

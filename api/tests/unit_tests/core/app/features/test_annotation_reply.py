@@ -120,7 +120,7 @@ class TestAnnotationReplyFeature:
 
         assert result is annotation
         vector_instance.search_by_vector.assert_called_once_with(
-            query="hi", top_k=1, score_threshold=1, filter={"group_id": ["app-1"]}
+            query="hi", top_k=1, score_threshold=0, filter={"group_id": ["app-1"]}
         )
         assert vector_cls.call_args.kwargs["session"] is sqlite_session
         sqlite_session.refresh(annotation)
@@ -156,6 +156,35 @@ class TestAnnotationReplyFeature:
         history = sqlite_session.scalar(select(AppAnnotationHitHistory))
         assert history is not None
         assert history.source == ConversationFromSource.CONSOLE
+
+    @pytest.mark.parametrize("stored_threshold", [0.0, 0.5])
+    def test_query_passes_the_stored_score_threshold_through_unchanged(
+        self, sqlite_session: Session, stored_threshold: float
+    ) -> None:
+        """The configured threshold reaches the vector search verbatim.
+
+        ``0.0`` is the loosest setting the UI offers (its slider labels the left stop
+        ``0.0 / Easy Match``) and the column is ``NOT NULL``, so it is a real value rather
+        than a missing one.
+        """
+        binding = _persist_binding(sqlite_session)
+        _persist_setting(sqlite_session, collection_binding_id=binding.id, score_threshold=stored_threshold)
+        annotation = _persist_annotation(sqlite_session)
+        document = SimpleNamespace(metadata={"annotation_id": annotation.id, "score": 0.8})
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = [document]
+
+        with patch("core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance):
+            AnnotationReplyFeature().query(
+                app_record=_app(),
+                message=_message(),
+                query="hi",
+                user_id="user-1",
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=sqlite_session,
+            )
+
+        assert vector_instance.search_by_vector.call_args.kwargs["score_threshold"] == stored_threshold
 
     def test_query_logs_and_returns_none_on_exception(self, sqlite_session: Session, caplog: pytest.LogCaptureFixture):
         binding = _persist_binding(sqlite_session)
