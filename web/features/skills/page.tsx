@@ -743,7 +743,7 @@ type SkillGridState =
             pagination: { status: 'none' } | { status: 'loading' } | SkillGridRetryState
             refresh: { status: 'none' } | SkillGridRetryState
             cardActions: {
-              canDelete: boolean
+              canDeleteSkill: (maintainer: string | null | undefined) => boolean
               canEdit: boolean
               onOpenTagManagement: () => void
             }
@@ -840,7 +840,7 @@ function SkillGrid({ state }: SkillGridProps) {
             {readyContent.skills.map((skill) => (
               <SkillCard
                 key={skill.id}
-                canDelete={readyContent.cardActions.canDelete}
+                canDelete={readyContent.cardActions.canDeleteSkill(skill.maintainer)}
                 canEdit={readyContent.cardActions.canEdit}
                 skill={skill}
                 onOpenTagManagement={readyContent.cardActions.onOpenTagManagement}
@@ -1018,7 +1018,7 @@ export default function SkillsPage() {
   const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { canDelete, canEdit } = useSkillPermissions()
+  const { canDeleteSkill, canEdit } = useSkillPermissions()
   const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -1198,7 +1198,7 @@ export default function SkillsPage() {
                       }
                     : { status: 'none' },
                   cardActions: {
-                    canDelete,
+                    canDeleteSkill,
                     canEdit,
                     onOpenTagManagement: () => setShowTagManagementModal(true),
                   },
