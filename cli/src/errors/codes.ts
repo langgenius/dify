@@ -14,6 +14,7 @@ export const ErrorCode = {
   RateLimited: 'rate_limited',
   ServerError: 'server_error',
   KeyringUnavailable: 'keyring_unavailable',
+  SkillMissing: 'skill_missing',
   Unknown: 'unknown',
 } as const
 
@@ -47,6 +48,7 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   rate_limited: ExitCode.RateLimited,
   server_error: ExitCode.Generic,
   keyring_unavailable: ExitCode.Generic,
+  skill_missing: ExitCode.Generic,
   unknown: ExitCode.Generic,
 }
 

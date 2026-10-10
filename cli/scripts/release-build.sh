@@ -57,6 +57,7 @@ defines=(
     "--define" "__DIFYCTL_CHANNEL__=\"${DIFYCTL_CHANNEL}\""
     "--define" "__DIFYCTL_COMMIT__=\"${DIFYCTL_COMMIT}\""
     "--define" "__DIFYCTL_BUILD_DATE__=\"${DIFYCTL_BUILD_DATE}\""
+    "--define" "__DIFYCTL_COMPILED__=true"
 )
 
 # Targets and asset names come from cli/package.json `difyctl.release` via
@@ -64,6 +65,8 @@ defines=(
 while IFS=$'\t' read -r bun_target asset_target _exe; do
     out="${out_dir}/$(naming asset "$CLI_VERSION" "$asset_target")"
     log::info "compiling ${asset_target} -> $(basename "$out")..."
+    # Run from the repo root: --asset paths are embedded relative to the cwd, which gives
+    # the skill its difyctl/ prefix.
     (cd "$repo_root" && bun build "$entry" \
         --asset "$skill_dir" \
         --target="$bun_target" \
