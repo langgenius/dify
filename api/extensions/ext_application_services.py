@@ -130,6 +130,7 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
+from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
 from services.message_more_like_this_service import MessageMoreLikeThisService
@@ -277,6 +278,7 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
+    message_feedbacks: MessageFeedbackService
     message_file_previews: MessageFilePreviewService
     message_more_like_this: MessageMoreLikeThisService
     message_suggested_questions: MessageSuggestedQuestions
@@ -619,6 +621,7 @@ def build_application_services(
             files=file_service,
             remote_files=remote_file_service,
         ),
+        message_feedbacks=MessageFeedbackService(repository=messages),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,

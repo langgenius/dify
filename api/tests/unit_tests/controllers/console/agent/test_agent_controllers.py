@@ -58,7 +58,6 @@ from controllers.console.app.error import AgentSessionConfigurationChangedError,
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
-    AgentMessageFeedbackApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
@@ -2228,17 +2227,12 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(
         captured["list"] = kwargs
         return {"data": []}
 
-    def update_message_feedback(**kwargs: object) -> dict[str, object]:
-        captured["feedback"] = kwargs
-        return {"result": "success"}
-
     def get_message_detail(**kwargs: object) -> dict[str, object]:
         captured["detail"] = kwargs
         return {"id": message_id}
 
     monkeypatch.setattr(message_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(message_controller, "_list_chat_messages", list_chat_messages)
-    monkeypatch.setattr(message_controller, "_update_message_feedback", update_message_feedback)
     monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
     assert unwrap(AgentChatMessageListApi.get)(
         AgentChatMessageListApi(),
@@ -2251,26 +2245,12 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(
     list_call = cast(dict[str, object], captured["list"])
     assert list_call["session"] is unbound_session
     assert list_call["app_model"] is app_model
-    with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
-        assert unwrap(AgentMessageFeedbackApi.post)(
-            AgentMessageFeedbackApi(),
-            message_controller.MessageFeedbackPayload(message_id=message_id, rating="like"),
-            unbound_session,
-            "tenant-1",
-            current_user,
-            agent_id,
-        ) == {"result": "success"}
-    feedback_call = cast(dict[str, object], captured["feedback"])
-    assert feedback_call["session"] is unbound_session
-    assert feedback_call["app_model"] is app_model
-    assert feedback_call["current_user"] is current_user
     assert unwrap(AgentMessageApi.get)(AgentMessageApi(), unbound_session, "tenant-1", agent_id, message_id) == {
         "id": message_id
     }
     detail_call = cast(dict[str, object], captured["detail"])
     assert detail_call == {"session": unbound_session, "app_model": app_model, "message_id": message_id}
     assert resolver_calls == [
-        {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
         {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
         {"session": unbound_session, "tenant_id": "tenant-1", "agent_id": agent_id},
     ]
@@ -2397,30 +2377,6 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(
                 app_model=_app_detail_obj(id="app-1", mode=AppMode.AGENT),
                 current_user=_account(),
             )
-
-
-def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
-    app: Flask, sqlite_session: Session
-) -> None:
-    app_id = "00000000-0000-0000-0000-000000000001"
-    message_id = "00000000-0000-0000-0000-000000000002"
-    _, message = _persist_conversation_message(
-        sqlite_session,
-        app_id=app_id,
-        conversation_id="00000000-0000-0000-0000-000000000010",
-        message_id=message_id,
-        created_at=datetime(2025, 1, 1),
-    )
-    with app.test_request_context(json={"message_id": message_id, "rating": None}):
-        with pytest.raises(ValueError, match="rating cannot be None"):
-            message_controller._update_message_feedback(
-                args=message_controller.MessageFeedbackPayload(message_id=message_id, rating=None),
-                session=sqlite_session,
-                current_user=_account(),
-                app_model=_app_detail_obj(id=app_id),
-            )
-
-    assert message.admin_feedback_with_session(session=sqlite_session) is None
 
 
 def test_dify_tool_candidate_response_keeps_granularity_fields() -> None:

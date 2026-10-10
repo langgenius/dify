@@ -10,7 +10,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Tenant, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -106,6 +106,25 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 status=status,
                 enable_api=enable_api,
                 tenant_status=tenant_status.value if tenant_status is not None else None,
+            )
+
+    @override
+    def has_service_api_owner(self, tenant_id: str) -> bool:
+        with self._session_factory() as session:
+            return bool(
+                session.scalar(
+                    select(
+                        select(Account.id)
+                        .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                        .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                        .where(
+                            Tenant.id == tenant_id,
+                            Tenant.status == TenantStatus.NORMAL,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                        .exists()
+                    )
+                )
             )
 
     @override

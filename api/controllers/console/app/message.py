@@ -11,7 +11,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.errors import InternalServerError as InternalServerHTTPError
-from controllers.common.errors import NotFoundError, UnauthorizedError
+from controllers.common.errors import MessageFeedbackRatingRequiredError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -54,8 +54,8 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import Account
-from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.enums import FeedbackRating
+from models.model import App, AppMode, Conversation, Message, MessageAnnotation
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
@@ -64,6 +64,7 @@ from services.conversation_service import ConversationService
 from services.entities.message_entities import MessageAccount
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
@@ -227,23 +228,19 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "Message not found")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_session
-    @get_app_model
+    @console_ns.response(
+        HTTPStatus.OK, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Message not found")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission()
     @model_validate(MessageFeedbackPayload)
-    def post(self, req_data: MessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
-        return _update_message_feedback(
-            args=req_data,
-            session=session,
-            current_user=current_user,
-            app_model=app_model,
-        )
+    def post(self, req_data: MessageFeedbackPayload, context: RequestContext, app_id: UUID) -> dict[str, object]:
+        try:
+            app = application_services().apps.console.get_reference(context, str(app_id))
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError() from exc
+        return _update_message_feedback(args=req_data, context=context, app_id=app.id)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
@@ -252,35 +249,18 @@ class AgentMessageFeedbackApi(Resource):
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "Agent or message not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent or message not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()),))
     @model_validate(MessageFeedbackPayload)
-    def post(
-        self,
-        req_data: MessageFeedbackPayload,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        return _update_message_feedback(
-            args=req_data,
-            session=session,
-            current_user=current_user,
-            app_model=app_model,
-        )
+    def post(self, req_data: MessageFeedbackPayload, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        try:
+            app_id = application_services().agent_apps.access.resolve_existing_runtime_app_id(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError() from exc
+        return _update_message_feedback(args=req_data, context=context, app_id=app_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -527,46 +507,26 @@ def _list_chat_messages(
 
 
 def _update_message_feedback(
-    *,
-    args: MessageFeedbackPayload,
-    session: Session,
-    current_user: Account,
-    app_model: App,
-):
-    message_id = args.message_id
-
-    message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1))
-
-    if not message:
-        raise NotFound("Message Not Exists.")
-
-    feedback = message.admin_feedback_with_session(session=session)
-
-    if not args.rating and feedback:
-        session.delete(feedback)
-    elif args.rating and feedback:
-        feedback.rating = FeedbackRating(args.rating)
-        feedback.content = args.content
-    elif not args.rating and not feedback:
-        raise ValueError("rating cannot be None when feedback not exists")
-    else:
-        rating_value = args.rating
-        if rating_value is None:
-            raise ValueError("rating is required to create feedback")
-        feedback = MessageFeedback(
-            app_id=app_model.id,
-            conversation_id=message.conversation_id,
-            message_id=message.id,
-            rating=FeedbackRating(rating_value),
+    *, args: MessageFeedbackPayload, context: RequestContext, app_id: str
+) -> dict[str, object]:
+    try:
+        application_services().message_feedbacks.set_admin_feedback(
+            app_id=app_id,
+            app_owner_tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
+            message_id=args.message_id,
+            rating=FeedbackRating(args.rating) if args.rating is not None else None,
             content=args.content,
-            from_source=FeedbackFromSource.ADMIN,
-            from_account_id=current_user.id,
         )
-        session.add(feedback)
-
-    session.commit()
-
-    return SimpleResultResponse(result="success").model_dump(mode="json")
+    except AppDefinitionUnavailableError as exc:
+        raise AppUnavailableError() from exc
+    except MessageActorNotFoundError as exc:
+        raise UnauthorizedError("Account no longer exists") from exc
+    except MessageNotExistsError as exc:
+        raise NotFoundError("Message Not Exists.") from exc
+    except FeedbackRatingRequiredError as exc:
+        raise MessageFeedbackRatingRequiredError() from exc
+    return dump_response(SimpleResultResponse, {"result": "success"})
 
 
 def _get_message_suggested_questions(

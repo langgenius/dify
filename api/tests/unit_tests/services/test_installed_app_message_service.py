@@ -6,14 +6,11 @@ from decimal import Decimal
 import pytest
 from pydantic import JsonValue
 
-from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_message_service import (
     InstalledAppMessageService,
-    MessageFeedbackEvent,
     MessageNotChatAppError,
     MessagePage,
-    MessageRating,
     MessageRecord,
 )
 
@@ -52,8 +49,6 @@ class _Store:
         default_factory=lambda: MessagePage(limit=2, has_more=True, data=(_message("first"), _message("second")))
     )
     events: list[str] = field(default_factory=list)
-    write_error: Exception | None = None
-    rating: MessageRating | None = None
 
     def get_page(
         self,
@@ -74,37 +69,11 @@ class _Store:
         self.events.append("read closed")
         return self.page
 
-    def set_feedback(
-        self,
-        *,
-        installed_app: InstalledAppRef,
-        account_id: str,
-        message_id: str,
-        rating: MessageRating | None,
-        content: str | None,
-    ) -> MessageFeedbackEvent | None:
-        if self.write_error is not None:
-            raise self.write_error
-        self.rating = rating
-        self.events.append("write committed and closed")
-        if rating is None:
-            return None
-        return MessageFeedbackEvent(
-            tenant_id="owner-workspace",
-            app_id=installed_app.app_id,
-            conversation_id="conversation",
-            message_id=message_id,
-            account_id=account_id,
-            rating=rating,
-            content=content,
-        )
-
 
 @dataclass
 class _Callbacks:
     store: _Store
     queried_ids: list[tuple[str, ...]] = field(default_factory=list)
-    feedback: list[MessageFeedbackEvent] = field(default_factory=list)
 
     def get_extra_contents(self, *, message_ids: Sequence[str]) -> Mapping[str, list[dict[str, JsonValue]]]:
         assert self.store.events == ["read closed"]
@@ -112,17 +81,10 @@ class _Callbacks:
         self.queried_ids.append(tuple(message_ids))
         return {"first": [{"type": "workflow", "workflow_run_id": "run"}], "not-in-page": [{"type": "ignored"}]}
 
-    def emit_feedback(self, *, feedback: MessageFeedbackEvent) -> None:
-        assert self.store.events[-1] == "write committed and closed"
-        assert self.store.rating == feedback.rating
-        self.store.events.append("emit feedback")
-        self.feedback.append(feedback)
-
     def service(self) -> InstalledAppMessageService:
         return InstalledAppMessageService(
             messages=self.store,
             get_extra_contents=self.get_extra_contents,
-            emit_feedback=self.emit_feedback,
         )
 
 
@@ -149,46 +111,6 @@ def test_empty_page_skips_extra_content_query() -> None:
     assert page.data == ()
     assert state.store.events == ["read closed"]
     assert state.queried_ids == []
-
-
-@pytest.mark.parametrize("rating", ["like", "dislike", None])
-def test_feedback_emits_only_for_committed_rating_and_allows_completion_apps(rating: MessageRating | None) -> None:
-    state = _Callbacks(store=_Store())
-    state.service().set_feedback(
-        installed_app=replace(_REF, app_mode="completion"),
-        account_id="account",
-        message_id="message",
-        rating=rating,
-        content="",
-    )
-    if rating is None:
-        assert state.feedback == []
-        assert state.store.events == ["write committed and closed"]
-    else:
-        assert state.feedback == [
-            MessageFeedbackEvent(
-                tenant_id="owner-workspace",
-                app_id="app",
-                conversation_id="conversation",
-                message_id="message",
-                account_id="account",
-                rating=rating,
-                content="",
-            )
-        ]
-        assert state.store.events == ["write committed and closed", "emit feedback"]
-
-
-def test_feedback_write_error_propagates_without_emitting() -> None:
-    failure = MessageNotExistsError("Message was deleted")
-    state = _Callbacks(store=_Store(write_error=failure))
-    with pytest.raises(MessageNotExistsError) as error:
-        state.service().set_feedback(
-            installed_app=_REF, account_id="account", message_id="message", rating="like", content=None
-        )
-    assert error.value is failure
-    assert state.store.rating is None
-    assert state.feedback == []
 
 
 @pytest.mark.parametrize("mode", ["completion", "workflow"])
