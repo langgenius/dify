@@ -23,7 +23,6 @@ import {
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
-  PluginAuth,
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
@@ -82,6 +81,7 @@ import {
   StartPlaceholderPanelDescription,
   StartPlaceholderPanelTitle,
 } from './start-placeholder-panel'
+import ToolAuthorization from './tool-authorization'
 import { TriggerSubscription } from './trigger-subscription'
 import { TabType } from './types'
 
@@ -695,7 +695,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           {!isStartPlaceholderPanel && (
             <>
               {needsToolAuth && (
-                <PluginAuth
+                <ToolAuthorization
+                  nodeId={id}
+                  providerId={data.provider_id as string}
                   showAuthorizationTabs
                   className="px-4 pb-2"
                   authorizedFooter={<div className="px-4">{panelTabs}</div>}

@@ -163,7 +163,7 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
+  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider', 'plugin'])
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -192,6 +192,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     }),
   )
   const workflowStore = useWorkflowStore()
+  const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
   const configsMap = useHooksStore((s) => s.configsMap)
 
   const map = useNodesAvailableVarList(nodes)
@@ -434,6 +435,19 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
         const errorMessages: string[] = []
         const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
+        const authDraft = nodeAuthDrafts[node!.id]
+        if (
+          node!.data.type === BlockEnum.Tool &&
+          authDraft?.authorizationTab === 'app-user-auth' &&
+          authDraft.providerId === (node!.data as ToolNodeType).provider_id
+        ) {
+          if (authDraft.errors?.methods)
+            errorMessages.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))
+          if (authDraft.errors?.oauthClient)
+            errorMessages.push(t(($) => $['auth.appUser.clientRequired'], { ns: 'plugin' }))
+          if (authDraft.errors?.description)
+            errorMessages.push(t(($) => $['auth.appUser.descriptionRequired'], { ns: 'plugin' }))
+        }
 
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
@@ -604,6 +618,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     modelProviders,
     inlineAgentConfigurationIssues,
     inlineAgentToolPresentation.toolDisplayNameById,
+    nodeAuthDrafts,
     options?.flowType,
   ])
 

@@ -250,8 +250,8 @@ vi.mock('../last-run/use-last-run', () => ({
   default: () => mockLastRunState,
 }))
 
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  PluginAuth: ({
+vi.mock('@/app/components/plugins/plugin-auth/plugin-auth', () => ({
+  default: ({
     nodeAuth,
     authorizedFooter,
   }: {
@@ -270,6 +270,9 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
       {authorizedFooter}
     </div>
   ),
+}))
+
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
   PluginAuthInDataSourceNode: ({
     children,
     onJumpToDataSourcePage,

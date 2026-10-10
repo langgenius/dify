@@ -5,12 +5,13 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useStore } from '@/app/components/workflow/store'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
 
-const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
-  const { t } = useTranslation(['workflow'])
+const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
+  const { t } = useTranslation(['workflow', 'plugin'])
   const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
   const { isChecking, isMissing, uniqueIdentifier, canInstall, onInstallSuccess, shouldDim } =
@@ -18,10 +19,25 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
   const showAuthorizationWarning = isToolAuthorizationRequired(data.provider_type, currCollection)
+  const authDraft = useStore((state) => state.nodeAuthDrafts[id])
+  const authErrors =
+    authDraft?.authorizationTab === 'app-user-auth' && authDraft.providerId === data.provider_id
+      ? authDraft.errors
+      : undefined
+  const authorizationWarnings: string[] = []
+  if (showAuthorizationWarning)
+    authorizationWarnings.push(t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' }))
+  if (authErrors?.methods)
+    authorizationWarnings.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))
+  if (authErrors?.oauthClient)
+    authorizationWarnings.push(t(($) => $['auth.appUser.clientRequired'], { ns: 'plugin' }))
+  if (authErrors?.description)
+    authorizationWarnings.push(t(($) => $['auth.appUser.descriptionRequired'], { ns: 'plugin' }))
+  const hasAuthorizationWarnings = authorizationWarnings.length > 0
 
   const hasConfigs = toolConfigs.length > 0
 
-  if (!showInstallButton && !hasConfigs && !showAuthorizationWarning) return null
+  if (!showInstallButton && !hasConfigs && !hasAuthorizationWarnings) return null
 
   return (
     <div className="relative mb-1 px-3 py-1">
@@ -38,7 +54,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
           />
         </div>
       )}
-      {(hasConfigs || showAuthorizationWarning) && (
+      {(hasConfigs || hasAuthorizationWarnings) && (
         <div className="space-y-0.5" aria-disabled={shouldDim}>
           {hasConfigs &&
             toolConfigs.map((key) => (
@@ -95,17 +111,15 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                   )}
               </div>
             ))}
-          {showAuthorizationWarning && (
-            <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
+          {authorizationWarnings.map((warning) => (
+            <div
+              key={warning}
+              className="flex min-h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5 py-1"
+            >
               <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
-              <div
-                className="grow truncate system-xs-medium text-text-warning"
-                title={t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' })}
-              >
-                {t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' })}
-              </div>
+              <div className="grow system-xs-medium wrap-anywhere text-text-warning">{warning}</div>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>

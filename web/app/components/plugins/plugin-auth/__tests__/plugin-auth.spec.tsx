@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
+import type { AppUserAuthDraft, AuthorizationTab } from '../app-user-auth/draft'
 import type { Credential } from '../types'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -14,6 +16,13 @@ const mockUsePluginAuth = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
+}))
+const mockConsoleCall = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: (...args: unknown[]) => mockConsoleCall(...args),
+  },
 }))
 
 vi.mock('../hooks/use-plugin-auth', () => ({
@@ -86,6 +95,18 @@ const createConnectionQueryWrapper = () => {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConsoleCall.mockImplementation(async (path: string[]) => {
+      if (path.includes('clientSchema')) {
+        return {
+          schema: [],
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: true,
+          client_params: {},
+          redirect_uri: 'https://example.com/oauth/callback',
+        }
+      }
+      return [{ name: 'api_key', type: 'secret-input', required: true, multiple: false }]
+    })
     mockConsoleState.workspacePermissionKeys = [
       'credential.use',
       'credential.create',
@@ -240,7 +261,13 @@ describe('PluginAuth', () => {
 
     await user.click(appUserTab)
 
-    expect(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).toBeEmptyDOMElement()
+    const appUserPanel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(
+      within(appUserPanel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
+    ).toBeChecked()
+    expect(
+      within(appUserPanel).queryByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /key/ })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Last run' }))
@@ -306,7 +333,14 @@ describe('PluginAuth', () => {
       await user.click(tab)
 
       expect(tab).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByRole('tabpanel', { name: label })).toBeEmptyDOMElement()
+      const panel = screen.getByRole('tabpanel', { name: label })
+      if (label === 'plugin.auth.appUserAuth') {
+        expect(
+          within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
+        ).toBeChecked()
+      } else {
+        expect(panel).toBeEmptyDOMElement()
+      }
       expect(
         screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),
       ).not.toBeInTheDocument()
@@ -326,6 +360,216 @@ describe('PluginAuth', () => {
     expect(
       within(restoredWorkspacePanel).getByText('plugin.auth.permissionHint.title'),
     ).toBeVisible()
+  })
+
+  it('retains App user auth drafts across tabs and uses the provider capabilities and name', async () => {
+    const user = userEvent.setup()
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: true,
+      isLoading: false,
+      canOAuth: true,
+      canApiKey: false,
+      credentials: [createCredential({ credential_type: CredentialTypeEnum.OAUTH2 })],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+    render(
+      <PluginAuth
+        pluginPayload={defaultPayload}
+        nodeAuth={{ onAuthorizationItemClick: vi.fn(), providerName: 'Google Drive' }}
+        showAuthorizationTabs
+      />,
+      { wrapper: createConnectionQueryWrapper() },
+    )
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await user.click(appUserTab)
+    let panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(
+      within(panel).queryByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
+    ).not.toBeInTheDocument()
+    expect(within(panel).getByText('plugin.auth.appUser.setupClient')).toBeVisible()
+    expect(within(panel).getByText('plugin.auth.appUser.enterDescription')).toBeVisible()
+    await user.type(
+      within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+      'Choose a Drive connection',
+    )
+    expect(
+      within(panel).queryByText('plugin.auth.appUser.enterDescription'),
+    ).not.toBeInTheDocument()
+    await user.click(
+      within(panel).getByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'plugin.auth.appUser.clientId' }),
+      'drive-client',
+    )
+    await user.type(
+      within(dialog).getByLabelText('plugin.auth.appUser.clientSecret', { exact: false }),
+      'drive-secret',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'plugin.auth.saveOnly' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+    expect(
+      within(panel).getByText(
+        'plugin.auth.appUser.oauthDescriptionWithProvider:{"provider":"Google Drive"}',
+      ),
+    ).toBeVisible()
+    await user.click(within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }))
+
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
+    await user.click(appUserTab)
+
+    panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(
+      within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+    ).toHaveValue('Choose a Drive connection')
+    const oauth = within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
+    expect(oauth).not.toBeChecked()
+    await user.click(oauth)
+    await user.click(
+      within(panel).getByRole('button', { name: 'plugin.auth.appUser.customClient' }),
+    )
+
+    const reopened = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    expect(
+      within(reopened).getByRole('textbox', { name: 'plugin.auth.appUser.clientId' }),
+    ).toHaveValue('drive-client')
+    expect(
+      within(reopened).getByLabelText('plugin.auth.appUser.clientSecret', { exact: false }),
+    ).toHaveValue('drive-secret')
+  })
+
+  it('initializes a controlled App user auth draft from supported methods when first selected', async () => {
+    const user = userEvent.setup()
+    const onDraftChange = vi.fn()
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: true,
+      isLoading: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [createCredential()],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+    const ControlledPluginAuth = () => {
+      const [draft, setDraft] = useState<AppUserAuthDraft>()
+      const [tab, setTab] = useState<AuthorizationTab>('workspace-auth')
+      return (
+        <PluginAuth
+          pluginPayload={defaultPayload}
+          showAuthorizationTabs
+          authorizationTab={tab}
+          onAuthorizationTabChange={setTab}
+          appUserAuth={{
+            draft,
+            onChange: (nextDraft) => {
+              setDraft(nextDraft)
+              onDraftChange(nextDraft)
+            },
+          }}
+        />
+      )
+    }
+    render(<ControlledPluginAuth />)
+    expect(onDraftChange).not.toHaveBeenCalled()
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await user.click(appUserTab)
+
+    expect(appUserTab).toHaveAttribute('aria-selected', 'true')
+    expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
+      oauthEnabled: false,
+      apiKeyEnabled: true,
+      description: '',
+      client: undefined,
+    })
+    const panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(
+      within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
+    ).toBeChecked()
+    expect(
+      within(panel).queryByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
+    ).not.toBeInTheDocument()
+    expect(within(panel).getByText('plugin.auth.appUser.enterDescription')).toBeVisible()
+    expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+    await user.type(
+      within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+      'Keep this draft',
+    )
+    expect(
+      within(panel).queryByText('plugin.auth.appUser.enterDescription'),
+    ).not.toBeInTheDocument()
+    const changeCount = onDraftChange.mock.calls.length
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    await user.click(appUserTab)
+
+    expect(onDraftChange).toHaveBeenCalledTimes(changeCount)
+    expect(
+      within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).getByRole(
+        'textbox',
+        {
+          name: 'plugin.auth.appUser.connectionDescription',
+        },
+      ),
+    ).toHaveValue('Keep this draft')
+  })
+
+  it('preserves and validates an existing controlled App user auth draft', async () => {
+    const user = userEvent.setup()
+    const onDraftChange = vi.fn()
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: true,
+      isLoading: false,
+      canOAuth: true,
+      canApiKey: true,
+      credentials: [createCredential()],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+    render(
+      <PluginAuth
+        pluginPayload={defaultPayload}
+        showAuthorizationTabs
+        appUserAuth={{
+          draft: {
+            oauthEnabled: false,
+            apiKeyEnabled: false,
+            description: 'Existing connection description',
+          },
+          onChange: onDraftChange,
+        }}
+      />,
+    )
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await user.click(appUserTab)
+
+    expect(onDraftChange).not.toHaveBeenCalled()
+    const panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(
+      within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
+    ).not.toBeChecked()
+    expect(
+      within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
+    ).not.toBeChecked()
+    expect(within(panel).getByText('plugin.auth.appUser.selectMethod')).toBeVisible()
+    expect(
+      within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+    ).toHaveValue('Existing connection description')
+
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
+    await user.click(appUserTab)
+
+    expect(onDraftChange).not.toHaveBeenCalled()
+    expect(
+      within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).getByRole(
+        'textbox',
+        {
+          name: 'plugin.auth.appUser.connectionDescription',
+        },
+      ),
+    ).toHaveValue('Existing connection description')
   })
 
   it('passes pluginPayload.provider to usePluginAuth', () => {

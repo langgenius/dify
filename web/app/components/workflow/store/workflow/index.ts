@@ -1,5 +1,6 @@
 import type { TemporalState } from 'zundo'
 import type { StateCreator, StoreApi } from 'zustand'
+import type { AppUserAuthSliceShape } from './app-user-auth-slice'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
 import type { CommentSliceShape } from './comment-slice'
 import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
@@ -21,6 +22,7 @@ import { temporal } from 'zundo'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { createAppUserAuthSlice } from './app-user-auth-slice'
 import { createChatVariableSlice } from './chat-variable-slice'
 import { createCommentSlice } from './comment-slice'
 import { createInspectVarsSlice } from './debug/inspect-vars-slice'
@@ -42,7 +44,8 @@ import { createWorkflowSlice } from './workflow-slice'
 
 export type SliceFromInjection = Partial<WorkflowAppSliceShape> & Partial<RagPipelineSliceShape>
 
-export type Shape = ChatVariableSliceShape &
+export type Shape = AppUserAuthSliceShape &
+  ChatVariableSliceShape &
   EnvVariableSliceShape &
   FormSliceShape &
   HelpLineSliceShape &
@@ -74,6 +77,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
   return createStore<Shape>()(
     temporal<Shape, [], [], WorkflowHistoryTemporalState>(
       (...args) => ({
+        ...createAppUserAuthSlice(...args),
         ...createChatVariableSlice(...args),
         ...createEnvVariableSlice(...args),
         ...createFormSlice(...args),

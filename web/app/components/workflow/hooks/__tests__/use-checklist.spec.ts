@@ -6,8 +6,9 @@ import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
+import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
@@ -377,6 +378,60 @@ const credentialRequiredProvider = {
 // ---------------------------------------------------------------------------
 
 describe('useChecklist', () => {
+  it('updates App user checklist errors immediately after edits or switching auth mode', () => {
+    toolServiceState.buildInTools = [credentialRequiredProvider]
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start } })
+    const toolNode = createNode({
+      id: 'tool',
+      data: { type: BlockEnum.Tool, provider_type: CollectionType.builtIn, provider_id: 'google' },
+    })
+    const nodes = [startNode, toolNode]
+    const { result, store } = renderWorkflowHook(() =>
+      useChecklist(nodes, [createEdge({ source: 'start', target: 'tool' })]),
+    )
+    const draft = createAppUserAuthDraft()
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', draft)
+      store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'app-user-auth')
+    })
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual(
+      expect.arrayContaining([
+        'plugin.auth.appUser.clientRequired',
+        'plugin.auth.appUser.descriptionRequired',
+      ]),
+    )
+
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', {
+        ...draft,
+        description: 'Find repositories',
+      })
+    })
+    expect(result.current.flatMap((item) => item.errorMessages)).not.toContain(
+      'plugin.auth.appUser.descriptionRequired',
+    )
+    expect(result.current.flatMap((item) => item.errorMessages)).toContain(
+      'plugin.auth.appUser.clientRequired',
+    )
+
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', {
+        ...draft,
+        description: ' ',
+      })
+    })
+    expect(result.current.flatMap((item) => item.errorMessages)).toContain(
+      'plugin.auth.appUser.descriptionRequired',
+    )
+
+    act(() => {
+      store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'workspace-auth')
+    })
+    expect(result.current.flatMap((item) => item.errorMessages)).not.toContain(
+      'plugin.auth.appUser.clientRequired',
+    )
+  })
+
   it('should return empty list when all nodes are valid and connected', () => {
     const { nodes, edges } = buildConnectedGraph()
 

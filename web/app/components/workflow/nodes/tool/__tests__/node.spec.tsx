@@ -1,6 +1,8 @@
 import type { ToolNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
+import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
@@ -61,7 +63,7 @@ describe('ToolNode', () => {
         },
       })
 
-      render(<Node id="tool-node-1" data={createNodeData()} />)
+      renderWorkflowComponent(<Node id="tool-node-1" data={createNodeData()} />)
 
       expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
     })
@@ -75,7 +77,7 @@ describe('ToolNode', () => {
         },
       })
 
-      render(
+      renderWorkflowComponent(
         <Node
           id="tool-node-1"
           data={createNodeData({
@@ -91,14 +93,16 @@ describe('ToolNode', () => {
     })
 
     it('should render nothing when there are no configs, no install action and no authorization warning', () => {
-      const { container } = render(<Node id="tool-node-1" data={createNodeData()} />)
+      const { container } = renderWorkflowComponent(
+        <Node id="tool-node-1" data={createNodeData()} />,
+      )
 
       expect(container).toBeEmptyDOMElement()
     })
   })
 
   it('should render multi-select configuration values', () => {
-    render(
+    renderWorkflowComponent(
       <Node
         id="tool-node-1"
         data={createNodeData({
@@ -110,5 +114,70 @@ describe('ToolNode', () => {
     )
 
     expect(screen.getByTitle('png, svg')).toHaveTextContent('png, svg')
+  })
+
+  it('updates App user errors on the canvas immediately as the draft changes', () => {
+    const data = createNodeData()
+    const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+    const draft = createAppUserAuthDraft()
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, draft)
+      store
+        .getState()
+        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'app-user-auth')
+    })
+    expect(screen.getByText('plugin.auth.appUser.clientRequired')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
+
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+        ...draft,
+        oauthEnabled: false,
+      })
+    })
+    expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
+
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+        ...draft,
+        oauthEnabled: false,
+        description: 'Find repositories',
+      })
+    })
+    expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
+
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+        ...draft,
+        oauthEnabled: false,
+        apiKeyEnabled: false,
+        description: ' ',
+      })
+    })
+    expect(screen.getByText('plugin.auth.appUser.selectMethod')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
+  })
+
+  it('does not show errors for a different provider', () => {
+    const data = createNodeData()
+    const { store, rerender } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+    act(() => {
+      store
+        .getState()
+        .setNodeAppUserAuthDraft(
+          'tool-node-1',
+          'google',
+          data.provider_id,
+          createAppUserAuthDraft(),
+        )
+      store
+        .getState()
+        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'app-user-auth')
+    })
+    expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
+    rerender(<Node id="tool-node-1" data={createNodeData({ provider_id: 'github' })} />)
+    expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
   })
 })
