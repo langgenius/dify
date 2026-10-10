@@ -8,12 +8,12 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
 from extensions.ext_database import db
 from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
@@ -45,11 +45,6 @@ class PluginParameterService:
         match provider_type:
             case "tool":
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                # init tool configuration
-                encrypter, _ = create_tool_provider_encrypter(
-                    tenant_id=tenant_id,
-                    controller=provider_controller,
-                )
 
                 # check if credentials are required
                 if not provider_controller.need_credentials:
@@ -81,6 +76,10 @@ class PluginParameterService:
                     if db_record is None:
                         raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
+                    # use the per-credential cache that credential updates and deletions invalidate
+                    encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
+                        tenant_id, db_record, provider, provider_controller
+                    )
                     credentials = encrypter.decrypt(db_record.credentials)
                     credential_type = db_record.credential_type
             case "trigger":
