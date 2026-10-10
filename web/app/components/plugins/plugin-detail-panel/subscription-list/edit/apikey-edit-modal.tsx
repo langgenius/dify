@@ -207,9 +207,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(
-            t(($) => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }),
-          )
           refetch?.()
           onClose()
         },

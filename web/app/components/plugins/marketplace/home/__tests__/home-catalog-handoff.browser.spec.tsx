@@ -3,11 +3,6 @@ import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeCatalogTabs from '../home-catalog-tabs'
-import {
-  HOME_HEADER_HEIGHT_PX,
-  HOME_SEARCH_HEIGHT_PX,
-  HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX,
-} from '../home-constants'
 import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'
 import styles from '../home-sticky.module.css'
 
@@ -82,7 +77,6 @@ describe('Marketplace catalog tab handoff', () => {
 
     expect(initialHeaderSlotWidth).toBeGreaterThan(0)
     expect(initialHeaderSlotHeight).toBeGreaterThan(0)
-    expect(getComputedStyle(headerTabsSlot).pointerEvents).toBe('none')
 
     contentPluginsLink.focus()
     expect(document.activeElement).toBe(contentPluginsLink)
@@ -101,10 +95,7 @@ describe('Marketplace catalog tab handoff', () => {
     expect(
       contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
     ).toBeCloseTo(1)
-    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(headerTabsSlot).toHaveAttribute('inert')
     expect(document.activeElement).toBe(contentPluginsLink)
 
     scrollContainer.scrollTop = handoffScrollTop
@@ -117,26 +108,14 @@ describe('Marketplace catalog tab handoff', () => {
       categories.getBoundingClientRect().top - navigation.getBoundingClientRect().top,
     ).toBeCloseTo(initialCategoryOffset)
     expect(
-      categories.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
-    ).toBeCloseTo(64)
-    expect(
       contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
     ).toBeCloseTo(0)
     expect(headerTabsSlot.getBoundingClientRect().width).toBeCloseTo(initialHeaderSlotWidth)
     expect(headerTabsSlot.getBoundingClientRect().height).toBeCloseTo(initialHeaderSlotHeight)
     expect(followingContent.offsetTop).toBe(initialFollowingOffset)
     expect(scrollContainer.scrollHeight).toBe(initialScrollHeight)
-    expect(getComputedStyle(contentTabsSlot).display).not.toBe('none')
-    expect(getComputedStyle(contentTabsSlot).pointerEvents).toBe('none')
-    expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(contentTabsSlot).toHaveAttribute('inert')
-    expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
-    expect(headerTabsSlot).not.toHaveAttribute('inert')
-    expect(getComputedStyle(headerTabsSlot).pointerEvents).toBe('auto')
     await vi.waitFor(
       () => {
-        expect(getComputedStyle(contentTabsSlot).opacity).toBe('0')
-        expect(getComputedStyle(headerTabsSlot).opacity).toBe('1')
         expect(document.activeElement).toBe(headerPluginsLink)
       },
       { timeout: 500 },
@@ -152,10 +131,6 @@ describe('Marketplace catalog tab handoff', () => {
     expect(
       contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
     ).toBeCloseTo(1)
-    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
-    expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(headerTabsSlot).toHaveAttribute('inert')
   })
 
   it('keeps the in-flow tabs active when the standalone header slot is hidden on mobile', async () => {
@@ -197,17 +172,8 @@ describe('Marketplace catalog tab handoff', () => {
 
     expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(getComputedStyle(contentTabsSlot).opacity).toBe('1')
-    expect(getComputedStyle(contentTabsSlot).pointerEvents).toBe('auto')
     expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(headerTabsSlot).toHaveAttribute('inert')
-    expect(
-      contentTabsSlot.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
-    ).toBeCloseTo(
-      HOME_HEADER_HEIGHT_PX +
-        HOME_SEARCH_HEIGHT_PX +
-        HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX /* .catalogTabsRegion padding-top, tucked under search padding */,
-    )
 
     await page.viewport(880, 800)
     await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(true)

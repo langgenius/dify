@@ -528,7 +528,6 @@
   "singleRun.testRun": "Тестовый запуск ",
   "snippet.confirm": "Подтверждать",
   "snippet.createDialogTitle": "Создать фрагмент",
-  "snippet.createSuccess": "Фрагмент создан.",
   "snippet.descriptionLabel": "Описание (необязательно)",
   "snippet.descriptionPlaceholder": "Кратко опишите свой фрагмент",
   "snippet.nameLabel": "Имя фрагмента",

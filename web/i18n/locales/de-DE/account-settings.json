@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Bewahren Sie dieses Zugriffstoken sicher auf. Sie können es später nicht erneut anzeigen. Jeder, der es besitzt, kann mit Difyctl die autorisierten Ressourcen finden und darauf zugreifen. Falls Sie es verlieren, erstellen Sie ein neues Token und widerrufen Sie das alte.",
   "resourceAccessToken.deleteDescription": "Das Zugriffstoken wird sofort deaktiviert. Aufrufe mit diesem Token werden abgewiesen; laufende Aufgaben können dadurch unterbrochen werden oder fehlschlagen. Nach dem Löschen können Sie das Token nicht mehr anzeigen oder ändern.",
   "resourceAccessToken.deleteTitle": "Zugriffstoken löschen?",
-  "resourceAccessToken.deleted": "Zugriffstoken gelöscht",
   "resourceAccessToken.done": "Fertig",
   "resourceAccessToken.editTitle": "Zugriffstoken bearbeiten",
   "resourceAccessToken.empty": "Noch keine Zugriffstoken",

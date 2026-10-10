@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "ເກັບໂທເຄັນເຂົ້າເຖິງນີ້ໄວ້ໃນບ່ອນປອດໄພ ເພາະຈະບໍ່ສາມາດເບິ່ງອີກໄດ້. ຜູ້ທີ່ມີໂທເຄັນສາມາດໃຊ້ Difyctl ຄົ້ນຫາ ແລະເຂົ້າເຖິງຊັບພະຍາກອນທີ່ອະນຸຍາດ. ຖ້າເຮັດຫາຍ ໃຫ້ສ້າງໂທເຄັນໃໝ່ ແລະຍົກເລີກອັນເກົ່າ.",
   "resourceAccessToken.deleteDescription": "ໂທເຄັນເຂົ້າເຖິງຈະຖືກປິດໃຊ້ທັນທີ. ຄຳຂໍທີ່ໃຊ້ໂທເຄັນນີ້ຈະຖືກປະຕິເສດ ແລະວຽກທີ່ກຳລັງເຮັດອາດຢຸດ ຫຼືລົ້ມເຫຼວ. ຫຼັງຈາກລຶບແລ້ວ ຈະບໍ່ສາມາດເບິ່ງ ຫຼືແກ້ໄຂໂທເຄັນໄດ້.",
   "resourceAccessToken.deleteTitle": "ລຶບໂທເຄັນເຂົ້າເຖິງບໍ?",
-  "resourceAccessToken.deleted": "ລຶບໂທເຄັນເຂົ້າເຖິງແລ້ວ",
   "resourceAccessToken.done": "ສຳເລັດ",
   "resourceAccessToken.editTitle": "ແກ້ໄຂໂທເຄັນເຂົ້າເຖິງ",
   "resourceAccessToken.empty": "ຍັງບໍ່ມີໂທເຄັນເຂົ້າເຖິງ",

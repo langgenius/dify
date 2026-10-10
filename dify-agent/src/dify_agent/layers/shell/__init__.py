@@ -6,7 +6,6 @@ client code that only needs to build run requests.
 """
 
 from dify_agent.layers.shell.configs import (
-    DIFY_SHELL_LAYER_TYPE_ID,
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
     DifyShellLayerConfig,
@@ -14,7 +13,6 @@ from dify_agent.layers.shell.configs import (
 )
 
 __all__ = [
-    "DIFY_SHELL_LAYER_TYPE_ID",
     "DifyShellCliToolConfig",
     "DifyShellEnvVarConfig",
     "DifyShellLayerConfig",

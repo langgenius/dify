@@ -3,7 +3,6 @@
   "action.delete": "Eliminar plugin",
   "action.deleteContentLeft": "¿Le gustaría eliminar",
   "action.deleteContentRight": "¿Complemento?",
-  "action.deleteSuccess": "Plugin eliminado correctamente",
   "action.pluginInfo": "Información del plugin",
   "allCategories": "Todas las categorías",
   "auth.addApi": "Agregar clave API",

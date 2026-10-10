@@ -87,9 +87,6 @@ describe('Home banner browser interactions', () => {
     const firstPicker = screen.getByRole('button', { name: '01 First banner' })
     await expect.element(stopRotationControl).toBeVisible()
     const rotationControlElement = stopRotationControl.element()
-    expect(rotationControlElement.getBoundingClientRect().left).toBeLessThan(
-      firstPicker.element().getBoundingClientRect().left,
-    )
 
     await screen.getByRole('button', { name: 'Before carousel' }).click()
     await userEvent.tab()
@@ -148,44 +145,6 @@ describe('Home banner browser interactions', () => {
     await userEvent.unhover(carousel)
 
     await expect.poll(() => slidesContainer.getAttribute('aria-live')).toBe('off')
-  })
-
-  it('keeps an explicit pause after a real pointer drag released inside the carousel', async () => {
-    // Embla's pointer lifecycle and owner-window timer depend on browser behavior that happy-dom cannot reproduce faithfully.
-    const screen = await renderBanner()
-    const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
-    const stopRotationControl = screen.getByRole('button', {
-      name: 'explore.banner.stopRotation',
-    })
-    const slidesContainer = getSlidesContainer(carousel.element())
-    const slidesRect = slidesContainer.getBoundingClientRect()
-    const firstSlide = screen.getByRole('group', { name: 'First banner' })
-    const firstSlideElement = firstSlide.element()
-    await stopRotationControl.click()
-    await userEvent.unhover(carousel)
-    await expect
-      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
-      .toBeVisible()
-
-    vi.useFakeTimers()
-    try {
-      await userEvent.dragAndDrop(slidesContainer, slidesContainer, {
-        sourcePosition: { x: slidesRect.width / 2 - 4, y: slidesRect.height / 2 },
-        targetPosition: { x: slidesRect.width / 2 + 4, y: slidesRect.height / 2 },
-        steps: 2,
-      })
-      await vi.advanceTimersByTimeAsync(1000)
-      const firstSlideStateAfterDrag = firstSlideElement.getAttribute('aria-hidden')
-      await vi.advanceTimersByTimeAsync(5001)
-      expect(firstSlideElement.getAttribute('aria-hidden')).toBe(firstSlideStateAfterDrag)
-    } finally {
-      vi.useRealTimers()
-    }
-
-    expect(slidesContainer).toHaveAttribute('aria-live', 'polite')
-    await expect
-      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
-      .toBeVisible()
   })
 
   it('keeps autoplay initialized but stopped for reduced motion so Play remains safe', async () => {

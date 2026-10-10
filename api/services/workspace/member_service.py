@@ -54,6 +54,8 @@ class WorkspaceMemberRoleResolver(Protocol):
         workspace_id: str,
         actor_account_id: str,
         subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]: ...
 
 
@@ -78,7 +80,9 @@ class WorkspaceMemberQueryService:
         start = (page - 1) * limit
         return WorkspaceMemberPage(members=records[start : start + limit], total=len(records))
 
-    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+    def list_current(
+        self, context: RequestContext, *, language: str | None = None
+    ) -> tuple[WorkspaceMemberSummary, ...]:
         workspace_id = context.active_workspace_id
 
         records = tuple(self._members.list_for_workspace(workspace_id))
@@ -88,7 +92,7 @@ class WorkspaceMemberQueryService:
 
         # The repository closes its read Session before role resolution
         # performs enterprise I/O.
-        roles_by_member = self._roles.resolve_many(workspace_id, context.account_id, role_subjects)
+        roles_by_member = self._roles.resolve_many(workspace_id, context.account_id, role_subjects, language=language)
 
         return tuple(
             WorkspaceMemberSummary(

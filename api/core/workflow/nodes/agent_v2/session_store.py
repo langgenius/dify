@@ -6,7 +6,7 @@ import json
 import time
 from dataclasses import dataclass
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -96,9 +96,7 @@ class StoredWorkflowAgentSession:
     binding_id: str
     workspace_id: str
     backend_binding_ref: str
-    session_snapshot: CompositorSessionSnapshot | None
-    pending_form_id: str | None = None
-    pending_tool_call_id: str | None = None
+    session_snapshot: SessionSnapshot | None
 
 
 class WorkflowAgentWorkspaceStore:
@@ -236,9 +234,7 @@ class WorkflowAgentWorkspaceStore:
         *,
         scope: WorkflowAgentSessionScope,
         binding_id: str,
-        snapshot: CompositorSessionSnapshot | None,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        snapshot: SessionSnapshot | None,
     ) -> None:
         if snapshot is None:
             return
@@ -246,8 +242,6 @@ class WorkflowAgentWorkspaceStore:
             tenant_id=scope.tenant_id,
             binding_id=binding_id,
             session_snapshot=snapshot.model_dump_json(),
-            pending_form_id=pending_form_id,
-            pending_tool_call_id=pending_tool_call_id,
         )
 
     def retire_workflow_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
@@ -359,19 +353,13 @@ class WorkflowAgentWorkspaceStore:
         scope: WorkflowAgentSessionScope,
         binding: AgentWorkspaceBinding,
     ) -> StoredWorkflowAgentSession:
-        snapshot = (
-            CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
-            if binding.session_snapshot
-            else None
-        )
+        snapshot = SessionSnapshot.model_validate_json(binding.session_snapshot) if binding.session_snapshot else None
         return StoredWorkflowAgentSession(
             scope=scope,
             binding_id=binding.id,
             workspace_id=binding.workspace_id,
             backend_binding_ref=binding.backend_binding_ref,
             session_snapshot=snapshot,
-            pending_form_id=binding.pending_form_id,
-            pending_tool_call_id=binding.pending_tool_call_id,
         )
 
 

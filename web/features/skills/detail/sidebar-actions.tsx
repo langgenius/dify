@@ -231,7 +231,6 @@ export function SkillDetailSidebarActions({
       },
       {
         onSuccess: (copiedSkill) => {
-          toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },

@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Berdasarkan izin peran",
   "accessRule.deleteDescription": "Aturan akses ini akan dihapus secara permanen dan dihapus dari daftar otorisasi sumber daya.",
   "accessRule.deleteTitle": "Hapus \"{{name}}\"?",
-  "accessRule.deleted": "Aturan akses berhasil dihapus",
   "accessRule.exceptionPermissionFor": "Izin pengecualian untuk {{name}}",
   "accessRule.expandSection": "Perluas {{title}}",
   "accessRule.maintainer": "Pengelola",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" ditetapkan ke {{count}} anggota. Apakah Anda ingin salinan peran baru menyertakan anggota yang sama?",
   "role.copyMembersLoading": "Memuat penetapan anggota...",
   "role.copyMembersTitle": "Salin penetapan anggota?",
-  "role.created": "Peran berhasil dibuat",
   "role.deleteDescription": "Peran ini akan dihapus secara permanen dan dihapus dari anggota atau aturan akses mana pun yang menggunakannya.",
   "role.deleteTitle": "Hapus \"{{name}}\"?",
-  "role.deleted": "Peran berhasil dihapus",
-  "role.duplicated": "Peran berhasil diduplikasi",
   "role.groups.builtin": "Peran Sistem",
   "role.groups.custom": "Peran Kustom",
   "role.loading": "Memuat peran...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Tidak ada deskripsi",
   "role.noMatchingRoles": "Tidak ada peran yang cocok",
   "role.searchPlaceholder": "Cari peran...",
-  "role.updated": "Peran berhasil diperbarui",
   "role.workspaceRoles.description": "Buat peran dan tentukan apa yang dapat dilakukan setiap peran di ruang kerja ini.",
   "role.workspaceRoles.title": "Peran Ruang Kerja"
 }

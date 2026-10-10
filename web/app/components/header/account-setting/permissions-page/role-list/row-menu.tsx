@@ -20,7 +20,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   useCopyWorkspaceRole,
@@ -73,13 +72,12 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['role.duplicated'], { ns: 'permission' }))
             setShowCopyMembersConfirm(false)
           },
         },
       )
     },
-    [canManageRoles, copyRole, role.id, t],
+    [canManageRoles, copyRole, role.id],
   )
 
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
@@ -96,11 +94,10 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
 
     deleteRole(role.id, {
       onSuccess: () => {
-        toast.success(t(($) => $['role.deleted'], { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
-  }, [canManageRoles, deleteRole, role.id, t])
+  }, [canManageRoles, deleteRole, role.id])
 
   const hasViewAction = roleCategory === 'global_system_default'
   const hasEditAction = roleCategory === 'global_custom'

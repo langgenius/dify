@@ -528,7 +528,6 @@
   "singleRun.testRun": "Testlauf ",
   "snippet.confirm": "Bestätigen",
   "snippet.createDialogTitle": "Snippet erstellen",
-  "snippet.createSuccess": "Snippet erstellt",
   "snippet.descriptionLabel": "Beschreibung (optional)",
   "snippet.descriptionPlaceholder": "Beschreiben Sie kurz Ihr Snippet",
   "snippet.nameLabel": "Snippet-Name",

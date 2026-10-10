@@ -101,7 +101,6 @@ export function SkillDisplayNameEditor({
       })
       setDraftName(nextDisplayName)
       onEditingChange(false)
-      toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
     } catch (error) {
       setDraftName(displayName)
       const errorPayload = await getAsyncSkillErrorPayload(error)

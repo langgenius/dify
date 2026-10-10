@@ -7,7 +7,7 @@ example:
 
     uv run --project dify-agent uvicorn dify_agent.server.app:app --reload
 
-The request carries Dify plugin model configuration in Agenton layers. This
+The request carries Dify plugin model configuration in registered modules. This
 script prints the created run and every event observed through cursor polling.
 ``Client.create_run`` performs one POST attempt only; use polling or SSE replay to
 recover after client-side uncertainty.
@@ -15,11 +15,10 @@ recover after client-side uncertainty.
 
 import asyncio
 
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.client import Client
-from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
@@ -42,33 +41,33 @@ async def main() -> None:
                     layers=[
                         RunLayerSpec(
                             name="prompt",
-                            type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                            config=PromptLayerConfig(
-                                prefix="You are a concise assistant.",
-                                user="Say hello from the Dify Agent API server example.",
-                            ),
+                            config=(
+                                PromptConfig(
+                                    prefix="You are a concise assistant.",
+                                    user="Say hello from the Dify Agent API server example.",
+                                )
+                            ).model_dump(mode="json"),
                         ),
                         RunLayerSpec(
                             name="execution_context",
-                            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                            config=DifyExecutionContextLayerConfig(
-                                tenant_id=TENANT_ID,
-                                user_id=USER_ID,
-                                user_from="account",
-                                app_id=APP_ID,
-                                agent_mode="workflow_run",
-                                invoke_from="service-api",
-                            ),
+                            config=(
+                                DifyExecutionContextLayerConfig(
+                                    tenant_id=TENANT_ID,
+                                    user_id=USER_ID,
+                                    user_from="account",
+                                    app_id=APP_ID,
+                                    agent_mode="workflow_run",
+                                    invoke_from="service-api",
+                                )
+                            ).model_dump(mode="json"),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
-                            type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                            deps={"execution_context": "execution_context"},
-                            config=DifyPluginLLMLayerConfig(
-                                plugin_id=PLUGIN_ID,
-                                model_provider=PLUGIN_PROVIDER,
-                                model=MODEL_NAME,
-                            ),
+                            config=(
+                                DifyPluginLLMLayerConfig(
+                                    plugin_id=PLUGIN_ID, model_provider=PLUGIN_PROVIDER, model=MODEL_NAME
+                                )
+                            ).model_dump(mode="json"),
                         ),
                         # Minimal plugin-tools example. API callers should pass
                         # prepared parameters + JSON schema instead of relying on
@@ -82,9 +81,8 @@ async def main() -> None:
                         # )
                         # RunLayerSpec(
                         #     name="tools",
-                        #     type="dify.plugin.tools",
-                        #     deps={"execution_context": "execution_context"},
                         #     config=DifyPluginToolsLayerConfig(
+                        #         execution_context="execution_context",
                         #         tools=[
                         #             DifyPluginToolConfig(
                         #                 plugin_id="langgenius/search",
@@ -111,7 +109,7 @@ async def main() -> None:
                         #                 },
                         #             )
                         #         ]
-                        #     ),
+                        #     ).model_dump(mode="json"),
                         # ),
                     ],
                 ),
