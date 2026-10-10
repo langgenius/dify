@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, final, override
+from typing import TYPE_CHECKING, final
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.enums import BuiltinNodeTypes
 from graphon.graph_engine.frames import FrameRegistry
 from graphon.graph_engine.iteration_container_handler import IterationContainerHandler
-from graphon.runtime.container_state import IterationFrameState, IterationRunState
-from graphon.variables.segments import SerializableSegment
+from graphon.graph_engine.ready_queue import ROOT_FRAME_ID
+from graphon.graph_events.base import GraphNodeEventBase
+from graphon.graph_events.node import NodeRunFailedEvent
+from graphon.nodes.container_effects import ContainerAwaitRequest
+from graphon.runtime.container_state import ContainerFrameState, IterationFrameState, IterationRunState
 from graphon.variables.variables import Variable
 
 if TYPE_CHECKING:
@@ -50,31 +54,66 @@ def _apply_conversation_variable_snapshot(
 
 
 @final
-class DifyIterationContainerHandler(IterationContainerHandler):
+class DifyIterationContainerHandler:
     """Iteration handler that propagates conversation variable writes to the parent graph."""
 
-    @override
-    def _complete_iteration_step(
+    node_type = BuiltinNodeTypes.ITERATION
+
+    def __init__(self, frame_registry: FrameRegistry) -> None:
+        self._frame_registry = frame_registry
+        self._delegate = IterationContainerHandler(frame_registry)
+
+    def restore_frame(self, frame_state: ContainerFrameState) -> None:
+        self._delegate.restore_frame(frame_state)
+
+    def start_await(
+        self,
+        *,
+        invocation_id: str,
+        request: ContainerAwaitRequest,
+    ) -> None:
+        self._delegate.start_await(invocation_id=invocation_id, request=request)
+
+    def prepare_frame_event(
         self,
         *,
         frame: ExecutionFrame,
-        frame_state: IterationFrameState,
-        parent_frame: ExecutionFrame,
-        run_state: IterationRunState,
-        output: SerializableSegment,
-        store_output: bool,
-    ) -> IterationRunState:
+        event: GraphNodeEventBase,
+    ) -> None:
+        self._delegate.prepare_frame_event(frame=frame, event=event)
+
+    def should_collect(
+        self,
+        *,
+        event: GraphNodeEventBase,
+    ) -> bool:
+        return self._delegate.should_collect(event=event)
+
+    def record_frame_failure(
+        self,
+        *,
+        frame: ExecutionFrame,
+        event: NodeRunFailedEvent,
+    ) -> None:
+        self._delegate.record_frame_failure(frame=frame, event=event)
+
+    def complete_frame(self, frame: ExecutionFrame) -> None:
+        if frame.state_manager.is_execution_complete():
+            self._sync_conversation_variables_for_frame(frame)
+        self._delegate.complete_frame(frame)
+
+    def _sync_conversation_variables_for_frame(self, frame: ExecutionFrame) -> None:
+        root_runtime_state = self._frame_registry.get(ROOT_FRAME_ID).graph_runtime_state
+        frame_state = root_runtime_state.get_container_frame(frame.frame_id)
+        if not isinstance(frame_state, IterationFrameState):
+            return
+        run_state = root_runtime_state.get_container_run(frame_state.parent_invocation_id)
+        if not isinstance(run_state, IterationRunState):
+            return
+        parent_frame = self._frame_registry.get(run_state.frame_id)
         sync_conversation_variables_from_child_to_parent(
             child_pool=frame.graph_runtime_state.variable_pool,
             parent_pool=parent_frame.graph_runtime_state.variable_pool,
-        )
-        return super()._complete_iteration_step(
-            frame=frame,
-            frame_state=frame_state,
-            parent_frame=parent_frame,
-            run_state=run_state,
-            output=output,
-            store_output=store_output,
         )
 
 

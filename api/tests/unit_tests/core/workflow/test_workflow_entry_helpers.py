@@ -9,6 +9,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
+from core.workflow.graph_engine.iteration_conversation_variables import DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
@@ -127,6 +128,7 @@ class TestWorkflowEntryInit:
             graph_runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             config=sentinel.graph_engine_config,
+            container_handler_factories=DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES,
         )
         assert graph_runtime_state._execution_context is sentinel.execution_context
         debug_logging_layer.assert_called_once_with(

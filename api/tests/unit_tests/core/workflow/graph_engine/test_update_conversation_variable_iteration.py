@@ -13,7 +13,7 @@ from .test_mock_config import MockConfigBuilder
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
-def test_update_conversation_variable_in_iteration():
+def test_update_conversation_variable_in_iteration() -> None:
     fixture_name = "update-conversation-variable-in-iteration"
     user_query = "ensure conversation variable syncs"
 
