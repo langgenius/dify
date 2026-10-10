@@ -1,76 +1,72 @@
-import type { Dirent } from 'node:fs'
+import type { EmbeddedFile } from '@/sys'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { versionInfo } from '@/version/info'
-import { GITHUB_ORIGIN, openGitHub } from './github'
+import { embeddedFiles, isCompiledBinary } from '@/sys'
 
+export const SKILL_NAME = 'difyctl'
 export const SKILL_FILE = 'SKILL.md'
-const EXECUTABLE_BITS = 0o111
-const URL_RE = /^https?:\/\//
-
-export type SkillEntry = { readonly path: string; readonly executable: boolean }
+const EMBED_PREFIX = `${SKILL_NAME}/`
+const REPO_SKILL_DIR = fileURLToPath(new URL(`../../../skills/${EMBED_PREFIX}`, import.meta.url))
+export const NO_EMBEDDED_SKILL =
+  'this difyctl build has no embedded skill; reinstall difyctl or pass --from <folder>'
 
 export type SkillSource = {
-  readonly entries: readonly SkillEntry[]
+  readonly paths: readonly string[]
   readonly read: (path: string) => Promise<Uint8Array>
 }
-
-export const DEFAULT_SOURCE = `${GITHUB_ORIGIN}/langgenius/dify/tree/${versionInfo.commit}/skills`
 
 export const FROM_FIELD = z
   .string()
   .min(1)
-  .default(DEFAULT_SOURCE)
-  .describe('Where the skills come from: a GitHub folder URL or a local folder')
+  .optional()
+  .describe('A local skill folder to install instead of the one built into difyctl')
 
-async function hasSkillFile(dir: string): Promise<boolean> {
-  return stat(join(dir, SKILL_FILE)).then(
+export async function openDir(root: string): Promise<SkillSource> {
+  const found = await stat(join(root, SKILL_FILE)).then(
     () => true,
     () => false,
   )
-}
-
-async function walk(root: string, dir: string): Promise<SkillEntry[]> {
-  const entries: SkillEntry[] = []
-  for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile()) continue
-    const abs = join(entry.parentPath, entry.name)
-    const executable = ((await stat(abs)).mode & EXECUTABLE_BITS) !== 0
-    entries.push({ path: relative(root, abs).split(sep).join('/'), executable })
-  }
-  return entries
-}
-
-async function openDir(root: string): Promise<SkillSource> {
-  let children: Dirent[]
-  try {
-    children = await readdir(root, { withFileTypes: true })
-  } catch (cause) {
+  if (!found) {
     throw new BaseError({
       code: ErrorCode.UsageInvalidFlag,
-      message: `cannot read folder "${root}"`,
-      cause,
+      message: `no ${SKILL_FILE} in "${root}"`,
     })
   }
-  const dirs = (await hasSkillFile(root))
-    ? [root]
-    : children.filter((child) => child.isDirectory()).map((child) => join(root, child.name))
-  const entries: SkillEntry[] = []
-  for (const dir of dirs) if (await hasSkillFile(dir)) entries.push(...(await walk(root, dir)))
-  return { entries, read: (path) => readFile(join(root, path)) }
+  const paths: string[] = []
+  for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
+    if (entry.isFile())
+      paths.push(relative(root, join(entry.parentPath, entry.name)).split(sep).join('/'))
+  }
+  return { paths, read: (path) => readFile(join(root, path)) }
 }
 
-export function openSource(from: string): Promise<SkillSource> {
-  if (from.startsWith(`${GITHUB_ORIGIN}/`)) return openGitHub(from)
-  if (URL_RE.test(from)) {
-    throw new BaseError({
-      code: ErrorCode.UsageInvalidFlag,
-      message: `unsupported --from URL "${from}"`,
-      hint: `use a ${GITHUB_ORIGIN} folder URL or a local folder`,
-    })
+export function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
+  const byPath = new Map(files.map((file) => [file.name.slice(EMBED_PREFIX.length), file]))
+  return {
+    paths: [...byPath.keys()],
+    read: async (path) => new Uint8Array(await (byPath.get(path) as EmbeddedFile).arrayBuffer()),
   }
-  return openDir(from)
+}
+
+export type SourceInputs = Readonly<{ files: readonly EmbeddedFile[]; compiled: boolean }>
+
+export async function pickSource({ files, compiled }: SourceInputs): Promise<SkillSource> {
+  if (files.length > 0) return embeddedSource(files)
+  if (compiled) throw new BaseError({ code: ErrorCode.Unknown, message: NO_EMBEDDED_SKILL })
+  return openDir(REPO_SKILL_DIR)
+}
+
+export function defaultSource(): Promise<SkillSource> {
+  return pickSource({
+    files: embeddedFiles().filter((file) => file.name.startsWith(EMBED_PREFIX)),
+    compiled: isCompiledBinary(),
+  })
+}
+
+export function openSource(from: string | undefined): Promise<SkillSource> {
+  return from === undefined ? defaultSource() : openDir(from)
 }

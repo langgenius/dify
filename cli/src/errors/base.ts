@@ -1,4 +1,5 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import type { Hint } from '@/protocol/fold'
 import { BINARY } from '@/version/info'
 import { ErrorCode, exitFor } from './codes'
 
@@ -6,6 +7,7 @@ export type ServerErrorDetail = {
   readonly type: string
   readonly loc?: (string | number)[]
   readonly msg: string
+  readonly field?: string
 }
 
 export type ServerErrorBody = {
@@ -13,6 +15,7 @@ export type ServerErrorBody = {
   readonly message: string
   readonly status?: number
   readonly hint?: string
+  readonly hints?: Hint[]
   readonly details?: ServerErrorDetail[]
 }
 
@@ -118,8 +121,9 @@ export function unknownError(message: string, cause?: unknown): BaseError {
 
 export const LOGIN_HINT = `run ${BINARY} login`
 
-export function notLoggedIn(): BaseError {
-  return new BaseError({ code: ErrorCode.NotLoggedIn, message: 'not logged in', hint: LOGIN_HINT })
+export function notLoggedIn(reason?: string): BaseError {
+  const message = reason === undefined ? 'not logged in' : `not logged in: ${reason}`
+  return new BaseError({ code: ErrorCode.NotLoggedIn, message, hint: LOGIN_HINT })
 }
 
 type HttpClientErrorOptions = BaseErrorOptions & {
