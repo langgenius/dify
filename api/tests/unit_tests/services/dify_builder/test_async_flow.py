@@ -29,7 +29,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as task_mod
-from core.dify_builder.errors import BusyError
+from core.dify_builder.errors import BadRequestError, BusyError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
 from models.base import Base
@@ -88,25 +88,26 @@ def repo(engine: Engine) -> SqlDifyBuilderRepository:
     return SqlDifyBuilderRepository(factory)
 
 
-def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderService, list[tuple[str, dict]]]:
+def _wire(
+    monkeypatch, repo: SqlDifyBuilderRepository
+) -> tuple[DifyBuilderService, FakeDifyPort, list[tuple[str, dict]]]:
     """Wire the usecase to the real task, run eagerly, over the shared repo
     and the real (faked-Redis) session_lock module."""
     monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
     monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
 
-    def make_port():
-        port = FakeDifyPort()
-        port.workflow_events = [
-            {
-                "event": "workflow_started",
-                "task_id": "task-1",
-                "workflow_run_id": "dify-run-1",
-                "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
-            }
-        ]
-        return port
-
-    monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", make_port)
+    # Every eager worker observes the same authoritative draft, including the
+    # revision written by apply_repair and later bound to the verification run.
+    port = FakeDifyPort()
+    port.workflow_events = [
+        {
+            "event": "workflow_started",
+            "task_id": "task-1",
+            "workflow_run_id": "dify-run-1",
+            "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
+        }
+    ]
+    monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
     monkeypatch.setattr(
         service_mod,
@@ -122,14 +123,27 @@ def _wire(monkeypatch, repo: SqlDifyBuilderRepository) -> tuple[DifyBuilderServi
     def eager_enqueue(session_id, action, actor, token) -> None:
         task_mod.advance_session(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
 
-    svc = DifyBuilderService(repo, session_lock, eager_enqueue)
-    return svc, events
+    def get_verification_identity(app_id: str, actor: Actor) -> tuple[str, str]:
+        graph, revision = port.read_graph(app_id, actor)
+        return revision, port.graph_revision(graph)
+
+    svc = DifyBuilderService(
+        repo,
+        session_lock,
+        eager_enqueue,
+        get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
+        get_verification_identity_fn=get_verification_identity,
+    )
+    return svc, port, events
 
 
 # ---- Test 1: full happy path, async-wired -----------------------------------
 
 
-def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
+@pytest.mark.parametrize("draft_change", [None, "execution", "graph"])
+def test_full_fix_flow_create_to_publish_success_eager_async(
+    monkeypatch, repo: SqlDifyBuilderRepository, draft_change: str | None
+) -> None:
     # Seed the failed run BEFORE creating the session -- get_run is by id
     # with no FK, so any placeholder session_id works here.
     repo.save_run(
@@ -137,7 +151,7 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
         Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
     )
 
-    svc, events = _wire(monkeypatch, repo)
+    svc, port, events = _wire(monkeypatch, repo)
 
     # create_fix_session's dispatch runs the task synchronously (eager
     # enqueue), so the returned view already reflects the advanced state:
@@ -148,7 +162,9 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
 
     sid = view.session_id
 
-    view = svc.submit_action(sid, _actor(), Action(kind="run_verify", base_version=view.version))
+    view = svc.submit_action(
+        sid, _actor(), Action(kind="run_verify", base_version=view.version, base_app_revision=view.app_revision.current)
+    )
     assert view.state == "fix.await_testdata"
     assert session_lock.exists(sid) is False
 
@@ -158,8 +174,43 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
     assert view.state == "fix.await_decision"
     assert session_lock.exists(sid) is False
 
-    view = svc.submit_action(sid, _actor(), Action(kind="publish", base_version=view.version))
+    stored, context = repo.get_session(sid)
+    verified = repo.get_run(context.verify_run_id)
+    assert verified.session_id == sid
+    assert verified.kind == "verify"
+    assert verified.immutable is True
+    assert verified.status == "succeeded"
+    assert verified.verification is not None
+    assert verified.verification.execution_revision == "h1"
+    assert verified.verification.executed_graph_revision == port.graph_revision(port.graph)
+    assert port.published is False
+
+    if draft_change is not None:
+        if draft_change == "execution":
+            port.hash = "h-stale"
+        else:
+            port.graph["nodes"].append({"id": "new", "data": {"type": "end", "outputs": []}})
+        event_count = len(events)
+        with pytest.raises(BadRequestError, match="publication verification denied: stale_revision"):
+            svc.submit_action(
+                sid,
+                _actor(),
+                Action(kind="publish", base_version=view.version, base_app_revision=view.app_revision.current),
+            )
+        unchanged, unchanged_context = repo.get_session(sid)
+        assert unchanged.current_state == PcState.FIX_AWAIT_DECISION
+        assert unchanged.version == stored.version
+        assert unchanged_context.verify_run_id == verified.id
+        assert port.published is False
+        assert len(events) == event_count
+        assert session_lock.exists(sid) is False
+        return
+
+    view = svc.submit_action(
+        sid, _actor(), Action(kind="publish", base_version=view.version, base_app_revision=view.app_revision.current)
+    )
     assert view.state == "success"
+    assert port.published is True
 
     stored, _fc = repo.get_session(sid)
     assert stored.current_state == PcState.SUCCESS
@@ -178,7 +229,7 @@ def test_full_fix_flow_create_to_publish_success_eager_async(monkeypatch, repo: 
 
 
 def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
-    svc, _events = _wire(monkeypatch, repo)
+    svc, port, _events = _wire(monkeypatch, repo)
 
     # Seed the session DIRECTLY via the repo (bypassing create_fix_session,
     # whose eager dispatch would immediately release the lock again).
@@ -199,7 +250,7 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo
     # CAS passes (version is 1), but dispatch's acquire fails because the
     # lock is still held -- proving the cross-process serialization.
     with pytest.raises(BusyError):
-        svc.submit_action(s.id, _actor(), Action(kind="run_verify", base_version=1))
+        svc.submit_action(s.id, _actor(), Action(kind="run_verify", base_version=1, base_app_revision=port.hash))
 
     stored, _fc = repo.get_session(s.id)
     assert stored.current_state == PcState.FIX_AWAIT_VERIFY, "a busy dispatch must leave the session untouched"
@@ -218,7 +269,7 @@ def test_terminal_state_frame_excludes_conversation_history(monkeypatch, repo: S
         Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
     )
 
-    svc, events = _wire(monkeypatch, repo)
+    svc, _port, events = _wire(monkeypatch, repo)
 
     # create_fix_session's dispatch runs the task synchronously (eager
     # enqueue), so by the time this returns the task has already published

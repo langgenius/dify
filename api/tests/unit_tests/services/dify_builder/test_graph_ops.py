@@ -1261,3 +1261,40 @@ def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_sibl
     )
 
     assert new_graph["nodes"][0]["data"]["authorization"] == {"type": "no-auth", "config": default_config["config"]}
+
+
+@pytest.mark.parametrize(
+    ("marker_type", "expected_wrapper"),
+    [("iteration-start", "custom-iteration-start"), ("loop-start", "custom-loop-start")],
+)
+@pytest.mark.parametrize("flow_type", [None, "custom", "custom-iteration-start", "custom-loop-start"])
+def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(marker_type, expected_wrapper, flow_type):
+    graph = {
+        "nodes": [{"id": "container", "data": {"type": "loop"}}],
+        "edges": [{"source": "containerstart", "target": "child"}],
+    }
+    original = copy.deepcopy(graph)
+    out, changed = apply_create_node(
+        graph,
+        marker_type,
+        {"title": "", "condition": {"enabled": True}, "loop_id": "container"},
+        node_id="containerstart",
+        parent_id="container",
+        flow_type=flow_type,
+    )
+    node = out["nodes"][-1]
+    assert changed == ["containerstart"]
+    assert node["id"] == "containerstart"
+    assert node["type"] == expected_wrapper
+    assert node["parentId"] == "container"
+    assert node["data"]["type"] == marker_type
+    assert node["data"]["condition"] == {"enabled": True}
+    assert node["data"]["loop_id"] == "container"
+    assert out["nodes"][0] == original["nodes"][0]
+    assert out["edges"] == original["edges"]
+    assert graph == original
+
+
+def test_create_ordinary_node_preserves_caller_flow_type():
+    out, _ = apply_create_node({"nodes": [], "edges": []}, "llm", {}, node_id="child", flow_type="caller-wrapper")
+    assert out["nodes"][0]["type"] == "caller-wrapper"

@@ -6,7 +6,7 @@ from core.dify_builder import strings
 
 
 def test_plain_catalog_has_core_microcopy():
-    assert "Tests passed; ready for review." in strings.PLAIN
+    assert "Execution succeeded; output needs review." in strings.PLAIN
     assert "Workflow built on the canvas." in strings.PLAIN
     assert "Test run" in strings.PLAIN
     assert "Review" in strings.PLAIN
@@ -40,7 +40,7 @@ def test_template_matches_model_changed_notice():
 
 
 def test_plain_string_is_not_a_template():
-    assert strings.match_template("Tests passed; ready for review.") is None
+    assert strings.match_template("Execution succeeded; output needs review.") is None
 
 
 def test_catalog_covers_handler_literals():

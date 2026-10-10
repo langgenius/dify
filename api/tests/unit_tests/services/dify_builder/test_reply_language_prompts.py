@@ -29,6 +29,10 @@ def _system_captured(monkeypatch, module, fn_name, call):  # noqa: ARG001
             "target_node_ids": [],
         }
 
+    def fake_invoke_text(model, *, system, user, model_parameters=None, stop=None, on_reasoning=None):  # noqa: ARG001
+        captured["system"] = system
+        return '{"plan": ["x"]}'
+
     def fake_invoke_text_stream(
         model,  # noqa: ARG001
         *,
@@ -42,6 +46,7 @@ def _system_captured(monkeypatch, module, fn_name, call):  # noqa: ARG001
         yield "hi"
 
     monkeypatch.setattr(llm, "invoke_json", fake_invoke_json)
+    monkeypatch.setattr(llm, "invoke_text", fake_invoke_text)
     monkeypatch.setattr(llm, "invoke_text_stream", fake_invoke_text_stream)
     call()
     return captured["system"]

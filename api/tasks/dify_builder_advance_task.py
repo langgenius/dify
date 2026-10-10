@@ -56,6 +56,7 @@ from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import DifyBuilderService
 
 logger = logging.getLogger(__name__)
@@ -416,11 +417,17 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # error frame so the client stream always ends.
         try:
             repo, dify, actor = completed
+
+            def get_verification_identity(app_id: str, owner: Actor) -> tuple[str, str]:
+                graph, revision = dify.read_graph(app_id, owner)
+                return revision, executable_graph_revision(graph)
+
             view = DifyBuilderService(
                 repo,
                 session_lock,
                 lambda *a, **k: None,
                 get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
+                get_verification_identity_fn=get_verification_identity,
             ).get_session_view(session_id, actor)
             progress_bus.publish(
                 session_id,
@@ -431,6 +438,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     "post_canvas_action_id": post_canvas_action_id(
                         str(loaded_session.current_state) if loaded_session is not None else None,
                         action.kind if action is not None else action_dict.get("kind"),
+                        completed_state=view.state,
+                        available_action_ids=[available.id for available in view.actions],
                     ),
                 },
             )

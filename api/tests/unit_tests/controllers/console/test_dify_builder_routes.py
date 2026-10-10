@@ -609,3 +609,71 @@ def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
     )
 
     assert service.submit_action_stream.call_args.args[2].kind == "run_verify"
+
+
+@pytest.mark.parametrize(
+    "evidence", [None, {}, {"null": None, "false": False, "zero": 0, "empty": "", "list": [], "map": {}}]
+)
+def test_conversation_result_preserves_terminal_evidence_through_derived_json(monkeypatch, evidence):
+    service = MagicMock()
+    service.get_conversation_page.return_value = ConversationPage(
+        data=[
+            ConversationItem(
+                seq=0,
+                kind="test_result",
+                at_version=1,
+                payload={
+                    "status": "succeeded",
+                    "outcome": "execution_succeeded_needs_review",
+                    "terminal_outputs": evidence,
+                    "executed_node_ids": ["end-1"],
+                    "review_note": "Review outputs",
+                },
+            )
+        ],
+        has_more=False,
+        first_seq=0,
+        last_seq=0,
+    )
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+    payload = json.loads(json.dumps(mod._conversation("s1", {}, _actor())))["data"][0]["payload"]
+    assert payload["terminal_outputs"] == evidence
+    if evidence:
+        assert payload["terminal_outputs"]["false"] is False
+        assert type(payload["terminal_outputs"]["zero"]) is int
+    assert payload["executed_node_ids"] == ["end-1"]
+    assert payload["outcome"] == "execution_succeeded_needs_review"
+    assert payload["review_note"] == "Review outputs"
+
+
+def test_conversation_historical_result_keeps_missing_evidence_unavailable(monkeypatch):
+    service = MagicMock()
+    service.get_conversation_page.return_value = ConversationPage(
+        data=[ConversationItem(seq=0, kind="test_result", at_version=1, payload={"status": "succeeded"})],
+        has_more=False,
+        first_seq=0,
+        last_seq=0,
+    )
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+    payload = mod._conversation("s1", {}, _actor())["data"][0]["payload"]
+    assert payload["terminal_outputs"] is None
+    assert payload["outcome"] is None
+
+
+def test_conversation_schema_derives_optional_nullable_terminal_evidence():
+    from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
+
+    schema = DifyBuilderConversationPageResponse.model_json_schema(mode="serialization")
+    card = schema["$defs"]["TestResultCard"]
+    assert "terminal_outputs" not in card["required"]
+    assert card["properties"]["terminal_outputs"]["anyOf"] == [
+        {"additionalProperties": True, "type": "object"},
+        {"type": "null"},
+    ]
+    assert card["properties"]["executed_node_ids"]["items"] == {"type": "string"}
+    assert card["properties"]["outcome"]["anyOf"][0]["enum"] == [
+        "execution_succeeded_needs_review",
+        "required_output_unresolved",
+        "execution_failed",
+        "execution_unknown",
+    ]

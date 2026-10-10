@@ -366,8 +366,19 @@ export const zDifyBuilderPlanConversationItemResponse = z.object({
  */
 export const zTestResultCard = z.object({
   dify_run_id: z.string().optional().default(''),
+  executed_node_ids: z.array(z.string()).optional(),
   failure_reason: z.string().nullish(),
+  outcome: z
+    .enum([
+      'execution_failed',
+      'execution_succeeded_needs_review',
+      'execution_unknown',
+      'required_output_unresolved',
+    ])
+    .nullish(),
+  review_note: z.string().nullish(),
   status: z.enum(['failed', 'succeeded']),
+  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**

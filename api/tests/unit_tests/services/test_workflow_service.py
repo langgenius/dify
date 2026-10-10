@@ -1277,6 +1277,39 @@ class TestWorkflowServiceCases:
             assert persisted_workflow is not None
             assert persisted_workflow.conversation_variables == variables
 
+        def test_publish_workflow_uses_expected_locked_draft_id(self, workflow_service, sqlite_session):
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+            other = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="other-draft", version=Workflow.VERSION_DRAFT, graph=graph
+            )
+            locked_graph = {**graph, "verified-marker": "locked"}
+            locked = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="locked-draft", version=Workflow.VERSION_DRAFT, graph=locked_graph
+            )
+            sqlite_session.add_all([other, locked])
+            sqlite_session.commit()
+            with patch("services.workflow_service.app_published_workflow_was_updated"):
+                published = workflow_service.publish_workflow(
+                    session=sqlite_session, app_model=app, account=account, expected_draft_id=locked.id
+                )
+            assert published.graph_dict == locked_graph
+            assert published.graph_dict != other.graph_dict
+
+        def test_publish_workflow_expected_draft_keeps_owner_scope(self, workflow_service, sqlite_session):
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            foreign = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="foreign-draft", tenant_id="other-tenant", version=Workflow.VERSION_DRAFT
+            )
+            sqlite_session.add(foreign)
+            sqlite_session.commit()
+            with pytest.raises(ValueError, match="No valid workflow"):
+                workflow_service.publish_workflow(
+                    session=sqlite_session, app_model=app, account=account, expected_draft_id=foreign.id
+                )
+
         def test_update_draft_workflow_conversation_variables_raises_when_missing(
             self, workflow_service: WorkflowService, sqlite_session: Session
         ):

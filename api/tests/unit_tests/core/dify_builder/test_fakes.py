@@ -390,7 +390,7 @@ def test_fake_dify_port_publish_marks_published():
     port = FakeDifyPort()
     assert port.published is False
 
-    port.publish("app-1", _actor())
+    port.publish("app-1", _actor(), expected_revision="h0", expected_graph_revision=port.graph_revision(port.graph))
 
     assert port.published is True
 
