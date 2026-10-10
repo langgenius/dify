@@ -4,7 +4,7 @@ import type { CollectOptions, CommandTree, ResolvedCommand } from '@/plugins/com
 import type { IOService } from '@/plugins/io'
 import type { OpsService, TreeOptions } from '@/plugins/ops'
 import { commandTree } from '@/commands/tree'
-import { BaseError, notLoggedIn } from '@/errors/base'
+import { BaseError, notLoggedInMessage } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
@@ -41,7 +41,7 @@ const HELP_FLAGS: readonly string[] = ['--help', '-h']
 const FULL_FLAG = '--full'
 const ALL_FLAG = '--all'
 const FLAG_PREFIX = '-'
-const NO_SERVER_NOTICE = notLoggedIn(helpHint('login')).message
+const NO_SERVER_NOTICE = notLoggedInMessage(helpHint('login'))
 const NO_SERVER_HINT = 'log in to use server operations'
 const OPS_UNAVAILABLE_PREFIX = 'could not list server operations: '
 const NO_MATCH_NOTICE = `nothing matched; ${helpHint()} for the map`

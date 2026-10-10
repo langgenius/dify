@@ -125,9 +125,16 @@ export function unknownError(message: string, cause?: unknown): BaseError {
 
 export const LOGIN_HINT = `run ${BINARY} login`
 
+export function notLoggedInMessage(reason?: string): string {
+  return reason === undefined ? 'not logged in' : `not logged in: ${reason}`
+}
+
 export function notLoggedIn(reason?: string): BaseError {
-  const message = reason === undefined ? 'not logged in' : `not logged in: ${reason}`
-  return new BaseError({ code: ErrorCode.NotLoggedIn, message, hint: LOGIN_HINT })
+  return new BaseError({
+    code: ErrorCode.NotLoggedIn,
+    message: notLoggedInMessage(reason),
+    hint: LOGIN_HINT,
+  })
 }
 
 type HttpClientErrorOptions = BaseErrorOptions & {
