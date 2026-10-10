@@ -229,7 +229,7 @@ def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.Mo
 
 
 def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-    # Mock db and storage to avoid issues during image extraction (even if no images are present)
+    # Patch db and storage to avoid issues during image extraction (even if no images are present)
     apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     doc = Document()
