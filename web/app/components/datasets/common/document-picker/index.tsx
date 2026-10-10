@@ -162,20 +162,19 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
         <ComboboxPositioner placement="bottom-start" sideOffset={0}>
           <ComboboxPopup
             aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-            className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
+            className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
           >
-            <ComboboxInputGroup className="h-8 min-h-8 px-2">
+            <ComboboxInputGroup>
               <span
-                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
                 aria-hidden="true"
               />
               <ComboboxInput
                 aria-label={t(($) => $['operation.search'], { ns: 'common' })}
                 placeholder={t(($) => $['operation.search'], { ns: 'common' })}
-                className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
             </ComboboxInputGroup>
-            <DocumentList className="mt-2 data-empty:mt-0" />
+            <DocumentList />
             <ComboboxEmpty className="p-0">
               {data && (
                 <div className="mt-2 flex h-25 w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
