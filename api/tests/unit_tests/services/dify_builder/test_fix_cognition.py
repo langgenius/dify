@@ -610,6 +610,16 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
             "memory.window.size",
             10,
         ),
+        (
+            {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "agent_task": "Use {{#s.public_items#}}",
+            },
+            "agent_task",
+            "Use {{#s.private_items#}}",
+        ),
     ],
     ids=[
         "list-source",
@@ -633,6 +643,7 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
         "index-chunk-source",
         "classifier-history-presence",
         "extractor-history-scope",
+        "v2-task-binding",
     ],
 )
 def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypatch, data, path, value):
