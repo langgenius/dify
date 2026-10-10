@@ -108,6 +108,37 @@ def missing_app_section_error(top_level_keys: list[str]) -> str:
     )
 
 
+class YamlUrlFetchError(ValueError):
+    pass
+
+
+def fetch_yaml_url(yaml_url: str) -> str:
+    """The YAML text at a URL; a GitHub blob link is read from its raw file."""
+    try:
+        parsed_url = urlparse(yaml_url)
+        if (
+            parsed_url.scheme == "https"
+            and parsed_url.netloc == "github.com"
+            and parsed_url.path.endswith((".yml", ".yaml"))
+            and "/blob/" in parsed_url.path
+        ):
+            yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
+            yaml_url = yaml_url.replace("/blob/", "/")
+        response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+        response.raise_for_status()
+        raw_content = response.content
+        if dsl_content_size(raw_content) > DSL_MAX_SIZE:
+            raise YamlUrlFetchError("File size exceeds the limit of 10MB")
+        content = raw_content.decode("utf-8")
+    except YamlUrlFetchError:
+        raise
+    except Exception as e:
+        raise YamlUrlFetchError(f"Error fetching YAML from URL: {str(e)}") from e
+    if not content:
+        raise YamlUrlFetchError("Empty content from url")
+    return content
+
+
 class PendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
@@ -168,39 +199,9 @@ class AppDslService:
                     error="yaml_url is required when import_mode is yaml-url",
                 )
             try:
-                parsed_url = urlparse(yaml_url)
-                if (
-                    parsed_url.scheme == "https"
-                    and parsed_url.netloc == "github.com"
-                    and parsed_url.path.endswith((".yml", ".yaml"))
-                    and "/blob/" in parsed_url.path
-                ):
-                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-                    yaml_url = yaml_url.replace("/blob/", "/")
-                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
-                response.raise_for_status()
-                raw_content = response.content
-
-                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error="File size exceeds the limit of 10MB",
-                    )
-
-                content = raw_content.decode("utf-8")
-                if not content:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error="Empty content from url",
-                    )
-            except Exception as e:
-                return Import(
-                    id=import_id,
-                    status=ImportStatus.FAILED,
-                    error=f"Error fetching YAML from URL: {str(e)}",
-                )
+                content = fetch_yaml_url(yaml_url)
+            except YamlUrlFetchError as e:
+                return Import(id=import_id, status=ImportStatus.FAILED, error=str(e))
         elif mode == ImportMode.YAML_CONTENT:
             if not yaml_content:
                 return Import(

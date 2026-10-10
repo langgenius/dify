@@ -115,9 +115,7 @@ def _keep_stored_secrets(workflow: Mapping[str, Any], draft: Workflow) -> None:
             variable["value"] = HIDDEN_VALUE
 
 
-def prepare_import(
-    context: RequestContext, *, yaml_content: str | None, app_id: str | None, draft_hash: str | None
-) -> str | None:
+def prepare_import(context: RequestContext, *, yaml_content: str, app_id: str | None, draft_hash: str | None) -> str:
     """The YAML to hand the import. A DSL the check can't read goes through unchanged, for the import to judge.
 
     Raises DraftChangedError, DslRefusedError, or ConsoleAppNotFoundError for an `app_id` outside the workspace.
@@ -127,8 +125,6 @@ def prepare_import(
         draft = WorkflowService().get_draft_workflow(app_model=app, session=session) if app else None
         if draft_hash is not None and (draft is None or draft_token(draft) != draft_hash):
             raise DraftChangedError()
-        if not yaml_content:
-            return yaml_content
         try:
             data = _parse(yaml_content)
             mode = _graph_mode(data, app)

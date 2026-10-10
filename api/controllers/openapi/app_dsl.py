@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from typing import Final
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
@@ -31,7 +31,7 @@ from extensions.ext_application_services import application_services
 from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
-from services.app_dsl_service import AppDslService
+from services.app_dsl_service import AppDslService, YamlUrlFetchError, fetch_yaml_url
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
@@ -60,11 +60,18 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
     )
 
 
-def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str | None:
+def _source_yaml(body: AppDslImportPayload) -> str:
+    if body.mode == ImportMode.YAML_URL and body.yaml_url:
+        return fetch_yaml_url(body.yaml_url)
+    assert body.yaml_content, "the payload requires yaml_content in yaml-content mode"
+    return body.yaml_content
+
+
+def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
     try:
         return prepare_import(
             context,
-            yaml_content=body.yaml_content if body.mode == ImportMode.YAML_CONTENT else None,
+            yaml_content=_source_yaml(body),
             app_id=body.app_id,
             draft_hash=body.draft_hash,
         )
@@ -134,9 +141,14 @@ class AppDslImportApi(Resource):
         ),
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
-        yaml_content = _prepared_yaml(ctx, body)
+        try:
+            yaml_content = _prepared_yaml(ctx, body)
+        except YamlUrlFetchError as error:
+            failed = Import(id=str(uuid4()), status=ImportStatus.FAILED, error=str(error))
+            return _import_response(failed, workspace_id=workspace_id), HTTPStatus.BAD_REQUEST
         params = AppImportParams.model_validate(
-            body.model_dump(exclude={"draft_hash"}) | {"yaml_content": yaml_content}
+            body.model_dump(exclude={"draft_hash"})
+            | {"mode": ImportMode.YAML_CONTENT, "yaml_content": yaml_content, "yaml_url": None}
         )
         try:
             result = application_services().apps.imports.import_app(ctx, params)
