@@ -443,7 +443,7 @@ class AppTrigger(TypeBase):
     - title (string) Trigger title
 
     - status (string) Status: enabled, disabled, unauthorized, error
-    - node_id (string) Optional workflow node ID
+    - node_id (string) Required workflow node ID
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
     """
@@ -459,7 +459,7 @@ class AppTrigger(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, default="")
