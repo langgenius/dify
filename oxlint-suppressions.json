@@ -3120,6 +3120,11 @@
       "count": 5
     }
   },
+  "web/app/components/workflow/nodes/human-input/components/delivery-method/__tests__/email-dialogs.browser.spec.tsx": {
+    "dify/no-app-store-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/__tests__/test-email-sender.spec.tsx": {
     "dify/no-app-store-imports": {
       "count": 1

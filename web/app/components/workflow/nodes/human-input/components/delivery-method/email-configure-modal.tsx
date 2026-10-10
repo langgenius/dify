@@ -1,13 +1,22 @@
+import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
 import type { EmailConfig } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiBugLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useId, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -16,25 +25,23 @@ import Recipient from './recipient'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type EmailConfigureModalProps = {
+type EmailConfigureDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: (data: EmailConfig) => void
   config?: EmailConfig
+  finalFocus?: DialogContentProps['finalFocus']
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
 }
 
-const EmailConfigureModal = ({
-  open,
-  onOpenChange,
+function EmailConfigureForm({
   onConfirm,
   config,
   nodesOutputVars = [],
   availableNodes = [],
-}: EmailConfigureModalProps) => {
+}: Omit<EmailConfigureDialogProps, 'open' | 'onOpenChange' | 'finalFocus'>) {
   const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
-  const subjectId = useId()
   const debugModeId = useId()
   const debugDescriptionId = useId()
   const { data: email } = useSuspenseQuery({
@@ -44,170 +51,181 @@ const EmailConfigureModal = ({
   const [recipients, setRecipients] = useState(
     config?.recipients || { whole_workspace: false, items: [] },
   )
-  const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '{{#url#}}')
   const [debugMode, setDebugMode] = useState(config?.debug_mode || false)
 
-  const checkValidConfig = useCallback(() => {
-    if (!subject.trim()) {
-      toast.error(
-        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`], {
-          ns: 'workflowHumanInput',
-        }),
-      )
-      return false
-    }
-    if (!body.trim()) {
-      toast.error(
-        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`], {
-          ns: 'workflowHumanInput',
-        }),
-      )
-      return false
-    }
-    if (!/\{\{#url#\}\}/.test(body.trim())) {
-      toast.error(
-        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`], {
-          ns: 'workflowHumanInput',
-          field: t(($) => $['promptEditor.requestURL.item.title'], { ns: 'common' }),
-        }),
-      )
-      return false
-    }
-    if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
-      toast.error(
-        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`], {
-          ns: 'workflowHumanInput',
-        }),
-      )
-      return false
-    }
-    return true
-  }, [recipients, subject, body, t])
+  const checkValidConfig = useCallback(
+    (subject: string) => {
+      if (!subject.trim()) {
+        toast.error(
+          t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`], {
+            ns: 'workflowHumanInput',
+          }),
+        )
+        return false
+      }
+      if (!body.trim()) {
+        toast.error(
+          t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`], {
+            ns: 'workflowHumanInput',
+          }),
+        )
+        return false
+      }
+      if (!/\{\{#url#\}\}/.test(body.trim())) {
+        toast.error(
+          t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`], {
+            ns: 'workflowHumanInput',
+            field: t(($) => $['promptEditor.requestURL.item.title'], { ns: 'common' }),
+          }),
+        )
+        return false
+      }
+      if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
+        toast.error(
+          t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`], {
+            ns: 'workflowHumanInput',
+          }),
+        )
+        return false
+      }
+      return true
+    },
+    [recipients, body, t],
+  )
 
-  const handleConfirm = useCallback(() => {
-    if (!checkValidConfig()) return
-    onConfirm({
-      recipients,
-      subject,
-      body,
-      debug_mode: debugMode,
-    })
-  }, [checkValidConfig, onConfirm, recipients, subject, body, debugMode])
+  const handleConfirm = useCallback(
+    (subject: string) => {
+      if (!checkValidConfig(subject)) return
+      onConfirm({
+        recipients,
+        subject,
+        body,
+        debug_mode: debugMode,
+      })
+    },
+    [checkValidConfig, onConfirm, recipients, body, debugMode],
+  )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
+    <Form<{ subject: string }> onFormSubmit={({ subject }) => handleConfirm(subject)}>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+      <div className="space-y-1 pr-8">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
+            ns: 'workflowHumanInput',
+          })}
+        </DialogTitle>
+        <DialogDescription className="system-xs-regular text-text-tertiary">
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], {
+            ns: 'workflowHumanInput',
+          })}
+        </DialogDescription>
+      </div>
+      <div className="mt-6 space-y-5">
+        <Field name="subject">
+          <FieldLabel className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
               ns: 'workflowHumanInput',
             })}
-          </DialogTitle>
-          <div className="system-xs-regular text-text-tertiary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], {
+          </FieldLabel>
+          <Input
+            className="w-full"
+            defaultValue={config?.subject || ''}
+            placeholder={t(
+              ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
+              { ns: 'workflowHumanInput' },
+            )}
+          />
+        </Field>
+        <div>
+          <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
               ns: 'workflowHumanInput',
             })}
           </div>
+          <MailBodyInput
+            value={body}
+            onChange={setBody}
+            nodesOutputVars={nodesOutputVars}
+            availableNodes={availableNodes}
+          />
         </div>
-        <div className="mt-6 space-y-5">
-          <div>
-            <label
-              htmlFor={subjectId}
-              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-            >
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
+        <div>
+          <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], {
+              ns: 'workflowHumanInput',
+            })}
+          </div>
+          <Recipient data={recipients} onChange={setRecipients} />
+        </div>
+        <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
+            <RiBugLine className="size-3.5 text-text-primary-on-surface" />
+          </div>
+          <div className="grow space-y-1">
+            <label htmlFor={debugModeId} className="system-sm-medium text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
                 ns: 'workflowHumanInput',
               })}
             </label>
-            <Input
-              id={subjectId}
-              className="w-full"
-              value={subject}
-              onValueChange={setSubject}
-              placeholder={t(
-                ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
-                { ns: 'workflowHumanInput' },
-              )}
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
-                ns: 'workflowHumanInput',
-              })}
-            </div>
-            <MailBodyInput
-              value={body}
-              onChange={setBody}
-              nodesOutputVars={nodesOutputVars}
-              availableNodes={availableNodes}
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], {
-                ns: 'workflowHumanInput',
-              })}
-            </div>
-            <Recipient data={recipients} onChange={setRecipients} />
-          </div>
-          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
-            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
-              <RiBugLine className="size-3.5 text-text-primary-on-surface" />
-            </div>
-            <div className="grow space-y-1">
-              <label htmlFor={debugModeId} className="system-sm-medium text-text-secondary">
-                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
+            <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
+              <Trans
+                i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
+                ns="workflowHumanInput"
+                components={{
+                  email: <span className="body-md-medium text-text-primary">{email}</span>,
+                }}
+                values={{ email }}
+              />
+              <div>
+                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], {
                   ns: 'workflowHumanInput',
                 })}
-              </label>
-              <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
-                <Trans
-                  i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
-                  ns="workflowHumanInput"
-                  components={{
-                    email: <span className="body-md-medium text-text-primary">{email}</span>,
-                  }}
-                  values={{ email }}
-                />
-                <div>
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], {
-                    ns: 'workflowHumanInput',
-                  })}
-                </div>
               </div>
             </div>
-            <Switch
-              id={debugModeId}
-              aria-describedby={debugDescriptionId}
-              checked={debugMode}
-              onCheckedChange={(checked) => setDebugMode(checked)}
-            />
           </div>
+          <Switch
+            id={debugModeId}
+            aria-describedby={debugDescriptionId}
+            checked={debugMode}
+            onCheckedChange={(checked) => setDebugMode(checked)}
+          />
         </div>
-        <div className="mt-6 flex flex-row-reverse gap-2">
-          <Button variant="primary" className="w-18" onClick={handleConfirm}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-          <Button className="w-18" onClick={() => onOpenChange(false)}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-        </div>
+      </div>
+      <div className="mt-6 flex flex-row-reverse gap-2">
+        <Button type="submit" variant="primary" className="w-18">
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+        <DialogClose render={<Button className="w-18" />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+      </div>
+    </Form>
+  )
+}
+
+export function EmailConfigureDialog({
+  open,
+  onOpenChange,
+  finalFocus,
+  ...props
+}: EmailConfigureDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent finalFocus={finalFocus} className="max-h-[calc(100dvh-64px)]! w-180!">
+        <EmailConfigureForm {...props} />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default memo(EmailConfigureModal)
