@@ -128,15 +128,8 @@ export function collectIpAddresses(entries: readonly string[]) {
   return entries.map((entry) => entry.trim()).filter((entry) => entry.length > 0)
 }
 
-export function toAllowedCidr(entry: string): string {
-  const value = entry.trim()
-  if (value.includes('/')) return value
-  if (value.includes(':')) return `${value}/128`
-  return `${value}/32`
-}
-
 export function collectAllowedCidrs(entries: readonly string[]) {
-  return collectIpAddresses(entries).map(toAllowedCidr)
+  return collectIpAddresses(entries)
 }
 
 /** Compare host entries, including compressed and IPv4-mapped IPv6, without matching ranges. */

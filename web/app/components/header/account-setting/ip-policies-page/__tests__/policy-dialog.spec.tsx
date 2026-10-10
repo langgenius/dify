@@ -113,7 +113,7 @@ describe('IpPolicyDialog', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: 'Internal Network',
-      allowed_cidrs: ['10.0.0.0/8', '203.0.113.42/32'],
+      allowed_cidrs: ['10.0.0.0/8', '203.0.113.42'],
     })
   })
 })
@@ -192,7 +192,7 @@ describe('trusted current IP and allowlist editing', () => {
   })
 
   it.each(['create', 'edit'] as const)(
-    'accepts a mapped IPv6 address in %s mode and submits it to the server',
+    'preserves address spelling and order when submitting in %s mode',
     async (mode) => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
@@ -201,7 +201,13 @@ describe('trusted current IP and allowlist editing', () => {
           open
           mode={mode}
           initialName="Office"
-          initialEntries={['::ffff:203.0.113.42/128']}
+          initialEntries={[
+            '192.168.1.1',
+            '10.0.0.0/8',
+            '2001:db8::1',
+            '2001:0DB8:0000:0000:0000:0000:0000:0001',
+            '::ffff:203.0.113.42/128',
+          ]}
           onOpenChange={vi.fn()}
           onSubmit={onSubmit}
         />,
@@ -209,7 +215,13 @@ describe('trusted current IP and allowlist editing', () => {
       await user.click(screen.getByRole('button', { name: mode === 'create' ? 'Create' : 'Save' }))
       expect(onSubmit).toHaveBeenCalledWith({
         name: 'Office',
-        allowed_cidrs: ['::ffff:203.0.113.42/128'],
+        allowed_cidrs: [
+          '192.168.1.1',
+          '10.0.0.0/8',
+          '2001:db8::1',
+          '2001:0DB8:0000:0000:0000:0000:0000:0001',
+          '::ffff:203.0.113.42/128',
+        ],
       })
     },
   )
