@@ -351,6 +351,7 @@ class TestDifyNodeFactoryCreateNode:
         factory.graph_init_params = sentinel.graph_init_params
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
         factory._dify_context = SimpleNamespace(
+            builder_execution=None,
             tenant_id="tenant-id",
             app_id="app-id",
             user_id="user-id",
@@ -1270,6 +1271,14 @@ class TestNodeConfigErrorsNameTheNode:
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory._dify_context = DifyRunContext(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            builder_execution=None,
+        )
         return factory
 
     def test_create_node_names_the_node_that_failed_validation(self, factory):
