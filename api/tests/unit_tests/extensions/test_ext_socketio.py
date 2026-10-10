@@ -1,4 +1,6 @@
+import socket
 import ssl
+import sys
 from collections.abc import Callable
 
 import socketio
@@ -48,6 +50,32 @@ def test_build_redis_options_omits_socket_timeout(config_overrides: Callable[...
 
     assert "socket_timeout" not in options
     assert "socket_connect_timeout" in options
+
+
+def test_build_redis_options_passes_tcp_keepalive(config_overrides: Callable[..., None]) -> None:
+    # The pub/sub listen loop idles between messages, so without TCP keepalive
+    # probes middleboxes (cloud LBs, K8s services, Redis proxies) silently drop
+    # the connection (issue #39812).
+    config_overrides(
+        REDIS_KEEPALIVE=True,
+        REDIS_KEEPALIVE_IDLE=30,
+        REDIS_KEEPALIVE_INTERVAL=10,
+        REDIS_KEEPALIVE_COUNT=5,
+    )
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6380/3")
+
+    assert options["socket_keepalive"] is True
+    if sys.platform == "linux":
+        assert options["socket_keepalive_options"] == {
+            socket.TCP_KEEPIDLE: 30,
+            socket.TCP_KEEPINTVL: 10,
+            socket.TCP_KEEPCNT: 5,
+        }
+    elif sys.platform == "darwin":
+        assert options["socket_keepalive_options"] == {socket.TCP_KEEPALIVE: 30}
+    else:
+        assert options["socket_keepalive_options"] == {}
 
 
 def test_socketio_server_uses_configured_max_http_buffer_size() -> None:
