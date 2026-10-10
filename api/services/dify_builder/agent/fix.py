@@ -20,7 +20,7 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import credentials, graph_ops, preflight
+from services.dify_builder import credentials, diagnostic_context, graph_ops, preflight
 from services.dify_builder.agent import graph_prompt, llm
 
 _SEVERITIES = {"low", "medium", "high"}
@@ -125,6 +125,7 @@ def diagnose(
     node_outputs: list[NodeOutput],
     on_reasoning: Callable[[str], None] | None = None,
 ) -> Diagnosis:
+    failed_run, node_outputs = diagnostic_context.redact_run_context(failed_run, graph, node_outputs)
     failed = _failed_nodes(node_outputs)
     if model is None:
         return _degraded_diagnosis(failed, failed_run.error)
@@ -134,19 +135,17 @@ def diagnose(
         '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
         '"severity": "low|medium|high"}.'
     ) + llm.json_language_instruction("root_cause")
-    failed_desc = (
-        "\n".join(
-            f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
-            f"inputs={_truncate(o.inputs)} outputs={_truncate(o.outputs)}"
-            for o in failed
-        )
-        or (
-            f"(no node executed; the run threw at launch: {failed_run.error!r})"
-            if failed_run.error
-            else "(no per-node failure recorded)"
-        )
+    failed_desc = "\n".join(
+        f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
+        f"inputs={_truncate(o.inputs)} outputs={_truncate(o.outputs)}"
+        for o in failed
+    ) or (
+        f"(no node executed; the run threw at launch: {failed_run.error!r})"
+        if failed_run.error
+        else "(no per-node failure recorded)"
     )
-    user = f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}"
+    graph_context = diagnostic_context.redact_diagnostic_text(_graph_context(graph), graph)
+    user = f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{graph_context}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
