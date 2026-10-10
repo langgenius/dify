@@ -49,7 +49,16 @@ Do not add optional, advanced, provider-specific, or service-specific variables 
 
 Docker Compose reads `envs/*.env` files when present, then reads `.env` last so values in `.env` take precedence.
 
-For the available variables and defaults, read the matching `envs/**/*.env.example` template and its service in `docker-compose.yaml`.
+Variables defined in the root `.env.example` should be customized in `docker/.env`; the service-specific templates do not repeat those defaults.
+For example, set `CELERY_WORKER_AMOUNT`, `POSTGRES_MAX_CONNECTIONS`, and `DIFY_AGENT_SERVER_SECRET_KEY` in `docker/.env`.
+If your `.env` omits root-template variables, move any overrides for them there before copying updated service templates.
+Variables interpolated in `docker-compose.yaml` (such as `${DIFY_AGENT_SERVER_SECRET_KEY:-...}`) are read from the shell or the root `.env`,
+not from a service's `env_file`. An explicit `environment` entry also takes precedence over service env files.
+
+`envs/middleware.env.example` is a separate template for development middleware. It intentionally includes startup defaults
+because that deployment uses it as `--env-file middleware.env` instead of the root `.env`.
+
+For the available variables and defaults, read the root `.env.example`, the matching `envs/**/*.env.example` template, and its service in `docker-compose.yaml`.
 
 ## Environment Variables Synchronization
 
