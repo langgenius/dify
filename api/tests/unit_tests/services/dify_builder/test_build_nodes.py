@@ -16,9 +16,21 @@ _GEN_GRAPH = {
                     "title": "LLM",
                     "model": {"provider": "wrong", "name": "wrong"},
                     "prompt_template": [{"role": "system", "text": "hi"}],
+                    "context": {"enabled": False},
                 },
             },
-            {"id": "kb1", "type": "custom", "data": {"type": "knowledge-retrieval", "title": "KB", "dataset_ids": []}},
+            {
+                "id": "kb1",
+                "type": "custom",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": "KB",
+                    "dataset_ids": [],
+                    "retrieval_mode": "multiple",
+                    "query_variable_selector": ["llm1", "text"],
+                    "multiple_retrieval_config": {"top_k": 3, "reranking_enable": False},
+                },
+            },
             {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
         ],
         "edges": [
@@ -375,14 +387,15 @@ def test_build_nodes_grounds_model_on_question_classifier_node():
                         "type": "question-classifier",
                         "title": "Classify",
                         "model": {"provider": "wrong", "name": "wrong"},
-                        "classes": [],
+                        "classes": [{"id": "result", "name": "Result"}],
+                        "query_variable_selector": ["sys", "query"],
                     },
                 },
                 {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
             ],
             "edges": [
                 {"id": "e1", "source": "s", "target": "qc1"},
-                {"id": "e2", "source": "qc1", "target": "e"},
+                {"id": "e2", "source": "qc1", "target": "e", "sourceHandle": "result"},
             ],
         },
         "error": "",
@@ -416,12 +429,26 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
                 {
                     "id": "kb1",
                     "type": "custom",
-                    "data": {"type": "knowledge-retrieval", "title": "KB1", "dataset_ids": []},
+                    "data": {
+                        "type": "knowledge-retrieval",
+                        "title": "KB1",
+                        "dataset_ids": [],
+                        "retrieval_mode": "multiple",
+                        "query_variable_selector": ["sys", "query"],
+                        "multiple_retrieval_config": {"top_k": 3, "reranking_enable": False},
+                    },
                 },
                 {
                     "id": "kb2",
                     "type": "custom",
-                    "data": {"type": "knowledge-retrieval", "title": "KB2", "dataset_ids": []},
+                    "data": {
+                        "type": "knowledge-retrieval",
+                        "title": "KB2",
+                        "dataset_ids": [],
+                        "retrieval_mode": "multiple",
+                        "query_variable_selector": ["sys", "query"],
+                        "multiple_retrieval_config": {"top_k": 3, "reranking_enable": False},
+                    },
                 },
                 {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
             ],
@@ -613,11 +640,9 @@ def test_build_nodes_records_diagnostic_when_generation_raises():
     datetime.fromisoformat(d["at"])
 
 
-def test_build_nodes_keeps_the_applicable_intents_and_records_a_partial_reject(caplog):
-    """An edge the generator's postprocess could not re-home (the if-else below
-    declares only "true" / "false") is refused by apply_connect in the dry run.
-    The rest of the build still applies, but the dropped connect must leave a
-    warning and a debug-export diagnostic instead of vanishing."""
+def test_build_nodes_refuses_complete_candidate_when_one_edge_is_rejected(caplog):
+    """A bad branch handle must trigger bounded correction rather than silently
+    returning a partial graph that omits the user's branch."""
     graph = {
         "graph": {
             "nodes": [
@@ -658,29 +683,14 @@ def test_build_nodes_keeps_the_applicable_intents_and_records_a_partial_reject(c
     ):
         result = build.build_nodes("t1", {}, ["Branch on a check"])
 
-    # the applicable intents survive: 4 creates + the 2 connects on declared handles
-    assert result.error == ""
-    assert [i.op for i in result.intents].count("create_node") == 4
-    connects = [(i.args["from_node"], i.args["to_node"]) for i in result.intents if i.op == "connect"]
-    assert connects == [("s", "branch"), ("branch", "yes")]
-
-    # ...and the dropped connect is named in a diagnostic
-    assert len(result.diagnostics) == 1
-    diagnostic = result.diagnostics[0]
-    assert diagnostic["source"] == "build_nodes"
-    datetime.fromisoformat(diagnostic["at"])
-    assert len(diagnostic["rejected"]) == 1
-    rejected = diagnostic["rejected"][0]
-    assert rejected["intent"] == "connect"
-    assert rejected["args"] == {"from_node": "branch", "to_node": "no", "source_handle": "maybe"}
-    assert "has no handle 'maybe'" in rejected["reason"]
-
-    # ...and in a server warning
+    assert result.intents == []
+    assert "has no handle 'maybe'" in result.error
+    assert len(result.diagnostics) == 3
+    assert [diagnostic["attempt"] for diagnostic in result.diagnostics] == [1, 2, 3]
+    assert all("has no handle 'maybe'" in diagnostic["message"] for diagnostic in result.diagnostics)
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
-    assert "connect" in warnings[0]
     assert "'maybe'" in warnings[0]
-    assert "has no handle" in warnings[0]
 
 
 # ---- ESQ1-302: placeholder endpoints -----------------------------------------
@@ -1316,3 +1326,168 @@ def test_build_nodes_replaces_a_bare_scheme_word_wholesale_off_an_authorization_
         "X-Auth-Token: {{#s.h_api_key#}}\nProxy-Authorization: Basic {{#s.h_api_key#}}"
     )
     assert http.args["config"]["params"] == "api_key: {{#s.h_api_key#}}"
+
+
+# ENG-1161: validate complete grounded candidates before returning build intents.
+def _gen_graph_with_list_limit(size: int | str, *, dynamic_input: bool = False) -> dict:
+    variables = (
+        [{"variable": "issue_limit", "label": "Issue limit", "type": "number", "required": True}]
+        if dynamic_input
+        else []
+    )
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": variables}},
+                {
+                    "id": "issues",
+                    "type": "custom",
+                    "data": {
+                        "type": "code",
+                        "title": "Issues",
+                        "code_language": "python3",
+                        "code": "def main():\n    return {'issues': []}",
+                        "variables": [],
+                        "outputs": {"issues": {"type": "array[object]", "children": None}},
+                    },
+                },
+                {
+                    "id": "limit",
+                    "type": "custom",
+                    "data": {
+                        "type": "list-operator",
+                        "title": "Limit issues",
+                        "variable": ["issues", "issues"],
+                        "filter_by": {"enabled": False, "conditions": []},
+                        "order_by": {"enabled": False, "key": "", "value": "asc"},
+                        "extract_by": {"enabled": False, "serial": "1"},
+                        "limit": {"enabled": True, "size": size},
+                    },
+                },
+                {
+                    "id": "e",
+                    "type": "custom",
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "issues", "value_selector": ["limit", "result"]}],
+                    },
+                },
+            ],
+            "edges": [
+                {"source": "s", "target": "issues"},
+                {"source": "issues", "target": "limit"},
+                {"source": "limit", "target": "e"},
+            ],
+        },
+        "error": "",
+        "errors": [],
+    }
+
+
+def _build_list_candidates(generate, *, trusted_text: str):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", side_effect=generate),
+        patch.object(
+            build.resources,
+            "list_tenant_resources",
+            return_value=resources.TenantResources(models=[], datasets=[], tools=[]),
+        ),
+    ):
+        return build.build_nodes(
+            "t1", {}, ["Sort Issues and slice according to the optional processing count"], trusted_text=trusted_text
+        )
+
+
+def test_build_nodes_corrects_list_schema_before_returning_complete_intents():
+    # Removing the real candidate preflight would return the template on attempt 1.
+    instructions = []
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        if len(instructions) == 1:
+            return _gen_graph_with_list_limit("{{#s.issue_limit#}}", dynamic_input=True)
+        return _gen_graph_with_list_limit(20)
+
+    result = _build_list_candidates(generate, trusted_text="Process at most 20 Issues and at most 5 high-risk Issues.")
+
+    assert result.error == ""
+    assert len(instructions) == 2
+    assert "node 'limit' (list-operator)" in instructions[1]
+    assert "limit.size" in instructions[1]
+    assert "int_parsing" in instructions[1]
+    assert [intent.args["node_id"] for intent in result.intents if intent.op == "create_node"] == [
+        "s",
+        "issues",
+        "limit",
+        "e",
+    ]
+    limit = next(intent for intent in result.intents if intent.args.get("node_id") == "limit")
+    assert limit.args["config"]["limit"] == {"enabled": True, "size": 20}
+    assert len([intent for intent in result.intents if intent.op == "connect"]) == 3
+    assert len(result.diagnostics) == 1
+    assert "limit.size" in result.diagnostics[0]["message"]
+
+
+def test_build_nodes_preserves_original_fixed_constraints_absent_from_plan():
+    # Dropping trusted_text from generation loses both literal constraints and
+    # lets the approved plan's invented input replace the user's fixed maximum.
+    trusted = "Process at most 20 Issues and at most 5 high-risk Issues."
+    instructions = []
+
+    def generate(**kwargs):
+        instruction = kwargs["instruction"]
+        instructions.append(instruction)
+        if trusted in instruction:
+            return _gen_graph_with_list_limit(20)
+        return _gen_graph_with_list_limit("{{#s.issue_limit#}}", dynamic_input=True)
+
+    result = _build_list_candidates(generate, trusted_text=trusted)
+
+    assert result.error == ""
+    assert len(instructions) == 1
+    assert trusted in instructions[0]
+    assert "Sort Issues and slice according to the optional processing count" in instructions[0]
+    start = next(intent for intent in result.intents if intent.args.get("node_id") == "s")
+    limit = next(intent for intent in result.intents if intent.args.get("node_id") == "limit")
+    assert start.args["config"]["variables"] == []
+    assert limit.args["config"]["limit"]["size"] == 20
+
+
+def test_build_nodes_refuses_dynamic_template_after_bounded_schema_attempts():
+    # Removing preflight or casting a dynamic template to a guessed constant
+    # would return a misleading successful build with otherwise valid siblings.
+    instructions = []
+    trusted = "Let the user supply the maximum issue count at runtime."
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        return _gen_graph_with_list_limit("{{#s.issue_limit#}}", dynamic_input=True)
+
+    result = _build_list_candidates(generate, trusted_text=trusted)
+
+    assert result.intents == []
+    assert "node 'limit' (list-operator)" in result.error
+    assert "limit.size" in result.error
+    assert "int_parsing" in result.error
+    assert len(instructions) == 3
+    assert all(trusted in instruction for instruction in instructions)
+    assert [diagnostic["attempt"] for diagnostic in result.diagnostics] == [1, 2, 3]
+    assert all("limit.size" in diagnostic["message"] for diagnostic in result.diagnostics)
+
+
+def test_build_nodes_valid_list_candidate_succeeds_without_correction():
+    # Rejecting a valid constant or spending retries after success breaks this.
+    instructions = []
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        return _gen_graph_with_list_limit(20)
+
+    result = _build_list_candidates(generate, trusted_text="Process at most 20 Issues.")
+
+    assert result.error == ""
+    assert len(result.intents) == 7
+    assert len(instructions) == 1
+    assert result.diagnostics == []

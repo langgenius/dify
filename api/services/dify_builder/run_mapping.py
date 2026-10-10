@@ -25,7 +25,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
-from core.dify_builder.models import NodeEvent, NodeOutput, Run
+from core.dify_builder.models import NodeEvent, NodeOutput, Run, RunVerification
 
 _FAILED_NODE_STATUSES = {"failed", "exception"}
 
@@ -179,6 +179,7 @@ def run_result_data_from_run_row(run_row: Any) -> dict[str, Any]:
     return {
         "id": str(getattr(run_row, "id", "") or ""),
         "status": _status_value(getattr(run_row, "status", "")) or "",
+        "outputs": (getattr(run_row, "outputs_dict", None) if getattr(run_row, "outputs", True) is not None else None),
         "error": getattr(run_row, "error", "") or "",
         "elapsed_time": getattr(run_row, "elapsed_time", 0) or 0,
         "total_tokens": getattr(run_row, "total_tokens", 0) or 0,
@@ -242,7 +243,9 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
             title=node.title,
             status=_status_value(node.status),
             error=node.error or "",
-            outputs=node.outputs_dict,
+            inputs=dict(node.inputs_dict) if isinstance(getattr(node, "inputs_dict", None), Mapping) else {},
+            outputs=dict(node.outputs_dict) if isinstance(node.outputs_dict, Mapping) else {},
+            outputs_available=isinstance(node.outputs_dict, Mapping) and not getattr(node, "outputs_truncated", False),
         )
         for node in node_execs
     ]
@@ -251,6 +254,14 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
 
     return Run(
         kind="verify",
+        verification=RunVerification(
+            execution_revision="",
+            executed_graph_revision="",
+            terminal_outputs=dict(data["outputs"]) if isinstance(data.get("outputs"), Mapping) else None,
+            output_findings=[],
+            executed_node_ids=list(dict.fromkeys(n.node_id for n in per_node)),
+            no_output_dead_branch=False,
+        ),
         immutable=True,
         dify_run_id=data["id"],
         status=status,

@@ -10,6 +10,7 @@ from the review decision so its progress and side effect precede the terminal
 
 import logging
 import uuid
+from dataclasses import replace
 
 from core.dify_builder.contract import (
     DecisionItem,
@@ -18,7 +19,7 @@ from core.dify_builder.contract import (
     PlanCard,
     TestResultCard,
 )
-from core.dify_builder.errors import DraftWouldNotStartError, ProposalWouldRunWrongError
+from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, ProposalWouldRunWrongError
 from core.dify_builder.handlers_fix import (
     NO_OUTPUT_BODY,
     NO_OUTPUT_REPLY,
@@ -34,6 +35,7 @@ from core.dify_builder.handlers_fix import (
     drop_unapplied_repair,
     emit_canvas,
     first_failed_node,
+    input_gate_result,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
@@ -42,6 +44,8 @@ from core.dify_builder.handlers_fix import (
     note_repair_error,
     note_unknown_outcome,
     perform_revert,
+    publication_denied,
+    publication_for_context,
     repair_is_repeating,
     run_finished_without_output,
     start_schema,
@@ -49,10 +53,22 @@ from core.dify_builder.handlers_fix import (
     testdata_form_fields,
     without_endpoint_values,
 )
-from core.dify_builder.models import Diagnosis, DifyBuilderContext, NodeEvent, Risk, Run, Session, TestInput, Turn
+from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
+from core.dify_builder.models import (
+    ChangeSet,
+    Diagnosis,
+    DifyBuilderContext,
+    NodeEvent,
+    Risk,
+    Run,
+    Session,
+    TestInput,
+    Turn,
+)
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
+from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, result_card
 
 logger = logging.getLogger(__name__)
 
@@ -359,9 +375,10 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     fix), summarize the applied changes in assistant text, and transition to
     edit.apply_changes. The checkpoint stays backend-only.
 
-    Naturally idempotent on loop-back re-approve: re-applying the same
-    set_node_config value overwrites the node's data (no ValueError, unlike
-    Build's create_node); a re-approve simply yields an empty diff.
+    An empty proposal stays at the approval gate without attempting a write.
+    A nonempty proposal with the same nonempty execution revision is a no-op:
+    it rests at edit.apply_changes without claiming an applied change, even
+    when the adapter reports touched node IDs.
 
     Approval is not the only exit. ``re_fix`` (continue_adjusting) goes back to
     edit.impact_analysis with the rules editable, and ``undo`` (revert) restores
@@ -389,7 +406,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     )
     progress.activate("edit-prepare")
     emit_canvas(env, "create_checkpoint")
-    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    graph, read_revision = env.dify.read_graph(s.app_id, turn.actor)
     try:
         intents = env.agent.build_edit_intents(
             dict(fc.edit_rules),
@@ -425,6 +442,18 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             # applied, so the failure belongs to the step that was actually
             # running. Failing the write instead would leave edit-highlight
             # pending BELOW a failed edit-apply.
+            failed_step="edit-prepare",
+        )
+    if not intents:
+        return _change_not_applied(
+            env,
+            s,
+            fc,
+            progress,
+            title="No changes were proposed",
+            body="Nothing was applied.",
+            reply_text="Review the rules, continue adjusting, approve again, or discard the plan.",
+            rejection="The previous proposal contained no applicable intentions.",
             failed_step="edit-prepare",
         )
     fc.staged_repair = list(intents)
@@ -478,6 +507,25 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # The write went through: whatever the engine refused before is answered,
     # and must not be quoted at the next edit.
     fc.last_edit_rejection = ""
+    # Touched IDs and summary counts do not prove an effective edit. The port
+    # returns the same opaque execution revision for an idempotent batch.
+    if read_revision and result.new_hash == read_revision:
+        fc.change_set = ChangeSet()
+        decision_items = append_card(fc, DecisionItem(text="Approved the change plan"))
+        execution = progress.finish()
+        turn_items = append_assistant(
+            env,
+            s,
+            fc,
+            "No effective changes were needed; the workflow configuration is unchanged.",
+            execution=execution,
+            turn_id=progress.operation_id,
+        )
+        return StepResult(
+            next=PcState.EDIT_APPLY_CHANGES,
+            context=fc,
+            items=[*decision_items, *turn_items],
+        )
     emit_canvas(env, "apply_edit_plan")
 
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
@@ -512,6 +560,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
+        fc.verify_run_id = ""
         if fc.test_input_ref == "":
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             form_items = append_card(
@@ -520,7 +569,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                     variant="testdata",
                     title="Provide test data",
                     description="Review the inputs Builder will use for this run.",
-                    fields=testdata_form_fields(start_schema(graph)),
+                    fields=testdata_form_fields(start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))),
                     values={},
                     frozen=False,
                 ),
@@ -543,6 +592,8 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     """(waiting) Prepare inputs for the affected-path test. mock -> schema-shaped
     generate_mock_inputs; provide/upload -> the payload's inputs dict (may carry
     file refs). Persists a TestInput and advances to edit.test_affected_paths."""
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
     if mode == "mock":
         progress = ProgressReporter.for_session(
@@ -553,16 +604,19 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             steps=[("edit-generate-test-inputs", "Generate affected-path test inputs")],
         )
         progress.activate("edit-generate-test-inputs")
-        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         # An endpoint is left out, never mocked: its missing required key fails
         # the launch as an input, which routes back to this gate.
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
         progress.finish()
     else:
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
-    ti = TestInput(session_id=s.id, source=mode or "upload", inputs=inputs)
+    try:
+        validate_runtime_inputs(schema, inputs)
+    except ValueError as exc:
+        return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc))
+    ti = TestInput(session_id=s.id, source=mode or "upload", inputs=inputs, start_schema_hash=schema_hash(schema))
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
     return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc)
@@ -585,11 +639,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
     progress.activate("edit-prepare-test")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     if fc.test_input_ref:
-        inputs = env.repo.get_test_input(fc.test_input_ref).inputs
+        ti = env.repo.get_test_input(fc.test_input_ref)
+        inputs = ti.inputs
     else:  # defensive: the gate normally prepares inputs first
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(start_schema(graph), {}))
-        ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
+        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
+        ti = TestInput(session_id=s.id, source="mock", inputs=inputs, start_schema_hash=schema_hash(schema))
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
 
@@ -598,7 +654,9 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     def emit(event: NodeEvent) -> None:
         progress.observe_node("edit-run-test", event)
 
+    raw = None
     try:
+        validate_runtime_inputs(schema, inputs, ti)
         raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit, on_workflow_event=env.emit_workflow)
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
@@ -615,6 +673,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
 
     run = Run(
         id=str(uuid.uuid4()),
+        session_id=s.id,
+        verification=raw.verification if raw else None,
         kind="verify",
         dify_run_id=dify_run_id,
         status=status,
@@ -624,10 +684,14 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         immutable=True,
     )
 
+    fc.verify_run_id = run.id
+
     if status != "running":
         fc.unknown_outcome_count = 0
 
-    if status == "succeeded" and run_finished_without_output(graph, per_node):
+    if status == "succeeded" and (
+        has_output_blocker(run) or (run.verification is None and run_finished_without_output(graph, per_node))
+    ):
         # Same as Build's: a branch node ran and every one of its arms was
         # skipped, and no End node ran either. Not green, not an engine error
         # to diagnose; wait at the gate with no staged repair.
@@ -638,15 +702,19 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
-            TestResultCard(
-                status="failed",
-                failure_reason=NO_OUTPUT_BODY,
-                dify_run_id=run.dify_run_id,
-            ),
+            result_card(run)
+            if run.verification
+            else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
         )
         execution = progress.finish()
         turn_items = append_assistant(
-            env, s, fc, NO_OUTPUT_REPLY, execution=execution, cards=["test_result"], turn_id=progress.operation_id
+            env,
+            s,
+            fc,
+            (result_card(run).failure_reason or NO_OUTPUT_REPLY),
+            execution=execution,
+            cards=["test_result"],
+            turn_id=progress.operation_id,
         )
         return StepResult(
             next=PcState.EDIT_AWAIT_REPAIR,
@@ -660,10 +728,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
-            TestResultCard(
-                status="succeeded",
-                dify_run_id=run.dify_run_id,
-            ),
+            result_card(run),
         )
         emit_canvas(env, "mark_review_ready")
         execution = progress.finish()
@@ -671,7 +736,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             env,
             s,
             fc,
-            "Affected-path tests passed; the edit is ready for review.",
+            SUCCESS_REPLY + " " + (result_card(run).review_note or ""),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -721,19 +786,12 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
 
     if is_input_failure(run):
-        # the run failed on its INPUT, not the config -- route back to the
-        # testdata gate instead of the config-repair gate; clear the stale
-        # input ref (and the verify_run_id we just set) so a fresh
-        # provide_testdata cycle starts clean.
+        # The attempted run failed on its inputs. Keep it as the latest
+        # verification evidence while clearing stale inputs for correction.
         fc.test_input_ref = ""
-        fc.verify_run_id = ""
         test_items = append_card(
             fc,
-            TestResultCard(
-                status="failed",
-                failure_reason=test_failure_reason(run),
-                dify_run_id=run.dify_run_id,
-            ),
+            replace(result_card(run), failure_reason=test_failure_reason(run)),
         )
         form_items = append_card(
             fc,
@@ -741,8 +799,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
                 variant="testdata",
                 title="Provide test data",
                 description="Review the inputs Builder will use for this run.",
-                fields=testdata_form_fields(start_schema(graph)),
-                values={},
+                fields=testdata_form_fields(schema),
+                values=inputs,
                 frozen=False,
             ),
         )
@@ -781,11 +839,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         fc.risk = Risk(level="high", reason="model not configured", has_external_side_effect=False)
         test_items = append_card(
             fc,
-            TestResultCard(
-                status="failed",
-                failure_reason=model_error,
-                dify_run_id=run.dify_run_id,
-            ),
+            replace(result_card(run), failure_reason=model_error),
         )
         execution = progress.finish()
         turn_items = append_assistant(
@@ -821,9 +875,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         # wrong thing. Stop and hand the decision back (no staged repair).
         fc.diagnosis = diagnosis
         fc.staged_repair = []
-        test_items = append_card(
-            fc, TestResultCard(status="failed", failure_reason=test_failure_reason(run), dify_run_id=run.dify_run_id)
-        )
+        test_items = append_card(fc, replace(result_card(run), failure_reason=test_failure_reason(run)))
         execution = progress.finish()
         stuck_items = append_assistant(
             env,
@@ -850,11 +902,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     fc.risk = risk
     test_items = append_card(
         fc,
-        TestResultCard(
-            status="failed",
-            failure_reason=test_failure_reason(run),
-            dify_run_id=run.dify_run_id,
-        ),
+        replace(result_card(run), failure_reason=test_failure_reason(run)),
     )
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     execution = progress.finish()
@@ -980,7 +1028,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Final user decision before publish or completion."""
     kind = action_kind(turn)
+    if kind == "run_affected_tests":
+        fc.verify_run_id = ""
+        return handle_apply_changes(env, turn, s, fc)
     if kind == "publish_workflow":
+        decision = publication_for_context(env, turn, s, fc)
+        if not decision.allowed:
+            return publication_denied(fc, PcState.EDIT_REVIEW, decision.reason)
         return StepResult(
             next=PcState.EDIT_PUBLISH,
             context=fc,
@@ -1007,6 +1061,12 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
 def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working, auto) Publish the updated workflow and close the edit flow."""
+    decision = publication_for_context(env, turn, s, fc)
+    if not decision.allowed:
+        return publication_denied(fc, PcState.EDIT_REVIEW, decision.reason)
+    verified_run = env.repo.get_run(fc.verify_run_id)
+    evidence = verified_run.verification
+    assert evidence is not None
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
@@ -1015,7 +1075,17 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         steps=[("edit-publish-workflow", "Publish the updated workflow")],
     )
     progress.activate("edit-publish-workflow")
-    published = env.dify.publish(s.app_id, turn.actor)
+    try:
+        published = env.dify.publish(
+            s.app_id,
+            turn.actor,
+            expected_revision=evidence.execution_revision,
+            expected_graph_revision=evidence.executed_graph_revision,
+        )
+    except HashMismatchError:
+        progress.fail_step("edit-publish-workflow")
+        progress.finish()
+        return publication_denied(fc, PcState.EDIT_REVIEW, "stale_revision")
     emit_canvas(env, "publish_workflow")
     execution = progress.finish()
     items = append_assistant(

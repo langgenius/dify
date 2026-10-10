@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+import pytest
+
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -412,7 +414,8 @@ def test_edit_test_input_failure_routes_to_testdata_gate():
 
     assert result.next == PcState.EDIT_AWAIT_TESTDATA
     assert result.context.test_input_ref == ""  # stale input cleared
-    assert result.context.verify_run_id == ""
+    assert result.run is not None
+    assert result.context.verify_run_id == result.run.id
     kinds = [i.kind for i in result.items]
     assert "form" in kinds
     assert "change_set" not in kinds  # gate, not repair
@@ -474,6 +477,9 @@ def test_review_publish_enters_working_publish_before_side_effect():
     events: list[dict] = []
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_edit_session(repo, PcState.EDIT_REVIEW, plan_items=["Tighten threshold"])
+    from tests.unit_tests.core.dify_builder.fakes import seed_verified_run
+
+    seed_verified_run(repo, s, env.dify)
     res = handle_review(
         env, Turn(action=Action(kind="publish_workflow", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )
@@ -1700,3 +1706,152 @@ def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing()
     # pending activities), which is the right rendering for work not reached.
     activities = turn_activities(res)
     assert activities == {"edit-prepare": "failed"}
+
+
+class _ApprovalIntentsAgent(PlaceholderAgent):
+    def __init__(self, intents):
+        self.intents = intents
+
+    def build_edit_intents(self, _edit_rules, _graph, **_kwargs):
+        return list(self.intents)
+
+
+class _EmptyProposalWriteSpy(FakeEditDifyPort):
+    def apply_repair(self, *_args, **_kwargs):
+        raise AssertionError("An empty proposal must never reach apply_repair")
+
+
+class _RevisionEditPort(FakeEditDifyPort):
+    """Exercise real graph edits while controlling the adapter revision result."""
+
+    def __init__(self, new_revision, *, read_revision="execution-before", omit_summary=False):
+        super().__init__()
+        self.hash = read_revision
+        self.new_revision = new_revision
+        self.omit_summary = omit_summary
+        next(n for n in self.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] = "high"
+
+    def apply_repair(self, *args, **kwargs):
+        result = super().apply_repair(*args, **kwargs)
+        self.hash = result.new_hash = self.new_revision
+        if self.omit_summary:
+            result.changed_nodes = []
+            result.changes = []
+        self.last_result = result
+        return result
+
+
+@pytest.mark.parametrize(
+    ("next_action", "next_state"), [("re_fix", PcState.EDIT_IMPACT_ANALYSIS), ("undo", PcState.EDIT_REVERTED)]
+)
+def test_plan_approval_empty_proposal_refuses_before_apply_and_preserves_gate_exits(next_action, next_state):
+    from core.dify_builder.handlers_edit import handle_plan_approval
+
+    events = []
+    env, _ = _new_env(dify=_EmptyProposalWriteSpy(), agent=_ApprovalIntentsAgent([]), emit_canvas=events.append)
+    s = _session(current_state=PcState.EDIT_PLAN_APPROVAL)
+    fc = DifyBuilderContext(
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        staged_repair=[
+            MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "risk_threshold", "value": "old"})
+        ],
+    )
+
+    result = _approve(env, s, fc)
+
+    assert result.next == PcState.EDIT_PLAN_APPROVAL
+    assert result.context.staged_repair == []
+    assert result.context.last_edit_rejection
+    reply = next(i for i in result.items if i.kind == "assistant_turn").payload
+    assert "No changes were proposed" in reply["reply_text"]
+    assert "Nothing was applied" in reply["reply_text"]
+    assert "Applied" not in reply["reply_text"]
+    assert reply["execution"]["status"] == "error"
+    assert turn_activities(result) == {"edit-prepare": "failed"}
+    assert [e["event"] for e in events] == ["create_checkpoint"]
+
+    followup = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind=next_action)), s, fc)
+    assert followup.next == next_state
+
+
+@pytest.mark.parametrize("values", [("high",), ("low", "high")], ids=["same-value", "cancel-out"])
+def test_plan_approval_no_op_uses_same_revision_despite_touched_nodes(values):
+    from core.dify_builder.models import ChangeSet
+
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "risk_threshold", "value": value})
+        for value in values
+    ]
+    dify = _RevisionEditPort("execution-before")
+    events = []
+    env, _ = _new_env(dify=dify, agent=_ApprovalIntentsAgent(intents), emit_canvas=events.append)
+    s = _session(current_state=PcState.EDIT_PLAN_APPROVAL)
+    fc = DifyBuilderContext(
+        edit_target_node_ids=["llm"],
+        last_snapshot_hash="execution-before",
+        last_edit_rejection="previous refusal",
+        change_set=ChangeSet(changed_nodes=["old-node"], diff="old edit"),
+    )
+
+    result = _approve(env, s, fc)
+
+    assert result.next == PcState.EDIT_APPLY_CHANGES
+    assert result.context.change_set == ChangeSet()
+    assert result.context.last_snapshot_hash == "execution-before"
+    assert result.context.last_edit_rejection == ""
+    assert dify.expected_revision == "execution-before"
+    assert dify.applied == intents
+    assert dify.last_result.changed_nodes == ["llm"] * len(values)
+    assert dify.last_result.changes == []
+    assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "high"
+    assert "apply_edit_plan" not in [e["event"] for e in events]
+    assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
+    assert "No effective changes" in assistant["reply_text"]
+    assert "Applied" not in assistant["reply_text"]
+    assert assistant["execution"]["status"] == "completed"
+    assert turn_activities(result) == {"edit-prepare": "done", "edit-highlight": "done", "edit-apply": "done"}
+
+
+@pytest.mark.parametrize("omit_summary", [False, True], ids=["actual-summary", "omitted-summary"])
+def test_plan_approval_different_revision_retains_applied_behavior(omit_summary):
+    dify = _RevisionEditPort("execution-after", omit_summary=omit_summary)
+    events = []
+    intent = MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "risk_threshold", "value": "low"})
+    env, _ = _new_env(dify=dify, agent=_ApprovalIntentsAgent([intent]), emit_canvas=events.append)
+    s = _session(current_state=PcState.EDIT_PLAN_APPROVAL)
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], last_snapshot_hash="execution-before")
+
+    result = _approve(env, s, fc)
+
+    assert result.next == PcState.EDIT_APPLY_CHANGES
+    assert result.context.last_snapshot_hash == "execution-after"
+    assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "low"
+    assert "apply_edit_plan" in [e["event"] for e in events]
+    assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
+    assert "Applied" in assistant["reply_text"]
+    assert "configuration" in assistant["reply_text"]
+    assert assistant["execution"]["status"] == "completed"
+    if not omit_summary:
+        assert result.context.change_set.changed_nodes == ["llm"]
+        assert "risk_threshold" in result.context.change_set.diff
+
+
+def test_plan_approval_no_op_comparison_preserves_cas_failure():
+    from core.dify_builder.errors import HashMismatchError
+
+    class CasMismatchPort(_RevisionEditPort):
+        def apply_repair(self, *_args, **_kwargs):
+            raise HashMismatchError("workflow execution configuration changed")
+
+    dify = CasMismatchPort("execution-before")
+    events = []
+    intent = MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "risk_threshold", "value": "high"})
+    env, _ = _new_env(dify=dify, agent=_ApprovalIntentsAgent([intent]), emit_canvas=events.append)
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], last_snapshot_hash="execution-before")
+
+    with pytest.raises(HashMismatchError, match="execution configuration changed"):
+        _approve(env, _session(current_state=PcState.EDIT_PLAN_APPROVAL), fc)
+
+    assert "apply_edit_plan" not in [e["event"] for e in events]
+    assert dify.applied == []

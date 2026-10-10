@@ -55,6 +55,7 @@ from core.dify_builder.models import (
     PublishResult,
     Risk,
     Run,
+    RunVerification,
     Session,
     Snapshot,
     StartSchema,
@@ -194,6 +195,7 @@ class InMemoryRepository:
     # -- runs --
 
     def save_run(self, _session_id: str, run: Run) -> None:
+        run.session_id = _session_id
         with self._lock:
             if not run.id:
                 run.id = str(uuid.uuid4())
@@ -303,6 +305,7 @@ class FakeDifyPort:
     """
 
     def __init__(self) -> None:
+        self.app_mode: str = "workflow"
         self.graph: Graph = {"nodes": []}
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
@@ -314,6 +317,9 @@ class FakeDifyPort:
         # result card) to show. Empty by default -- most tests don't care.
         self.run_outputs: Inputs = {}
         self.workflow_events: list[dict[str, object]] = []
+
+    def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
+        return self.app_mode
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -361,6 +367,7 @@ class FakeDifyPort:
             on_event(NodeEvent(node_id="output", status="success"))
             return Run(
                 dify_run_id="dify-run-1",
+                verification=successful_verification(self),
                 status="succeeded",
                 per_node=[NodeOutput(node_id="output", status="success", outputs=dict(self.run_outputs))],
             )
@@ -371,7 +378,11 @@ class FakeDifyPort:
             per_node=[NodeOutput(node_id="output", status="failed", error="still broken")],
         )
 
-    def publish(self, _app_id: str, _actor: Actor) -> PublishResult:
+    def publish(
+        self, _app_id: str, _actor: Actor, *, expected_revision: str, expected_graph_revision: str
+    ) -> PublishResult:
+        assert expected_revision == self.hash
+        assert expected_graph_revision == self.graph_revision(self.graph)
         self.published = True
         return PublishResult(version_name="# 1", status="live")
 
@@ -380,6 +391,11 @@ class FakeDifyPort:
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
+
+    def graph_revision(self, graph: Graph) -> str:
+        from services.dify_builder.revision import executable_graph_revision
+
+        return executable_graph_revision(graph)
 
     def structural_fingerprint(self, graph: Graph) -> str:
         return _structural_fingerprint(graph)
@@ -428,13 +444,13 @@ class StubAgent:
     def propose_app_name(self, _goal_text, _requirements):
         return ""
 
-    def propose_plan_v1(self, _requirements):
+    def propose_plan_v1(self, _requirements, *, goal_text):  # noqa: ARG002
         return []
 
-    def discover_resources(self, _plan_items):
+    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
         return []
 
-    def assess_capability_gap(self, _plan_items, _options):
+    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):  # noqa: ARG002
         return ""
 
     def bind_resources(self, _plan_items, _resource_ids):
@@ -513,6 +529,8 @@ class FakeBuildDifyPort:
 
     def __init__(self) -> None:
         self.workflow_events: list[dict[str, object]] = []
+        self.run_outputs: Inputs = {}
+        self.app_mode: str = "workflow"
         self.graph: Graph = {"nodes": [], "edges": []}
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
@@ -520,6 +538,9 @@ class FakeBuildDifyPort:
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
         self.fail_error: str = "boom"
+
+    def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
+        return self.app_mode
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -584,7 +605,10 @@ class FakeBuildDifyPort:
         if self.verify_pass:
             on_event(NodeEvent(node_id="llm", status="success"))
             return Run(
-                dify_run_id="build-run-1", status="succeeded", per_node=[NodeOutput(node_id="llm", status="success")]
+                verification=successful_verification(self),
+                dify_run_id="build-run-1",
+                status="succeeded",
+                per_node=[NodeOutput(node_id="llm", status="success")],
             )
         on_event(NodeEvent(node_id="llm", status="failed", error=self.fail_error))
         return Run(
@@ -593,7 +617,11 @@ class FakeBuildDifyPort:
             per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
         )
 
-    def publish(self, _app_id: str, _actor: Actor) -> PublishResult:
+    def publish(
+        self, _app_id: str, _actor: Actor, *, expected_revision: str, expected_graph_revision: str
+    ) -> PublishResult:
+        assert expected_revision == self.hash
+        assert expected_graph_revision == self.graph_revision(self.graph)
         self.published = True
         return PublishResult(version_name="# 1", status="live")
 
@@ -602,6 +630,11 @@ class FakeBuildDifyPort:
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
+
+    def graph_revision(self, graph: Graph) -> str:
+        from services.dify_builder.revision import executable_graph_revision
+
+        return executable_graph_revision(graph)
 
     def structural_fingerprint(self, graph: Graph) -> str:
         return _structural_fingerprint(graph)
@@ -668,3 +701,28 @@ class FakeEditDifyPort(FakeBuildDifyPort):
     def __init__(self) -> None:
         super().__init__()
         self.graph = _seeded_edit_graph()
+
+
+def successful_verification(dify) -> RunVerification:
+    return RunVerification(
+        execution_revision=dify.hash,
+        executed_graph_revision=dify.graph_revision(dify.graph),
+        terminal_outputs=dict(dify.run_outputs),
+        output_findings=[],
+        executed_node_ids=[],
+        no_output_dead_branch=False,
+    )
+
+
+def seed_verified_run(repo: InMemoryRepository, session: Session, dify) -> None:
+    """Seed the initial persisted context of a positive publication fixture."""
+    run = Run(
+        id=str(uuid.uuid4()),
+        session_id=session.id,
+        kind="verify",
+        status="succeeded",
+        immutable=True,
+        verification=successful_verification(dify),
+    )
+    repo.save_run(session.id, run)
+    repo._contexts[session.id].verify_run_id = run.id

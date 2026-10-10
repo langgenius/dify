@@ -130,6 +130,7 @@ class DifyBuilderRun(Base):
     dify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     per_node: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    verification: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     culprit_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Launch-failure text captured when a verify run throws before any node runs.
     error: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
