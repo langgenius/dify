@@ -1,5 +1,6 @@
 'use client'
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogProps } from '@langgenius/dify-ui/dialog'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -20,7 +21,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
@@ -45,11 +46,11 @@ type ApiKeyModalProps = {
 export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModalProps) {
   const { t } = useTranslation(['appApi', 'common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const deleteReturnFocusRef = useRef<HTMLButtonElement | null>(null)
   const [deleteKeyId, setDeleteKeyId] = useState<string>()
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
   const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
-  // Bumped on each open so the scope dialog remounts with fresh selection state.
-  const [scopeDialogKey, setScopeDialogKey] = useState(0)
 
   const appApiKeysQuery = useQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
@@ -110,7 +111,11 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
         : deleteEnvironmentApiKey.isPending
   const createDisabled = !currentWorkspace.id || !canManage
 
-  const handleOpenChange = (nextOpen: boolean) => {
+  const handleOpenChange: DialogProps['onOpenChange'] = (nextOpen, details) => {
+    if (!nextOpen && (isCreating || isDeleting)) {
+      details.cancel()
+      return
+    }
     if (!nextOpen) {
       setDeleteKeyId(undefined)
       setCreatedApiKey(undefined)
@@ -120,7 +125,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   }
 
   const handleCreate = () => {
-    if (createDisabled || isCreating) return
+    if (createDisabled || isCreating || isDeleting) return
 
     switch (scope.type) {
       case 'app':
@@ -132,7 +137,6 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       case 'dataset':
         // Dataset keys pick a knowledge-base scope before creation; the scope dialog
         // owns that step and calls handleCreateDatasetKey with the chosen ids.
-        setScopeDialogKey((key) => key + 1)
         setScopeDialogOpen(true)
         break
       case 'environment':
@@ -160,7 +164,10 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   const handleDelete = () => {
     if (!deleteKeyId || isDeleting) return
 
-    const onSuccess = () => setDeleteKeyId(undefined)
+    const onSuccess = () => {
+      deleteReturnFocusRef.current = createButtonRef.current
+      setDeleteKeyId(undefined)
+    }
     switch (scope.type) {
       case 'app':
         deleteAppApiKey.mutate(
@@ -199,6 +206,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
             </DialogDescription>
           </div>
           <DialogClose
+            disabled={isCreating || isDeleting}
             render={
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -218,12 +226,21 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
             <ApiKeyTable
               apiKeys={apiKeys}
               canManage={canManage}
+              disabled={isCreating || isDeleting}
               showScope={scope.type === 'dataset'}
-              onDeleteRequest={setDeleteKeyId}
+              onDeleteRequest={(id, trigger) => {
+                deleteReturnFocusRef.current = trigger
+                setDeleteKeyId(id)
+              }}
             />
           )}
           <div className="flex shrink-0 px-6 py-4">
-            <Button disabled={createDisabled} loading={isCreating} onClick={handleCreate}>
+            <Button
+              ref={createButtonRef}
+              disabled={createDisabled || isDeleting}
+              loading={isCreating}
+              onClick={handleCreate}
+            >
               <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
               {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
             </Button>
@@ -232,11 +249,21 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       </Dialog>
       <AlertDialog
         open={deleteKeyId !== undefined}
-        onOpenChange={(open) => {
-          if (!open && !isDeleting) setDeleteKeyId(undefined)
+        onOpenChange={(nextOpen, details) => {
+          if (isDeleting) {
+            details.cancel()
+            return
+          }
+          if (!nextOpen) setDeleteKeyId(undefined)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          finalFocus={() =>
+            deleteReturnFocusRef.current?.isConnected
+              ? deleteReturnFocusRef.current
+              : createButtonRef.current
+          }
+        >
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
@@ -264,7 +291,6 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       />
       {scope.type === 'dataset' && (
         <DatasetScopeDialog
-          key={scopeDialogKey}
           open={scopeDialogOpen}
           isCreating={createDatasetApiKey.isPending}
           onOpenChange={setScopeDialogOpen}

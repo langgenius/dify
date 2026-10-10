@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { toast } from '@/app/notifications'
@@ -39,6 +39,8 @@ export function AgentApiKeyModal({
   const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
+  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const deleteReturnFocusRef = useRef<HTMLButtonElement | null>(null)
   const [newKey, setNewKey] = useState<ApiKeyItem | null>(null)
   const [apiKeyToDelete, setApiKeyToDelete] = useState<ApiKeyItem | null>(null)
   const apiKeysQueryOptions = consoleQuery.agent.byAgentId.apiKeys.get.queryOptions({
@@ -76,6 +78,7 @@ export function AgentApiKeyModal({
   const deleteApiKeyMutation = useMutation(
     consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete.mutationOptions({
       onSuccess: () => {
+        deleteReturnFocusRef.current = createButtonRef.current
         setApiKeyToDelete(null)
         queryClient.invalidateQueries({ queryKey: apiKeysQueryOptions.queryKey })
         queryClient.invalidateQueries({
@@ -97,8 +100,11 @@ export function AgentApiKeyModal({
   const apiKeys = apiKeysQuery.data?.data ?? []
   const isCreating = createApiKeyMutation.isPending
   const isDeleting = deleteApiKeyMutation.isPending
+  const isPending = isCreating || isDeleting
 
   function handleCreateApiKey() {
+    if (isPending) return
+
     createApiKeyMutation.mutate({
       params: {
         agent_id: agentId,
@@ -107,7 +113,7 @@ export function AgentApiKeyModal({
   }
 
   function handleDeleteApiKey() {
-    if (!apiKeyToDelete) return
+    if (!apiKeyToDelete || isPending) return
 
     deleteApiKeyMutation.mutate({
       params: {
@@ -128,9 +134,16 @@ export function AgentApiKeyModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen, details) => {
+          if (!nextOpen && isPending) details.cancel()
+          else handleOpenChange(nextOpen)
+        }}
+      >
         <DialogContent className="flex w-full max-w-200! flex-col px-8">
           <DialogClose
+            disabled={isPending}
             render={
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -248,8 +261,11 @@ export function AgentApiKeyModal({
                             <IconButton
                               size="md"
                               aria-label={tCommon(($) => $['operation.delete'])}
-                              disabled={isDeleting}
-                              onClick={() => setApiKeyToDelete(apiKey)}
+                              disabled={isPending}
+                              onClick={(event) => {
+                                deleteReturnFocusRef.current = event.currentTarget
+                                setApiKeyToDelete(apiKey)
+                              }}
                             >
                               <span aria-hidden className="i-ri-delete-bin-line size-4" />
                             </IconButton>
@@ -263,7 +279,12 @@ export function AgentApiKeyModal({
           </div>
 
           <div className="mt-4 flex justify-start">
-            <Button onClick={handleCreateApiKey} loading={isCreating}>
+            <Button
+              ref={createButtonRef}
+              onClick={handleCreateApiKey}
+              loading={isCreating}
+              disabled={isDeleting}
+            >
               <span aria-hidden className="i-heroicons-plus-20-solid size-4" />
               {t(($) => $['apiKeyModal.createNewSecretKey'])}
             </Button>
@@ -275,11 +296,18 @@ export function AgentApiKeyModal({
 
       <AlertDialog
         open={Boolean(apiKeyToDelete)}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setApiKeyToDelete(null)
+        onOpenChange={(nextOpen, details) => {
+          if (!nextOpen && isPending) details.cancel()
+          else if (!nextOpen) setApiKeyToDelete(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          finalFocus={() =>
+            deleteReturnFocusRef.current?.isConnected
+              ? deleteReturnFocusRef.current
+              : createButtonRef.current
+          }
+        >
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(($) => $['actionMsg.deleteConfirmTitle'])}
@@ -289,10 +317,14 @@ export function AgentApiKeyModal({
             </AlertDialogDescription>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteApiKey}>
+            <AlertDialogConfirmButton
+              loading={isDeleting}
+              disabled={isCreating}
+              onClick={handleDeleteApiKey}
+            >
               {tCommon(($) => $['operation.confirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
@@ -309,8 +341,6 @@ function AgentApiKeyGenerateModal({
   apiKey: ApiKeyItem | null
   onClose: () => void
 }) {
-  const { t } = useTranslation(['appApi', 'common'])
-
   return (
     <Dialog
       open={Boolean(apiKey)}
@@ -319,39 +349,50 @@ function AgentApiKeyGenerateModal({
       }}
     >
       <DialogContent className="w-full max-w-120! overflow-hidden px-8">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['apiKeyModal.apiSecretKey'])}
-        </DialogTitle>
-        <DialogDescription className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">
-          {t(($) => $['apiKeyModal.generateTips'])}
-        </DialogDescription>
-        <div className="my-4 flex h-9 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
-          <span
-            className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary"
-            translate="no"
-          >
-            {apiKey?.token}
-          </span>
-          {apiKey && <CopyFeedback content={apiKey.token} />}
-        </div>
-        <div className="my-4 flex justify-end">
-          <Button className="w-16 shrink-0" onClick={onClose}>
-            {t(($) => $['actionMsg.ok'])}
-          </Button>
-        </div>
+        <AgentApiKeyGenerateContent token={apiKey?.token ?? ''} />
       </DialogContent>
     </Dialog>
+  )
+}
+
+function AgentApiKeyGenerateContent({ token: initialToken }: { token: string }) {
+  const { t } = useTranslation(['appApi', 'common'])
+  const [token] = useState(() => initialToken)
+
+  return (
+    <>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+      <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        {t(($) => $['apiKeyModal.apiSecretKey'])}
+      </DialogTitle>
+      <DialogDescription className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">
+        {t(($) => $['apiKeyModal.generateTips'])}
+      </DialogDescription>
+      <div className="my-4 flex h-9 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
+        <span
+          className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary"
+          translate="no"
+        >
+          {token}
+        </span>
+        <CopyFeedback content={token} />
+      </div>
+      <div className="my-4 flex justify-end">
+        <DialogClose render={<Button className="w-16 shrink-0" />}>
+          {t(($) => $['actionMsg.ok'])}
+        </DialogClose>
+      </div>
+    </>
   )
 }
 
