@@ -36,6 +36,8 @@
   "studio.accessControl.addressCount_other": "{{count}} ünvan",
   "studio.accessControl.createIpPolicy": "IP siyasəti yarat",
   "studio.accessControl.notEnabled": "Qorunmur",
+  "studio.accessControl.policySummaryMany_one": "{{listed}} və daha {{count}} ünvana icazə verir",
+  "studio.accessControl.policySummaryMany_other": "{{listed}} və daha {{count}} ünvana icazə verir",
   "studio.accessControl.selectAccessPoint": "Ən azı bir giriş nöqtəsi seçin.",
   "studio.accessControl.tooltipAllProtected": "Bütün {{total}} giriş nöqtəsi qorunur",
   "studio.accessControl.tooltipPaused": "Konfiqurasiya edilib, lakin müvəqqəti dayandırılıb",
