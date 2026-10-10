@@ -512,3 +512,36 @@ def test_native_loop_typed_inputs_project_active_access_only(
     )
     assert bool(sensitive_change_reasons(graph, intents)) is (sensitive and effect == "switch")
     assert (graph, intents) == before
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "sensitive"),
+    [
+        ("Use {{#s.public_items#}}", "Use {{#s.private_items#}}", True),
+        ("Use {{#s.public_items#}}", "Corrected task using {{#s.public_items#}}", False),
+        ("old task", "Corrected task", False),
+    ],
+    ids=["v2-binding-switch", "v2-unchanged-binding-prose", "v2-prose"],
+)
+@pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
+def test_historical_v2_agent_task_preserves_native_workflow_binding_projection(
+    original, replacement, sensitive, effect
+):
+    from services.agent.prompt_mentions import extract_workflow_node_output_selectors
+    from services.dify_builder.mutation_policy import sensitive_change_reasons
+
+    graph = _graph("agent", version="2", agent_node_kind="dify_agent", agent_task=original)
+    intents = [_set("agent_task", original if effect == "identical" else replacement)]
+    if effect == "reverted":
+        intents.append(_set("agent_task", original))
+    before = deepcopy((graph, intents))
+    # Publish and runtime derive effective refs from this same marker syntax.
+    assert (
+        extract_workflow_node_output_selectors(original) != extract_workflow_node_output_selectors(replacement)
+    ) is sensitive
+
+    assert fix._shape_risk(intents, graph, Risk(level="low")).level == (
+        "high" if sensitive and effect == "switch" else "low"
+    )
+    assert bool(sensitive_change_reasons(graph, intents)) is (sensitive and effect == "switch")
+    assert (graph, intents) == before
