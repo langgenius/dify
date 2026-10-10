@@ -17,7 +17,7 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginInstallTask, PluginInstallTaskStatus
 from core.plugin.entities.request import (
     RequestInvokeLLM,
     RequestInvokeSpeech2Text,
@@ -336,6 +336,34 @@ class TestPluginDaemonEntities:
     def test_credential_type_of_invalid(self):
         with pytest.raises(ValueError, match="Invalid credential type"):
             CredentialType.of("invalid")
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [("success", PluginInstallTaskStatus.Success), ("a-status-added-later", "a-status-added-later")],
+    )
+    def test_install_task_parses_known_and_unknown_statuses(self, raw, expected):
+        plugin = {
+            "plugin_unique_identifier": "langgenius/openai:0.1.0@abc",
+            "plugin_id": "langgenius/openai",
+            "status": raw,
+            "message": "",
+            "icon": "",
+            "labels": {"en_US": "OpenAI"},
+        }
+        task = PluginInstallTask.model_validate(
+            {
+                "id": "task-1",
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+                "status": raw,
+                "total_plugins": 1,
+                "completed_plugins": 0,
+                "plugins": [plugin],
+            }
+        )
+
+        assert task.status == expected
+        assert task.plugins[0].status == expected
 
 
 class TestPluginRequestEntities:

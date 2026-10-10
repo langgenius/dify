@@ -22021,7 +22021,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | created_at | dateTime |  | Yes |
 | id | string |  | Yes |
 | plugins | [ [PluginInstallTaskPluginStatus](#plugininstalltaskpluginstatus) ] | The status of the plugins. | Yes |
-| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) | The status of the install task. | Yes |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus)<br>string | The status of the install task. | Yes |
 | total_plugins | integer | The total number of plugins to be installed. | Yes |
 | updated_at | dateTime |  | Yes |
 
@@ -22035,7 +22035,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | plugin_id | string | The plugin ID of the install task. | Yes |
 | plugin_unique_identifier | string | The plugin unique identifier of the install task. | Yes |
 | source | string | The installation source of the plugin | No |
-| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) | The status of the install task. | Yes |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus)<br>string | The status of the install task. | Yes |
 
 #### PluginInstallTaskStartResponse
 
