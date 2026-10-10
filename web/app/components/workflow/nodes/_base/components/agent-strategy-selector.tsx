@@ -116,8 +116,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const { queryPluginsWithDebounced: fetchPlugins, plugins: notInstalledPlugins = [] } =
+  const { queryPluginsWithDebounced: fetchPlugins, plugins: marketplacePlugins = [] } =
     useMarketplacePlugins()
+  const notInstalledPlugins = useMemo(() => {
+    const installedPluginIds = new Set((providers.data ?? []).map((provider) => provider.plugin_id))
+    return marketplacePlugins.filter((plugin) => !installedPluginIds.has(plugin.plugin_id))
+  }, [marketplacePlugins, providers.data])
 
   useEffect(() => {
     if (!enable_marketplace) return

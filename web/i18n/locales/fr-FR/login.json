@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Un mot de passe est requis",
   "error.passwordInvalid": "Le mot de passe doit contenir des lettres et des chiffres, et la longueur doit être supérieure à 8.",
   "error.registrationNotAllowed": "Compte introuvable. Veuillez contacter l’administrateur système pour vous inscrire.",
+  "error.ssoFailed": "Échec de la connexion SSO. Veuillez réessayer ou contacter votre administrateur.",
   "explore": "Explorez Dify",
   "forget": "Mot de passe oublié ?",
   "forgotPassword": "Mot de passe oublié?",

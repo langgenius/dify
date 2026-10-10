@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "访问权限",
   "accessRule.actions": "操作",
-  "accessRule.addMemberAria": "添加 {{name}}",
   "accessRule.addMembersTitle": "添加成员",
   "accessRule.agentDescription": "管理可访问此 Agent 的成员及其权限。",
   "accessRule.agentTitle": "Agent 权限集",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} 个权限集",
   "accessRule.summary_other": "{{count}} 个权限集",
   "accessRule.updated": "访问规则已更新",
+  "accessRule.workspaceAdmin": "工作区管理者",
   "accessRule.workspaceOwner": "工作区所有者",
   "common.duplicateAction": "创建副本",
   "group.agent": "Agent",

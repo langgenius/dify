@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "액세스 권한",
   "accessRule.actions": "작업",
-  "accessRule.addMemberAria": "{{name}} 추가",
   "accessRule.addMembersTitle": "멤버 추가",
   "accessRule.agentDescription": "이 에이전트에 접근할 수 있는 멤버와 권한을 관리합니다.",
   "accessRule.agentTitle": "에이전트 권한 집합",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}}개 권한 집합",
   "accessRule.summary_other": "{{count}}개 권한 집합",
   "accessRule.updated": "접근 규칙이 성공적으로 업데이트되었습니다",
+  "accessRule.workspaceAdmin": "워크스페이스 관리자",
   "accessRule.workspaceOwner": "워크스페이스 소유자",
   "common.duplicateAction": "복제",
   "group.agent": "에이전트",

@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "ສິດໃນການເຂົ້າເຖິງ",
   "accessRule.actions": "ການຈັດການ",
-  "accessRule.addMemberAria": "ເພີ່ມ {{name}}",
   "accessRule.addMembersTitle": "ເພີ່ມສະມາຊິກ",
   "accessRule.agentDescription": "ຈັດການຜູ້ທີ່ສາມາດເຂົ້າເຖິງຕົວແທນນີ້ ແລະ ສິດຂອງພວກເຂົາ.",
   "accessRule.agentTitle": "ຊຸດການກຳນົດສິດຕົວແທນ",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} ຊຸດສິດ",
   "accessRule.summary_other": "{{count}} ຊຸດສິດ",
   "accessRule.updated": "ອັບເດດກົດລະບຽບການເຂົ້າເຖິງສຳເລັດແລ້ວ",
+  "accessRule.workspaceAdmin": "ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກ",
   "accessRule.workspaceOwner": "ເຈົ້າຂອງພື້ນທີ່ເຮັດວຽກ",
   "common.duplicateAction": "ເຮັດສຳເນົາ",
   "group.agent": "ຕົວແທນ",

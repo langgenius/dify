@@ -1,5 +1,7 @@
-import type * as React from 'react'
+import type { InfotipActions, InfotipProps } from '@langgenius/dify-ui/infotip'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import * as React from 'react'
+import { expectTypeOf } from 'vite-plus/test'
 
 export function infotipTypeContracts(
   triggerRef: React.Ref<HTMLButtonElement>,
@@ -8,7 +10,7 @@ export function infotipTypeContracts(
   const composition = (
     <Infotip<{ title: string }>>
       {({ payload }) => (
-        <>
+        <React.Fragment>
           <InfotipTrigger
             aria-label="Details"
             ref={triggerRef}
@@ -28,7 +30,7 @@ export function infotipTypeContracts(
           >
             {payload?.title}
           </InfotipContent>
-        </>
+        </React.Fragment>
       )}
     </Infotip>
   )
@@ -44,4 +46,12 @@ export function infotipTypeContracts(
     <InfotipContent className={(state) => String(state.disabled)}>Details</InfotipContent>
   )
   return { composition, labelledTrigger, unnamed, children, render, state }
+}
+
+export function infotipActionsTypeContract() {
+  const actionsRef = React.createRef<InfotipActions>()
+  expectTypeOf(actionsRef.current).toEqualTypeOf<
+    NonNullable<InfotipProps['actionsRef']>['current']
+  >()
+  return <Infotip actionsRef={actionsRef} />
 }

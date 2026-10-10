@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Дозвіл на доступ",
   "accessRule.actions": "Дії",
-  "accessRule.addMemberAria": "Додати {{name}}",
   "accessRule.addMembersTitle": "Додати учасників",
   "accessRule.agentDescription": "Керуйте доступом до цього агента та дозволами користувачів.",
   "accessRule.agentTitle": "Набір дозволів агента",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} набір дозволів",
   "accessRule.summary_other": "{{count}} наборів дозволів",
   "accessRule.updated": "Правило доступу успішно оновлено",
+  "accessRule.workspaceAdmin": "Адміністратор робочого простору",
   "accessRule.workspaceOwner": "Власник робочого простору",
   "common.duplicateAction": "Дублювати",
   "group.agent": "Агенти",

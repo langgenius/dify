@@ -146,8 +146,7 @@ export function AppPicker({
     >
       <ComboboxTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
-        icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
+        className="block w-full min-w-0 rounded-lg text-left data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled"
       >
         {trigger}
       </ComboboxTrigger>
@@ -158,34 +157,31 @@ export function AppPicker({
             className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <div className="relative flex max-h-100 min-h-20 w-89 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-              <div className="p-2 pb-1">
-                <ComboboxInputGroup className="h-8 min-h-8 px-2">
-                  <span
-                    className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-                    aria-hidden="true"
-                  />
-                  <ComboboxInput
-                    ref={inputRef}
-                    aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
-                    placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
-                    className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-                  />
-                  {searchText && (
-                    <IconButton
-                      size="xs"
-                      aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
-                      onClick={handleClearSearch}
-                      onMouseDown={(event) => event.preventDefault()}
-                    >
-                      <span
-                        className="i-custom-vender-solid-general-x-circle size-3.5"
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  )}
-                </ComboboxInputGroup>
-              </div>
+              <ComboboxInputGroup>
+                <span
+                  className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                  aria-hidden="true"
+                />
+                <ComboboxInput
+                  ref={inputRef}
+                  aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                  placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                />
+                {searchText && (
+                  <IconButton
+                    size="xs"
+                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                    className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                    onClick={handleClearSearch}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <span
+                      className="i-custom-vender-solid-general-x-circle size-3.5"
+                      aria-hidden="true"
+                    />
+                  </IconButton>
+                )}
+              </ComboboxInputGroup>
               <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                 <ScrollAreaViewport
                   role="region"

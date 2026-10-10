@@ -345,7 +345,7 @@ class RunPayloadBase(BaseModel):
     inputs: dict[str, Any] = Field(
         description=(
             "Variables declared by the app. The exact shape is per app: read `input_schema` from "
-            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, "
             "or a local file in `files`, not both."
         )
     )

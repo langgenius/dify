@@ -1,16 +1,11 @@
 import type { ChatItem } from '../../../types'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { PromptMode } from '@/models/debug'
+import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
-const feedback = vi.hoisted(() => ({ admin: false, onFeedback: vi.fn() }))
-
-vi.mock('../../context', () => ({
-  useChatContext: () => ({
-    config: { supportFeedback: true, supportAnnotation: feedback.admin },
-    onFeedback: feedback.onFeedback,
-  }),
-}))
+const feedback = vi.hoisted(() => ({ onFeedback: vi.fn() }))
 
 // These independently owned features do not participate in feedback focus restoration.
 vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({ default: () => null }))
@@ -23,6 +18,51 @@ vi.mock('@/app/components/base/chat/chat/log', () => ({ default: () => null }))
 
 const item: ChatItem = { id: 'answer', content: 'An answer', isAnswer: true }
 
+function FeedbackAnswer({ admin = false }: { admin?: boolean }) {
+  return (
+    <ChatContextProvider
+      chatList={[item]}
+      config={{
+        opening_statement: '',
+        pre_prompt: '',
+        prompt_type: PromptMode.simple,
+        user_input_form: [],
+        more_like_this: { enabled: false },
+        suggested_questions_after_answer: { enabled: false },
+        speech_to_text: { enabled: false },
+        text_to_speech: { enabled: false },
+        retriever_resource: { enabled: false },
+        sensitive_word_avoidance: { enabled: false },
+        agent_mode: { enabled: false, tools: [] },
+        dataset_configs: {
+          retrieval_model: 'single',
+          reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+          top_k: 4,
+          score_threshold_enabled: false,
+          score_threshold: null,
+          datasets: { datasets: [] },
+        },
+        supportFeedback: true,
+        supportAnnotation: admin,
+      }}
+      onFeedback={feedback.onFeedback}
+    >
+      <button type="button">Before answer</button>
+      <article aria-label="Answer" className="group relative m-10 h-32 w-96">
+        <p>{item.content}</p>
+        <Operation
+          item={item}
+          question="Question"
+          index={0}
+          maxSize={500}
+          contentWidth={100}
+          hasWorkflowProcess={false}
+        />
+      </article>
+    </ChatContextProvider>
+  )
+}
+
 // The exit transition is rendered by Chromium; the default test setup disables it.
 it.each(['cancel', 'submit'])(
   'preserves the feedback draft during the %s exit animation',
@@ -30,22 +70,9 @@ it.each(['cancel', 'submit'])(
     const settings = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
     const animationsDisabled = settings.BASE_UI_ANIMATIONS_DISABLED
     settings.BASE_UI_ANIMATIONS_DISABLED = false
-    feedback.admin = false
     feedback.onFeedback.mockReset().mockResolvedValue(undefined)
     try {
-      const screen = await render(
-        <article aria-label="Answer" className="group relative m-10 h-32 w-96">
-          <p>{item.content}</p>
-          <Operation
-            item={item}
-            question="Question"
-            index={0}
-            maxSize={500}
-            contentWidth={100}
-            hasWorkflowProcess={false}
-          />
-        </article>,
-      )
+      const screen = await render(<FeedbackAnswer />)
       await screen.getByRole('article', { name: 'Answer' }).hover()
       const trigger = screen.getByRole('button', {
         name: 'appLog.table.header.userRate: appLog.detail.operation.dislike',
@@ -100,23 +127,7 @@ describe('Feedback dialog focus', () => {
   ])(
     'returns to the visible feedback button after $close (admin: $admin)',
     async ({ admin, close }) => {
-      feedback.admin = admin
-      const screen = await render(
-        <>
-          <button type="button">Before answer</button>
-          <article aria-label="Answer" className="group relative m-10 h-32 w-96">
-            <p>{item.content}</p>
-            <Operation
-              item={item}
-              question="Question"
-              index={0}
-              maxSize={500}
-              contentWidth={100}
-              hasWorkflowProcess={false}
-            />
-          </article>
-        </>,
-      )
+      const screen = await render(<FeedbackAnswer admin={admin} />)
       const trigger = screen.getByRole('button', {
         name: `${admin ? 'appLog.table.header.adminRate' : 'appLog.table.header.userRate'}: appLog.detail.operation.dislike`,
       })
@@ -150,4 +161,72 @@ describe('Feedback dialog focus', () => {
       }
     },
   )
+})
+
+it('keeps the pending feedback focused and retries the draft after a failure', async () => {
+  let rejectFeedback!: (reason: Error) => void
+  feedback.onFeedback
+    .mockReset()
+    .mockReturnValueOnce(
+      new Promise<void>((_resolve, reject) => {
+        rejectFeedback = reject
+      }),
+    )
+    .mockResolvedValue(undefined)
+  const screen = await render(<FeedbackAnswer />)
+  await screen.getByRole('article', { name: 'Answer' }).hover()
+  const trigger = screen.getByRole('button', {
+    name: 'appLog.table.header.userRate: appLog.detail.operation.dislike',
+  })
+  await trigger.click()
+  const dialog = screen.getByRole('dialog', { name: 'common.feedback.title' })
+  const textbox = dialog.getByRole('textbox', { name: 'common.feedback.content' })
+  await textbox.fill('Please explain')
+  await userEvent.keyboard('{End}{Enter}the answer')
+  const draft = 'Please explain\nthe answer'
+  await expect.element(textbox).toHaveValue(draft)
+  expect(feedback.onFeedback).not.toHaveBeenCalled()
+
+  const submit = dialog.getByRole('button', { name: 'common.operation.submit' })
+  await submit.click()
+  await expect.element(submit).toHaveFocus()
+  await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(textbox).toHaveAttribute('readonly')
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.close' }))
+    .toBeDisabled()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await userEvent.keyboard('{Enter}{Enter}{Escape}')
+  await expect.element(dialog).toBeVisible()
+  expect(feedback.onFeedback).toHaveBeenCalledTimes(1)
+  expect(feedback.onFeedback).toHaveBeenCalledWith('answer', {
+    rating: 'dislike',
+    content: draft,
+  })
+
+  const outside = document.elementFromPoint(4, 4)!
+  await userEvent.click(outside, { position: { x: 4, y: 4 } })
+  await expect.element(dialog).toBeVisible()
+  await userEvent.tab()
+  await expect.poll(() => dialog.element().contains(document.activeElement)).toBe(true)
+  await textbox.click()
+  await userEvent.keyboard('ignored')
+  await expect.element(textbox).toHaveValue(draft)
+
+  rejectFeedback(new Error('Feedback request failed'))
+  await expect.element(textbox).not.toHaveAttribute('readonly')
+  await expect.element(submit).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(dialog).toBeVisible()
+  await expect.element(textbox).toHaveValue(draft)
+  await submit.click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await expect.element(trigger).toHaveAttribute('aria-pressed', 'true')
+  expect(feedback.onFeedback).toHaveBeenCalledTimes(2)
+  expect(feedback.onFeedback).toHaveBeenLastCalledWith('answer', {
+    rating: 'dislike',
+    content: draft,
+  })
 })

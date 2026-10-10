@@ -209,7 +209,7 @@ function ContextMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
   )
@@ -217,9 +217,10 @@ function ContextMenuSubTrigger({
 
 type ContextMenuSubContentProps = ContextMenuContentProps
 
+// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function ContextMenuSubContent({
   children,
-  placement = 'right-start',
+  placement = 'inline-end-start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -253,9 +254,9 @@ function ContextMenuSubContent({
   )
 }
 
-type ContextMenuLabelProps = BaseContextMenu.GroupLabel.Props
+type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 
-function ContextMenuLabel({ className, ...props }: ContextMenuLabelProps) {
+function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
       className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
@@ -281,8 +282,8 @@ export {
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuLinkItem,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
@@ -299,9 +300,9 @@ export type {
   ContextMenuCheckboxItemIndicatorProps,
   ContextMenuCheckboxItemProps,
   ContextMenuContentProps,
+  ContextMenuGroupLabelProps,
   ContextMenuGroupProps,
   ContextMenuItemProps,
-  ContextMenuLabelProps,
   ContextMenuLinkItemProps,
   ContextMenuProps,
   ContextMenuRadioGroupProps,

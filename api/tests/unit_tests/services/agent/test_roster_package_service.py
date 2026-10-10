@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -29,7 +31,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, CustomizeTokenStrategy
+from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
@@ -66,7 +68,7 @@ class _MemoryStorage:
         self.read_count = 0
         self.bytes_yielded: dict[str, int] = {}
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         self.read_count += 1
         if self.before_read is not None:
             self.before_read()
@@ -1396,7 +1398,12 @@ def test_export_download_closes_owned_archive(app: Flask) -> None:
     ],
 )
 def test_export_preserves_file_metadata_in_dsl(
-    monkeypatch: pytest.MonkeyPatch, file_kind: str, declared_mime: str | None, stored_mime: str, expected_mime: str
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    file_kind: str,
+    declared_mime: str | None,
+    stored_mime: str,
+    expected_mime: str,
 ) -> None:
     from unittest.mock import Mock
 
@@ -1414,7 +1421,20 @@ def test_export_preserves_file_metadata_in_dsl(
         original_url=None,
     )
     tool_file.id = "source-id"
-    upload_file = Mock(spec=UploadFile, id="source-id", key="payload", mime_type=stored_mime)
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="payload",
+        name="original.pdf",
+        size=1,
+        extension="pdf",
+        mime_type=stored_mime,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=naive_utc_now(),
+        used=False,
+    )
+    upload_file.id = "source-id"
     monkeypatch.setattr(exporter, "_tool_files", Mock(return_value={"source-id": tool_file}))
     monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={"source-id": upload_file}))
     soul = AgentSoulConfig.model_validate(
@@ -1425,7 +1445,7 @@ def test_export_preserves_file_metadata_in_dsl(
         }
     )
 
-    portable_soul, _, sources = exporter._collect_payloads(session=Mock(spec=Session), tenant_id="tenant-1", soul=soul)
+    portable_soul, _, sources = exporter._collect_payloads(session=sqlite_session, tenant_id="tenant-1", soul=soul)
 
     ref = portable_soul.config_files[0]
     assert (ref.name, ref.file_kind, ref.mime_type, ref.file_id) == (

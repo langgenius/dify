@@ -312,6 +312,33 @@ describe('useFileUpload', () => {
   })
 
   describe('fileChangeHandle', () => {
+    it('keeps previously uploaded files when adding another file after remount', () => {
+      const existingFile: FileItem = {
+        fileID: 'existing',
+        file: { id: 'existing-id', name: 'existing.pdf', size: 1024 } as CustomFile,
+        progress: PROGRESS_COMPLETE,
+      }
+      const prepareFileList = vi.fn()
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, fileList: [existingFile], prepareFileList }),
+        { wrapper: createWrapper() },
+      )
+
+      const newFile = new File(['content'], 'new.pdf', { type: 'application/pdf' })
+      const event = {
+        target: { files: [newFile] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>
+
+      act(() => {
+        result.current.fileChangeHandle(event)
+      })
+
+      expect(prepareFileList).toHaveBeenCalledWith([
+        existingFile,
+        expect.objectContaining({ file: newFile }),
+      ])
+    })
+
     it('should handle valid files', async () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id' })
 

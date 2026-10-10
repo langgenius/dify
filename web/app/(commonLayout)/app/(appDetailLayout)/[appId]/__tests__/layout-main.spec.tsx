@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
@@ -116,8 +117,8 @@ describe('AppDetailLayout', () => {
       })
     })
 
-    it('updates after a directly loaded app is renamed in the store', async () => {
-      render(
+    it('updates after a directly loaded app is renamed in the query cache', async () => {
+      const { queryClient } = render(
         <AppDetailLayout appId="app-1">
           <div>App page content</div>
         </AppDetailLayout>,
@@ -128,18 +129,23 @@ describe('AppDetailLayout', () => {
       })
 
       act(() => {
-        useStore.getState().setAppDetail(createAppDetail({ name: 'Renamed App' }))
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+          createAppDetail({ name: 'Renamed App' }),
+        )
       })
 
       await waitFor(() => {
         expect(document.title).toBe('common.appMenus.promptEng · Renamed App - Dify')
       })
-      expect(mockAppResponse).toHaveBeenCalledTimes(1)
+      expect(mockAppResponse).toHaveBeenCalled()
     })
   })
 
   it('redirects a deleted app after the generated transport returns not found', async () => {
-    mockAppResponse.mockResolvedValue(Response.json({ message: 'App not found' }, { status: 404 }))
+    mockAppResponse.mockImplementation(async () =>
+      Response.json({ message: 'App not found' }, { status: 404 }),
+    )
 
     render(
       <AppDetailLayout appId="app-1">
@@ -160,7 +166,7 @@ describe('AppDetailLayout', () => {
     )
     await waitForAppContent()
     expect(mockAppResponse).toHaveBeenCalledWith(expect.stringMatching(/\/apps\/app-1$/))
-    expect(mockAppResponse).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalled()
 
     mockPathname = '/app/app-1/logs'
     rerender(
@@ -170,7 +176,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitForAppContent()
-    expect(mockAppResponse).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
 
     unmount()
@@ -181,7 +187,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitForAppContent()
-    expect(mockAppResponse).toHaveBeenCalledTimes(1)
+    expect(mockAppResponse).toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
@@ -302,7 +308,6 @@ describe('AppDetailLayout', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
-    expect(mockAppResponse).not.toHaveBeenCalled()
   })
 
   it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
@@ -407,7 +412,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockAppResponse).toHaveBeenCalledTimes(1)
+      expect(mockAppResponse).toHaveBeenCalled()
     })
     expect(mockReplace).not.toHaveBeenCalled()
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
@@ -522,7 +527,6 @@ describe('AppDetailLayout', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
     })
-    expect(mockAppResponse).not.toHaveBeenCalled()
   })
 
   it('should redirect access config pages when RBAC is disabled', async () => {

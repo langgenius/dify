@@ -554,7 +554,7 @@ class TestUpdateHeadersWithSession:
 class TestResponseRegistry:
     def test_register_and_unregister(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp)
         assert resp in t._active_responses
         t._unregister_response(resp)
@@ -562,26 +562,29 @@ class TestResponseRegistry:
 
     def test_unregister_not_registered_does_not_raise(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._unregister_response(resp)  # Should swallow ValueError silently
 
     def test_close_active_responses_calls_close(self):
         t = _new_transport()
-        resp1 = MagicMock(spec=httpx.Response)
-        resp2 = MagicMock(spec=httpx.Response)
+        resp1 = httpx.Response(200, stream=httpx.ByteStream(b""))
+        resp2 = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp1)
         t._register_response(resp2)
+        assert not resp1.is_closed
+        assert not resp2.is_closed
         t.close_active_responses()
-        resp1.close.assert_called_once()
-        resp2.close.assert_called_once()
+        assert resp1.is_closed
+        assert resp2.is_closed
         assert t._active_responses == []
 
     def test_close_active_responses_swallows_runtime_error(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
-        resp.close.side_effect = RuntimeError("already closed")
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp)
-        t.close_active_responses()  # Should not raise
+        with patch.object(resp, "close", side_effect=RuntimeError("already closed")):
+            t.close_active_responses()  # Should not raise
+        resp.close()
 
 
 # ── _is_initialization_request / _is_initialized_notification ────────────────
@@ -798,7 +801,7 @@ class TestHandleResumptionRequestNew:
         session_msg = SessionMessage(message)
         metadata = None
         if resumption_token:
-            metadata = MagicMock(spec=ClientMessageMetadata)
+            metadata = ClientMessageMetadata()
             metadata.resumption_token = resumption_token
             metadata.on_resumption_token_update = MagicMock()
         return RequestContext(
@@ -814,7 +817,7 @@ class TestHandleResumptionRequestNew:
     def test_raises_resumption_error_without_token(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         metadata.resumption_token = None
         ctx = RequestContext(
             client=MagicMock(),
@@ -918,11 +921,11 @@ class TestHandleResumptionRequestNew:
 
 
 class TestHandlePostRequestNew:
-    def _make_ctx(self, transport, q, message=None) -> RequestContext:
+    def _make_ctx(self, transport, q, response: httpx.Response, message=None) -> RequestContext:
         if message is None:
             message = _make_request_msg("tools/list", 1)
         return RequestContext(
-            client=MagicMock(),
+            client=httpx.Client(transport=httpx.MockTransport(lambda _request: response)),
             headers=transport.request_headers,
             session_id=transport.session_id,
             session_message=SessionMessage(message),
@@ -931,42 +934,32 @@ class TestHandlePostRequestNew:
             sse_read_timeout=60,
         )
 
-    def _stream_ctx(self, mock_response):
-        @contextmanager
-        def _stream[**P](*args: P.args, **kwargs: P.kwargs):
-            yield mock_response
-
-        return _stream
-
     def test_202_returns_immediately_no_queue(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
-        mock_resp = MagicMock()
-        mock_resp.status_code = 202
-        ctx.client.stream = self._stream_ctx(mock_resp)
-        t._handle_post_request(ctx)
+        response = httpx.Response(202)
+        ctx = self._make_ctx(t, q, response)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert q.empty()
 
     def test_204_returns_immediately_no_queue(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
-        mock_resp = MagicMock()
-        mock_resp.status_code = 204
-        ctx.client.stream = self._stream_ctx(mock_resp)
-        t._handle_post_request(ctx)
+        response = httpx.Response(204)
+        ctx = self._make_ctx(t, q, response)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert q.empty()
 
     def test_404_sends_session_terminated_error_for_request(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         msg = _make_request_msg("tools/list", 77)
-        ctx = self._make_ctx(t, q, message=msg)
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        ctx.client.stream = self._stream_ctx(mock_resp)
-        t._handle_post_request(ctx)
+        response = httpx.Response(404)
+        ctx = self._make_ctx(t, q, response, message=msg)
+        with ctx.client:
+            t._handle_post_request(ctx)
         item = q.get_nowait()
         assert isinstance(item, SessionMessage)
         assert isinstance(item.message.root, JSONRPCError)
@@ -977,11 +970,10 @@ class TestHandlePostRequestNew:
         t = _new_transport(url="http://example.com/mcp/server/abc123/mcp")
         q: queue.Queue = queue.Queue()
         msg = _make_request_msg("initialize", 1)
-        ctx = self._make_ctx(t, q, message=msg)
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        ctx.client.stream = self._stream_ctx(mock_resp)
-        t._handle_post_request(ctx)
+        response = httpx.Response(404)
+        ctx = self._make_ctx(t, q, response, message=msg)
+        with ctx.client:
+            t._handle_post_request(ctx)
         item = q.get_nowait()
         assert isinstance(item, SessionMessage)
         assert isinstance(item.message.root, JSONRPCError)
@@ -993,56 +985,44 @@ class TestHandlePostRequestNew:
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         msg = _make_notification_msg("some/notification")
-        ctx = self._make_ctx(t, q, message=msg)
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        ctx.client.stream = self._stream_ctx(mock_resp)
-        t._handle_post_request(ctx)
+        response = httpx.Response(404)
+        ctx = self._make_ctx(t, q, response, message=msg)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert q.empty()
 
     def test_json_response_puts_session_message(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
 
         response_data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"ok": True}}).encode()
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = {"content-type": "application/json"}
-        mock_resp.raise_for_status.return_value = None
-        mock_resp.read.return_value = response_data
-        ctx.client.stream = self._stream_ctx(mock_resp)
+        response = httpx.Response(200, headers={"content-type": "application/json"}, content=response_data)
+        ctx = self._make_ctx(t, q, response)
 
-        t._handle_post_request(ctx)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert isinstance(q.get_nowait(), SessionMessage)
 
     def test_json_response_invalid_json_puts_exception(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
 
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = {"content-type": "application/json"}
-        mock_resp.raise_for_status.return_value = None
-        mock_resp.read.return_value = b"{bad json!"
-        ctx.client.stream = self._stream_ctx(mock_resp)
+        response = httpx.Response(200, headers={"content-type": "application/json"}, content=b"{bad json!")
+        ctx = self._make_ctx(t, q, response)
 
-        t._handle_post_request(ctx)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert isinstance(q.get_nowait(), Exception)
 
     def test_unexpected_content_type_puts_value_error(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
 
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = {"content-type": "text/plain"}
-        mock_resp.raise_for_status.return_value = None
-        ctx.client.stream = self._stream_ctx(mock_resp)
+        response = httpx.Response(200, headers={"content-type": "text/plain"})
+        ctx = self._make_ctx(t, q, response)
 
-        t._handle_post_request(ctx)
+        with ctx.client:
+            t._handle_post_request(ctx)
         item = q.get_nowait()
         assert isinstance(item, ValueError)
         assert "Unexpected content type" in str(item)
@@ -1051,57 +1031,43 @@ class TestHandlePostRequestNew:
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         msg = _make_request_msg("initialize", 1)
-        ctx = self._make_ctx(t, q, message=msg)
 
         response_data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}).encode()
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = MagicMock()
-        headers_dict = {"content-type": "application/json", MCP_SESSION_ID: "new-sid"}
-        mock_resp.headers.__getitem__ = lambda self, k: headers_dict[k]
-        mock_resp.headers.get = lambda k, default=None: headers_dict.get(k, default)
-        mock_resp.raise_for_status.return_value = None
-        mock_resp.read.return_value = response_data
-        ctx.client.stream = self._stream_ctx(mock_resp)
+        response = httpx.Response(
+            200,
+            headers={"content-type": "application/json", MCP_SESSION_ID: "new-sid"},
+            content=response_data,
+        )
+        ctx = self._make_ctx(t, q, response, message=msg)
 
-        t._handle_post_request(ctx)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert t.session_id == "new-sid"
 
     def test_notification_skips_response_processing(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         msg = _make_notification_msg("notifications/something")
-        ctx = self._make_ctx(t, q, message=msg)
 
         response_data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}).encode()
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = {"content-type": "application/json"}
-        mock_resp.raise_for_status.return_value = None
-        mock_resp.read.return_value = response_data
-        ctx.client.stream = self._stream_ctx(mock_resp)
+        response = httpx.Response(200, headers={"content-type": "application/json"}, content=response_data)
+        ctx = self._make_ctx(t, q, response, message=msg)
 
-        t._handle_post_request(ctx)
+        with ctx.client:
+            t._handle_post_request(ctx)
         assert q.empty()
 
     def test_sse_response_handles_stream(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._make_ctx(t, q)
 
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
-        mock_sse_event = _make_sse_mock("message", data)
+        response = httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=f"event: message\ndata: {data}\n\n"
+        )
+        ctx = self._make_ctx(t, q, response)
 
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.headers = {"content-type": "text/event-stream"}
-        mock_resp.raise_for_status.return_value = None
-        ctx.client.stream = self._stream_ctx(mock_resp)
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            mock_es_instance = MagicMock()
-            mock_es_instance.iter_sse.return_value = [mock_sse_event]
-            MockEventSource.return_value = mock_es_instance
+        with ctx.client:
             t._handle_post_request(ctx)
 
         assert isinstance(q.get_nowait(), SessionMessage)
@@ -1226,7 +1192,7 @@ class TestHandleSseResponseNew:
     def test_with_metadata_resumption_callback(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         callback = MagicMock()
         metadata.on_resumption_token_update = callback
 
@@ -1322,7 +1288,7 @@ class TestPostWriterNew:
         start_get_stream = MagicMock()
 
         msg = SessionMessage(_make_request_msg("tools/list", 10))
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         metadata.resumption_token = "resume-abc"
         msg.metadata = metadata
         c2s.put(msg)

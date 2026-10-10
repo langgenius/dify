@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Kata sandi diperlukan",
   "error.passwordInvalid": "Kata sandi harus berisi huruf dan angka, dan panjangnya harus lebih besar dari 8",
   "error.registrationNotAllowed": "Akun tidak ditemukan. Silakan hubungi admin sistem untuk mendaftar.",
+  "error.ssoFailed": "Login SSO gagal. Silakan coba lagi atau hubungi administrator Anda.",
   "explore": "Jelajahi Dify",
   "forget": "Lupa Kata Sandi Anda?",
   "forgotPassword": "Lupa Kata Sandi Anda?",

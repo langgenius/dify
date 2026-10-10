@@ -1,5 +1,4 @@
-import type { SlashCommandHandler } from './types'
-import { registerCommands, unregisterCommands } from './command-bus'
+import type { SlashCommand } from './types'
 
 const NAV_ITEMS = [
   { id: 'apps', label: 'Apps', path: '/apps', iconClassName: 'i-ri-apps-2-line' },
@@ -24,31 +23,27 @@ const NAV_ITEMS = [
   { id: 'account', label: 'Account', path: '/account', iconClassName: 'i-ri-user-line' },
 ] as const
 
-type GoDeps = {
-  agentsAvailable: boolean
-  skillsAvailable: boolean
-}
-
-let availability: GoDeps = {
-  agentsAvailable: false,
-  skillsAvailable: true,
-}
-
 /**
  * Go command - Navigate to a top-level section of the app
  */
-export const goCommand: SlashCommandHandler<GoDeps> = {
+export const goCommand: SlashCommand = {
   name: 'go',
   aliases: ['navigate', 'nav'],
   description: 'Navigate to a section',
   mode: 'submenu',
+  execute(args, context) {
+    const item = NAV_ITEMS.find((item) => item.path === args.path)
+    if (!item) return
+    if ('availability' in item && !context[`${item.availability}Available`]) return
+    context.navigate(item.path)
+  },
 
-  search(args: string, _locale: string = 'en') {
+  search(args: string, context) {
     const query = args.trim().toLowerCase()
     const items = NAV_ITEMS.filter((item) => {
       if ('availability' in item) {
-        if (item.availability === 'agents' && !availability.agentsAvailable) return false
-        if (item.availability === 'skills' && !availability.skillsAvailable) return false
+        if (item.availability === 'agents' && !context.agentsAvailable) return false
+        if (item.availability === 'skills' && !context.skillsAvailable) return false
       }
 
       return !query || item.id.includes(query) || item.label.toLowerCase().includes(query)
@@ -63,24 +58,7 @@ export const goCommand: SlashCommandHandler<GoDeps> = {
           <span aria-hidden className={`${item.iconClassName} size-4 text-text-tertiary`} />
         </div>
       ),
-      data: { command: 'navigation.go', args: { path: item.path } },
+      data: { command: 'go', args: { path: item.path } },
     }))
-  },
-
-  register(deps: GoDeps) {
-    availability = deps
-    registerCommands({
-      'navigation.go': async (args) => {
-        if (args?.path) window.location.href = args.path
-      },
-    })
-  },
-
-  unregister() {
-    availability = {
-      agentsAvailable: false,
-      skillsAvailable: true,
-    }
-    unregisterCommands(['navigation.go'])
   },
 }

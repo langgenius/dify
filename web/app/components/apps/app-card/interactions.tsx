@@ -10,11 +10,11 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -678,7 +678,7 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal show appDetail={app} onClose={() => setActiveDialog(null)} />
+        <SwitchAppModal show sourceApp={app} onClose={() => setActiveDialog(null)} />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>
@@ -725,7 +725,7 @@ export function AppCardInteractions({
                 </InputGroup>
               </Field>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
@@ -736,7 +736,7 @@ export function AppCardInteractions({
               >
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>

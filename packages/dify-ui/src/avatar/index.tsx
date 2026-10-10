@@ -74,7 +74,7 @@ function AvatarImage({ className, ...props }: AvatarImageProps) {
   )
 }
 
-const Avatar = ({ name, avatar, size = 'md', className, onLoadingStatusChange }: AvatarProps) => {
+function Avatar({ name, avatar, size = 'md', className, onLoadingStatusChange }: AvatarProps) {
   return (
     <AvatarRoot size={size} className={className}>
       {avatar && (

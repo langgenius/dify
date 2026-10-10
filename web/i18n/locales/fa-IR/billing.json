@@ -46,6 +46,7 @@
     "پشتیبانی اولویت‌دار ایمیل و چت"
   ],
   "plans.premium.includesTitle": "همه چیز از جامعه، به علاوه:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "پیشرفته",
   "plans.premium.price": "قابل گسترش",
   "plans.premium.priceTip": "بر اساس بازار ابری",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "طرح ها و ویژگی ها را مقایسه کنید",
   "plansCommon.currentPlan": "طرح فعلی",
   "plansCommon.days": "روز",
+  "plansCommon.discountedAnnualPrice": "قیمت سالانه با تخفیف: ",
   "plansCommon.documentProcessingPriority": "اولویت پردازش مستندات",
   "plansCommon.documentProcessingPriorityTip": "برای اولویت بالاتر پردازش اسناد، لطفاً برنامه خود را ارتقا دهید.",
   "plansCommon.documentProcessingPriorityUpgrade": "داده‌های بیشتری را با دقت بالاتر و سرعت بیشتر پردازش کنید.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "ارائه‌دهندگان مدل",
   "plansCommon.month": "ماه",
   "plansCommon.mostPopular": "محبوب‌ترین",
+  "plansCommon.originalAnnualPrice": "قیمت سالانه اصلی: ",
   "plansCommon.priceTip": "برای هر محیط کار/",
   "plansCommon.priority.priority": "اولویت",
   "plansCommon.priority.standard": "استاندارد",

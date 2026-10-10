@@ -46,6 +46,7 @@
     "บริการอีเมลและแชทด่วน"
   ],
   "plans.premium.includesTitle": "ทุกอย่างจากชุมชน รวมถึง:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "พรีเมียม",
   "plans.premium.price": "ขยายได้",
   "plans.premium.priceTip": "อิงตามตลาดคลาวด์",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "เปรียบเทียบแผนและฟีเจอร์",
   "plansCommon.currentPlan": "แผนปัจจุบัน",
   "plansCommon.days": "วัน",
+  "plansCommon.discountedAnnualPrice": "ราคารายปีหลังส่วนลด: ",
   "plansCommon.documentProcessingPriority": "ลําดับความสําคัญในการประมวลผลเอกสาร",
   "plansCommon.documentProcessingPriorityTip": "สำหรับความสำคัญในการประมวลผลเอกสารที่สูงขึ้น โปรดอัปเกรดแผนของคุณ",
   "plansCommon.documentProcessingPriorityUpgrade": "ประมวลผลข้อมูลได้มากขึ้นด้วยความแม่นยําที่สูงขึ้นด้วยความเร็วที่เร็วขึ้น",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "ผู้ให้บริการโมเดล",
   "plansCommon.month": "เดือน",
   "plansCommon.mostPopular": "แห่ง",
+  "plansCommon.originalAnnualPrice": "ราคารายปีเดิม: ",
   "plansCommon.priceTip": "ต่อพื้นที่ทำงาน/",
   "plansCommon.priority.priority": "สำคัญ",
   "plansCommon.priority.standard": "มาตรฐาน",

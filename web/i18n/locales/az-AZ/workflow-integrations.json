@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Növbəti 5 icra vaxtı",
   "nodes.triggerSchedule.onMinute": "Dəqiqə",
   "nodes.triggerSchedule.selectFrequency": "Tezlik seç",
-  "nodes.triggerSchedule.selectTime": "Vaxt seç",
   "nodes.triggerSchedule.title": "Cədvəl",
   "nodes.triggerSchedule.useCronExpression": "Cron ifadəsindən istifadə et",
   "nodes.triggerSchedule.useVisualPicker": "Vizual seçicidən istifadə et",

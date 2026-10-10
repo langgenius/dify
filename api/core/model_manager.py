@@ -823,7 +823,7 @@ class QuotaManagedModelInstance(ModelInstance):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:

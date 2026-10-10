@@ -1,4 +1,3 @@
-import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Input } from '@langgenius/dify-ui/input'
@@ -15,15 +14,33 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import {
-  formatDateForOutput,
-  toDayjs,
-} from '@/app/components/base/date-and-time-picker/utils/dayjs'
+  DatePicker,
+  DatePickerClear,
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-picker'
+import {
+  DateTimePicker,
+  DateTimePickerClear,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-time-picker'
+import {
+  TimePicker,
+  TimePickerClear,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+} from '@/app/components/base/date-time-picker/time-picker'
 import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
+import { parseDateValue } from '../date-time-picker/date-value'
 import { getMarkdownButtonAppearance } from './button-appearance'
+import { parseFormInstant, parseFormTime } from './date-values'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -53,6 +70,11 @@ const SUPPORTED_TYPES = {
 type SupportedType = (typeof SUPPORTED_TYPES)[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
+const PICKER_TYPES = new Set<string>([
+  SUPPORTED_TYPES.DATE,
+  SUPPORTED_TYPES.TIME,
+  SUPPORTED_TYPES.DATETIME,
+])
 
 const SAFE_NAME_RE = /^\p{L}[\p{L}\p{M}\p{N}_-]*$/u
 // Treat operator-provided characters literally instead of interpolating them into a regular expression.
@@ -90,7 +112,7 @@ type HastElement = {
   children: Array<HastElement | HastText>
 }
 
-type FormValue = string | number | boolean | Dayjs | undefined
+type FormValue = string | number | boolean | Date | undefined
 type FormValues = Record<string, FormValue>
 type EditState = {
   source: HastElement[]
@@ -129,7 +151,12 @@ function computeInitialFormValues(children: HastElement[]): FormValues {
       type === SUPPORTED_TYPES.TIME
     ) {
       const raw = child.properties.value
-      init[name] = raw != null ? toDayjs(String(raw)) : undefined
+      init[name] =
+        type === SUPPORTED_TYPES.DATE
+          ? parseDateValue(raw)
+          : type === SUPPORTED_TYPES.TIME
+            ? parseFormTime(raw)
+            : parseFormInstant(raw)
     } else if (type === SUPPORTED_TYPES.CHECKBOX) {
       const { checked, value } = child.properties
       const hasInitialValue = checked != null || value != null
@@ -156,6 +183,8 @@ function getElementKey(child: HastElement, index: number): string {
 
 const MarkdownForm = ({ node }: { node: HastElement }) => {
   const formId = useId()
+  const { t } = useTranslation(['common'])
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const typedNode = node
   const { onSend } = useChatContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -199,17 +228,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       const name = child.properties.name
       if (!isSafeName(name)) continue
       let value: FormValue = formValues[name]
-      if (
-        child.tagName === SUPPORTED_TAGS.INPUT &&
-        (child.properties.type === SUPPORTED_TYPES.DATE ||
-          child.properties.type === SUPPORTED_TYPES.DATETIME) &&
-        value != null &&
-        typeof value === 'object' &&
-        'format' in value
-      ) {
-        const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
-        value = formatDateForOutput(value as Dayjs, includeTime)
-      }
+      if (value instanceof Date) value = value.toISOString()
       if (value === undefined) continue
       if (typeof value === 'boolean') out[name] = value
       else out[name] = String(value)
@@ -246,6 +265,13 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       {elementChildren.map((child, index) => {
         const key = getElementKey(child, index)
         if (child.tagName === SUPPORTED_TAGS.LABEL) {
+          const target = elementChildren.find(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.INPUT &&
+              isSafeName(str(node.properties.name)) &&
+              getLabelTarget(child) === (str(node.properties.id) || str(node.properties.name)),
+          )
+          if (target && PICKER_TYPES.has(str(target.properties.type))) return null
           return (
             <label
               key={key}
@@ -266,31 +292,83 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
 
           const type = str(child.properties.type) as SupportedType
           const controlId = `${formId}-${str(child.properties.id) || name}`
-          const hasExternalLabel = elementChildren.some(
+          const fieldLabel = elementChildren.find(
             (node) =>
               node.tagName === SUPPORTED_TAGS.LABEL &&
               getLabelTarget(node) === (str(child.properties.id) || name),
           )
-
-          if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
+          const hasExternalLabel = Boolean(fieldLabel)
+          const pickerLabel = fieldLabel ? getTextContent(fieldLabel) : name
+          const pickerProps = {
+            name,
+            required: Boolean(child.properties.required),
+            disabled: Boolean(child.properties.disabled),
+            readOnly: Boolean(child.properties.readOnly),
+            placeholder: str(child.properties.placeholder) || undefined,
+          }
+          const clearLabel = t(($) => $['operation.clear'])
+          if (type === SUPPORTED_TYPES.DATE) {
             return (
               <DatePicker
                 key={key}
-                value={formValues[name] as Dayjs | undefined}
-                needTimePicker={type === SUPPORTED_TYPES.DATETIME}
-                onChange={(date) => updateValue(name, date)}
-                onClear={() => updateValue(name, undefined)}
-              />
+                {...pickerProps}
+                value={(formValues[name] as string | undefined) ?? null}
+                onValueChange={(date) => updateValue(name, date ?? undefined)}
+              >
+                <DatePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DatePickerLabel>
+                <div className="flex">
+                  <DatePickerTrigger id={controlId} />
+                  <DatePickerClear aria-label={clearLabel} />
+                </div>
+                <DatePickerContent />
+              </DatePicker>
+            )
+          }
+          if (type === SUPPORTED_TYPES.DATETIME) {
+            return (
+              <DateTimePicker
+                key={key}
+                {...pickerProps}
+                timeZone={timeZone}
+                value={(formValues[name] as Date | undefined) ?? null}
+                onValueChange={(date) => updateValue(name, date ?? undefined)}
+              >
+                <DateTimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DateTimePickerLabel>
+                <div className="flex">
+                  <DateTimePickerTrigger id={controlId} />
+                  <DateTimePickerClear aria-label={clearLabel} />
+                </div>
+                <DateTimePickerContent />
+              </DateTimePicker>
             )
           }
           if (type === SUPPORTED_TYPES.TIME) {
             return (
               <TimePicker
                 key={key}
-                value={formValues[name] as Dayjs | string | undefined}
-                onChange={(time) => updateValue(name, time)}
-                onClear={() => updateValue(name, undefined)}
-              />
+                {...pickerProps}
+                value={(formValues[name] as string | undefined) ?? null}
+                onValueChange={(time) => updateValue(name, time ?? undefined)}
+              >
+                <TimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </TimePickerLabel>
+                <div className="flex">
+                  <TimePickerTrigger id={controlId} />
+                  <TimePickerClear aria-label={clearLabel} />
+                </div>
+                <TimePickerContent />
+              </TimePicker>
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {

@@ -1,12 +1,10 @@
 import * as React from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
   AutocompleteClear,
   AutocompleteEmpty,
-  AutocompleteGroup,
-  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
@@ -16,7 +14,6 @@ import {
   AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
-  AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
   useAutocompleteFilteredItems,
@@ -94,13 +91,13 @@ describe('Autocomplete wrappers', () => {
         .not.toBe(restingBoxShadow)
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderAutocomplete({
         children: (
           <AutocompleteInputGroup>
             <AutocompleteInput
               aria-label="Search suggestions"
-              className="custom-input"
+
               placeholder="Find a resource"
               required
             />
@@ -117,9 +114,6 @@ describe('Autocomplete wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
         .toBeRequired()
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
-        .toHaveClass('custom-input')
     })
 
     it('should not inject input-only attributes into a custom textarea', async () => {
@@ -195,6 +189,61 @@ describe('Autocomplete wrappers', () => {
   })
 
   describe('Content and options', () => {
+    it('should keep the status visible and scroll the list in a short viewport', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `Suggestion ${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Autocomplete open items={longOptions}>
+              <AutocompleteInputGroup>
+                <AutocompleteInput aria-label="Search" />
+              </AutocompleteInputGroup>
+              <AutocompletePortal>
+                <AutocompletePositioner>
+                  <AutocompletePopup ref={popupRef}>
+                    <AutocompleteStatus>30 suggestions</AutocompleteStatus>
+                    <AutocompleteList<string>>
+                      {(item) => (
+                        <AutocompleteItem key={item} value={item}>
+                          {item}
+                        </AutocompleteItem>
+                      )}
+                    </AutocompleteList>
+                  </AutocompletePopup>
+                </AutocompletePositioner>
+              </AutocompletePortal>
+            </Autocomplete>
+          </div>,
+        )
+
+        const status = screen.getByText('30 suggestions')
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+          const statusBounds = status.element().getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(statusBounds.top).toBeGreaterThanOrEqual(popupBounds.top)
+          expect(statusBounds.bottom).toBeLessThanOrEqual(popupBounds.bottom)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
+          expect(popupRef.current!.scrollHeight).toBeLessThanOrEqual(popupRef.current!.clientHeight)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
     it('should use default overlay placement', async () => {
       const screen = await renderAutocomplete({ open: true })
 
@@ -243,45 +292,6 @@ describe('Autocomplete wrappers', () => {
         .element(screen.getByRole('group', { name: 'autocomplete positioner' }))
         .toHaveAttribute('data-side', 'top')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should forward custom classes to label separator item text and indicator', async () => {
-      const screen = await renderWithSafeViewport(
-        <Autocomplete open defaultValue="workflow" items={['workflow']}>
-          <AutocompleteInputGroup>
-            <AutocompleteInput aria-label="Search suggestions" />
-          </AutocompleteInputGroup>
-          <AutocompletePortal>
-            <AutocompletePositioner>
-              <AutocompletePopup role="dialog" aria-label="autocomplete popup">
-                <AutocompleteList role="listbox" aria-label="autocomplete list">
-                  <AutocompleteGroup items={['workflow']}>
-                    <AutocompleteGroupLabel className="custom-label">
-                      Resources
-                    </AutocompleteGroupLabel>
-                    <AutocompleteSeparator className="custom-separator" data-testid="separator" />
-                    <AutocompleteItem value="workflow" className="custom-item">
-                      <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
-                      <AutocompleteItemIndicator
-                        className="custom-indicator"
-                        data-testid="indicator"
-                      />
-                    </AutocompleteItem>
-                  </AutocompleteGroup>
-                </AutocompleteList>
-              </AutocompletePopup>
-            </AutocompletePositioner>
-          </AutocompletePortal>
-        </Autocomplete>,
-      )
-
-      await expect.element(screen.getByText('Resources')).toHaveClass('custom-label')
-      await expect.element(screen.getByTestId('separator')).toHaveClass('custom-separator')
-      await expect
-        .element(screen.getByRole('option', { name: 'Workflow' }))
-        .toHaveClass('custom-item')
-      await expect.element(screen.getByText('Workflow')).toHaveClass('custom-text')
-      await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
     })
 
     it('should navigate function-rendered items with arrow keys', async () => {

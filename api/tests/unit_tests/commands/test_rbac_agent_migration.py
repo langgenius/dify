@@ -11,6 +11,8 @@ from commands.rbac import migrate_agent_permissions_to_rbac
 from services.enterprise.rbac_service import (
     LegacyAgentMigrationReport,
     LegacyAgentRoleMigration,
+    MemberRolesResponse,
+    RBACRole,
     _LegacyResourceWhitelistConfig,
 )
 
@@ -85,6 +87,7 @@ class _AgentPhaseSetup:
     agent_configs: list[_LegacyResourceWhitelistConfig] | None = None
     app_config: _LegacyResourceWhitelistConfig = field(default_factory=_whitelist_config)
     workspace_members: list[str] = field(default_factory=lambda: ["m1", "m2", "m3"])
+    protected_members: list[str] = field(default_factory=list)
     owner_account_id: str = "owner-1"
 
 
@@ -133,6 +136,30 @@ def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, 
             ),
             write_order=MagicMock(),
         )
+
+        def _member_roles(
+            *, tenant_id: str, account_id: str | None, member_account_ids: list[str]
+        ) -> list[MemberRolesResponse]:
+            del tenant_id, account_id
+            return [
+                MemberRolesResponse(
+                    account_id=account_id,
+                    roles=[
+                        RBACRole(
+                            id=f"role-{account_id}",
+                            type="workspace",
+                            category="global_system_default",
+                            name=account_id,
+                            is_builtin=True,
+                            role_tag="owner" if account_id == "owner-1" else "admin",
+                        )
+                    ],
+                )
+                for account_id in member_account_ids
+                if account_id in setup.protected_members
+            ]
+
+        stack.enter_context(patch(f"{MODULE}.RBACService.MemberRoles.batch_get", side_effect=_member_roles))
         mocks.write_order.attach_mock(mocks.replace_user_access_policies, "seed_members")
         mocks.write_order.attach_mock(mocks.sync_creator_bindings, "sync_creator")
         mocks.write_order.attach_mock(mocks.replace_whitelist, "replace_whitelist")
@@ -147,7 +174,11 @@ def _write_order(mocks: _AgentPhaseMocks) -> list[str]:
 def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync() -> None:
     result, mocks = _run_agent_phase(
         ["--apply", "--member-batch-size", "2"],
-        _AgentPhaseSetup(agents=[("ag1", "c1", None)], workspace_members=["m1", "m2", "m3"]),
+        _AgentPhaseSetup(
+            agents=[("ag1", "c1", None)],
+            workspace_members=["owner-1", "m1", "admin-1", "m2", "m3"],
+            protected_members=["owner-1", "admin-1"],
+        ),
     )
 
     assert result.exit_code == 0, result.output
@@ -160,9 +191,9 @@ def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(
     assert mocks.replace_whitelist.call_args.kwargs["payload"].automatic_include_workspace_members is True
 
     mocks.member_batches.assert_called_once_with("t1", 2)
-    assert mocks.replace_user_access_policies.call_count == 2
+    assert mocks.replace_user_access_policies.call_count == 3
     calls = mocks.replace_user_access_policies.call_args_list
-    assert [call.kwargs["payload"].account_ids for call in calls] == [["m1", "m2"], ["m3"]]
+    assert [call.kwargs["payload"].account_ids for call in calls] == [["m1"], ["m2"], ["m3"]]
     assert all(call.kwargs["payload"].access_policy_ids == ["default"] for call in calls)
     assert all(call.kwargs["target_account_id"] is None for call in calls)
 
@@ -171,7 +202,13 @@ def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(
     assert mocks.sync_creator_bindings.call_args.kwargs["account_id"] == "c1"
     assert "1 agent(s) changed, 0 already initialised" in result.output
 
-    assert _write_order(mocks) == ["seed_members", "seed_members", "sync_creator", "replace_whitelist"]
+    assert _write_order(mocks) == [
+        "seed_members",
+        "seed_members",
+        "seed_members",
+        "sync_creator",
+        "replace_whitelist",
+    ]
 
 
 def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:

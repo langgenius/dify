@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import Any
 
 from celery import shared_task
+from services.model_provider.service import ModelProviderService
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,7 +21,6 @@ from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationSta
 from services.billing_service import BillingService
 from services.entities.model_billing_migration import canonical_hash
 from services.model_billing_migration_service import ModelBillingMigrationService
-from services.model_provider_service import ModelProviderService
 from tasks.bootstrap_tokener_tenant_task import (
     MANAGED_TOKENER_CREDENTIAL_NAME,
     _begin_attempt,

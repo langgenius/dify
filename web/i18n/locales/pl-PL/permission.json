@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Uprawnienie dostępu",
   "accessRule.actions": "Akcje",
-  "accessRule.addMemberAria": "Dodaj {{name}}",
   "accessRule.addMembersTitle": "Dodaj członków",
   "accessRule.agentDescription": "Zarządzaj dostępem do tego agenta i uprawnieniami użytkowników.",
   "accessRule.agentTitle": "Zestaw uprawnień agenta",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} zestaw uprawnień",
   "accessRule.summary_other": "{{count}} zestawów uprawnień",
   "accessRule.updated": "Pomyślnie zaktualizowano regułę dostępu",
+  "accessRule.workspaceAdmin": "Administrator obszaru roboczego",
   "accessRule.workspaceOwner": "Właściciel obszaru roboczego",
   "common.duplicateAction": "Duplikuj",
   "group.agent": "Agenci",

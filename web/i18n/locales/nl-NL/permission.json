@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Toegangsrecht",
   "accessRule.actions": "Acties",
-  "accessRule.addMemberAria": "{{name}} toevoegen",
   "accessRule.addMembersTitle": "Leden toevoegen",
   "accessRule.agentDescription": "Beheer wie toegang heeft tot deze agent en welke rechten zij hebben.",
   "accessRule.agentTitle": "Agent-rechtenset",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} rechtenset",
   "accessRule.summary_other": "{{count}} rechtensets",
   "accessRule.updated": "Toegangsregel succesvol bijgewerkt",
+  "accessRule.workspaceAdmin": "Workspacebeheerder",
   "accessRule.workspaceOwner": "Eigenaar van de workspace",
   "common.duplicateAction": "Dupliceren",
   "group.agent": "Agenten",

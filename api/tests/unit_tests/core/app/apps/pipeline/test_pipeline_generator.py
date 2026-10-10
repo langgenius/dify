@@ -1,13 +1,13 @@
 import contextlib
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -17,6 +17,9 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.data_source.provider_service import DatasourceProviderService
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -38,7 +41,12 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
-    gen = module.PipelineGenerator()
+    gen = module.PipelineGenerator(
+        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        datasource_providers=DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
+    )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -228,10 +236,10 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    mocker.patch("services.dataset_service.DocumentService.get_documents_position", return_value=1)
+    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
     features = SimpleNamespace()
     get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
-    check_limits = mocker.patch("services.dataset_service.DocumentService.check_document_creation_limits")
+    check_limits = mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
 
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
@@ -292,7 +300,7 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
     features = SimpleNamespace()
     mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
     check_limits = mocker.patch(
-        "services.dataset_service.DocumentService.check_document_creation_limits",
+        "services.knowledge.dataset_service.DocumentService.check_document_creation_limits",
         side_effect=ValueError("document limit exceeded"),
     )
 

@@ -9,6 +9,14 @@
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
     },
+    "./use-merged-refs": {
+      "types": "./src/use-merged-refs.ts",
+      "import": "./src/use-merged-refs.ts"
+    },
+    "./use-ref-with-init": {
+      "types": "./src/use-ref-with-init.ts",
+      "import": "./src/use-ref-with-init.ts"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
@@ -60,6 +68,14 @@
     "./dialog": {
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
+    },
+    "./date-picker": {
+      "types": "./src/date-time/date-picker/index.tsx",
+      "import": "./src/date-time/date-picker/index.tsx"
+    },
+    "./date-time-picker": {
+      "types": "./src/date-time/date-time-picker/index.tsx",
+      "import": "./src/date-time/date-time-picker/index.tsx"
     },
     "./drawer": {
       "types": "./src/drawer/index.tsx",
@@ -157,6 +173,10 @@
       "types": "./src/textarea/index.tsx",
       "import": "./src/textarea/index.tsx"
     },
+    "./time-picker": {
+      "types": "./src/date-time/time-picker/index.tsx",
+      "import": "./src/date-time/time-picker/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
@@ -176,6 +196,10 @@
     "./infotip": {
       "types": "./src/infotip/index.tsx",
       "import": "./src/infotip/index.tsx"
+    },
+    "./direction-provider": {
+      "types": "./src/direction-provider/index.tsx",
+      "import": "./src/direction-provider/index.tsx"
     }
   },
   "scripts": {
@@ -188,7 +212,10 @@
   },
   "dependencies": {
     "@base-ui/utils": "catalog:",
-    "cn": "catalog:"
+    "@date-fns/tz": "catalog:",
+    "@daypicker/react": "catalog:",
+    "cn": "catalog:",
+    "date-fns": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",

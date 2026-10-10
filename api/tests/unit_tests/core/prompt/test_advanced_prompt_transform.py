@@ -3,8 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.app.app_config.entities import ModelConfigEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -17,14 +15,12 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from models.model import Conversation
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
 def test__get_completion_model_prompt_messages():
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = "openai"
-    model_config_mock.model = "gpt-3.5-turbo-instruct"
+    model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 
     prompt_template = "Context:\n{{#context#}}\n\nHistories:\n{{#histories#}}\n\nyou are {{name}}."
     prompt_template_config = CompletionModelPromptTemplate(text=prompt_template)
@@ -38,7 +34,7 @@ def test__get_completion_model_prompt_messages():
     files = []
     context = "I am superman."
 
-    memory = TokenBufferMemory(conversation=Conversation(), model_instance=model_config_mock)
+    memory = make_token_buffer_memory(model_config)
 
     history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
     memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
@@ -53,7 +49,7 @@ def test__get_completion_model_prompt_messages():
         context=context,
         memory_config=memory_config,
         memory=memory,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     assert len(prompt_messages) == 1
@@ -72,12 +68,12 @@ def test__get_completion_model_prompt_messages():
 
 
 def test__get_chat_model_prompt_messages(get_chat_model_args):
-    model_config_mock, memory_config, messages, inputs, context = get_chat_model_args
+    model_config, memory_config, messages, inputs, context = get_chat_model_args
 
     files = []
     query = "Hi2."
 
-    memory = TokenBufferMemory(conversation=Conversation(), model_instance=model_config_mock)
+    memory = make_token_buffer_memory(model_config)
 
     history_prompt_messages = [UserPromptMessage(content="Hi1."), AssistantPromptMessage(content="Hello1!")]
     memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
@@ -92,7 +88,7 @@ def test__get_chat_model_prompt_messages(get_chat_model_args):
         context=context,
         memory_config=memory_config,
         memory=memory,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     assert len(prompt_messages) == 6
@@ -104,7 +100,7 @@ def test__get_chat_model_prompt_messages(get_chat_model_args):
 
 
 def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
-    model_config_mock, _, messages, inputs, context = get_chat_model_args
+    model_config, _, messages, inputs, context = get_chat_model_args
 
     files = []
 
@@ -118,7 +114,7 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
         context=context,
         memory_config=None,
         memory=None,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     assert len(prompt_messages) == 3
@@ -129,7 +125,7 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
 
 
 def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args, monkeypatch: pytest.MonkeyPatch):
-    model_config_mock, _, messages, inputs, context = get_chat_model_args
+    model_config, _, messages, inputs, context = get_chat_model_args
     apply_config_overrides(monkeypatch, MULTIMODAL_SEND_FORMAT="url")
 
     files = [
@@ -157,7 +153,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             context=context,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
 
     assert len(prompt_messages) == 4
@@ -172,9 +168,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
 
 @pytest.fixture
 def get_chat_model_args():
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = "openai"
-    model_config_mock.model = "gpt-4"
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
 
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
@@ -190,12 +184,12 @@ def get_chat_model_args():
 
     context = "I am superman."
 
-    return model_config_mock, memory_config, prompt_messages, inputs, context
+    return model_config, memory_config, prompt_messages, inputs, context
 
 
 def test_get_prompt_dispatches_completion_and_chat_and_invalid():
     transform = AdvancedPromptTransform()
-    model_config = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     completion_template = CompletionModelPromptTemplate(text="Hello {{name}}", edition_type="basic")
     chat_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="basic")]
 
@@ -240,7 +234,7 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid():
 
 
 def test_completion_prompt_jinja2_with_files():
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform = AdvancedPromptTransform()
     completion_template = CompletionModelPromptTemplate(text="Hi {{name}}", edition_type="jinja2")
 
@@ -268,7 +262,7 @@ def test_completion_prompt_jinja2_with_files():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
 
     assert len(messages) == 1
@@ -279,7 +273,7 @@ def test_completion_prompt_jinja2_with_files():
 
 
 def test_completion_prompt_basic_sets_query_variable():
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform = AdvancedPromptTransform()
     template = CompletionModelPromptTemplate(text="Q={{#query#}}", edition_type="basic")
 
@@ -291,7 +285,7 @@ def test_completion_prompt_basic_sets_query_variable():
         context=None,
         memory_config=None,
         memory=None,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     assert messages[0].content == "Q=what?"
@@ -299,7 +293,7 @@ def test_completion_prompt_basic_sets_query_variable():
 
 def test_chat_prompt_with_variable_template_and_context():
     transform = AdvancedPromptTransform(with_variable_tmpl=True)
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="sys={{#node.name#}} ctx={{#context#}}", role=PromptMessageRole.SYSTEM)]
 
     messages = transform._get_chat_model_prompt_messages(
@@ -310,7 +304,7 @@ def test_chat_prompt_with_variable_template_and_context():
         context="context-text",
         memory_config=None,
         memory=None,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     assert len(messages) == 1
@@ -320,7 +314,7 @@ def test_chat_prompt_with_variable_template_and_context():
 
 def test_chat_prompt_jinja2_branch_and_invalid_edition():
     transform = AdvancedPromptTransform()
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="jinja2")]
 
     with patch("core.prompt.advanced_prompt_transform.Jinja2Formatter.format", return_value="Hello John"):
@@ -332,7 +326,7 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
     assert messages[0].content == "Hello John"
 
@@ -346,13 +340,13 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
 
 
 def test_chat_prompt_query_template_and_query_only_branch():
     transform = AdvancedPromptTransform()
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(
         window=MemoryConfig.WindowConfig(enabled=False),
         query_prompt_template="query={{#sys.query#}} ctx={{#context#}}",
@@ -367,16 +361,16 @@ def test_chat_prompt_query_template_and_query_only_branch():
         context="ctx",
         memory_config=memory_config,
         memory=None,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
     assert messages[-1].content == "query={{#sys.query#}} ctx=ctx"
 
 
 def test_chat_prompt_memory_with_files_and_query():
     transform = AdvancedPromptTransform()
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
-    memory = MagicMock(spec=TokenBufferMemory)
+    memory = make_token_buffer_memory(model_config)
     prompt_template = [ChatModelMessage(text="sys", role=PromptMessageRole.SYSTEM)]
     file = File(
         file_id="file1",
@@ -402,7 +396,7 @@ def test_chat_prompt_memory_with_files_and_query():
             context=None,
             memory_config=memory_config,
             memory=memory,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
 
     assert isinstance(messages[-1].content, list)
@@ -411,7 +405,7 @@ def test_chat_prompt_memory_with_files_and_query():
 
 def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     transform = AdvancedPromptTransform()
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     file = File(
         file_id="file1",
         tenant_id="tenant1",
@@ -434,7 +428,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
     assert isinstance(messages[-1].content, list)
     assert messages[-1].content[1].data == "u"
@@ -452,7 +446,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
     assert isinstance(messages[-1], UserPromptMessage)
     assert isinstance(messages[-1].content, list)
@@ -461,7 +455,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
 
 def test_chat_prompt_files_with_query_branch():
     transform = AdvancedPromptTransform()
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     file = File(
         file_id="file1",
         tenant_id="tenant1",
@@ -483,7 +477,7 @@ def test_chat_prompt_files_with_query_branch():
             context=None,
             memory_config=None,
             memory=None,
-            model_config=model_config_mock,
+            model_config=model_config,
         )
 
     assert isinstance(messages[-1].content, list)
@@ -495,7 +489,7 @@ def test_set_context_query_histories_variable_helpers():
     parser_context = PromptTemplateParser(template="{{#context#}}")
     parser_query = PromptTemplateParser(template="{{#query#}}")
     parser_hist = PromptTemplateParser(template="{{#histories#}}")
-    model_config_mock = MagicMock(spec=ModelConfigEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(
         role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
         window=MemoryConfig.WindowConfig(enabled=False),
@@ -512,7 +506,7 @@ def test_set_context_query_histories_variable_helpers():
             role_prefix=memory_config.role_prefix,  # type: ignore[arg-type]
             parser=parser_hist,
             prompt_inputs={},
-            model_config=model_config_mock,
+            model_config=model_config,
         )["#histories#"]
         == ""
     )

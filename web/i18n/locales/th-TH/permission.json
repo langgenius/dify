@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "สิทธิ์การเข้าถึง",
   "accessRule.actions": "การดําเนินการ",
-  "accessRule.addMemberAria": "เพิ่ม {{name}}",
   "accessRule.addMembersTitle": "เพิ่มสมาชิก",
   "accessRule.agentDescription": "จัดการผู้ที่เข้าถึงตัวแทนนี้ได้และสิทธิ์ของผู้ใช้",
   "accessRule.agentTitle": "ชุดสิทธิ์ตัวแทน",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "ชุดสิทธิ์ {{count}} ชุด",
   "accessRule.summary_other": "ชุดสิทธิ์ {{count}} ชุด",
   "accessRule.updated": "อัปเดตกฎการเข้าถึงสําเร็จ",
+  "accessRule.workspaceAdmin": "ผู้ดูแลเวิร์กสเปซ",
   "accessRule.workspaceOwner": "เจ้าของเวิร์กสเปซ",
   "common.duplicateAction": "ทําซ้ํา",
   "group.agent": "ตัวแทน",

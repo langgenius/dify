@@ -394,6 +394,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
+      appId,
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (serverLatestPublishedAt || 0) * 1000,

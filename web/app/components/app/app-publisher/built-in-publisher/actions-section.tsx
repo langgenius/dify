@@ -11,7 +11,8 @@ type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
   'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
 > & {
-  appDetail: Partial<Pick<AppDetailWithSite, 'id' | 'mode'>> | null | undefined
+  appId: string
+  appMode: AppDetailWithSite['mode']
   appURL: string
   canViewAccessPoint: boolean
   disabledFunctionButton: boolean
@@ -30,7 +31,8 @@ type PublisherActionsSectionProps = Pick<
 }
 
 export function PublisherActionsSection({
-  appDetail,
+  appId,
+  appMode,
   appURL,
   canViewAccessPoint,
   disabledFunctionButton,
@@ -54,13 +56,10 @@ export function PublisherActionsSection({
 }: PublisherActionsSectionProps) {
   const { t } = useTranslation(['common', 'workflow'])
 
-  const appId = appDetail?.id
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
-  const showDeploy = Boolean(showDeployAction && appId)
-  const showWorkflowTool =
-    appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
-  const navigationDisabled = !hasPublishedVersion || !appId
+  const showWorkflowTool = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
 
@@ -110,13 +109,13 @@ export function PublisherActionsSection({
         <SuggestedAction
           disabled={navigationDisabled}
           description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-          link={appId ? `/app/${appId}/access-point` : undefined}
+          link={`/app/${appId}/access-point`}
           icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
         >
           {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
         </SuggestedAction>
       )}
-      {showDeploy && (
+      {showDeployAction && (
         <SuggestedAction
           disabled={navigationDisabled}
           description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}

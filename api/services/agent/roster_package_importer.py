@@ -202,9 +202,11 @@ class RosterAgentPackageImporter:
         except ValidationError as exc:
             raise InvalidRosterAgentPackageError("Invalid Agent metadata overrides") from exc
 
-        # Resolve billing before uploading package members or opening the write transaction.
-        allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(tenant_id)
         try:
+            # Resolve billing before uploading package members or opening the write transaction.
+            allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(
+                tenant_id
+            )
             materialized_icons = self._resources.materialize_icon_resources(
                 read_member=read_member, icons=icons, tenant_id=tenant_id, account_id=account.id
             )
@@ -298,9 +300,9 @@ class RosterAgentPackageImporter:
         account: Account,
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
+        allow_premium_site_settings: bool,
         app_metadata: AgentPackageMetadata | None = None,
         site_data: SiteDsl | None = None,
-        allow_premium_site_settings: bool,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
             name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)

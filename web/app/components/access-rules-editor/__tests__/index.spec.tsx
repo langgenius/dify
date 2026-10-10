@@ -366,15 +366,95 @@ describe('AccessRulesEditor', () => {
         name: 'permission.accessRule.addMembersTitle',
       })
       expect(within(addDialog).getByText('Workspace Owner')).toBeInTheDocument()
+      const ownerItem = within(addDialog).getByRole('menuitem', { name: /Workspace Owner/ })
+      expect(ownerItem).toHaveAttribute('aria-disabled', 'true')
+      expect(ownerItem).toHaveTextContent('common.operation.added')
+      expect(ownerItem).not.toHaveTextContent('+ common.operation.add')
+      expect(onAddAccessSubject).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['app', 'admin', 'Workspace Admin'],
+    ['dataset', '', 'admin'],
+  ] as const)(
+    'should identify and protect a workspace admin in %s access',
+    async (resourceType, roleTag, roleName) => {
+      const user = userEvent.setup()
+      const adminSetting: ResourceUserAccessSetting = {
+        ...createUserAccessSetting(resourceType),
+        account: {
+          account_id: 'workspace-admin',
+          account_name: 'Workspace Admin',
+          email: 'admin@example.com',
+        },
+        roles: [
+          {
+            id: 'admin-role',
+            type: 'workspace',
+            category: 'global_system_default',
+            name: roleName,
+            is_builtin: true,
+            permission_keys: [],
+            role_tag: roleTag,
+          },
+        ],
+      }
+      const memberSetting: ResourceUserAccessSetting = {
+        ...createDefaultUserAccessSetting(),
+        account: {
+          account_id: 'account-2',
+          account_name: 'Mia',
+          email: 'mia@example.com',
+        },
+      }
+      const onUserAccessPoliciesChange = vi.fn()
+      const onRemoveAccessPolicyMemberBinding = vi.fn()
+      const onBatchRemoveAccessPolicyMemberBindings = vi.fn().mockResolvedValue(undefined)
+
+      render(
+        <AccessRulesEditor
+          rules={[createRule(resourceType)]}
+          userAccessSettings={[adminSetting, memberSetting]}
+          isLoadingRules={false}
+          isLoadingUserAccessSettings={false}
+          automaticIncludeWorkspaceMembers={false}
+          isUpdatingAutomaticIncludeWorkspaceMembers={false}
+          updatingAccountId={null}
+          onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={onRemoveAccessPolicyMemberBinding}
+          onBatchRemoveAccessPolicyMemberBindings={onBatchRemoveAccessPolicyMemberBindings}
+        />,
+      )
+
+      const adminRow = screen.getByRole('row', { name: /Workspace Admin/ })
+      expect(within(adminRow).getByText('permission.accessRule.workspaceAdmin')).toBeInTheDocument()
+      expect(within(adminRow).getByRole('checkbox', { name: 'Workspace Admin' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
       expect(
-        within(addDialog).getByRole('button', { name: 'common.operation.added' }),
+        within(adminRow).getByLabelText(/permission\.accessRule\.exceptionPermissionFor/),
       ).toBeDisabled()
       expect(
-        within(addDialog).queryByRole('button', {
-          name: 'permission.accessRule.addMemberAria:{"name":"Workspace Owner"}',
-        }),
-      ).not.toBeInTheDocument()
-      expect(onAddAccessSubject).not.toHaveBeenCalled()
+        within(adminRow).getByRole('button', { name: 'common.operation.remove' }),
+      ).toBeDisabled()
+
+      await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+      expect(screen.getByRole('checkbox', { name: 'Workspace Admin' })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Mia' })).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      const dialog = screen.getByRole('alertdialog', {
+        name: 'permission.accessRule.batchRemoveTitle',
+      })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+
+      expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledWith([
+        { accessPolicyId: 'default', accountIds: ['account-2'] },
+      ])
+      expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
+      expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
     },
   )
 
@@ -442,22 +522,92 @@ describe('AccessRulesEditor', () => {
       name: 'permission.accessRule.addMembersTitle',
     })
     expect(within(dialog).getByText('Evan')).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'common.operation.added' })).toBeDisabled()
-    expect(
-      within(dialog).queryByRole('button', {
-        name: 'permission.accessRule.addMemberAria:{"name":"Evan"}',
-      }),
-    ).not.toBeInTheDocument()
+    const evanItem = within(dialog).getByRole('menuitem', { name: /Evan/ })
+    expect(evanItem).toHaveAttribute('aria-disabled', 'true')
+    expect(evanItem).toHaveTextContent('common.operation.added')
+    expect(evanItem).not.toHaveTextContent('+ common.operation.add')
     expect(within(dialog).getByText('Mia')).toBeInTheDocument()
     expect(within(dialog).queryByRole('tablist')).not.toBeInTheDocument()
 
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'permission.accessRule.addMemberAria:{"name":"Mia"}',
-      }),
-    )
+    const miaItem = within(dialog).getByRole('menuitem', { name: /Mia/ })
+    expect(miaItem).toHaveTextContent('+ common.operation.add')
+    await user.click(miaItem)
 
     expect(onAddAccessSubject).toHaveBeenCalledWith('account-2', ['default'])
+  })
+
+  it('should filter add-member candidates by name and email, not by the row action text', async () => {
+    const user = userEvent.setup()
+    mockMembers.accounts = [
+      createMember({ id: 'account-3', name: 'Evan', email: 'evan@example.com' }),
+      createMember(),
+    ]
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        automaticIncludeWorkspaceMembers={false}
+        isUpdatingAutomaticIncludeWorkspaceMembers={false}
+        existingAccountIds={[]}
+        updatingAccountId={null}
+        onAddAccessSubject={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'permission.accessRule.addMembersTitle',
+    })
+    const search = within(dialog).getByRole('searchbox', { name: 'common.operation.search' })
+
+    await user.type(search, 'mia@')
+    expect(within(dialog).getByRole('menuitem', { name: /Mia/ })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('menuitem', { name: /Evan/ })).not.toBeInTheDocument()
+
+    // Every row shows the add action, so a query for its text must not match them all.
+    await user.clear(search)
+    await user.type(search, 'operation.add')
+    expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
+    expect(
+      await within(dialog).findByText('permission.accessRule.noAvailableMembers'),
+    ).toHaveAttribute('role', 'status')
+  })
+
+  it('should announce a failed member load without offering candidates', async () => {
+    const user = userEvent.setup()
+    mockMembersQuery.mockImplementation(() => ({
+      data: undefined,
+      isPending: false,
+      error: new Error('Request failed'),
+    }))
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        automaticIncludeWorkspaceMembers={false}
+        isUpdatingAutomaticIncludeWorkspaceMembers={false}
+        existingAccountIds={[]}
+        updatingAccountId={null}
+        onAddAccessSubject={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'permission.accessRule.addMembersTitle',
+    })
+
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByText('permission.accessRule.noAvailableMembers'),
+    ).not.toBeInTheDocument()
   })
 
   it('should select individual rows and all selectable rows on the current page', async () => {

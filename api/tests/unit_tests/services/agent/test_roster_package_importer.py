@@ -85,7 +85,7 @@ class _MemoryStorage:
         self.deleted.append(filename)
         self.files.pop(filename, None)
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
 
@@ -345,7 +345,7 @@ def test_template_url_rejects_failed_or_unsafe_download_before_writes(
 
     class OversizedDownload(httpx.SyncByteStream):
         @override
-        def __iter__(self) -> Generator[bytes, None, None]:
+        def __iter__(self) -> Generator[bytes]:
             yield b"x" * (2 * 1024 * 1024)
             pytest.fail("An oversized Agent package must stop downloading before reading the tail")
 
@@ -404,6 +404,9 @@ def test_local_template_copies_published_resources_without_outer_archive(
     target = Tenant(name="Target workspace")
     target.id = str(uuid4())
     with sqlite_session_factory() as session:
+        source_site = session.scalar(select(Site).where(Site.app_id == original.app_id))
+        assert source_site is not None
+        source_site.title = "Template site"
         draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == original.agent_id))
         assert draft is not None
         snapshot = AgentConfigSnapshot(
@@ -457,6 +460,9 @@ def test_local_template_copies_published_resources_without_outer_archive(
         assert app is not None
         assert app.tenant_id == target.id
         assert app.name == "Local copy"
+        site = session.scalar(select(Site).where(Site.app_id == result.app_id))
+        assert site is not None
+        assert site.title == "Template site"
         copied_agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
         assert copied_agent is not None
         copied_draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == copied_agent.id))

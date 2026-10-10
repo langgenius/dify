@@ -335,11 +335,11 @@ def test_create_quota_is_part_of_admission_and_precedes_application_call(
         "controllers.console.wraps.FeatureService.get_features",
         lambda *_args, **_kwargs: FeatureModel(apps=LimitationModel(size=1, limit=1)),
     )
-    injector = inspect.unwrap(
-        controller.AppListApi.post, stop=lambda f: "allowed_roles" in inspect.getclosurevars(f).nonlocals
+    admission = inspect.unwrap(
+        controller.AppListApi.post, stop=lambda f: inspect.getclosurevars(f).nonlocals.get("resource") == "apps"
     )
     with app.test_request_context(method="POST", json={"name": "Example", "mode": "chat"}), pytest.raises(Forbidden):
-        injector(controller.AppListApi())
+        admission(controller.AppListApi())
     assert boundary.calls == []
 
 

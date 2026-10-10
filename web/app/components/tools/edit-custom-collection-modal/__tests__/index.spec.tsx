@@ -1,4 +1,5 @@
 import type { ModalContextState } from '@/context/modal-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   act,
   fireEvent,
@@ -6,8 +7,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
@@ -399,6 +402,39 @@ describe('EditCustomCollectionModal', () => {
       expect(
         screen.getByRole('button', { name: 'tools.createTool.changeIcon' }),
       ).toBeInTheDocument()
+    })
+
+    it('saves the confirmed icon without submitting the collection from the picker', async () => {
+      const user = userEvent.setup()
+      const client = new QueryClient()
+      client.setQueryData(emojiCatalogOptions.queryKey, [])
+      render(
+        <QueryClientProvider client={client}>
+          <EditCustomCollectionModal payload={undefined} onHide={mockOnHide} onAdd={mockOnAdd} />
+        </QueryClientProvider>,
+      )
+      await user.type(
+        screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'),
+        'provider',
+      )
+      fireEvent.change(screen.getByPlaceholderText('tools.createTool.schemaPlaceHolder'), {
+        target: { value: '{}' },
+      })
+      await waitFor(() => expect(parseParamsSchemaMock).toHaveBeenCalledWith('{}'))
+      await user.click(screen.getByRole('button', { name: 'tools.createTool.changeIcon' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+      expect(mockOnAdd).not.toHaveBeenCalled()
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+        ).not.toBeInTheDocument(),
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(mockOnAdd).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ icon: { content: '🕵️', background: '#F3FEE7' } }),
+      )
+      client.clear()
     })
 
     it('should render icon section', () => {

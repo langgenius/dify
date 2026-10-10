@@ -46,6 +46,7 @@
     "Prioritet e-poçt və söhbət dəstəyi"
   ],
   "plans.premium.includesTitle": "İcma planındakı hər şey və əlavə olaraq:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Üstün",
   "plans.premium.price": "Miqyaslanan",
   "plans.premium.priceTip": "Bulud mağazasına əsasən",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Planları və funksiyaları müqayisə et",
   "plansCommon.currentPlan": "Cari plan",
   "plansCommon.days": "gün",
+  "plansCommon.discountedAnnualPrice": "Endirimli illik qiymət: ",
   "plansCommon.documentProcessingPriority": " Sənəd emalı",
   "plansCommon.documentProcessingPriorityTip": "Sənədlərin daha yüksək prioritetlə emalı üçün planınızı yüksəldin.",
   "plansCommon.documentProcessingPriorityUpgrade": "Daha çox məlumatı daha yüksək dəqiqliklə və daha sürətlə emal et.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate dəstəyi",
   "plansCommon.month": "ay",
   "plansCommon.mostPopular": "Populyar",
+  "plansCommon.originalAnnualPrice": "İlkin illik qiymət: ",
   "plansCommon.priceTip": "hər iş sahəsi üçün/",
   "plansCommon.priority.priority": "Prioritet",
   "plansCommon.priority.standard": "Standart",

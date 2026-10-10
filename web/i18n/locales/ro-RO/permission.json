@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Permisiune de acces",
   "accessRule.actions": "Acțiuni",
-  "accessRule.addMemberAria": "Adaugă {{name}}",
   "accessRule.addMembersTitle": "Adaugă membri",
   "accessRule.agentDescription": "Gestionează cine poate accesa acest agent și permisiunile acestora.",
   "accessRule.agentTitle": "Set de permisiuni pentru agent",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} set de permisiuni",
   "accessRule.summary_other": "{{count}} seturi de permisiuni",
   "accessRule.updated": "Regula de acces a fost actualizată cu succes",
+  "accessRule.workspaceAdmin": "Administratorul spațiului de lucru",
   "accessRule.workspaceOwner": "Proprietarul spațiului de lucru",
   "common.duplicateAction": "Duplică",
   "group.agent": "Agenți",

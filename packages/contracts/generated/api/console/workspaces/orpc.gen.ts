@@ -1725,20 +1725,12 @@ export const models2 = {
   modelTypes,
 }
 
-/**
- * Get workspace permission settings
- *
- * Returns permission flags that control workspace features like member invitations and owner transfer.
- */
 export const get22 = oc
   .route({
-    description:
-      'Returns permission flags that control workspace features like member invitations and owner transfer.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPermission',
     path: '/workspaces/current/permission',
-    summary: 'Get workspace permission settings',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPermissionResponse)

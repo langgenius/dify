@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "إذن الوصول",
   "accessRule.actions": "الإجراءات",
-  "accessRule.addMemberAria": "إضافة {{name}}",
   "accessRule.addMembersTitle": "إضافة أعضاء",
   "accessRule.agentDescription": "إدارة من يمكنه الوصول إلى هذا الوكيل وأذوناتهم.",
   "accessRule.agentTitle": "مجموعة أذونات الوكيل",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} مجموعة أذونات",
   "accessRule.summary_other": "{{count}} مجموعات أذونات",
   "accessRule.updated": "تم تحديث قاعدة الوصول بنجاح",
+  "accessRule.workspaceAdmin": "مدير مساحة العمل",
   "accessRule.workspaceOwner": "مالك مساحة العمل",
   "common.duplicateAction": "تكرار",
   "group.agent": "الوكلاء",

@@ -176,6 +176,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.bootstrap_tokener_tenant_task",  # managed Tokener setup for new tenants
         "tasks.prepare_tokener_migration_task",  # recover persisted legacy migration preparations

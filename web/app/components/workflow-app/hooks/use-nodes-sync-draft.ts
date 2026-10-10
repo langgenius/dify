@@ -4,7 +4,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,11 +20,13 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '@/app/components/workflow/nodes/agent-v2/types'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
+import { consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
@@ -40,6 +42,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
+  const appId = useStore((state) => state.appId)
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode,
+    }),
+  )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -123,7 +132,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
-          nodes: producedNodes,
+          nodes: normalizeWorkflowNodes(producedNodes, appMode),
           edges: producedEdges,
           viewport: {
             x,
@@ -137,7 +146,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled])
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return

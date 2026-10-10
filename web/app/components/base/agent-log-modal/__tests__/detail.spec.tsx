@@ -2,7 +2,6 @@ import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogDetail from '../detail'
 
@@ -25,10 +24,6 @@ vi.mock('@/service/log', () => ({
 
 vi.mock('@/app/notifications', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
@@ -116,6 +111,7 @@ const createMockResponse = (
 describe('AgentLogDetail', () => {
   const renderComponent = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
     const defaultProps: ComponentProps<typeof AgentLogDetail> = {
+      appId: 'app-id',
       conversationID: 'conv-id',
       messageID: 'msg-id',
       log: createMockLog(),
@@ -228,20 +224,6 @@ describe('AgentLogDetail', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should not fetch data when app detail is unavailable', async () => {
-      vi.mocked(useAppStore).mockImplementationOnce((selector) =>
-        selector({ appDetail: undefined } as never),
-      )
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      renderComponent()
-
-      await waitFor(() => {
-        expect(fetchAgentLogDetail).not.toHaveBeenCalled()
-      })
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    })
-
     it('should notify on API error', async () => {
       vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
 

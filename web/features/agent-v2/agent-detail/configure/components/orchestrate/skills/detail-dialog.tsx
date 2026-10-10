@@ -58,7 +58,7 @@ export type AgentSkillDetail = {
     isLoading?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode; depth: number; open: boolean }) => void
-  onFolderDoubleClick?: (context: { file: AgentSkillFileNode; depth: number }) => void
+  onFolderEnter?: (context: { file: AgentSkillFileNode; depth: number }) => void
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode; depth: number }) => ReactNode
@@ -77,7 +77,7 @@ function AgentSkillFileList({
   files,
   folderOpenState,
   onFolderOpenChange,
-  onFolderDoubleClick,
+  onFolderEnter,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
@@ -90,7 +90,7 @@ function AgentSkillFileList({
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
-  onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
+  onFolderEnter?: AgentSkillDetail['onFolderEnter']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
@@ -126,7 +126,7 @@ function AgentSkillFileList({
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
-      onFolderDoubleClick={onFolderDoubleClick}
+      onFolderEnter={onFolderEnter}
       renderFile={
         onSelectFile
           ? ({ depth, file, selected, children }) => (
@@ -375,7 +375,7 @@ export function AgentSkillDetailDialog({
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
-            onFolderDoubleClick={detail.onFolderDoubleClick}
+            onFolderEnter={detail.onFolderEnter}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}

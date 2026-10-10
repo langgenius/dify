@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Şifre gereklidir",
   "error.passwordInvalid": "Şifre harf ve rakamlardan oluşmalı ve uzunluğu 8 karakterden fazla olmalıdır",
   "error.registrationNotAllowed": "Hesap bulunamadı. Kayıt olmak için lütfen sistem yöneticisi ile iletişime geçin.",
+  "error.ssoFailed": "SSO ile giriş başarısız oldu. Lütfen tekrar deneyin veya yöneticinize başvurun.",
   "explore": "Dify'yi Keşfet",
   "forget": "Şifrenizi mi unuttunuz?",
   "forgotPassword": "Şifrenizi mi unuttunuz?",

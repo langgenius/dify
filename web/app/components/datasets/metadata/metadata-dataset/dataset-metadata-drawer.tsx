@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -138,14 +138,14 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
                 })}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
@@ -230,9 +230,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
                 </DrawerTitle>
-                <DrawerCloseButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 rounded-md"
+                <DrawerClose
+                  render={
+                    <IconButton
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                      size="md"
+                    >
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">

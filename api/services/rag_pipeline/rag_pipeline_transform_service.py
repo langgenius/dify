@@ -19,6 +19,7 @@ from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.file_service import FileService
@@ -56,7 +57,7 @@ class RagPipelineTransformService:
         if not datasource_type and not indexing_technique:
             return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
 
-        doc_form = dataset.get_doc_form(session=session)
+        doc_form = get_dataset_doc_form(dataset, session=session)
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None

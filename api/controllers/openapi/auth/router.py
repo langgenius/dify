@@ -11,11 +11,14 @@ from configs import dify_config
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import pipeline_for_subject
 from controllers.openapi.auth.requirements import assert_license_valid
+from controllers.openapi.auth.resource_access import authenticate_resource_token
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
+from core.logging.context import get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
+from services.auth.resource_access_token_contracts import is_resource_access_token
 
 
 class AuthRouter:
@@ -44,11 +47,12 @@ class AuthRouter:
         assert_bearer_feature_enabled()
 
         token = extract_bearer(request)
+        is_resource_token = bool(token and is_resource_access_token(token))
         if not token:
             raise Unauthorized("bearer required")
 
         try:
-            auth = get_authenticator().authenticate(token)
+            auth = authenticate_resource_token(token) if is_resource_token else get_authenticator().authenticate(token)
         except InvalidBearerError:
             # One answer for every rejection reason - unknown prefix, no live row,
             # expired - so a caller cannot probe which one it hit. Same reasoning as
@@ -61,7 +65,12 @@ class AuthRouter:
         # Account-context endpoints materialize identity and release it in the
         # pipeline, before calling services that own their transactions.
         with session_factory.create_session() as session:
-            ctx = Context(subject, session, dict(request.view_args or {}))
+            ctx = Context(
+                subject,
+                session,
+                dict(request.view_args or {}),
+                trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+            )
             try:
                 result = pipeline.run(
                     subject=subject,

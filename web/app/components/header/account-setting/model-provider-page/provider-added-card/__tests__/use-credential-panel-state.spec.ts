@@ -25,7 +25,6 @@ vi.mock('../use-trial-credits', () => ({
 }))
 
 const renderPanelHook = (provider: ModelProvider | undefined) => {
-  // oxlint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
   return renderHookWithConsoleQuery(() => useCredentialPanelState(provider), {
     systemFeatures: { deployment_edition: 'CLOUD' },
     trialModels: mockTrialModels,

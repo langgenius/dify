@@ -18,7 +18,6 @@ type Props = Readonly<{
   schema: CredentialFormSchema
   value: PluginTriggerVarInputs
   onChange: (value: PluginTriggerVarInputs) => void
-  inPanel?: boolean
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, unknown>
@@ -31,7 +30,6 @@ const TriggerFormItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentEvent,
   currentProvider,
   extraParams,
@@ -94,7 +92,6 @@ const TriggerFormItem: FC<Props> = ({
         schema={schema}
         value={value}
         onChange={onChange}
-        inPanel={inPanel}
         currentTool={currentEvent}
         currentProvider={currentProvider}
         providerType="trigger"

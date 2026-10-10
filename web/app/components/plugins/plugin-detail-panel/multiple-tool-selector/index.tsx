@@ -6,11 +6,11 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useAllMCPTools } from '@/service/use-tools'
 
 type Props = Readonly<{
@@ -132,7 +132,7 @@ const MultipleToolSelector = ({
           {supportCollapse ? (
             <CollapsibleTrigger
               aria-label={label}
-              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
+              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary"
             >
               <span
                 id={titleId}

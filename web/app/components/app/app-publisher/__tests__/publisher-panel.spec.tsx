@@ -37,7 +37,8 @@ function PublisherPanelHarness({
       <PublisherPanel
         builtInPublisher={{
           actions: {
-            appDetail: { id: 'app-1', mode: AppModeEnum.CHAT },
+            appId: 'app-1',
+            appMode: AppModeEnum.CHAT,
             appURL: 'https://example.com/app',
             canViewAccessPoint: false,
             disabledFunctionButton: false,

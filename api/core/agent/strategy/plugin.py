@@ -44,7 +44,7 @@ class PluginAgentStrategy(BaseAgentStrategy):
         app_id: str | None = None,
         message_id: str | None = None,
         credentials: InvokeCredentials | None = None,
-    ) -> Generator[AgentInvokeMessage, None, None]:
+    ) -> Generator[AgentInvokeMessage]:
         """
         Invoke the agent strategy.
         """

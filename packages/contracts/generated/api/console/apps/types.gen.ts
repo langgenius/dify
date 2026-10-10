@@ -4187,6 +4187,7 @@ export type GetAppsData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
@@ -4322,6 +4323,7 @@ export type GetAppsStarredData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>

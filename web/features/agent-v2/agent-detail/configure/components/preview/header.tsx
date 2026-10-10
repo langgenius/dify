@@ -46,7 +46,7 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}
-        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0"
       >
         <span
           aria-hidden
@@ -158,8 +158,8 @@ export function AgentPreviewHeader({
   )
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={mode}
           onValueChange={(value) => onModeChange(value)}
@@ -211,8 +211,8 @@ export function AgentPreviewHeader({
           </div>
         </ModeInfoTip>
       </div>
-      <div className="flex shrink-0 items-center">
-        <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center max-sm:w-full max-sm:flex-wrap max-sm:justify-end">
+        <div className="flex items-center gap-2 max-sm:flex-wrap">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -244,7 +244,7 @@ export function AgentPreviewHeader({
         </div>
         {showChatFeaturesAction && (
           <>
-            <SegmentedControlDivider className="mx-3" />
+            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             <button
               type="button"
               aria-expanded={isChatFeaturesOpen}
@@ -263,7 +263,7 @@ export function AgentPreviewHeader({
         )}
         {trailingAction != null && (
           <>
-            <SegmentedControlDivider className="mx-3" />
+            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             {trailingAction}
           </>
         )}

@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "アクセス権限",
   "accessRule.actions": "アクション",
-  "accessRule.addMemberAria": "{{name}} を追加",
   "accessRule.addMembersTitle": "メンバーを追加",
   "accessRule.agentDescription": "このエージェントにアクセスできるメンバーと権限を管理します。",
   "accessRule.agentTitle": "エージェント権限セット",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} 件の権限セット",
   "accessRule.summary_other": "{{count}} 件の権限セット",
   "accessRule.updated": "アクセスルールを更新しました",
+  "accessRule.workspaceAdmin": "ワークスペース管理者",
   "accessRule.workspaceOwner": "ワークスペースのオーナー",
   "common.duplicateAction": "複製",
   "group.agent": "エージェント",

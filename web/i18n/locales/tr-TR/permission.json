@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Erişim izni",
   "accessRule.actions": "Eylemler",
-  "accessRule.addMemberAria": "{{name}} ekle",
   "accessRule.addMembersTitle": "Üye ekle",
   "accessRule.agentDescription": "Bu ajana kimlerin erişebileceğini ve izinlerini yönetin.",
   "accessRule.agentTitle": "Ajan izin kümesi",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} izin kümesi",
   "accessRule.summary_other": "{{count}} izin kümesi",
   "accessRule.updated": "Erişim kuralı başarıyla güncellendi",
+  "accessRule.workspaceAdmin": "Çalışma alanı yöneticisi",
   "accessRule.workspaceOwner": "Çalışma alanı sahibi",
   "common.duplicateAction": "Çoğalt",
   "group.agent": "Ajanlar",

@@ -1,11 +1,11 @@
 'use client'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,12 +24,8 @@ import {
   WorkflowDailyTerminalsChart,
   WorkflowMessagesChart,
 } from '@/app/components/app/overview/app-chart'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
@@ -49,10 +45,11 @@ const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 type IChartViewProps = {
   appId: string
+  appMode: AppDetailWithSite['mode']
   headerRight: React.ReactNode
 }
 
-export default function ChartView({ appId, headerRight }: IChartViewProps) {
+export default function ChartView({ appId, appMode, headerRight }: IChartViewProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -61,6 +58,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   return (
     <ChartViewContent
       appId={appId}
+      appMode={appMode}
       headerRight={headerRight}
       deploymentEdition={deploymentEdition}
     />
@@ -69,6 +67,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
 
 function ChartViewContent({
   appId,
+  appMode,
   headerRight,
   deploymentEdition,
 }: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
@@ -76,23 +75,8 @@ function ChartViewContent({
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
-  const appDetail = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canMonitor = React.useMemo(
-    () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
-        workspacePermissionKeys,
-      }).canMonitor,
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
-  const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
-  const isWorkflow = appDetail?.mode === 'workflow'
+  const isChatApp = appMode !== 'completion' && appMode !== 'workflow'
+  const isWorkflow = appMode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(() =>
     isCloudEdition
       ? {
@@ -110,8 +94,6 @@ function ChartViewContent({
           },
         },
   )
-
-  if (!appDetail || !canMonitor) return null
 
   return (
     <div className="flex h-full min-h-0 flex-col">

@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 from flask import Flask, g, request
 from pydantic_core import ValidationError
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
@@ -50,7 +49,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
     SystemConfigurationResponse,
 )
-from services.workspace_service import EffectiveCreditPool
+from services.workspace.contracts import EffectiveCreditPool
 from tests.unit_tests.config_override import config_overrides_context
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
@@ -254,10 +253,9 @@ class TestModelProviderSummaryListApi:
 
 
 class TestModelProviderCreditsApi:
-    def test_get_success(self, unbound_session: Session):
+    def test_get_success(self) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = unbound_session
         credit_pool = EffectiveCreditPool(
             plan="team",
             pool_type="paid",
@@ -267,12 +265,13 @@ class TestModelProviderCreditsApi:
         )
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
-            return_value=credit_pool,
-        ) as get_model_provider_credits:
-            result = method(api, session, "tenant1")
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            get_model_provider_credits = services.return_value.workspaces.management.get_model_provider_credits
+            get_model_provider_credits.return_value = credit_pool
+            result = method(api, "tenant1")
 
-        get_model_provider_credits.assert_called_once_with("tenant1", session=session)
+        get_model_provider_credits.assert_called_once_with("tenant1")
         assert result == {
             "model_billing_source": "legacy_message_credits",
             "model_billing_migration_status": "none",
@@ -288,16 +287,15 @@ class TestModelProviderCreditsApi:
             "tokener_metering": None,
         }
 
-    def test_get_without_effective_pool(self, unbound_session: Session):
+    def test_get_without_effective_pool(self) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = unbound_session
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_model_provider_credits",
-            return_value=EffectiveCreditPool(),
-        ):
-            result = method(api, session, "tenant1")
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            services.return_value.workspaces.management.get_model_provider_credits.return_value = EffectiveCreditPool()
+            result = method(api, "tenant1")
 
         assert result == {
             "model_billing_source": "legacy_message_credits",

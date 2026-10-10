@@ -46,6 +46,7 @@
     "Asistență prioritară prin e-mail și chat"
   ],
   "plans.premium.includesTitle": "Totul din Comunitate, plus:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Scalabil",
   "plans.premium.priceTip": "Pe baza Pieței Cloud",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Compară planurile și caracteristicile",
   "plansCommon.currentPlan": "Planul curent",
   "plansCommon.days": "zile",
+  "plansCommon.discountedAnnualPrice": "Preț anual redus: ",
   "plansCommon.documentProcessingPriority": "Prioritatea procesării documentelor",
   "plansCommon.documentProcessingPriorityTip": "Pentru o prioritate mai mare a procesării documentelor, vă rugăm să vă actualizați planul.",
   "plansCommon.documentProcessingPriorityUpgrade": "Procesați mai multe date cu o acuratețe mai mare și la viteze mai rapide.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "Furnizori de modele",
   "plansCommon.month": "lună",
   "plansCommon.mostPopular": "Cel mai popular",
+  "plansCommon.originalAnnualPrice": "Preț anual inițial: ",
   "plansCommon.priceTip": "pe spațiu de lucru/",
   "plansCommon.priority.priority": "Prioritate",
   "plansCommon.priority.standard": "Standard",

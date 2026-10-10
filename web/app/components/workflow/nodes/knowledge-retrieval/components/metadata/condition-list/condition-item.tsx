@@ -196,7 +196,11 @@ const ConditionItem = ({
             )}
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
             currentMetadata?.type === MetadataFilteringVariableType.time && (
-              <ConditionDate value={condition.value as number} onChange={handleValueChange} />
+              <ConditionDate
+                disabled={disabled}
+                value={condition.value as number}
+                onChange={handleValueChange}
+              />
             )}
         </div>
       </div>

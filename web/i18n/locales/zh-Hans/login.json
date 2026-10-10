@@ -31,6 +31,7 @@
   "error.passwordEmpty": "密码不能为空",
   "error.passwordInvalid": "密码必须包含字母和数字，且长度不小于 8 位",
   "error.registrationNotAllowed": "账户不存在，请联系系统管理员注册账户",
+  "error.ssoFailed": "SSO 登录失败。请重试或联系管理员。",
   "explore": "探索 Dify",
   "forget": "忘记密码？",
   "forgotPassword": "忘记密码？",

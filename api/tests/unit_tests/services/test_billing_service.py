@@ -1690,39 +1690,6 @@ class TestBillingServiceCacheManagement:
         mock_redis_client.delete.assert_called_once_with(expected_key)
 
 
-class TestBillingServicePartnerIntegration:
-    """Unit tests for partner integration features.
-
-    Tests cover:
-    - Partner tenant binding synchronization
-    - Click ID tracking
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_sync_partner_tenants_bindings(self, mock_send_request):
-        """Test syncing partner tenant bindings."""
-        # Arrange
-        account_id = "account-123"
-        partner_key = "partner-xyz"
-        click_id = "click-789"
-        expected_response = {"message": "Successfully synced partner tenants"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.sync_partner_tenants_bindings(account_id, partner_key, click_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "PUT", f"/partners/{partner_key}/tenants", json={"account_id": account_id, "click_id": click_id}
-        )
-
-
 class TestBillingServiceEdgeCases:
     """Unit tests for edge cases and error scenarios.
 

@@ -334,8 +334,8 @@ def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypat
     embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
 
     with patch.object(module, "PGVectoRS", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings)
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings)
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings, session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings, session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

@@ -323,10 +323,7 @@ describe('WorkspaceCard', () => {
     expect(
       within(panel).getByRole('button', { name: 'navigation.mainNav.workspace.sort.openMenu' }),
     ).toBeDisabled()
-    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
     expect(panel.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     expect(within(panel).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()

@@ -3,17 +3,18 @@ import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -183,7 +184,9 @@ const Operations = ({
         opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
       )
       if (!e) {
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+        // The switch already shows the result of enable and disable.
+        if (operationName !== 'enable' && operationName !== 'disable')
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         // If it is a delete operation, need to update the selectedIds state
         if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
           onSelectedIdChange(selectedIds.filter((selectedId) => selectedId !== id))
@@ -296,8 +299,8 @@ const Operations = ({
     },
     [canDownload, closeOperationsMenu, handleDownload],
   )
-  const menuActionClassName = cn(s.actionItem, 'border-none bg-transparent')
-  const menuDeleteActionClassName = cn(menuActionClassName, s.deleteActionItem, 'group')
+  const menuActionClassName = 'h-9 w-[calc(100%-8px)] gap-2 px-3 py-2 text-left'
+  const menuDeleteActionClassName = cn(menuActionClassName, 'group')
   const handleSettingsClick = useCallback(
     (evt: React.MouseEvent<HTMLElement>) => {
       evt.preventDefault()
@@ -311,16 +314,12 @@ const Operations = ({
     [canViewSettings, closeOperationsMenu, datasetId, detail.id, router],
   )
   const settingsMenuItem = (
-    <button
-      type="button"
-      className={cn(menuActionClassName, 'text-left')}
-      onClick={handleSettingsClick}
-    >
+    <DropdownMenuItem className={menuActionClassName} onClick={handleSettingsClick}>
       <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-      <span className={s.actionName}>
+      <span className="text-sm text-text-secondary">
         {t(($) => $['list.action.settings'], { ns: 'datasetDocuments' })}
       </span>
-    </button>
+    </DropdownMenuItem>
   )
   const enabledLabel = `${t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' })}: ${name}`
   const renderListSwitch = () => {
@@ -417,141 +416,119 @@ const Operations = ({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              className={cn('w-50 py-0', className)}
+              className={cn('w-50', className)}
             >
-              <div className="w-full py-1">
-                {canShowPrimarySection && (
-                  <>
-                    {canShowRenameAction && (
-                      <button
-                        type="button"
-                        className={cn(menuActionClassName, 'text-left')}
-                        onClick={handleShowRename}
-                      >
-                        <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
-                        <span className={s.actionName}>
-                          {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
-                        </span>
-                      </button>
-                    )}
-                    {canShowSummaryAction && (
-                      <button
-                        type="button"
-                        className={cn(menuActionClassName, 'text-left')}
-                        onClick={() => handleMenuOperation('summary')}
-                      >
-                        <span
-                          aria-hidden
-                          className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary"
-                        />
-                        <span className={s.actionName}>
-                          {t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}
-                        </span>
-                      </button>
-                    )}
-                    {canShowSettingsAction && settingsMenuItem}
-                    {canShowDownloadAction && (
-                      <button
-                        type="button"
-                        className={cn(menuActionClassName, 'text-left')}
-                        onClick={handleDownloadClick}
-                      >
-                        <span
-                          aria-hidden
-                          className="i-ri-download-2-line size-4 text-text-tertiary"
-                        />
-                        <span className={s.actionName}>
-                          {t(($) => $['list.action.download'], { ns: 'datasetDocuments' })}
-                        </span>
-                      </button>
-                    )}
-                    {canShowSyncAction && (
-                      <button
-                        type="button"
-                        className={cn(menuActionClassName, 'text-left')}
-                        onClick={() => handleMenuOperation('sync')}
-                      >
-                        <span
-                          aria-hidden
-                          className="i-ri-loop-left-line size-4 text-text-tertiary"
-                        />
-                        <span className={s.actionName}>
-                          {t(($) => $['list.action.sync'], { ns: 'datasetDocuments' })}
-                        </span>
-                      </button>
-                    )}
-                    {(canShowStatusSection || canShowDeleteAction) && (
-                      <DropdownMenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
-                    )}
-                  </>
-                )}
-                {canShowPauseAction && (
-                  <button
-                    type="button"
-                    className={cn(menuActionClassName, 'text-left')}
-                    onClick={() => handleMenuOperation('pause')}
-                  >
-                    <span
-                      aria-hidden
-                      className="i-ri-pause-circle-line size-4 text-text-tertiary"
-                    />
-                    <span className={s.actionName}>
-                      {t(($) => $['list.action.pause'], { ns: 'datasetDocuments' })}
-                    </span>
-                  </button>
-                )}
-                {canShowResumeAction && (
-                  <button
-                    type="button"
-                    className={cn(menuActionClassName, 'text-left')}
-                    onClick={() => handleMenuOperation('resume')}
-                  >
-                    <span aria-hidden className="i-ri-play-circle-line size-4 text-text-tertiary" />
-                    <span className={s.actionName}>
-                      {t(($) => $['list.action.resume'], { ns: 'datasetDocuments' })}
-                    </span>
-                  </button>
-                )}
-                {canShowArchiveAction && (
-                  <button
-                    type="button"
-                    className={cn(menuActionClassName, 'text-left')}
-                    onClick={() => handleMenuOperation('archive')}
-                  >
-                    <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
-                    <span className={s.actionName}>
-                      {t(($) => $['list.action.archive'], { ns: 'datasetDocuments' })}
-                    </span>
-                  </button>
-                )}
-                {canShowUnarchiveAction && (
-                  <button
-                    type="button"
-                    className={cn(menuActionClassName, 'text-left')}
-                    onClick={() => handleMenuOperation('un_archive')}
-                  >
-                    <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
-                    <span className={s.actionName}>
-                      {t(($) => $['list.action.unarchive'], { ns: 'datasetDocuments' })}
-                    </span>
-                  </button>
-                )}
-                {canShowDeleteAction && (
-                  <button
-                    type="button"
-                    className={cn(menuDeleteActionClassName, 'text-left')}
-                    onClick={handleDeleteClick}
-                  >
-                    <span
-                      aria-hidden
-                      className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive"
-                    />
-                    <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>
-                      {t(($) => $['list.action.delete'], { ns: 'datasetDocuments' })}
-                    </span>
-                  </button>
-                )}
-              </div>
+              {canShowPrimarySection && (
+                <>
+                  {canShowRenameAction && (
+                    <DropdownMenuItem className={menuActionClassName} onClick={handleShowRename}>
+                      <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+                      <span className="text-sm text-text-secondary">
+                        {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+                  {canShowSummaryAction && (
+                    <DropdownMenuItem
+                      className={menuActionClassName}
+                      onClick={() => handleMenuOperation('summary')}
+                    >
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary"
+                      />
+                      <span className="text-sm text-text-secondary">
+                        {t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+                  {canShowSettingsAction && settingsMenuItem}
+                  {canShowDownloadAction && (
+                    <DropdownMenuItem className={menuActionClassName} onClick={handleDownloadClick}>
+                      <span
+                        aria-hidden
+                        className="i-ri-download-2-line size-4 text-text-tertiary"
+                      />
+                      <span className="text-sm text-text-secondary">
+                        {t(($) => $['list.action.download'], { ns: 'datasetDocuments' })}
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+                  {canShowSyncAction && (
+                    <DropdownMenuItem
+                      className={menuActionClassName}
+                      onClick={() => handleMenuOperation('sync')}
+                    >
+                      <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
+                      <span className="text-sm text-text-secondary">
+                        {t(($) => $['list.action.sync'], { ns: 'datasetDocuments' })}
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+                  {(canShowStatusSection || canShowDeleteAction) && (
+                    <DropdownMenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
+                  )}
+                </>
+              )}
+              {canShowPauseAction && (
+                <DropdownMenuItem
+                  className={menuActionClassName}
+                  onClick={() => handleMenuOperation('pause')}
+                >
+                  <span aria-hidden className="i-ri-pause-circle-line size-4 text-text-tertiary" />
+                  <span className="text-sm text-text-secondary">
+                    {t(($) => $['list.action.pause'], { ns: 'datasetDocuments' })}
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {canShowResumeAction && (
+                <DropdownMenuItem
+                  className={menuActionClassName}
+                  onClick={() => handleMenuOperation('resume')}
+                >
+                  <span aria-hidden className="i-ri-play-circle-line size-4 text-text-tertiary" />
+                  <span className="text-sm text-text-secondary">
+                    {t(($) => $['list.action.resume'], { ns: 'datasetDocuments' })}
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {canShowArchiveAction && (
+                <DropdownMenuItem
+                  className={menuActionClassName}
+                  onClick={() => handleMenuOperation('archive')}
+                >
+                  <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
+                  <span className="text-sm text-text-secondary">
+                    {t(($) => $['list.action.archive'], { ns: 'datasetDocuments' })}
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {canShowUnarchiveAction && (
+                <DropdownMenuItem
+                  className={menuActionClassName}
+                  onClick={() => handleMenuOperation('un_archive')}
+                >
+                  <span aria-hidden className="i-ri-archive-2-line size-4 text-text-tertiary" />
+                  <span className="text-sm text-text-secondary">
+                    {t(($) => $['list.action.unarchive'], { ns: 'datasetDocuments' })}
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {canShowDeleteAction && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  className={menuDeleteActionClassName}
+                  onClick={handleDeleteClick}
+                >
+                  <span
+                    aria-hidden
+                    className="i-ri-delete-bin-line size-4 text-text-tertiary group-data-highlighted:text-text-destructive"
+                  />
+                  <span className="text-sm text-text-secondary group-data-highlighted:text-text-destructive">
+                    {t(($) => $['list.action.delete'], { ns: 'datasetDocuments' })}
+                  </span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </>
@@ -566,14 +543,14 @@ const Operations = ({
               {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

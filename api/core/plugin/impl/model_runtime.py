@@ -77,7 +77,7 @@ class _PluginStructuredOutputModelInstance:
         stop: Sequence[str] | None = None,
         stream: bool = True,
         callbacks: object | None = None,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         del callbacks
         if stream:
             return self._runtime.invoke_llm(
@@ -315,7 +315,7 @@ class PluginModelRuntime(ModelRuntime):
         stop: Sequence[str] | None,
         stream: Literal[True],
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[LLMResultChunk, None, None]: ...
+    ) -> Generator[LLMResultChunk]: ...
 
     @override
     def invoke_llm(
@@ -330,7 +330,7 @@ class PluginModelRuntime(ModelRuntime):
         stop: Sequence[str] | None,
         stream: bool,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         app_id = request_metadata.get("app_id") if request_metadata else None
         if not isinstance(app_id, str):
             app_id = None
@@ -399,7 +399,7 @@ class PluginModelRuntime(ModelRuntime):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    ) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 
     @override
     def invoke_llm_with_structured_output(
@@ -413,7 +413,7 @@ class PluginModelRuntime(ModelRuntime):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         model_schema = self.get_model_schema(
             provider=provider,
             model_type=ModelType.LLM,

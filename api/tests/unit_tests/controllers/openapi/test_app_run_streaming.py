@@ -84,7 +84,12 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch:
 
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__handler__(api, _SealableContext(), app_id="app-1", task_id="task-1")
+        result = api.post.__handler__(
+            api,
+            _SealableContext(subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT)),
+            app_id="app-1",
+            task_id="task-1",
+        )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
     graph_instance.send_stop_command.assert_called_once_with("task-1")
@@ -208,7 +213,7 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     assert json.loads(chunks[1][len("data: ") :])["hints"] == [
         {
             "summary": "Reply in this conversation",
-            "op": "console_app.chat.run",
+            "op": "run.console_app.chat",
             "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
         }
     ]

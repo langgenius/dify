@@ -1,0 +1,620 @@
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import timedelta
+from typing import override
+from unittest.mock import MagicMock, call
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
+from enums import DeploymentEdition
+from extensions.ext_redis import RedisClientWrapper
+from libs.helper import RateLimiter
+from models import TenantCreditPool
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
+)
+from models.enums import ProviderQuotaType
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.workspace import workspace_repository
+from services import account_errors
+from services.account import login_adapters as adapters
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeResult,
+    EmailCodeLoginChallengeStatus,
+    EmailCodeLoginChallengeUnavailableError,
+)
+from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import EmailCodeChallengeStatus, RefreshAccountStatus
+from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
+from services.workspace import gateways
+from services.workspace.contracts import CreatedWorkspace
+from services.workspace.provisioning_service import WorkspaceProvisioningService
+from tests.unit_tests.account_domain import AccountDomain
+
+
+class FakeRateLimiter(RateLimiter):
+    def __init__(self, *, limited: bool = False, time_window: int = 300) -> None:
+        self.limited = limited
+        self.time_window = time_window
+        self.recorded: list[str] = []
+
+    @override
+    def is_rate_limited(self, email: str) -> bool:
+        return self.limited
+
+    @override
+    def increment_rate_limit(self, email: str) -> None:
+        self.recorded.append(email)
+
+
+@dataclass
+class FakeTask:
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def delay(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
+
+
+def _persist_account(session: Session) -> Account:
+    account = Account(name="User", email="user@example.com")
+    account.id = "account-1"
+    session.add(account)
+    session.commit()
+    return account
+
+
+def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [b"6", b"2", True, 1]
+    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=redis)
+
+    assert gateway.is_login_limited("user@example.com") is True
+    gateway.record_login_failure("user@example.com")
+    gateway.reset_login_failures("user@example.com")
+
+    key = "login_error_rate_limit:user@example.com"
+    assert commands.call_args_list == [
+        call("GET", key, keys=[key]),
+        call("GET", key, keys=[key]),
+        call("SETEX", key, adapters.dify_config.LOGIN_LOCKOUT_DURATION, 3),
+        call("DEL", key),
+    ]
+
+
+def test_security_gateway_owns_email_send_ip_limit(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], config_overrides: Callable[..., None]
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [None, b"2", None, True]
+    config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
+    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=redis)
+
+    assert gateway.is_email_send_ip_limited("127.0.0.1") is True
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    hour_key = "email_send_ip_limit_hour:127.0.0.1"
+    assert commands.call_args_list == [
+        call("GET", freeze_key, keys=[freeze_key]),
+        call("GET", minute_key, keys=[minute_key]),
+        call("GET", hour_key, keys=[hour_key]),
+        call("SET", hour_key, 1, "NX", "EX", 600),
+    ]
+
+
+def test_session_gateway_owns_refresh_token_storage(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    redis, commands = redis_transport
+    issued_payloads: list[dict[str, object]] = []
+
+    class FakePassportService:
+        def issue(self, payload: dict[str, object]) -> str:
+            issued_payloads.append(payload)
+            return "access"
+
+    monkeypatch.setattr(adapters, "PassportService", FakePassportService)
+    monkeypatch.setattr(adapters.secrets, "token_hex", lambda _length: "refresh")
+    monkeypatch.setattr(adapters, "generate_csrf_token", lambda _account_id: "csrf")
+    gateway = adapters.RedisAccountSessionGateway(redis=redis)
+
+    result = gateway.issue("account-1")
+
+    assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    assert issued_payloads[0]["user_id"] == "account-1"
+    expires_in = int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
+    assert commands.call_args_list == [
+        call("SETEX", "refresh_token:refresh", expires_in, "account-1"),
+        call("SETEX", "account_refresh_token:account-1", expires_in, "refresh"),
+    ]
+
+
+def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
+    gateway = adapters.RedisAccountSessionGateway(redis=redis)
+    monkeypatch.setattr(
+        gateway,
+        "_issue",
+        lambda _account_id: AccountSessionTokens(
+            access_token="new-access", refresh_token="new-refresh", csrf_token="csrf"
+        ),
+    )
+
+    assert gateway.resolve_refresh_token("refresh") == "account-1"
+    assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
+    gateway.revoke("account-1")
+
+    deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
+    assert deleted_keys == [
+        "refresh_token:refresh",
+        "account_refresh_token:account-1",
+        "refresh_token:stored-refresh",
+        "account_refresh_token:account-1",
+    ]
+    assert commands.call_count == 6
+
+
+def test_session_gateway_returns_none_for_unknown_refresh_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = None
+
+    assert adapters.RedisAccountSessionGateway(redis=redis).resolve_refresh_token("bad-token") is None
+
+
+def test_workspace_provisioning_persists_owner_workspace(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    gateway = account_domain.provisioning
+
+    gateway.ensure_owner_workspace("account-1")
+
+    with sqlite_session_factory() as session:
+        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == "account-1"))
+        assert membership is not None
+        assert membership.role == TenantAccountRole.OWNER
+        assert session.get(Tenant, membership.tenant_id) is not None
+
+
+def test_workspace_provisioning_rejects_missing_account(
+    account_domain: AccountDomain,
+) -> None:
+    gateway = account_domain.provisioning
+
+    with pytest.raises(account_errors.AccountNotFoundError):
+        gateway.ensure_owner_workspace("missing-account")
+
+
+@pytest.mark.parametrize(
+    ("status", "with_workspace", "expected_status"),
+    [
+        (AccountStatus.ACTIVE, True, RefreshAccountStatus.READY),
+        (AccountStatus.ACTIVE, False, RefreshAccountStatus.NOT_FOUND),
+        (AccountStatus.BANNED, False, RefreshAccountStatus.BANNED),
+    ],
+)
+def test_refresh_preparation_gateway_owns_account_state_query(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    status: AccountStatus,
+    with_workspace: bool,
+    expected_status: RefreshAccountStatus,
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.status = status
+    if with_workspace:
+        tenant = Tenant(name="Workspace")
+        sqlite_session.add(tenant)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.OWNER,
+                current=True,
+            )
+        )
+    sqlite_session.commit()
+    gateway = adapters.SQLAlchemyAccountRefreshPreparationGateway(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory)
+    )
+
+    assert gateway.prepare("account-1") == expected_status
+
+
+@pytest.mark.parametrize(
+    ("provider_error", "application_error", "level", "message", "has_exception_info"),
+    [
+        (
+            TurnstileChallengeRejectedError(),
+            account_errors.HumanVerificationRejectedError,
+            logging.INFO,
+            "Turnstile rejected an email-code verification challenge",
+            False,
+        ),
+        (
+            TurnstileUpstreamError(),
+            account_errors.HumanVerificationUnavailableError,
+            logging.WARNING,
+            "Turnstile verification is unavailable",
+            True,
+        ),
+    ],
+)
+def test_turnstile_gateway_maps_provider_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    provider_error: Exception,
+    application_error: type[Exception],
+    level: int,
+    message: str,
+    has_exception_info: bool,
+) -> None:
+    def verify(**_kwargs: object) -> None:
+        raise provider_error
+
+    monkeypatch.setattr(adapters.TurnstileService, "verify", verify)
+
+    with caplog.at_level(level, logger=adapters.__name__):
+        with pytest.raises(application_error):
+            adapters.TurnstileHumanVerificationGateway().verify(
+                token="challenge",
+                remote_ip="127.0.0.1",
+                action="signin_code_verify",
+            )
+
+    record = caplog.records[-1]
+    assert record.getMessage() == message
+    assert (record.exc_info is not None) is has_exception_info
+
+
+def test_provisioning_persists_account_and_workspace_atomically(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway = account_domain.provisioning
+
+    account_id = gateway.create_with_owner_workspace(
+        email="user@example.com",
+        name="User",
+        interface_language="en-US",
+        timezone="UTC",
+        ip_address="127.0.0.1",
+    )
+
+    with sqlite_session_factory() as session:
+        account = session.get(Account, account_id)
+        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id))
+        assert account is not None
+        assert account.normalized_email == "user@example.com"
+        assert account.timezone == "UTC"
+        assert membership is not None
+
+
+def test_provisioning_rejects_equivalent_normalized_email(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+) -> None:
+    sqlite_session.add(
+        Account(
+            name="Existing User",
+            email="u.ser+existing@gmail.com",
+            normalized_email="user@gmail.com",
+        )
+    )
+    sqlite_session.commit()
+    gateway = account_domain.provisioning
+
+    with pytest.raises(account_errors.AccountNormalizedEmailAlreadyInUseError):
+        gateway.create_with_owner_workspace(
+            email="user@googlemail.com",
+            name="New User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+
+def _provision_owner_workspace(gateway: WorkspaceProvisioningService, *, create_account: bool) -> str:
+    if create_account:
+        return gateway.create_with_owner_workspace(
+            email="new-user@example.com",
+            name="New User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+    gateway.ensure_owner_workspace("account-1")
+    return "account-1"
+
+
+@pytest.mark.parametrize("create_account", [True, False], ids=["signup", "existing-account"])
+@pytest.mark.parametrize("tokener_enabled", [True, False], ids=["tokener", "legacy"])
+@pytest.mark.parametrize("bootstrap_enabled", [True, False], ids=["worker-enabled", "worker-paused"])
+def test_workspace_provisioning_initializes_billing_before_emitting_created_event(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    create_account: bool,
+    tokener_enabled: bool,
+    bootstrap_enabled: bool,
+) -> None:
+    config_overrides(
+        TOKENER_NEW_TENANT_COHORT_ENABLED=tokener_enabled,
+        TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=bootstrap_enabled,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER="  langgenius/tokener:0.1.2@checksum  ",
+        HOSTED_POOL_CREDITS=321,
+        RBAC_ENABLED=False,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+    )
+    if not create_account:
+        _persist_account(sqlite_session)
+    gateway = account_domain.provisioning
+    monkeypatch.setattr(gateways, "generate_key_pair", lambda _tenant_id: "public-key")
+    clean_billing_cache = MagicMock()
+    monkeypatch.setattr(gateways.BillingService, "clean_billing_info_cache", clean_billing_cache)
+    emitted_tenants: list[str] = []
+
+    def assert_committed_billing(tenant: CreatedWorkspace) -> None:
+        # A fresh connection must see the entire aggregate before async bootstrap can run.
+        with sqlite_session_factory() as session:
+            assert session.get(Tenant, tenant.id) is not None
+            membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == tenant.id))
+            assert membership is not None
+            assert session.get(Account, membership.account_id) is not None
+            profile = session.get(TenantModelBillingProfile, tenant.id)
+            integration = session.scalar(
+                select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
+            )
+            pools = session.scalars(select(TenantCreditPool).where(TenantCreditPool.tenant_id == tenant.id)).all()
+            if tokener_enabled:
+                assert profile is not None
+                assert profile.model_billing_source == "tokener"
+                assert integration is not None
+                assert integration.status == TenantTokenerIntegrationStatus.PENDING
+                assert integration.plugin_unique_identifier == "langgenius/tokener:0.1.2@checksum"
+                assert integration.attempt_count == 0
+                assert pools == []
+            else:
+                assert profile is None
+                assert integration is None
+                assert len(pools) == 1
+                assert pools[0].pool_type == ProviderQuotaType.TRIAL
+                assert pools[0].quota_limit == 321
+                assert pools[0].quota_used == 0
+        emitted_tenants.append(tenant.id)
+
+    monkeypatch.setattr(gateways.tenant_was_created, "send", assert_committed_billing)
+
+    _provision_owner_workspace(gateway, create_account=create_account)
+
+    assert len(emitted_tenants) == 1
+    clean_billing_cache.assert_called_once_with(emitted_tenants[0])
+
+
+@pytest.mark.parametrize("create_account", [True, False], ids=["signup", "existing-account"])
+@pytest.mark.parametrize("tokener_enabled", [True, False], ids=["tokener", "legacy"])
+def test_workspace_provisioning_rolls_back_billing_with_workspace_on_failure(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    create_account: bool,
+    tokener_enabled: bool,
+) -> None:
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=tokener_enabled)
+    if not create_account:
+        _persist_account(sqlite_session)
+    gateway = account_domain.provisioning
+    monkeypatch.setattr(gateways, "generate_key_pair", lambda _tenant_id: "public-key")
+    after_created = MagicMock()
+    monkeypatch.setattr(gateways.tenant_was_created, "send", after_created)
+
+    initialize_billing = workspace_repository.initialize_tenant_model_billing
+
+    def fail_after_flush(tenant_id: str, *, session: Session) -> None:
+        initialize_billing(tenant_id, session=session)
+        session.flush()
+        raise RuntimeError("workspace creation failed")
+
+    monkeypatch.setattr(workspace_repository, "initialize_tenant_model_billing", fail_after_flush)
+
+    with pytest.raises(RuntimeError, match="workspace creation failed"):
+        _provision_owner_workspace(gateway, create_account=create_account)
+
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(Tenant)).all() == []
+        assert session.scalars(select(TenantAccountJoin)).all() == []
+        assert session.scalars(select(TenantPluginAutoUpgradeStrategy)).all() == []
+        assert session.scalars(select(TenantModelBillingProfile)).all() == []
+        assert session.scalars(select(TenantTokenerIntegration)).all() == []
+        assert session.scalars(select(TenantCreditPool)).all() == []
+        if create_account:
+            assert session.scalars(select(Account)).all() == []
+        else:
+            assert session.get(Account, "account-1") is not None
+    after_created.assert_not_called()
+
+
+def test_workspace_provisioning_preserves_existing_legacy_workspace(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    account = _persist_account(sqlite_session)
+    tenant = Tenant(name="Existing legacy workspace")
+    pool = TenantCreditPool(tenant_id=tenant.id, quota_limit=200, quota_used=37)
+    sqlite_session.add_all(
+        [
+            tenant,
+            pool,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER),
+        ]
+    )
+    sqlite_session.commit()
+    gateway = account_domain.provisioning
+    after_created = MagicMock()
+    monkeypatch.setattr(gateways.tenant_was_created, "send", after_created)
+
+    gateway.ensure_owner_workspace(account.id)
+
+    with sqlite_session_factory() as session:
+        assert [existing.id for existing in session.scalars(select(Tenant)).all()] == [tenant.id]
+        assert session.get(TenantModelBillingProfile, tenant.id) is None
+        assert session.scalars(select(TenantTokenerIntegration)).all() == []
+        existing_pool = session.get(TenantCreditPool, pool.id)
+        assert existing_pool is not None
+        assert existing_pool.quota_limit == 200
+        assert existing_pool.quota_used == 37
+    after_created.assert_not_called()
+
+
+def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    limiter = FakeRateLimiter()
+    task = FakeTask()
+    created: list[tuple[str | None, str, str]] = []
+    verified: list[tuple[str, str, str]] = []
+
+    def create(*, account_id: str | None, email: str, code: str) -> str:
+        created.append((account_id, email, code))
+        return "challenge-token"
+
+    def verify(*, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+        verified.append((email, code, token))
+        return EmailCodeLoginChallengeResult(status=EmailCodeLoginChallengeStatus.EMAIL_MISMATCH)
+
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "create", create)
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "verify", verify)
+    monkeypatch.setattr(adapters, "send_email_code_login_mail_task", task)
+    gateway = adapters.RedisEmailCodeGateway(rate_limiter=limiter)
+
+    token = gateway.send(
+        account_id="account-1",
+        normalized_email="User@Example.COM",
+        recipient_email="Historical@Example.COM",
+        language="en-US",
+    )
+
+    assert token == "challenge-token"
+    assert created[0][1] == "user@example.com"
+    assert len(created[0][2]) == 6
+    assert task.calls[0]["to"] == "Historical@Example.COM"
+    assert limiter.recorded == ["user@example.com"]
+    assert (
+        gateway.verify(normalized_email="User@Example.COM", code="123456", token="challenge-token")
+        == EmailCodeChallengeStatus.EMAIL_MISMATCH
+    )
+    assert verified == [("user@example.com", "123456", "challenge-token")]
+
+
+def test_email_code_gateway_maps_challenge_store_outage(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def create(**_kwargs: object) -> str:
+        raise EmailCodeLoginChallengeUnavailableError
+
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "create", create)
+    gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
+
+    with caplog.at_level(logging.WARNING, logger=adapters.__name__):
+        with pytest.raises(account_errors.EmailCodeLoginUnavailableError):
+            gateway.send(
+                account_id=None,
+                normalized_email="user@example.com",
+                recipient_email="user@example.com",
+                language="en-US",
+            )
+
+    record = caplog.records[-1]
+    assert record.getMessage() == "Email-code challenge creation is unavailable"
+    assert record.exc_info is not None
+
+
+def test_email_code_gateway_logs_challenge_verification_outage(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def verify(**_kwargs: object) -> EmailCodeLoginChallengeResult:
+        raise EmailCodeLoginChallengeUnavailableError
+
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "verify", verify)
+    gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
+
+    with caplog.at_level(logging.WARNING, logger=adapters.__name__):
+        with pytest.raises(account_errors.EmailCodeLoginUnavailableError):
+            gateway.verify(normalized_email="user@example.com", code="123456", token="challenge-token")
+
+    record = caplog.records[-1]
+    assert record.getMessage() == "Email-code challenge verification is unavailable"
+    assert record.exc_info is not None
+
+
+def test_reset_password_gateway_uses_neutral_identity_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    limiter = FakeRateLimiter(time_window=60)
+    existing_task = FakeTask()
+    missing_task = FakeTask()
+    token_calls: list[dict[str, object]] = []
+
+    def generate_token(**kwargs: object) -> str:
+        token_calls.append(kwargs)
+        return "reset-token"
+
+    monkeypatch.setattr(adapters.TokenManager, "generate_token", generate_token)
+    monkeypatch.setattr(adapters, "send_reset_password_mail_task", existing_task)
+    monkeypatch.setattr(adapters, "send_reset_password_mail_task_when_account_not_exist", missing_task)
+    gateway = adapters.RedisResetPasswordEmailGateway(rate_limiter=limiter)
+
+    result = gateway.send(
+        account_id="account-1",
+        email="user@example.com",
+        language="en-US",
+        registration_allowed=True,
+    )
+
+    assert result == "reset-token"
+    assert token_calls[0]["account_id"] == "account-1"
+    assert existing_task.calls[0]["to"] == "user@example.com"
+    assert missing_task.calls == []
+    assert limiter.recorded == ["user@example.com"]
+
+
+def test_email_gateways_raise_framework_neutral_rate_limit_errors() -> None:
+    with pytest.raises(account_errors.EmailCodeSendRateLimitError) as email_code_error:
+        adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter(limited=True)).send(
+            account_id=None,
+            normalized_email="user@example.com",
+            recipient_email="user@example.com",
+            language="en-US",
+        )
+    with pytest.raises(account_errors.ResetPasswordEmailRateLimitError) as reset_error:
+        adapters.RedisResetPasswordEmailGateway(rate_limiter=FakeRateLimiter(limited=True, time_window=60)).send(
+            account_id=None,
+            email="user@example.com",
+            language="en-US",
+            registration_allowed=True,
+        )
+
+    assert email_code_error.value.retry_after_minutes == 5
+    assert reset_error.value.retry_after_minutes == 1

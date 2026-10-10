@@ -44,6 +44,9 @@ Choose the label primitive by the control:
 - Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox`,
   each `Radio` option, `Switch`, and `NumberField` use `FieldLabel`.
 - Trigger-based `Select` fields use `SelectLabel`.
+- Date/time pickers use their own `DatePickerLabel`, `TimePickerLabel` or `DateTimePickerLabel`
+  to focus the trigger without opening it. They currently support native forms, not Base UI
+  Field/Form registration; see the [picker field contract].
 - `Slider` fields follow the [Base UI Slider anatomy] and use `SliderLabel`; only multi-thumb
   sliders add per-thumb `aria-label` to distinguish the thumbs.
 - `SelectGroupLabel` and `AutocompleteGroupLabel` label option groups inside popup content. They
@@ -85,3 +88,4 @@ public field and control props instead of replacing the semantic structure.
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [`Button`]: ../src/button/README.md
 [`InputGroup`]: ../src/input-group/README.md
+[picker field contract]: ../src/date-time/README.md#anatomy-and-labels

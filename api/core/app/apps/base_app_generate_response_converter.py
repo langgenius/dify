@@ -23,14 +23,14 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
     @classmethod
     def convert(
-        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
-        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
+        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any]], invoke_from: InvokeFrom
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any]:
+        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
+                def _generate_full_response() -> Generator[dict[str, Any] | str, Any]:
                     yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
@@ -39,7 +39,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 return cls.convert_blocking_simple_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
+                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any]:
                     yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
@@ -57,15 +57,15 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
     @classmethod
     @abstractmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         raise NotImplementedError
 
     @classmethod

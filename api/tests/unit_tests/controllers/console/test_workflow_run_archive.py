@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import inspect
-from types import SimpleNamespace
+from collections.abc import Callable
+from types import CodeType, SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,6 +27,8 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveDownloadTaskNotFoundError,
     WorkflowRunArchiveNotFoundError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 _CONTEXT = RequestContext(
     request_id="request-1",
@@ -36,8 +42,11 @@ _ENDPOINTS = [
     WorkflowRunArchiveDownloadApi.get,
     WorkflowRunArchiveDownloadFileApi.get,
 ]
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+
+
+class _WrappedEndpoint(Protocol):
+    __code__: CodeType
+    __wrapped__: _WrappedEndpoint
 
 
 def _account(role: TenantAccountRole) -> Account:
@@ -50,17 +59,17 @@ def _original(method):
     return method
 
 
-def _admission_injector(method):
-    method = inspect.getclosurevars(method).nonlocals["admitted"]
-    while "inject_request_context" not in method.__code__.co_qualname:
-        method = method.__wrapped__
-    return method
+def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
+    current = cast(_WrappedEndpoint, method)
+    while "inject_request_context" not in current.__code__.co_qualname:
+        current = current.__wrapped__
+    return cast(Callable[..., object], current)
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
-def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method) -> None:
+def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method: Callable[..., object]) -> None:
     decorator_names = set()
-    current = method
+    current = cast(_WrappedEndpoint, method)
     while hasattr(current, "__wrapped__"):
         decorator_names.add(current.__code__.co_qualname.partition(".<locals>")[0])
         current = current.__wrapped__
@@ -77,7 +86,7 @@ def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method
 @pytest.mark.parametrize("method", _ENDPOINTS)
 def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
 ) -> None:
     account = _account(TenantAccountRole.NORMAL)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -101,12 +110,15 @@ def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],
 )
-def test_workflow_run_archive_endpoints_are_hidden_outside_cloud(
+def test_workflow_run_archive_endpoints_reject_unsupported_edition_after_initialization(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
     args: tuple[object, ...],
 ) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, LOGIN_DISABLED=True)
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
+    identity = AccountWithTenant(account=_account(TenantAccountRole.OWNER), tenant_id="tenant-1")
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
     app = Flask(__name__)
 
     with app.test_request_context(), pytest.raises(NotFound):

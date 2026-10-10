@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   FIXTURE_CHANNEL,
-  FIXTURE_COMPAT,
   FIXTURE_TAG_PREFIX,
   FIXTURE_VERSION,
   pkgManifestEnv,
@@ -40,7 +39,7 @@ function runWith(overrides: PkgManifestOverrides, args: string[]): RunResult {
 
 type FixtureManifest = {
   version?: string
-  difyctl: { channel?: string; compat: { minDify?: string; maxDify?: string } }
+  difyctl: { channel?: string }
 }
 
 function runOnManifest(mutate: (manifest: FixtureManifest) => void, args: string[]): RunResult {
@@ -62,48 +61,6 @@ function parseKeyValues(stdout: string): Record<string, string> {
   )
 }
 
-describe('release-naming compat-check', () => {
-  const { minDify, maxDify } = FIXTURE_COMPAT // 2.0.0 .. 2.5.0
-  const compatCheck = (difyVersion?: string) =>
-    run(difyVersion === undefined ? ['compat-check'] : ['compat-check', difyVersion]).code
-
-  it('accepts a version inside the window', () => {
-    expect(compatCheck('2.3.0')).toBe(0)
-  })
-
-  it('accepts the inclusive lower bound', () => {
-    expect(compatCheck(minDify)).toBe(0)
-  })
-
-  it('accepts the inclusive upper bound', () => {
-    expect(compatCheck(maxDify)).toBe(0)
-  })
-
-  it('accepts a v-prefixed tag', () => {
-    expect(compatCheck('v2.3.0')).toBe(0)
-  })
-
-  it('rejects a version below the lower bound', () => {
-    expect(compatCheck('1.9.9')).not.toBe(0)
-  })
-
-  it('rejects a version above the upper bound', () => {
-    expect(compatCheck('2.5.1')).not.toBe(0)
-  })
-
-  it('treats a prerelease of the lower bound as below it', () => {
-    expect(compatCheck(`${minDify}-rc1`)).not.toBe(0)
-  })
-
-  it('ignores build metadata on the bound', () => {
-    expect(compatCheck(`${maxDify}+build123`)).toBe(0)
-  })
-
-  it('requires a version argument', () => {
-    expect(compatCheck()).not.toBe(0)
-  })
-})
-
 describe('release-naming github-env', () => {
   it('emits every manifest field for $GITHUB_ENV, plus a composed difyctlTag', () => {
     const fields = parseKeyValues(run(['github-env']).stdout)
@@ -111,8 +68,6 @@ describe('release-naming github-env', () => {
       version: FIXTURE_VERSION,
       channel: FIXTURE_CHANNEL,
       prerelease: 'false',
-      minDify: FIXTURE_COMPAT.minDify,
-      maxDify: FIXTURE_COMPAT.maxDify,
       tagPrefix: FIXTURE_TAG_PREFIX,
       difyctlTag: `${FIXTURE_TAG_PREFIX}${FIXTURE_VERSION}`,
     })
@@ -176,35 +131,6 @@ describe('release-naming validate channel', () => {
     )
     expect(code).not.toBe(0)
     expect(stderr).toContain('unknown channel')
-  })
-})
-
-describe('release-naming validate compat bounds', () => {
-  const validateCompat = (minDify: string, maxDify: string) =>
-    runWith({ compat: { minDify, maxDify } }, ['validate'])
-
-  it('accepts a well-formed window', () => {
-    expect(validateCompat('1.16.0', '1.17.0').code).toBe(0)
-  })
-
-  it('accepts equal bounds', () => {
-    expect(validateCompat('1.17.0', '1.17.0').code).toBe(0)
-  })
-
-  it('rejects an inverted window', () => {
-    const { code, stderr } = validateCompat('1.18.0', '1.17.0')
-    expect(code).not.toBe(0)
-    expect(stderr).toContain('is above maxDify')
-  })
-
-  it.each(['1.x', '1.16', '1.16.0-rc1', ''])('rejects %s as a bound', (bad) => {
-    expect(validateCompat(bad, '2.9.0').code).not.toBe(0)
-    expect(validateCompat('1.0.0', bad).code).not.toBe(0)
-  })
-
-  it('names the offending bound', () => {
-    expect(validateCompat('1.x', '1.17.0').stderr).toContain('difyctl.compat.minDify')
-    expect(validateCompat('1.16.0', '1.x').stderr).toContain('difyctl.compat.maxDify')
   })
 })
 

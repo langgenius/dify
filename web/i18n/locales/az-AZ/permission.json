@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Giriş icazəsi",
   "accessRule.actions": "Əməliyyatlar",
-  "accessRule.addMemberAria": "{{name}} adlı üzvü əlavə et",
   "accessRule.addMembersTitle": "Üzvlərin əlavə edilməsi",
   "accessRule.agentDescription": "Bu agentə kimin daxil ola biləcəyini və onların icazələrini idarə edin.",
   "accessRule.agentTitle": "Agentin icazə dəsti",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} icazə dəsti",
   "accessRule.summary_other": "{{count}} icazə dəsti",
   "accessRule.updated": "Giriş qaydası uğurla yeniləndi",
+  "accessRule.workspaceAdmin": "İş sahəsinin administratoru",
   "accessRule.workspaceOwner": "İş sahəsinin sahibi",
   "common.duplicateAction": "Nüsxə yarat",
   "group.agent": "Agentlər",

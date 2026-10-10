@@ -246,8 +246,8 @@ def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_modul
     monkeypatch.setattr(matrixone_module.dify_config, "MATRIXONE_METRIC", "l2")
 
     with patch.object(matrixone_module, "MatrixoneVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

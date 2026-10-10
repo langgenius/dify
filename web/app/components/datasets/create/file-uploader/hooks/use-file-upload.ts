@@ -81,7 +81,7 @@ export const useFileUpload = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploaderRef = useRef<HTMLInputElement>(null)
-  const fileListRef = useRef<FileItem[]>([])
+  const fileListRef = useRef<FileItem[]>(fileList)
 
   const hideUpload = !supportBatchUpload && fileList.length > 0
 

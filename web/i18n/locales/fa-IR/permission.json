@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "مجوز دسترسی",
   "accessRule.actions": "اقدامات",
-  "accessRule.addMemberAria": "افزودن {{name}}",
   "accessRule.addMembersTitle": "افزودن اعضا",
   "accessRule.agentDescription": "دسترسی کاربران به این عامل و مجوزهای آن‌ها را مدیریت کنید.",
   "accessRule.agentTitle": "مجموعه مجوز عامل",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} مجموعه مجوز",
   "accessRule.summary_other": "{{count}} مجموعه مجوز",
   "accessRule.updated": "قانون دسترسی با موفقیت به‌روزرسانی شد",
+  "accessRule.workspaceAdmin": "مدیر فضای کاری",
   "accessRule.workspaceOwner": "مالک فضای کاری",
   "common.duplicateAction": "تکثیر",
   "group.agent": "عامل‌ها",

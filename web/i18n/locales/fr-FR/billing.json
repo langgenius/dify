@@ -46,6 +46,7 @@
     "Assistance prioritaire par e-mail et chat"
   ],
   "plans.premium.includesTitle": "Tout de la communauté, en plus :",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Scalable",
   "plans.premium.priceTip": "Basé sur le marché des nuages",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Comparer les plans et les fonctionnalités",
   "plansCommon.currentPlan": "Plan Actuel",
   "plansCommon.days": "jours",
+  "plansCommon.discountedAnnualPrice": "Prix annuel réduit : ",
   "plansCommon.documentProcessingPriority": "Priorité de Traitement de Document",
   "plansCommon.documentProcessingPriorityTip": "Pour une priorité de traitement des documents plus élevée, veuillez mettre à niveau votre plan.",
   "plansCommon.documentProcessingPriorityUpgrade": "Traitez plus de données avec une précision plus élevée à des vitesses plus rapides.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "Fournisseurs de Modèles",
   "plansCommon.month": "mois",
   "plansCommon.mostPopular": "Le Plus Populaire",
+  "plansCommon.originalAnnualPrice": "Prix annuel initial : ",
   "plansCommon.priceTip": "par espace de travail/",
   "plansCommon.priority.priority": "Priorité",
   "plansCommon.priority.standard": "Standard",

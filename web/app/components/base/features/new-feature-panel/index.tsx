@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { DrawerCloseButton, DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { DrawerClose, DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
@@ -10,7 +11,7 @@ import Citation from '@/app/components/base/features/new-feature-panel/citation'
 import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
 import { FeaturePanelDrawer } from '@/app/components/base/features/new-feature-panel/feature-panel-drawer'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
-import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
+import { FollowUp } from '@/app/components/base/features/new-feature-panel/follow-up'
 import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
@@ -83,9 +84,12 @@ const NewFeaturePanel = ({
               {description ?? t(($) => $['common.featuresDescription'], { ns: 'workflow' })}
             </div>
           </div>
-          <DrawerCloseButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="size-8 p-2"
+          <DrawerClose
+            render={
+              <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} size="lg">
+                <span aria-hidden="true" className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </div>
         {/* list */}

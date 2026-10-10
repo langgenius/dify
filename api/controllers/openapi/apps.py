@@ -33,14 +33,13 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_application_services import application_services
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode
-from services.account_service import TenantService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
 from services.entities.app_entities import AppListParams, AppSummary
 
@@ -105,7 +104,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(Resource):
     @endpoint(
-        op="console_app.describe",
+        op="describe.console_app",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -116,7 +115,7 @@ class AppDescribeApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
@@ -133,7 +132,7 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        op="console_app.list",
+        op="get.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(
@@ -144,7 +143,7 @@ class AppListApi(Resource):
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
             CheckScope(Scope.APPS_READ),
             CheckWorkspaceMember(),
         ),
@@ -153,7 +152,7 @@ class AppListApi(Resource):
     )
     def get(self, ctx: Context, *, query: AppListQuery):
         workspace_id = query.workspace_id
-        account_id = str(ctx.subject.account_id)
+        account_id = str(ctx.subject.account_id or ctx.subject.token_id)
 
         empty = AppListResponse.build(page=query.page, limit=query.limit, total=0, items=[])
 
@@ -167,14 +166,21 @@ class AppListApi(Resource):
 
         access_filter = (
             resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
-            if dify_config.RBAC_ENABLED
+            if dify_config.RBAC_ENABLED and isinstance(ctx.subject, AccountSubject)
             else AppAccessFilter.unrestricted()
         )
+
+        if ctx.resource_app_ids is not None:
+            access_filter = AppAccessFilter(set(ctx.resource_app_ids), can_manage_own_apps=False)
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
             app = application_services().apps.queries.get_visible_app_by_id(str(parsed_uuid), workspace_id)
             if app is None or str(app.tenant_id) != workspace_id:
+                return empty
+            if ctx.resource_app_ids is not None and (
+                str(app.id) not in ctx.resource_app_ids or app.status != AppStatus.NORMAL
+            ):
                 return empty
             if not _is_listable(app):
                 return empty
@@ -184,7 +190,8 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, account_id
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -216,7 +223,8 @@ class AppListApi(Resource):
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
 
         items = [
             AppListRow(

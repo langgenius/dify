@@ -8,11 +8,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -88,32 +88,21 @@ def batch_clean_document_task(
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 storage_keys_to_delete.extend([f.key for f in files if f and f.key])
 
-        # ============ Step 2: Clean vector index (external service, fresh session for dataset) ============
-        if index_node_ids:
-            try:
-                # Fetch dataset in a fresh session to avoid DetachedInstanceError
-                with session_factory.create_session() as session, session.begin():
-                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-                    if not dataset:
-                        logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
-                    else:
-                        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                        index_processor.clean(
-                            dataset,
-                            index_node_ids,
-                            with_keywords=True,
-                            delete_child_chunks=True,
-                            delete_summaries=True,
-                            session=session,
-                        )
-                        dataset_tenant_id = dataset.tenant_id
-            except Exception:
-                logger.exception(
-                    "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
-                    dataset_id,
-                    document_ids,
-                    len(index_node_ids),
-                )
+        # A retry can still have summaries even after its segments were deleted.
+        try:
+            dataset_tenant_id = clean_document_indexes(
+                dataset_id=dataset_id,
+                document_ids=document_ids,
+                doc_form=doc_form,
+                new_session=session_factory.create_session,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
+                dataset_id,
+                document_ids,
+                len(index_node_ids),
+            )
 
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:

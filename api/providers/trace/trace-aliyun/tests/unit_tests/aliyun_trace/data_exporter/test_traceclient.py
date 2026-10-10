@@ -63,7 +63,7 @@ class TestTraceClient:
     def test_export(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
         mock_exporter = mock_exporter_class.return_value
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        spans = [MagicMock(spec=ReadableSpan)]
+        spans = [ReadableSpan(name="test-span")]
         client.export(spans)
         mock_exporter.export.assert_called_once_with(spans)
 
@@ -131,8 +131,8 @@ class TestTraceClient:
             span_kind=SpanKind.INTERNAL,
         )
 
-        mock_span = MagicMock(spec=ReadableSpan)
-        client.span_builder.build_span = MagicMock(return_value=mock_span)
+        span = ReadableSpan(name="test-span")
+        client.span_builder.build_span = MagicMock(return_value=span)
 
         with patch.object(client.condition, "notify") as mock_notify:
             client.add_span(span_data)
@@ -159,8 +159,8 @@ class TestTraceClient:
             status=Status(StatusCode.OK),
             span_kind=SpanKind.INTERNAL,
         )
-        mock_span = MagicMock(spec=ReadableSpan)
-        client.span_builder.build_span = MagicMock(return_value=mock_span)
+        span = ReadableSpan(name="test-span")
+        client.span_builder.build_span = MagicMock(return_value=span)
 
         client.add_span(span_data)
         assert len(client.queue) == 1
@@ -178,8 +178,8 @@ class TestTraceClient:
         mock_exporter.export.side_effect = Exception("Export failed")
 
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        mock_span = MagicMock(spec=ReadableSpan)
-        client.queue.append(mock_span)
+        span = ReadableSpan(name="test-span")
+        client.queue.append(span)
 
         with caplog.at_level(logging.WARNING):
             client._export_batch()
@@ -207,8 +207,8 @@ class TestTraceClient:
         mock_exporter = mock_exporter_class.return_value
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
 
-        mock_span = MagicMock(spec=ReadableSpan)
-        client.queue.append(mock_span)
+        span = ReadableSpan(name="test-span")
+        client.queue.append(span)
 
         client.shutdown()
         # Should have called export twice (once in worker/export_batch, once in shutdown)

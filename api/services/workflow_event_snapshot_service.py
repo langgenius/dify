@@ -43,6 +43,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
@@ -82,7 +83,7 @@ def build_workflow_event_stream(
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+) -> Generator[Mapping[str, Any] | str]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -143,7 +144,7 @@ def build_workflow_event_stream(
         workflow_run_id=workflow_run.id,
     )
 
-    def _generate() -> Generator[Mapping[str, Any] | str, None, None]:
+    def _generate() -> Generator[Mapping[str, Any] | str]:
         # send a PING event immediately to prevent the connection staying in pending state for a long time.
         #
         # This simplify the debugging process as the DevTools in Chrome does not
@@ -669,6 +670,8 @@ def _start_buffering(subscription) -> BufferState:
                     except queue.Full:
                         continue
                     logger.warning("Dropped buffered workflow event, total_dropped=%s", dropped_count)
+        except SubscriptionClosedError:
+            pass
         except Exception:
             logger.exception("Failed while buffering workflow events")
         finally:

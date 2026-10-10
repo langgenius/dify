@@ -638,6 +638,7 @@ const Debug: FC<IDebug> = ({
       {selectedLogItem &&
         (selectedLogItem.agent_thoughts?.length ? (
           <AgentLogModal
+            appId={appId}
             width={logModalWidth}
             currentLogItem={selectedLogItem}
             onCancel={() => setSelectedLogItem(undefined)}

@@ -9,7 +9,7 @@ from core.datasource.entities.datasource_entities import DatasourceMessage
 from graphon.node_events import StreamCompletedEvent
 
 
-def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:
+def _gen_var_stream() -> Generator[DatasourceMessage]:
     # produce a streamed variable "a"="xy"
     yield DatasourceMessage(
         type=DatasourceMessage.MessageType.VARIABLE,
@@ -33,14 +33,12 @@ def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None
             datasource_type="online_document",
             provider_id="p/x",
             tenant_id="t",
-            provider="prov",
-            plugin_id="plug",
-            credential_id="",
             parameters_for_log={},
             datasource_info={"user_id": "u"},
             variable_pool=mocker.Mock(),
             datasource_param=type("P", (), {"workspace_id": "w", "page_id": "pg", "type": "t"})(),
             online_drive_request=None,
+            credentials={},
         )
     )
     assert isinstance(events[-1], StreamCompletedEvent)

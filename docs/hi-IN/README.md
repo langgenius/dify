@@ -86,7 +86,7 @@ docker compose up -d
 
 रन करने के बाद, आप अपने ब्राउज़र में [http://localhost/install](http://localhost/install) पर Dify डैशबोर्ड एक्सेस कर सकते हैं और प्रारंभिक सेटअप प्रक्रिया शुरू कर सकते हैं।
 
-#### सहायता प्राप्त करना
+### सहायता प्राप्त करना
 
 यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#समुदाय-और-संपर्क-community--contact) से संपर्क करें।
 
@@ -120,7 +120,7 @@ Dify की सभी सेवाएँ संबंधित APIs के स�
 ## Dify का उपयोग करना
 
 - **Cloud <br/>**\
-  हम [Dify Cloud](https://dify.ai) सेवा प्रदान करते हैं, जिसे कोई भी बिना किसी सेटअप के आज़मा सकता है। यह स्व-परिनियोजित संस्करण की सभी क्षमताएँ प्रदान करता है और सैंडबॉक्स प्लान में 200 निःशुल्क GPT-4 कॉल्स शामिल करता है।
+  सर्वर का प्रबंधन किए बिना [Dify Cloud](https://cloud.dify.ai) पर Dify आज़माएँ। मौजूदा योजनाओं और उपयोग सीमाओं के लिए [मूल्य निर्धारण पृष्ठ](https://dify.ai/pricing) देखें।
 
 - **Dify कम्युनिटी संस्करण की स्व-होस्टिंग<br/>**\
   अपने वातावरण में Dify को जल्दी चलाएँ इस [starter guide](#त्वरित-प्रारंभ) की मदद से।\
@@ -165,12 +165,11 @@ Dify सभी प्रकार के योगदानों का स्�
 - [X](https://x.com/dify_ai): रिलीज़ समाचार और प्रोजेक्ट अपडेट के लिए Dify को फ़ॉलो करें।
 ## स्टार इतिहास (Star history)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## सुरक्षा प्रकटीकरण (Security disclosure)
 
-आपकी गोपनीयता की सुरक्षा के लिए, कृपया GitHub पर सुरक्षा संबंधित समस्याएँ पोस्ट करने से बचें।\
-इसके बजाय, समस्याओं की रिपोर्ट security@dify.ai पर करें, और हमारी टीम आपको विस्तृत उत्तर के साथ प्रतिक्रिया देगी।
+हमारी [सुरक्षा नीति](../../SECURITY.md) के अनुसार GitHub Security Advisories के ज़रिए निजी तौर पर सुरक्षा खामियों की रिपोर्ट करें। उन्हें सार्वजनिक issues, चर्चाओं या pull requests में उजागर न करें।
 
 ## लाइसेंस (License)
 

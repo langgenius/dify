@@ -8,6 +8,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import (
     load_app,
@@ -18,7 +19,6 @@ from controllers.openapi.auth.loaders import (
 from controllers.openapi.auth.subjects import Subject
 from models import App
 from models.account import TenantAccountRole, TenantStatus
-from services.account_service import TenantService
 from services.app_service import AppService
 
 from ._world import (
@@ -162,7 +162,7 @@ class TestLoadWorkspaceRole:
             calls.append(1)
             return TenantAccountRole.ADMIN
 
-        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _counted)
+        monkeypatch.setattr(loaders.application_services().workspaces.members, "get_role", _counted)
         ctx = Context(_subject(make_account()), sqlite_session, {"app_id": APP_ID})
 
         assert load_workspace_role(ctx) is TenantAccountRole.ADMIN
@@ -173,7 +173,7 @@ class TestLoadWorkspaceRole:
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         persist(sqlite_session, make_app(), make_tenant(), make_membership(TenantAccountRole.ADMIN))
-        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", never_reached)
+        monkeypatch.setattr(loaders.application_services().workspaces.members, "get_role", never_reached)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(NotFound, match="workspace not found"):

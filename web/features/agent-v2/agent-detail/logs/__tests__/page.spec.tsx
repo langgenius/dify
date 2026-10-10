@@ -396,6 +396,21 @@ describe('AgentLogsPage', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('includes the visible fallback label in an untitled log button name', async () => {
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [{ ...populatedLogsResponse.data[0]!, title: '' }],
+      })
+
+      renderPage()
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.logs.notAvailable conversation-1',
+        }),
+      ).toBeInTheDocument()
+    })
+
     it('should keep existing log rows visible while filter changes refetch', async () => {
       const user = userEvent.setup()
       let resolveNextLogs: (value: AgentLogListResponse) => void = () => undefined
@@ -442,6 +457,8 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
+
+      expect(screen.getByRole('dialog', { name: 'Previous conversation' })).toBeInTheDocument()
 
       await waitFor(() => {
         expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({

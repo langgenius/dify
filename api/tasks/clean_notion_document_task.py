@@ -6,8 +6,9 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
         if not dataset:
             raise Exception("Document has no dataset")
-        index_type = dataset.get_doc_form(session=session)
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_type = get_dataset_doc_form(dataset, session=session)
 
         document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
         session.execute(document_delete_stmt)
@@ -48,17 +48,12 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     # exception escaping this task would produce orphans that no later request
     # can reference back. Mirrors the pattern in ``clean_dataset_task``.
     try:
-        with session_factory.create_session() as session, session.begin():
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if dataset:
-                index_processor.clean(
-                    dataset,
-                    total_index_node_ids,
-                    with_keywords=True,
-                    delete_child_chunks=True,
-                    delete_summaries=True,
-                    session=session,
-                )
+        clean_document_indexes(
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            doc_form=index_type,
+            new_session=session_factory.create_session,
+        )
     except Exception:
         logger.exception(
             "Failed to clean vector / keyword index in clean_notion_document_task, "

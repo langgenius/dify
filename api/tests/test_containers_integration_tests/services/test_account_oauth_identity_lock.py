@@ -7,9 +7,9 @@ from uuid import uuid4
 import pytest
 
 from extensions.ext_redis import redis_client
-from services import account_oauth_adapters
+from services.account import oauth_adapters as account_oauth_adapters
+from services.account.oauth_adapters import RedisOAuthAccountClaimLock
 from services.account_errors import OAuthIdentityLockUnavailableError
-from services.account_oauth_adapters import RedisOAuthAccountClaimLock
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")

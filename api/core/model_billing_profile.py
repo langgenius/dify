@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from enum import StrEnum
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import ServiceUnavailable
 
 from core.db.session_factory import session_factory
+from enums.model_billing import ModelBillingSource
 from extensions.ext_redis import redis_client
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
@@ -18,11 +18,6 @@ logger = logging.getLogger(__name__)
 _STORED_TOKENER_SOURCE = "tokener"
 _MODEL_BILLING_SOURCE_CACHE_KEY_PREFIX = "tenant:model-billing-source:v1"
 _MODEL_BILLING_SOURCE_CACHE_TTL_SECONDS = 10 * 60
-
-
-class ModelBillingSource(StrEnum):
-    LEGACY_MESSAGE_CREDITS = "legacy_message_credits"
-    TOKENER = "tokener"
 
 
 class ModelBillingProfileResolutionError(ServiceUnavailable):

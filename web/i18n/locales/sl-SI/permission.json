@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Dovoljenje za dostop",
   "accessRule.actions": "Dejanja",
-  "accessRule.addMemberAria": "Dodaj {{name}}",
   "accessRule.addMembersTitle": "Dodaj člane",
   "accessRule.agentDescription": "Upravljajte dostop do tega agenta in dovoljenja uporabnikov.",
   "accessRule.agentTitle": "Nabor dovoljenj za agenta",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} nabor dovoljenj",
   "accessRule.summary_other": "{{count}} naborov dovoljenj",
   "accessRule.updated": "Pravilo za dostop uspešno posodobljeno",
+  "accessRule.workspaceAdmin": "Skrbnik delovnega prostora",
   "accessRule.workspaceOwner": "Lastnik delovnega prostora",
   "common.duplicateAction": "Podvoji",
   "group.agent": "Agenti",

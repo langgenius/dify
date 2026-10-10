@@ -15,9 +15,6 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  optimizeDeps: {
-    include: ['vite-plus/test/browser'],
-  },
   test: {
     browser: {
       expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },

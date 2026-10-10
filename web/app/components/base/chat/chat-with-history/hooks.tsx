@@ -594,9 +594,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     isInstalledApp,

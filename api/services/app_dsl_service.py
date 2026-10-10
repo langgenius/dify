@@ -71,8 +71,8 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
     DEFAULT_ICON,
@@ -556,7 +556,7 @@ class AppDslService:
             account.id,
             scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
             resource_type=RBACResourceScope.AGENT if binding is not None else None,
-            resource_id=str(binding.id) if binding is not None else None,
+            resource_id=binding.id if binding is not None else None,
         )
         if not allowed:
             raise NoPermissionError("Agent DSL import permission is required to import an Agent App")

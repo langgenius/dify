@@ -2,6 +2,12 @@
 
 from typing import Protocol
 
+from services.account_errors import (
+    AccountEmailDomainSuspendedError,
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+)
 from services.entities.account_activation_entities import (
     AccountInvitation,
     AccountSetup,
@@ -52,22 +58,6 @@ class WorkspaceMemberAccessSync(Protocol):
     def sync(self, workspace_id: str, account_id: str) -> None: ...
 
 
-class InvalidInvitationError(Exception):
-    """The invitation is invalid, stale, or missing required activation data."""
-
-
-class InvitationAccountMismatchError(Exception):
-    """An authenticated account attempted to consume another account's invitation."""
-
-
-class FrozenAccountError(Exception):
-    """The invited account is temporarily ineligible for activation."""
-
-
-class EmailDomainSuspendedError(Exception):
-    """The invited account uses a suspended email domain."""
-
-
 class AccountActivationService:
     def __init__(
         self,
@@ -113,7 +103,7 @@ class AccountActivationService:
 
         freeze_type = self._eligibility.get_freeze_type(invitation.account_email)
         if freeze_type == "email_domain_suspended":
-            raise EmailDomainSuspendedError
+            raise AccountEmailDomainSuspendedError
         if freeze_type:
             raise FrozenAccountError
 

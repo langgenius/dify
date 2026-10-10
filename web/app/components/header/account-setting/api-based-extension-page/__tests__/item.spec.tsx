@@ -54,6 +54,31 @@ describe('Item Component', () => {
       expect(screen.getByText('https://api.example.com'))!.toBeInTheDocument()
     })
 
+    it('should distinguish the edit and delete buttons for each extension by name', () => {
+      render(
+        <>
+          <Item apiBasedExtension={mockData} onEdit={mockOnEdit} />
+          <Item
+            apiBasedExtension={{ ...mockData, id: '2', name: 'Another Extension' }}
+            onEdit={mockOnEdit}
+          />
+        </>,
+      )
+
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Test Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Test Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Another Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Another Extension/i }),
+      ).toBeInTheDocument()
+    })
+
     it('should render with minimal extension data', () => {
       // Arrange
       const minimalData: ApiBasedExtensionResponse = {
@@ -88,8 +113,12 @@ describe('Item Component', () => {
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} canManage={false} />)
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Test Extension/i }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Test Extension/i }),
+      ).toBeDisabled()
     })
 
     it('should not open edit or delete flows when management is not allowed', () => {
@@ -207,10 +236,7 @@ describe('Item Component', () => {
 
       // Act
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
-      const allButtons = screen.getAllByRole('button')
-      const editBtn = screen.getByText('common.operation.edit')
-      const deleteBtn = allButtons.find((btn) => btn !== editBtn)
-      if (deleteBtn) fireEvent.click(deleteBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'Test Extension' }))
 
       // Assert
       // Assert

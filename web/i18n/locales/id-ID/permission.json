@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Izin akses",
   "accessRule.actions": "Tindakan",
-  "accessRule.addMemberAria": "Tambahkan {{name}}",
   "accessRule.addMembersTitle": "Tambahkan anggota",
   "accessRule.agentDescription": "Kelola siapa yang dapat mengakses agen ini beserta izinnya.",
   "accessRule.agentTitle": "Set izin Agen",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} set izin",
   "accessRule.summary_other": "{{count}} set izin",
   "accessRule.updated": "Aturan akses berhasil diperbarui",
+  "accessRule.workspaceAdmin": "Admin Workspace",
   "accessRule.workspaceOwner": "Pemilik Workspace",
   "common.duplicateAction": "Duplikat",
   "group.agent": "Agen",

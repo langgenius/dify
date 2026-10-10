@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Quyền truy cập",
   "accessRule.actions": "Hành động",
-  "accessRule.addMemberAria": "Thêm {{name}}",
   "accessRule.addMembersTitle": "Thêm thành viên",
   "accessRule.agentDescription": "Quản lý những ai có thể truy cập tác nhân này và quyền của họ.",
   "accessRule.agentTitle": "Bộ quyền tác nhân",
@@ -34,6 +33,7 @@
   "accessRule.summary_one": "{{count}} bộ quyền",
   "accessRule.summary_other": "{{count}} bộ quyền",
   "accessRule.updated": "Đã cập nhật quy tắc truy cập thành công",
+  "accessRule.workspaceAdmin": "Quản trị viên workspace",
   "accessRule.workspaceOwner": "Chủ sở hữu workspace",
   "common.duplicateAction": "Nhân bản",
   "group.agent": "Tác nhân",

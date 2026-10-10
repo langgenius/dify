@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.errors import DataSourceApiKeyAuthCredentialValidationError
-from services.entities.data_source_api_key_auth_entities import (
+from services.data_source.entities.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthCredentials,
 )
@@ -82,9 +82,7 @@ def test_create_binding_successful(
         "credentials": {"auth_type": "bearer", "config": {"api_key": "secret"}},
     }
 
-    with patch(
-        "services.auth.data_source_api_key_auth_service.DataSourceApiKeyAuthService.create_binding"
-    ) as create_auth:
+    with patch("services.data_source.auth.api_key_service.DataSourceApiKeyAuthService.create_binding") as create_auth:
         response = test_client_with_containers.post(
             "/console/api/api-key-auth/data-source/binding",
             json=payload,
@@ -111,7 +109,7 @@ def test_create_binding_failure(
     account, _tenant = create_console_account_and_tenant(db_session_with_containers)
 
     with patch(
-        "services.auth.data_source_api_key_auth_service.DataSourceApiKeyAuthService.create_binding",
+        "services.data_source.auth.api_key_service.DataSourceApiKeyAuthService.create_binding",
         side_effect=DataSourceApiKeyAuthCredentialValidationError("Credentials rejected"),
     ):
         response = test_client_with_containers.post(

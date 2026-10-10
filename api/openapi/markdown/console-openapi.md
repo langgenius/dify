@@ -345,6 +345,7 @@ Check if activation token is valid
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | publication_status | query | Filter by published or draft Agent configuration status | No | string, <br>**Available values:** "drafts", "published" |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -1512,6 +1513,7 @@ Get list of applications with pagination and filtering
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -1544,7 +1546,7 @@ Create a new application
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> |
+| Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> |
 
 #### Responses
 
@@ -1611,6 +1613,7 @@ Get applications starred by the current account
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -5006,28 +5009,6 @@ Delete an API key for an app
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
-### [PUT] /billing/partners/{partner_key}/tenants
-Sync partner tenants bindings
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| partner_key | path | Partner key | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [PartnerTenantsPayload](#partnertenantspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Tenants synced to partner successfully | **application/json**: [BillingResponse](#billingresponse)<br> |
-| 400 | Invalid partner information |  |
-
 ### [GET] /billing/subscription
 #### Parameters
 
@@ -5084,30 +5065,9 @@ Get compliance document download link
 ### [GET] /data-source/integrates
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### [PATCH] /data-source/integrates
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### [GET] /data-source/integrates/{binding_id}/{action}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| action | path |  | Yes | string |
-| binding_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
 
 ### [PATCH] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5119,9 +5079,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /datasets
 Get list of datasets
@@ -5156,7 +5116,7 @@ Create a new dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+| 201 | Dataset created successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [GET] /datasets/api-base-info
@@ -5218,25 +5178,6 @@ Delete dataset API key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
-
-### [POST] /datasets/batch_import_status/{job_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [BatchImportPayload](#batchimportpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
 ### [POST] /datasets/external
 Create external knowledge dataset
@@ -5970,20 +5911,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
-
-### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string (uuid) |
-| document_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
 #### Parameters
@@ -8441,6 +8368,67 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
+### [GET] /resource-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access tokens | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [POST] /resource-access-tokens
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenCreatePayload](#resourceaccesstokencreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Resource access token created | **application/json**: [ResourceAccessTokenCreateResponse](#resourceaccesstokencreateresponse)<br> |
+
+### [PATCH] /resource-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ResourceAccessTokenUpdatePayload](#resourceaccesstokenupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resource access token updated | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+
+### [DELETE] /resource-access-tokens/{token_id}/relations/{relation_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| relation_id | path |  | Yes | string (uuid) |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Resource access token relation deleted |
+
 ### [POST] /rule-code-generate
 Generate code rules using LLM
 
@@ -10392,7 +10380,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
-| 400 | Invalid role or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
+| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -10903,10 +10891,6 @@ Update a plugin endpoint
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
 ### [GET] /workspaces/current/permission
-**Get workspace permission settings**
-
-Returns permission flags that control workspace features like member invitations and owner transfer.
-
 #### Responses
 
 | Code | Description | Schema |
@@ -13921,6 +13905,7 @@ default (the config form sends the full desired feature state on save).
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | publication_status | string, <br>**Available values:** "drafts", "published" | Filter by published or draft Agent configuration status | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
@@ -16586,6 +16571,7 @@ This class is used to store the schema information of an api based tool.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -17236,12 +17222,6 @@ ExporleBanner status
 | code | string |  | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
-
-#### BillingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| BillingResponse | object |  |  |
 
 #### BillingSubscriptionResponse
 
@@ -18106,7 +18086,7 @@ Site token customization strategy
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | parent_id | string |  | Yes |
-| type | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
 
 #### DataSourceIntegrateResponse
 
@@ -21047,14 +21027,29 @@ Coarse node-level status used by Inspector to pick a banner.
 | notifications | [ [NotificationItemResponse](#notificationitemresponse) ] |  | Yes |
 | should_show | boolean |  | Yes |
 
+#### NotionEstimatePagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page_id | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
+
 #### NotionEstimatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | doc_form | string, <br>**Default:** text_model |  | No |
 | doc_language | string, <br>**Default:** English |  | No |
-| notion_info_list | [ object ] |  | Yes |
+| notion_info_list | [ [NotionEstimateWorkspacePayload](#notionestimateworkspacepayload) ] |  | Yes |
 | process_rule | object |  | Yes |
+
+#### NotionEstimateWorkspacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | Yes |
+| pages | [ [NotionEstimatePagePayload](#notionestimatepagepayload) ] |  | Yes |
+| workspace_id | string |  | Yes |
 
 #### NotionIcon
 
@@ -21087,7 +21082,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | parent_id | string |  | Yes |
-| type | string |  | Yes |
+| type | [NotionPageType](#notionpagetype) |  | Yes |
 
 #### NotionIntegrateWorkspaceResponse
 
@@ -21106,6 +21101,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
 | type | string |  | Yes |
+
+#### NotionPageType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotionPageType | string |  |  |
 
 #### OAuthCallbackQuery
 
@@ -21663,12 +21664,6 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
-
-#### PartnerTenantsPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| click_id | string | Click Id from partner referral link | Yes |
 
 #### PausedNodeResponse
 
@@ -22242,7 +22237,13 @@ Verification of the plugin.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
-| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
+| id | [PreProcessingRuleKey](#preprocessingrulekey) | Rule identifier. | Yes |
+
+#### PreProcessingRuleKey
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PreProcessingRuleKey | string |  |  |
 
 #### PreviewDetail
 
@@ -22819,6 +22820,74 @@ Resource types understood by access policies.
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
 
+#### ResourceAccessTokenCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
+
+#### ResourceAccessTokenCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| token | string |  | Yes |
+
+#### ResourceAccessTokenListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### ResourceAccessTokenListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceAccessTokenRowResponse](#resourceaccesstokenrowresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ResourceAccessTokenResourcePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+
+#### ResourceAccessTokenResourceType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResourceAccessTokenResourceType | string |  |  |
+
+#### ResourceAccessTokenRowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| last_used_at | integer |  | No |
+| masked_token | string |  | Yes |
+| name | string |  | Yes |
+| relation_id | string |  | Yes |
+| resource_id | string |  | Yes |
+| resource_name | string |  | Yes |
+| resource_type | [ResourceAccessTokenResourceType](#resourceaccesstokenresourcetype) |  | Yes |
+| token | string |  | No |
+| token_id | string |  | Yes |
+| track_id | string |  | Yes |
+
+#### ResourceAccessTokenUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resources | [ [ResourceAccessTokenResourcePayload](#resourceaccesstokenresourcepayload) ] |  | Yes |
+
 #### ResourcePermissionKeys
 
 | Name | Type | Description | Required |
@@ -22909,17 +22978,22 @@ Resource types understood by access policies.
 | data_source_type | string |  | No |
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
+| doc_metadata | object |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
 | message_id | string (uuid) |  | No |
+| page | integer |  | No |
 | position | integer |  | Yes |
+| retriever_from | string |  | No |
 | score | number |  | No |
 | segment_id | string |  | No |
 | segment_position | integer |  | No |
 | summary | string |  | No |
+| title | string |  | No |
 | word_count | integer |  | No |
 
 #### RoleBindingsResponse
@@ -23898,6 +23972,7 @@ Query parameters for listing snippet published workflows.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -26578,13 +26653,13 @@ FastOpenAPI proof of concept for Dify API
 ##### [GET] /console/api/setup
 **Get system setup status.
 
-    NOTE: This endpoint is unauthenticated by design.
+NOTE: This endpoint is unauthenticated by design.
 
-    During first-time bootstrap there is no admin account yet, so frontend initialization must be
-    able to query setup progress before any login flow exists.
+During first-time bootstrap there is no admin account yet, so frontend initialization must be
+able to query setup progress before any login flow exists.
 
-    Only bootstrap-safe status information should be returned by this endpoint.
-    **
+Only bootstrap-safe status information should be returned by this endpoint.
+**
 
 ###### Responses
 
@@ -26595,10 +26670,10 @@ FastOpenAPI proof of concept for Dify API
 ##### [POST] /console/api/setup
 **Initialize system setup with admin account.
 
-    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
-    and init-password validation rather than user session authentication.
-    **
+NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
+and init-password validation rather than user session authentication.
+**
 
 ###### Request Body
 

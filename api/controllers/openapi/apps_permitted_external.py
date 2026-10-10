@@ -33,7 +33,6 @@ from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from models.enums import AppStatus
-from services.account_service import TenantService
 from services.enterprise.app_permitted_service import list_permitted_apps
 from services.entities.app_entities import AppSummary
 
@@ -43,7 +42,7 @@ _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
     @endpoint(
-        op="console_app.external.list",
+        op="get.console_app.external",
         kind=Kind.LIST,
         summary="List apps an external SSO subject may run",
         examples=(Example(title="List the apps this SSO subject may run, first page", input={"page": 1, "limit": 20}),),
@@ -73,7 +72,7 @@ class PermittedExternalAppsListApi(Resource):
             str(a.id): a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
+        tenants_by_id = {str(t.id): t for t in application_services().workspaces.management.get_many(tenant_ids)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
@@ -101,7 +100,7 @@ class PermittedExternalAppsListApi(Resource):
 @openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @endpoint(
-        op="console_app.external.describe",
+        op="describe.console_app.external",
         kind=Kind.OBJECT,
         summary="External-subject app detail",
         examples=(Example(title="Describe a permitted app with its input_schema", input={"app_id": "<app_id>"}),),

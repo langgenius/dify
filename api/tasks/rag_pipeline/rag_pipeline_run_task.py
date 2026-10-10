@@ -1,5 +1,4 @@
 import contextvars
-import json
 import logging
 import time
 import uuid
@@ -11,22 +10,30 @@ from typing import Any
 import click
 from celery import group, shared_task
 from flask import current_app, g
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
+from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_database import db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
+
+# Each entry is validated into RagPipelineInvokeEntity inside the worker.
+_INVOKE_ENTITIES_ADAPTER = TypeAdapter(list[dict[str, Any]])
 
 
 def chunked(iterable: Sequence, size: int):
@@ -52,7 +59,7 @@ def rag_pipeline_run_task(
         rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
             rag_pipeline_invoke_entities_file_id
         )
-        rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
+        rag_pipeline_invoke_entities = _INVOKE_ENTITIES_ADAPTER.validate_json(rag_pipeline_invoke_entities_content)
 
         logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 
@@ -184,9 +191,11 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
                 # Direct execution without creating another thread
                 # Since we're already in a thread pool, no need for nested threading
-                from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
+                pipeline_generator = PipelineGenerator(
+                    documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
+                    datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
+                )
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
                     session=session,

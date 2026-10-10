@@ -154,7 +154,7 @@ class EmailRegisterResetApi(Resource):
     @model_validate(EmailRegisterResetPayload)
     def post(self, args: EmailRegisterResetPayload):
         try:
-            token_pair = application_services().accounts.email_registration.register(
+            tokens = application_services().accounts.email_registration.register(
                 remote_ip=extract_remote_ip(request),
                 token=args.token,
                 new_password=args.new_password,
@@ -179,5 +179,5 @@ class EmailRegisterResetApi(Resource):
 
         return dump_response(
             EmailRegisterResetResponse,
-            {"result": "success", "data": token_pair},
+            {"result": "success", "data": tokens},
         )

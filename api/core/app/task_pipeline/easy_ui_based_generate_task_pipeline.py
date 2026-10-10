@@ -120,7 +120,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     ) -> (
         ChatbotAppBlockingResponse
         | CompletionAppBlockingResponse
-        | Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse, None, None]
+        | Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse]
     ):
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
@@ -160,7 +160,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 release_message_billing(self._application_generate_entity)
 
     def _to_blocking_response(
-        self, generator: Generator[StreamResponse, None, None]
+        self, generator: Generator[StreamResponse]
     ) -> ChatbotAppBlockingResponse | CompletionAppBlockingResponse:
         """
         Process blocking response.
@@ -208,8 +208,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         raise RuntimeError("queue listening stopped unexpectedly.")
 
     def _to_stream_response(
-        self, generator: Generator[StreamResponse, None, None], *, arm_close: bool = False
-    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse, None, None]:
+        self, generator: Generator[StreamResponse], *, arm_close: bool = False
+    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse]:
         """
         To stream response.
         :return:
@@ -248,7 +248,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
@@ -301,7 +301,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
     def _process_stream_response(
         self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """
         Process stream response.
         :return:

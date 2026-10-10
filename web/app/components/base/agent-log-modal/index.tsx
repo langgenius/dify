@@ -9,12 +9,19 @@ import { useTranslation } from 'react-i18next'
 import AgentLogDetail from './detail'
 
 type AgentLogModalProps = Readonly<{
+  appId: string
   currentLogItem?: IChatItem
   width: number
   floating?: boolean
   onCancel: () => void
 }>
-const AgentLogModal: FC<AgentLogModalProps> = ({ currentLogItem, width, floating, onCancel }) => {
+const AgentLogModal: FC<AgentLogModalProps> = ({
+  appId,
+  currentLogItem,
+  width,
+  floating,
+  onCancel,
+}) => {
   const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
@@ -32,6 +39,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({ currentLogItem, width, floating
   const detailContent = (
     <>
       <AgentLogDetail
+        appId={appId}
         conversationID={currentLogItem.conversationId}
         messageID={currentLogItem.id}
         log={currentLogItem}

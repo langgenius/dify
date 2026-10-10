@@ -46,6 +46,7 @@
     "प्राथमिकता ईमेल और चैट सहायता"
   ],
   "plans.premium.includesTitle": "समुदाय से सब कुछ, इसके अलावा:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "प्रीमियम",
   "plans.premium.price": "स्केलेबल",
   "plans.premium.priceTip": "क्लाउड मार्केटप्लेस के आधार पर",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "योजना और विशेषताओं की तुलना करें",
   "plansCommon.currentPlan": "वर्तमान योजना",
   "plansCommon.days": "दिन",
+  "plansCommon.discountedAnnualPrice": "छूट के बाद वार्षिक मूल्य: ",
   "plansCommon.documentProcessingPriority": "दस्तावेज़ प्रसंस्करण प्राथमिकता",
   "plansCommon.documentProcessingPriorityTip": "उच्च दस्तावेज़ प्रसंस्करण प्राथमिकता के लिए, कृपया अपनी योजना को अपग्रेड करें।",
   "plansCommon.documentProcessingPriorityUpgrade": "तेजी से गति पर उच्च सटीकता के साथ अधिक डेटा संसाधित करें।",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "मॉडल प्रदाता",
   "plansCommon.month": "महीना",
   "plansCommon.mostPopular": "सबसे लोकप्रिय",
+  "plansCommon.originalAnnualPrice": "मूल वार्षिक मूल्य: ",
   "plansCommon.priceTip": "प्रत्येक कार्यक्षेत्र/",
   "plansCommon.priority.priority": "प्राथमिकता",
   "plansCommon.priority.standard": "मानक",

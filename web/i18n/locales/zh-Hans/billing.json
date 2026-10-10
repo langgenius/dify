@@ -46,6 +46,7 @@
     "优先电子邮件和聊天支持"
   ],
   "plans.premium.includesTitle": "Community 版的所有功能，加上：",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "可扩展",
   "plans.premium.priceTip": "基于 Cloud Marketplace",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "对比套餐 & 功能特性",
   "plansCommon.currentPlan": "当前计划",
   "plansCommon.days": "天",
+  "plansCommon.discountedAnnualPrice": "优惠年付价格：",
   "plansCommon.documentProcessingPriority": "文档处理",
   "plansCommon.documentProcessingPriorityTip": "如需更高的文档处理优先级，请升级您的套餐。",
   "plansCommon.documentProcessingPriorityUpgrade": "以更快的速度、更高的精度处理更多的数据。",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "支持 OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受欢迎",
+  "plansCommon.originalAnnualPrice": "原年付价格：",
   "plansCommon.priceTip": "每个团队空间/",
   "plansCommon.priority.priority": "优先",
   "plansCommon.priority.standard": "标准",

@@ -1,4 +1,12 @@
+from collections import OrderedDict
+from http import HTTPStatus
+from typing import cast
+
+from flask import current_app, got_request_exception
+from flask_restx import Api
+
 from libs.exception import BaseHTTPException
+from services.errors.base import NoPermissionError
 
 
 class FilenameNotExistsError(BaseHTTPException):
@@ -84,6 +92,39 @@ class NotFoundError(BaseHTTPException):
     code = 404
 
 
+class UnauthorizedError(BaseHTTPException):
+    error_code = "unauthorized"
+    code = HTTPStatus.UNAUTHORIZED
+    description = "Authentication is required."
+
+
+class InternalServerError(BaseHTTPException):
+    """Expose a safe response while retaining the original exception in server logs."""
+
+    error_code = "internal_server_error"
+    code = HTTPStatus.INTERNAL_SERVER_ERROR
+    description = (
+        "The server encountered an internal error and was unable to complete your request. "
+        "Either the server is overloaded or there is an error in the application."
+    )
+
+
 class InvalidArgumentError(BaseHTTPException):
     error_code = "invalid_param"
     code = 400
+
+
+def register_permission_error_handler(api: Api) -> None:
+    """Preserve the default permission-error response for Console and Service API."""
+
+    @api.errorhandler(NoPermissionError)
+    def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        return {
+            "code": InvalidArgumentError.error_code,
+            "message": str(error),
+            "status": HTTPStatus.BAD_REQUEST,
+        }, HTTPStatus.BAD_REQUEST
+
+    # Flask-RESTX picks the first matching handler, including the generic Exception handler.
+    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)

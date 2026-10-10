@@ -3,25 +3,23 @@ import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import Run from '@/app/components/workflow/run'
 import { useRouter } from '@/next/navigation'
 
 type ILogDetail = {
+  appId: string
   runID: string
   onClose: () => void
   canReplay?: boolean
 }
 
-const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
+const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false }) => {
   const { t } = useTranslation(['appLog', 'common'])
-  const appDetail = useStore((state) => state.appDetail)
   const router = useRouter()
 
   const handleReplay = () => {
-    if (!appDetail?.id) return
-    router.push(`/app/${appDetail.id}/workflow?replayRunId=${runID}`)
+    router.push(`/app/${appId}/workflow?replayRunId=${runID}`)
   }
 
   return (
@@ -60,10 +58,8 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
       </div>
       <WorkflowContextProvider>
         <Run
-          runDetailUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}` : ''}
-          tracingListUrl={
-            runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions` : ''
-          }
+          runDetailUrl={runID ? `/apps/${appId}/workflow-runs/${runID}` : ''}
+          tracingListUrl={runID ? `/apps/${appId}/workflow-runs/${runID}/node-executions` : ''}
         />
       </WorkflowContextProvider>
     </div>

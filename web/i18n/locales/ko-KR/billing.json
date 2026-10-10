@@ -46,6 +46,7 @@
     "우선 이메일 및 채팅 지원"
   ],
   "plans.premium.includesTitle": "커뮤니티의 모든 것, 여기에 추가로:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "프리미엄",
   "plans.premium.price": "확장 가능",
   "plans.premium.priceTip": "클라우드 마켓플레이스를 기반으로",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "계획 및 기능 비교",
   "plansCommon.currentPlan": "현재 요금제",
   "plansCommon.days": "일",
+  "plansCommon.discountedAnnualPrice": "할인된 연간 요금: ",
   "plansCommon.documentProcessingPriority": "문서 처리 우선순위",
   "plansCommon.documentProcessingPriorityTip": "더 높은 문서 처리 우선순위가 필요하면 플랜을 업그레이드하세요.",
   "plansCommon.documentProcessingPriorityUpgrade": "더 높은 정확성과 빠른 속도로 데이터를 처리합니다.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "모델 제공자",
   "plansCommon.month": "월",
   "plansCommon.mostPopular": "가장 인기 있는",
+  "plansCommon.originalAnnualPrice": "기존 연간 요금: ",
   "plansCommon.priceTip": "작업 공간당/",
   "plansCommon.priority.priority": "우선",
   "plansCommon.priority.standard": "표준",
