@@ -102,7 +102,7 @@ const ChatRecord = () => {
       {fetched && (
         <>
           <div className="flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-            {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
+            {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`}
             <div
               className="flex size-6 cursor-pointer items-center justify-center"
               onClick={() => {

@@ -28,6 +28,22 @@ describe('ChatRecord', () => {
     })
   })
 
+  it('renders paused history without a finished timestamp', async () => {
+    mockFetchConversationMessages.mockResolvedValue({ data: [] } as never)
+
+    renderWorkflowComponent(<ChatRecord />, {
+      initialStoreState: {
+        historyWorkflowData: {
+          ...historyWorkflowData,
+          status: 'paused',
+          finished_at: undefined,
+        },
+      },
+    })
+
+    expect(await screen.findByText('TEST CHAT (Paused)')).toBeInTheDocument()
+  })
+
   it('renders fetched chat history with the real chat shell and switches siblings', async () => {
     const user = userEvent.setup()
 

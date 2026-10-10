@@ -337,6 +337,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_filled',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           rendered_content: 'Done',
@@ -349,6 +350,7 @@ describe('createWorkflowStreamHandlers', () => {
         workflow_run_id: 'run-1',
         event: 'human_input_form_timeout',
         data: {
+          form_id: 'form-1',
           node_id: 'node-1',
           node_title: 'Node',
           expiration_time: 200,
@@ -400,6 +402,14 @@ describe('createWorkflowStreamHandlers', () => {
       })
     })
 
+    expect(setup.workflowProcessData()?.humanInputFormDataList).toEqual([])
+    expect(setup.workflowProcessData()?.humanInputFilledFormDataList).toEqual([
+      expect.objectContaining({
+        form_id: 'form-1',
+        rendered_content: 'Done',
+        form_content: 'content',
+      }),
+    ])
     expect(setup.currentTaskId()).toBe('task-1')
     expect(setup.isStopping()).toBe(false)
     expect(setup.workflowProcessData()).toEqual(
