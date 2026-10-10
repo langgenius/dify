@@ -706,6 +706,9 @@ services:
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      # Override these values in docker/.env for slow HTTP Request targets.
+      SSRF_REQUEST_TIMEOUT: ${SSRF_REQUEST_TIMEOUT:-120}
+      SSRF_READ_TIMEOUT: ${SSRF_READ_TIMEOUT:-120}
       SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
       SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
@@ -735,6 +738,9 @@ services:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      # Override these values in docker/.env for slow HTTP Request targets.
+      SSRF_REQUEST_TIMEOUT: ${SSRF_REQUEST_TIMEOUT:-120}
+      SSRF_READ_TIMEOUT: ${SSRF_READ_TIMEOUT:-120}
       SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
       SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
