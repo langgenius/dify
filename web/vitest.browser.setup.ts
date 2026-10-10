@@ -1,5 +1,5 @@
 import { vi } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { page, server, userEvent } from 'vite-plus/test/browser'
 import './app/styles/globals.css'
 
 document.documentElement.dataset.theme = 'light'
@@ -10,7 +10,8 @@ document.documentElement.dataset.theme = 'light'
 
 // Tests in one file share a page, so the viewport and pointer position outlive the test that set them.
 beforeEach(async () => {
-  await page.viewport(414, 896)
+  const { width, height } = server.config.browser.viewport
+  await page.viewport(width, height)
   await userEvent.unhover(document.body)
 })
 
