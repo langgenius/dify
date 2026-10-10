@@ -98,6 +98,12 @@ class UnauthorizedError(BaseHTTPException):
     description = "Authentication is required."
 
 
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = HTTPStatus.FORBIDDEN
+    description = "You don't have the permission to access the requested resource."
+
+
 class InternalServerError(BaseHTTPException):
     """Expose a safe response while retaining the original exception in server logs."""
 

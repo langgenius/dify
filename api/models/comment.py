@@ -6,11 +6,10 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Index, func
-from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import TypeBase
 
-from .account import Account
 from .base import gen_uuidv7_string
 from .types import StringUUID
 
@@ -73,68 +72,6 @@ class WorkflowComment(TypeBase):
         lambda: WorkflowCommentMention, back_populates="comment", cascade="all, delete-orphan", init=False
     )
 
-    def created_by_account(self, session: Session) -> Account | None:
-        """Get creator account."""
-        if hasattr(self, "_created_by_account_cache"):
-            return self._created_by_account_cache
-        return session.get(Account, self.created_by)
-
-    def cache_created_by_account(self, account: Account | None) -> None:
-        """Cache creator account to avoid extra queries."""
-        self._created_by_account_cache = account
-
-    def resolved_by_account(self, session: Session) -> Account | None:
-        """Get resolver account."""
-        if hasattr(self, "_resolved_by_account_cache"):
-            return self._resolved_by_account_cache
-        if self.resolved_by:
-            return session.get(Account, self.resolved_by)
-        return None
-
-    def cache_resolved_by_account(self, account: Account | None) -> None:
-        """Cache resolver account to avoid extra queries."""
-        self._resolved_by_account_cache = account
-
-    @property
-    def reply_count(self):
-        """Get reply count."""
-        return len(self.replies)
-
-    @property
-    def mention_count(self):
-        """Get mention count."""
-        return len(self.mentions)
-
-    def participants(self, session: Session) -> list[Account]:
-        """Get all participants (creator + repliers + mentioned users)."""
-        participant_ids: set[str] = set()
-        participants: list[Account] = []
-
-        # Use account accessors to reuse preloaded caches and avoid hidden N+1.
-        if self.created_by not in participant_ids:
-            participant_ids.add(self.created_by)
-            created_by_account = self.created_by_account(session)
-            if created_by_account:
-                participants.append(created_by_account)
-
-        for reply in self.replies:
-            if reply.created_by in participant_ids:
-                continue
-            participant_ids.add(reply.created_by)
-            reply_account = reply.created_by_account(session)
-            if reply_account:
-                participants.append(reply_account)
-
-        for mention in self.mentions:
-            if mention.mentioned_user_id in participant_ids:
-                continue
-            participant_ids.add(mention.mentioned_user_id)
-            mentioned_account = mention.mentioned_user_account(session)
-            if mentioned_account:
-                participants.append(mentioned_account)
-
-        return participants
-
 
 class WorkflowCommentReply(TypeBase):
     """Workflow comment reply model.
@@ -173,16 +110,6 @@ class WorkflowCommentReply(TypeBase):
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="replies", init=False)
 
-    def created_by_account(self, session: Session) -> Account | None:
-        """Get creator account."""
-        if hasattr(self, "_created_by_account_cache"):
-            return self._created_by_account_cache
-        return session.get(Account, self.created_by)
-
-    def cache_created_by_account(self, account: Account | None) -> None:
-        """Cache creator account to avoid extra queries."""
-        self._created_by_account_cache = account
-
 
 class WorkflowCommentMention(TypeBase):
     """Workflow comment mention model.
@@ -216,13 +143,3 @@ class WorkflowCommentMention(TypeBase):
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="mentions", init=False)
     reply: Mapped[WorkflowCommentReply | None] = relationship(lambda: WorkflowCommentReply, init=False)
-
-    def mentioned_user_account(self, session: Session) -> Account | None:
-        """Get mentioned account."""
-        if hasattr(self, "_mentioned_user_account_cache"):
-            return self._mentioned_user_account_cache
-        return session.get(Account, self.mentioned_user_id)
-
-    def cache_mentioned_user_account(self, account: Account | None) -> None:
-        """Cache mentioned account to avoid extra queries."""
-        self._mentioned_user_account_cache = account
