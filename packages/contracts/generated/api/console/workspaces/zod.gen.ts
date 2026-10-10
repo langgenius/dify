@@ -2399,7 +2399,7 @@ export const zPluginInstallTaskPluginStatus = z.object({
   plugin_id: z.string(),
   plugin_unique_identifier: z.string(),
   source: z.string().nullish(),
-  status: zPluginInstallTaskStatus,
+  status: z.union([zPluginInstallTaskStatus, z.string()]),
 })
 
 /**
@@ -2410,7 +2410,7 @@ export const zPluginInstallTask = z.object({
   created_at: z.iso.datetime(),
   id: z.string(),
   plugins: z.array(zPluginInstallTaskPluginStatus),
-  status: zPluginInstallTaskStatus,
+  status: z.union([zPluginInstallTaskStatus, z.string()]),
   total_plugins: z.int(),
   updated_at: z.iso.datetime(),
 })
