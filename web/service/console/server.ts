@@ -64,17 +64,22 @@ function createServerConsoleOpenAPILink(
 ): ClientLink<ConsoleClientContext> {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getServerConsoleApiPrefix,
-    headers: getServerConsoleRequestHeaders,
-    fetch: (request, init) => {
+    headers: ({ context }) =>
+      context.server?.forwardIdentity === false
+        ? new Headers({ Accept: 'application/json' })
+        : getServerConsoleRequestHeaders(),
+    fetch: (request, init, { context }) => {
       if (request.body && !request.headers.has('content-type'))
         request.headers.set('Content-Type', 'application/json')
 
       const normalizedURL = normalizeConsoleOpenAPIURL(request.url)
       const normalizedRequest =
         normalizedURL === request.url ? request : new Request(normalizedURL, request)
+      const revalidate = context.server?.revalidate
       return globalThis.fetch(normalizedRequest, {
         ...init,
-        cache: 'no-store',
+        cache: revalidate !== undefined && revalidate > 0 ? 'force-cache' : 'no-store',
+        ...(revalidate === undefined ? {} : { next: { revalidate } }),
       })
     },
     interceptors: [

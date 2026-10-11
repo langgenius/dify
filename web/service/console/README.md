@@ -11,6 +11,9 @@ transport for the Python Console API.
   [Instrumentation] and the [root layout]
   register this transport. Only the transport is shared globally;
   request identity is resolved per request.
+- Server queries forward identity and use `no-store` by default. Feature-owned `context.server` options can disable
+  identity forwarding with `forwardIdentity: false` and enable fetch caching with `revalidate > 0` (seconds).
+  The browser transport ignores these options.
 - Shared query/mutation defaults live in
   [query-policies.ts].
   In oRPC v1, caller options override defaults, including callbacks.
