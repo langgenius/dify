@@ -1,6 +1,11 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { convertTimezoneToOffsetStr, getTimezoneOffsetMinutes } from '@/utils/timezone'
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import {
+  convertToUserTimezoneRepresentation,
+  getCronExecutionInstants,
+  isValidCronExpression,
+  parseCronExpression,
+} from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
 
@@ -285,6 +290,17 @@ export const getFormattedExecutionTimes = (
   count: number = 5,
 ): string[] => {
   const timezone = resolveTimezone(data.timezone)
+  // Cron runs can repeat a wall time when DST ends, so label each run from its real instant.
+  if (data.mode === 'cron') {
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression)) return []
+    return getCronExecutionInstants(data.cron_expression, timezone)
+      .slice(0, count)
+      .map((instant) => {
+        const wallTime = convertToUserTimezoneRepresentation(instant, timezone)
+        const label = formatUserTimezoneDate(wallTime, timezone, false, false)
+        return `${label} (${convertTimezoneToOffsetStr(timezone, instant)})`
+      })
+  }
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {
