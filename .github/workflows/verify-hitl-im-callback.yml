@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - 'build/feat/hitl-im-dev'
+  workflow_dispatch:
+    inputs:
+      expected_revision:
+        description: 'Already deployed API and worker commit to verify'
+        required: true
+        type: string
 
 concurrency:
   group: hitl-im-callback-deployment
@@ -14,6 +20,13 @@ jobs:
     runs-on: depot-ubuntu-24.04
     timeout-minutes: 45
     steps:
+      - name: Validate target revision
+        id: target
+        env:
+          CALLBACK_REVISION: ${{ inputs.expected_revision || github.sha }}
+        run: |
+          [[ "$CALLBACK_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          printf 'revision=%s\n' "$CALLBACK_REVISION" >> "$GITHUB_OUTPUT"
       - name: Wait for deployment and verify signed Slack callbacks
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
         with:
@@ -25,7 +38,7 @@ jobs:
             set -eu
             cd ~/langgenius
             test -n '${{ vars.HITL_IM_E2E_TENANT_ID }}'
-            callback_expected_revision='${{ github.sha }}'
+            callback_expected_revision='${{ steps.target.outputs.revision }}'
             callback_deployed=false
             for callback_attempt in $(seq 1 180); do
               callback_current=true
@@ -45,4 +58,7 @@ jobs:
               sleep 10
             done
             $callback_deployed || { echo 'Expected API and worker revision was not deployed'; exit 1; }
-            docker compose exec -T --workdir /app/api api uv run --no-cache --no-sync --project /app/api python -m dev.verify_hitl_im_callback_e2e --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}'
+            callback_script_file=$(mktemp /tmp/hitl-callback-e2e.XXXXXX.py)
+            trap 'rm -f "$callback_script_file"' EXIT
+            curl -fsS --max-time 30 'https://raw.githubusercontent.com/langgenius/dify/${{ github.sha }}/api/dev/verify_hitl_im_callback_e2e.py' -o "$callback_script_file"
+            docker compose exec -T --workdir /app/api api uv run --no-cache --no-sync --project /app/api python - --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}' < "$callback_script_file"
