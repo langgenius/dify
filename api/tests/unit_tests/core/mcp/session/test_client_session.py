@@ -467,7 +467,13 @@ def test_list_methods_send_cursor(streams, method_name, wire_method, result_key)
     t.start()
 
     with session:
-        result = getattr(session, method_name)(cursor="opaque-cursor-1")
+        method = {
+            "list_tools": session.list_tools,
+            "list_resources": session.list_resources,
+            "list_resource_templates": session.list_resource_templates,
+            "list_prompts": session.list_prompts,
+        }[method_name]
+        result = method(cursor="opaque-cursor-1")
         assert result.nextCursor == "cursor-2"
     t.join(timeout=1)
 
