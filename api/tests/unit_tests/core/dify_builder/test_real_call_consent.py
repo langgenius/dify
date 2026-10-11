@@ -6,9 +6,11 @@ No credential, runtime, network or database owner is exercised here.
 import ast
 import inspect
 from datetime import UTC, datetime, timedelta, timezone
+from typing import get_args
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
+from pydantic.fields import FieldInfo
 
 from configs.feature import WorkflowConfig
 from core.dify_builder import execution_policy
@@ -28,8 +30,6 @@ from core.dify_builder.real_call_consent import (
     ConsentBinding,
     ConsentDisclosure,
     ConsentReceipt,
-    ConsentState,
-    record_terminal_outcome,
     scope_digest,
     validate_phase,
     validate_scope,
@@ -285,14 +285,13 @@ def test_phase_denials(overrides: dict[str, object], reason: str) -> None:
     assert raised.value.reason_code == reason
 
 
-def test_completion_after_expiry_is_still_recorded() -> None:
+def test_expiry_blocks_new_phases_but_outcome_representation_needs_no_clock() -> None:
+    # Pure distinction only; durable finish-after-expiry is owned by Task 4 finish / Task 8 CI.
     expired_at = NOW - timedelta(minutes=1)
-    with pytest.raises(BuilderExecutionPolicyError):
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
         phase(expires_at=expired_at)
-    # Terminal recording has no clock input: an already-dispatched phase records.
-    assert "now" not in inspect.signature(record_terminal_outcome).parameters
-    outcome = ActionOutcome(state="completed", reason_code="message_returned")
-    assert record_terminal_outcome("claimed", outcome) == "completed"
+    assert raised.value.reason_code == "consent_expired"
+    assert set(ActionOutcome.model_fields) == {"state", "reason_code"}
     receipt = ConsentReceipt.model_validate(
         receipt_values(
             state="completed",
@@ -304,13 +303,6 @@ def test_completion_after_expiry_is_still_recorded() -> None:
     )
     assert receipt.state == "completed"
     assert binding(expires_at=expired_at).expires_at == expired_at
-
-
-@pytest.mark.parametrize("state", ["prepared", "confirmed", "completed", "unknown", "expired"])
-def test_terminal_outcome_requires_claimed_grant(state: ConsentState) -> None:
-    with pytest.raises(BuilderExecutionPolicyError) as raised:
-        record_terminal_outcome(state, ActionOutcome(state="unknown", reason_code="stream_incomplete"))
-    assert raised.value.reason_code == "consent_not_claimed"
 
 
 @pytest.mark.parametrize(
@@ -452,14 +444,34 @@ def confirmed_values(**overrides: object) -> dict[str, object]:
 CONTEXT = TypeAdapter(BuilderExecutionContextValue)
 
 
-def test_restricted_context_parses_with_and_without_explicit_policy_tag() -> None:
+def test_context_value_is_the_exact_locked_field_discriminated_union() -> None:
+    union, field = get_args(BuilderExecutionContextValue)
+    assert set(get_args(union)) == {BuilderExecutionContext, ConfirmedToolExecutionContext}
+    assert isinstance(field, FieldInfo)
+    assert field.discriminator == "policy_version"
+
+
+def test_exact_union_requires_tag_while_restricted_class_keeps_default() -> None:
     implicit = restricted_values()
     assert "policy_version" not in implicit
-    assert type(CONTEXT.validate_python(implicit)) is BuilderExecutionContext
+    with pytest.raises(ValidationError):
+        CONTEXT.validate_python(implicit)
+    assert BuilderExecutionContext.model_validate(implicit).policy_version == "builder-restricted-v1"
     explicit = {**implicit, "policy_version": "builder-restricted-v1"}
     assert type(CONTEXT.validate_python(explicit)) is BuilderExecutionContext
     dumped = BuilderExecutionContext.model_validate(explicit).model_dump_json()
     assert type(CONTEXT.validate_json(dumped)) is BuilderExecutionContext
+
+
+def test_safe_boundary_fills_only_a_missing_tag_with_restricted() -> None:
+    implicit = restricted_values()
+    context = validate_execution_context(implicit)
+    assert type(context) is BuilderExecutionContext
+    assert "policy_version" not in implicit
+    untagged_confirmed = {k: v for k, v in confirmed_values().items() if k != "policy_version"}
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        validate_execution_context(untagged_confirmed)
+    assert raised.value.reason_code == "invalid_execution_context"
 
 
 def test_confirmed_context_round_trips_and_digest_is_union_aware() -> None:

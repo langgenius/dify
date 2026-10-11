@@ -3,8 +3,8 @@
 These models describe what a person approved, never secrets: credentials are
 referenced by ID and opaque internal revisions only. Scope digests are keyed
 HMACs over canonical finite JSON, so they reveal nothing about binding inputs.
-Expiry blocks new phases; it never prevents recording the outcome of a phase
-that was already dispatched.
+Expiry blocks only new phases (``validate_phase``); durable recording of an
+already-dispatched phase's outcome is owned by the consent service.
 """
 
 import hashlib
@@ -242,7 +242,7 @@ def validate_phase(
 ) -> None:
     """Pre-effect check before spending a phase. ``claimed`` is that phase's own spent flag.
 
-    Completion recording never calls this: expiry only blocks starting a phase.
+    Only starting a phase calls this; finishing an already-dispatched phase does not.
     """
     if phase not in ("refresh", "business"):
         raise BuilderExecutionPolicyError("unsupported_phase")
@@ -259,12 +259,3 @@ def validate_phase(
         raise BuilderExecutionPolicyError("refresh_uncertain")
     if now >= expires_at:
         raise BuilderExecutionPolicyError("consent_expired")
-
-
-def record_terminal_outcome(state: ConsentState, outcome: ActionOutcome) -> ConsentState:
-    """Terminal state for an already-claimed grant; intentionally takes no clock."""
-    if state != "claimed":
-        raise BuilderExecutionPolicyError("consent_not_claimed")
-    if not isinstance(outcome, ActionOutcome):
-        raise BuilderExecutionPolicyError("invalid_action_outcome")
-    return outcome.state
