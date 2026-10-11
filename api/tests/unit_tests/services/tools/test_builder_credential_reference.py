@@ -7,6 +7,7 @@ is replaced by a spy raising ``AssertionError``. PostgreSQL locking is CI-owned.
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import datetime
 from typing import cast
 from unittest.mock import Mock
 from uuid import uuid4
@@ -306,8 +307,10 @@ def test_explicit_credential_reference_is_exact_metadata_without_secrets(world: 
         row = db.get(BuiltinToolProvider, world.credential_id)
         client = db.scalars(select(ToolOAuthTenantClient)).one()
         assert row is not None
-        assert reference.revision == credential_revision(row, key=KEY)
+        # The opaque reference revision binds the row primitive AND the effective access.
+        assert reference.revision != credential_revision(row, key=KEY)
         assert reference.oauth_client_revision == _client(row_id=client.id, tenant_id=world.tenant_id)
+    assert resolve(world) == reference
     dumped = json.dumps(reference.model_dump(mode="json"))
     for secret in ("encrypted-access", "encrypted-refresh", "encrypted-tenant", "encrypted-system"):
         assert secret not in dumped
@@ -379,6 +382,131 @@ def test_partial_member_grant_of_another_credential_type_does_not_apply(world: W
             )
         )
     refused(world, "credential_reference_unavailable")
+
+
+def _share_with_teammate_as(world: World, visibility: PermissionEnum) -> None:
+    with world.factory.begin() as db:
+        db.execute(update(BuiltinToolProvider).values(user_id=world.teammate_id, visibility=visibility))
+
+
+def _grant(
+    world: World,
+    *,
+    account_id: str | None = None,
+    tenant_id: str | None = None,
+    credential_id: str | None = None,
+    has_permission: bool = True,
+) -> str:
+    grant = CredentialPermission(
+        credential_id=credential_id or world.credential_id,
+        credential_type=CredentialPermissionType.BUILTIN_TOOL_PROVIDER,
+        account_id=account_id or world.actor.account_id,
+        tenant_id=tenant_id or world.tenant_id,
+        has_permission=has_permission,
+    )
+    with world.factory.begin() as db:
+        db.add(grant)
+        db.flush()
+        return grant.id
+
+
+def _row_revision(world: World) -> str:
+    with world.factory() as db:
+        row = db.get(BuiltinToolProvider, world.credential_id)
+        assert row is not None
+        return credential_revision(row, key=KEY)
+
+
+def test_revoke_then_regrant_changes_the_reference_revision(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    first_grant = _grant(world)
+    row_before = _row_revision(world)
+    before = resolve(world)
+    with world.factory.begin() as db:
+        db.execute(delete(CredentialPermission).where(CredentialPermission.id == first_grant))
+    refused(world, "credential_reference_unavailable")
+    _grant(world)
+    after = resolve(world)
+    # Same credential row and timestamp; only the effective grant differs.
+    assert _row_revision(world) == row_before
+    assert after.revision != before.revision
+    assert after.oauth_client_revision == before.oauth_client_revision
+
+
+def test_applicable_grant_metadata_change_changes_the_reference_revision(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    grant_id = _grant(world)
+    before = resolve(world)
+    with world.factory.begin() as db:
+        db.execute(
+            update(CredentialPermission)
+            .where(CredentialPermission.id == grant_id)
+            .values(created_at=datetime(2030, 1, 1, 0, 0, 0))
+        )
+    assert resolve(world).revision != before.revision
+
+
+def test_stale_grant_on_another_members_only_me_credential_refuses(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.ONLY_ME)
+    _grant(world)
+    refused(world, "credential_reference_unavailable")
+
+
+def test_foreign_tenant_grant_cannot_authorize(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    _grant(world, tenant_id=str(uuid4()))
+    refused(world, "credential_reference_unavailable")
+
+
+def test_inactive_grant_cannot_authorize(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    _grant(world, has_permission=False)
+    refused(world, "credential_reference_unavailable")
+
+
+def test_unrelated_member_grant_changes_do_not_invalidate_the_actor(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    _grant(world)
+    before = resolve(world)
+    teammate_grant = _grant(world, account_id=world.teammate_id)
+    _grant(world, credential_id=str(uuid4()))
+    assert resolve(world) == before
+    with world.factory.begin() as db:
+        db.execute(delete(CredentialPermission).where(CredentialPermission.id == teammate_grant))
+    assert resolve(world) == before
+
+
+@pytest.mark.parametrize("visibility", [PermissionEnum.ONLY_ME, PermissionEnum.PARTIAL_TEAM, PermissionEnum.ALL_TEAM])
+def test_own_credential_needs_no_grant_and_ignores_grants(world: World, visibility: PermissionEnum) -> None:
+    with world.factory.begin() as db:
+        db.execute(update(BuiltinToolProvider).values(visibility=visibility))
+    before = resolve(world)
+    _grant(world)
+    assert resolve(world) == before
+
+
+def test_team_shared_credential_ignores_grants(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.ALL_TEAM)
+    before = resolve(world)
+    _grant(world)
+    assert resolve(world) == before
+
+
+def test_private_snapshot_records_the_effective_partial_grant(world: World) -> None:
+    _share_with_teammate_as(world, PermissionEnum.PARTIAL_TEAM)
+    grant_id = _grant(world)
+    with world.factory() as db:
+        snapshot = select_builder_credential(
+            db,
+            actor=world.actor,
+            provider_id=PROVIDER,
+            credential_id=world.credential_id,
+            verified_plugin=True,
+            revision_key=KEY,
+        )
+    assert snapshot.access.basis == "partial_grant"
+    assert snapshot.access.grant_ids == (grant_id,)
+    assert "encrypted" not in repr(snapshot)
 
 
 def test_credential_in_another_workspace_is_unavailable(world: World) -> None:

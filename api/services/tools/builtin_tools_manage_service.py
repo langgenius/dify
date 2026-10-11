@@ -631,6 +631,8 @@ class BuiltinToolManageService:
         server-resolved artifact evidence, never public input; only ``True``
         makes the system OAuth client eligible. Ciphertext stays inside the
         private selection snapshot and never enters the returned reference.
+        ``revision`` also binds the actor's effective access (including any
+        partial-member grant); phase validation compares the full reference.
         """
         return select_builder_credential(
             db,
