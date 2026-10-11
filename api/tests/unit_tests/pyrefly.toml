@@ -834,7 +834,6 @@ project-excludes = [
   "tasks/test_dataset_indexing_task.py",
   "tasks/test_document_indexing_sync_task.py",
   "tasks/test_document_indexing_update_task.py",
-  "tasks/test_duplicate_document_indexing_task.py",
   "tasks/test_enable_segment_index_tasks.py",
   "tasks/test_enterprise_telemetry_task.py",
   "tasks/test_human_input_timeout_tasks.py",
