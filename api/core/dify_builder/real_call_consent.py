@@ -18,6 +18,7 @@ from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictI
 from core.dify_builder.execution_policy import (
     BoundedID,
     BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
     Digest,
     _TrustedModel,
     canonical_json,
@@ -208,6 +209,20 @@ class ConsentReceipt(_TrustedModel):
         if self.can_retry and (self.command_id is not None or spent or self.state in _SPENT_STATES):
             raise ValueError("a reserved or claimed grant cannot be retried")
         return self
+
+
+class ConfirmedToolBinding(_TrustedModel):
+    """Immutable INTERNAL in-process handle for one confirmed native Tool node.
+
+    The consent service reconstructs it from its own durable reservation and the
+    native Run/node records. It is never a public DTO, and deserializing one is
+    never permission authority.
+    """
+
+    context: ConfirmedToolExecutionContext
+    node_id: BoundedID
+    native_run_id: BoundedID
+    native_node_execution_id: BoundedID
 
 
 def gmail_message_url(message_id: str) -> str:
