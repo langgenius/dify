@@ -13,7 +13,9 @@ plugin into a recorded failure, so a test can prove discovery never reaches
 them.
 """
 
-from collections.abc import Iterable, Sequence
+import copy
+import json
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from urllib.parse import urlsplit
@@ -105,20 +107,103 @@ def filler_providers(count: int, *, prefix: str = "filler") -> list[dict[str, ob
     ]
 
 
+def installation_payload(tenant_id: str, provider: dict[str, object]) -> dict[str, object]:
+    """One ``management/installation/fetch/batch`` row for a provider payload.
+
+    Its ``declaration.tool`` is the native ``ToolProviderEntity`` -- the
+    provider identity and credential schemas WITHOUT the actions.
+    """
+    plugin_id = str(provider["plugin_id"])
+    author, plugin_name = plugin_id.split("/", 1)
+    declaration = provider["declaration"]
+    assert isinstance(declaration, dict)
+    timestamp = "2026-10-11T00:00:00Z"
+    return {
+        "id": f"installation-{plugin_name}",
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "tenant_id": tenant_id,
+        "endpoints_setups": 0,
+        "endpoints_active": 0,
+        "runtime_type": "local",
+        "source": "marketplace",
+        "meta": {},
+        "plugin_id": plugin_id,
+        "plugin_unique_identifier": provider["plugin_unique_identifier"],
+        "version": "0.0.1",
+        "checksum": "0" * 64,
+        "declaration": {
+            "version": "0.0.1",
+            "author": author,
+            "name": plugin_name,
+            "description": {"en_US": plugin_name},
+            "icon": "icon.svg",
+            "label": {"en_US": plugin_name},
+            "category": "tool",
+            "created_at": timestamp,
+            "resource": {"memory": 1048576},
+            "plugins": {"tools": ["provider.yaml"]},
+            "meta": {"version": "0.0.1"},
+            "tool": {key: value for key, value in declaration.items() if key != "tools"},
+        },
+    }
+
+
+# Public metadata routes the inventory may read (``plugin/{tenant}/management/...``).
+LIST_TOOLS = "list_tools"
+INSTALLED_IDS = "installed_ids"
+INSTALLATION_BATCH = "installation_batch"
+SINGLE_TOOL = "single_tool"
+METADATA_ROUTES = frozenset({LIST_TOOLS, INSTALLED_IDS, INSTALLATION_BATCH, SINGLE_TOOL})
+
+
 @dataclass
 class DaemonRequest:
+    """One recorded request: route, tenant and public query/body -- never headers."""
+
     method: str
     path: str
     params: dict[str, object]
+    route: str = ""
+    tenant_id: str = ""
+    body: dict[str, object] | None = None
+
+
+def _route(method: str, parts: list[str]) -> str:
+    if method == "GET" and parts[-2:] == ["management", "tools"]:
+        return LIST_TOOLS
+    if method == "GET" and parts[-3:] == ["management", "installation", "ids"]:
+        return INSTALLED_IDS
+    if method == "POST" and parts[-4:] == ["management", "installation", "fetch", "batch"]:
+        return INSTALLATION_BATCH
+    if method == "GET" and parts[-2:] == ["management", "tool"]:
+        return SINGLE_TOOL
+    return ""
+
+
+def _tenant(parts: list[str]) -> str:
+    return parts[parts.index("plugin") + 1] if "plugin" in parts and parts.index("plugin") + 1 < len(parts) else ""
 
 
 @dataclass
 class FakeToolDaemon:
     """Stands in for the pooled httpx client used by ``BasePluginClient``.
 
-    Serves ``GET plugin/{tenant}/management/tools`` with the page/page_size
-    contract of the daemon's ``ListTools`` (tenant filter, ``db.Page``).
-    Every other path is recorded and answered with HTTP 500.
+    Serves the plugin daemon's public tool-metadata routes for each tenant:
+
+    - ``GET management/tools``: ``ListTools`` page/page_size contract (tenant
+      filter, ``db.Page``); ``list_tools_pages`` replaces the pages with an
+      explicit (e.g. legally unordered) sequence.
+    - ``GET management/installation/ids?category=tool``: the installed Tool
+      plugin IDs, derived from ``providers_by_tenant`` unless
+      ``installed_ids_by_tenant`` / ``installed_ids_sequence`` override them.
+    - ``POST management/installation/fetch/batch``: installation rows for the
+      requested IDs (native ``max=256``); ``batch_rows_hook`` may corrupt them.
+    - ``GET management/tool?plugin_id&provider``: one provider with actions;
+      ``single_payload_hook`` may corrupt it.
+
+    ``fail_routes`` answer HTTP 500 and ``malformed_routes`` an unparsable
+    body. Every other path is recorded and answered with HTTP 500.
     """
 
     providers_by_tenant: dict[str, list[dict[str, object]]] = field(default_factory=dict)
@@ -126,37 +211,107 @@ class FakeToolDaemon:
     fail_all: bool = False
     ignore_page: bool = False
     endless_unique_pages: bool = False
+    list_tools_pages: dict[int, list[dict[str, object]]] | None = None
+    installed_ids_by_tenant: dict[str, list[str]] | None = None
+    installed_ids_sequence: list[list[str]] | None = None
+    fail_routes: frozenset[str] = frozenset()
+    malformed_routes: frozenset[str] = frozenset()
+    batch_rows_hook: Callable[[list[dict[str, object]], list[str]], list[dict[str, object]]] | None = None
+    single_payload_hook: Callable[[dict[str, object]], dict[str, object]] | None = None
     requests: list[DaemonRequest] = field(default_factory=list)
     max_requests: int = 1000
 
-    def request(self, *, method: str, url: str, params: dict[str, object] | None = None, **_kwargs: object):
+    def request(
+        self,
+        *,
+        method: str,
+        url: str,
+        params: dict[str, object] | None = None,
+        content: str | bytes | None = None,
+        data: dict[str, object] | None = None,
+        **_kwargs: object,
+    ):
         path = urlsplit(url).path
         params = dict(params or {})
-        self.requests.append(DaemonRequest(method=method, path=path, params=params))
+        parts = [part for part in path.split("/") if part]
+        route = _route(method, parts)
+        tenant_id = _tenant(parts)
+        body = json.loads(content) if content else (dict(data) if data else None)
+        self.requests.append(
+            DaemonRequest(method=method, path=path, params=params, route=route, tenant_id=tenant_id, body=body)
+        )
         if len(self.requests) > self.max_requests:
             raise AssertionError("plugin inventory paging did not terminate")
         http_request = httpx.Request(method, url)
-        parts = [part for part in path.split("/") if part]
-        is_list_tools = method == "GET" and len(parts) >= 3 and parts[-2:] == ["management", "tools"]
-        if not is_list_tools or self.fail_all:
-            return httpx.Response(500, json={"code": -500, "message": "unavailable"}, request=http_request)
-        tenant_id = parts[-3]
-        page = int(params.get("page", 0))
-        page_size = int(params.get("page_size", 0))
+
+        def respond(status: int, payload: object) -> httpx.Response:
+            return httpx.Response(status, json=payload, request=http_request)
+
+        if not route or self.fail_all or route in self.fail_routes:
+            return respond(500, {"code": -500, "message": "unavailable"})
+        if route in self.malformed_routes:
+            return respond(200, {"code": 0, "message": "", "data": {"unexpected": True}})
+        providers = self.providers_by_tenant.get(tenant_id, [])
+        if route == LIST_TOOLS:
+            return self._list_tools(respond, params, providers)
+        if route == INSTALLED_IDS:
+            if params.get("category") != "tool":
+                return respond(400, {"code": -400, "message": "bad category"})
+            return respond(200, {"code": 0, "message": "", "data": {"plugin_ids": self._installed_ids(tenant_id)}})
+        if route == INSTALLATION_BATCH:
+            plugin_ids = [str(plugin_id) for plugin_id in (body or {}).get("plugin_ids") or []]
+            if len(plugin_ids) > 256:
+                return respond(400, {"code": -400, "message": "plugin_ids exceeds max=256"})
+            rows = [installation_payload(tenant_id, p) for p in providers if p["plugin_id"] in plugin_ids]
+            if self.batch_rows_hook is not None:
+                rows = self.batch_rows_hook(rows, plugin_ids)
+            return respond(200, {"code": 0, "message": "", "data": rows})
+        # SINGLE_TOOL
+        match = next(
+            (
+                p
+                for p in providers
+                if p["plugin_id"] == params.get("plugin_id")
+                and isinstance(p["declaration"], dict)
+                and p["declaration"]["identity"]["name"] == params.get("provider")
+            ),
+            None,
+        )
+        if match is None:
+            return respond(404, {"code": -404, "message": "plugin not found"})
+        payload = copy.deepcopy(match)
+        if self.single_payload_hook is not None:
+            payload = self.single_payload_hook(payload)
+        return respond(200, {"code": 0, "message": "", "data": payload})
+
+    def _list_tools(self, respond, params: dict[str, object], providers: list[dict[str, object]]) -> httpx.Response:
+        page = int(str(params.get("page", 0)))
+        page_size = int(str(params.get("page_size", 0)))
         if page < 1 or not 1 <= page_size <= 256:
-            return httpx.Response(400, json={"code": -400, "message": "bad paging"}, request=http_request)
+            return respond(400, {"code": -400, "message": "bad paging"})
         if self.fail_on_page == page:
-            return httpx.Response(500, json={"code": -500, "message": "page failed"}, request=http_request)
+            return respond(500, {"code": -500, "message": "page failed"})
         if self.endless_unique_pages:
             data = filler_providers(page_size, prefix=f"endless_p{page}")
+        elif self.list_tools_pages is not None:
+            data = self.list_tools_pages.get(page, [])
         else:
-            providers = self.providers_by_tenant.get(tenant_id, [])
             effective_page = 1 if self.ignore_page else page
             data = providers[(effective_page - 1) * page_size : effective_page * page_size]
-        return httpx.Response(200, json={"code": 0, "message": "", "data": data}, request=http_request)
+        return respond(200, {"code": 0, "message": "", "data": data})
+
+    def _installed_ids(self, tenant_id: str) -> list[str]:
+        if self.installed_ids_sequence:
+            return self.installed_ids_sequence.pop(0)
+        if self.installed_ids_by_tenant is not None:
+            return list(self.installed_ids_by_tenant.get(tenant_id, []))
+        return [str(p["plugin_id"]) for p in self.providers_by_tenant.get(tenant_id, [])]
 
     def list_tools_requests(self) -> list[DaemonRequest]:
         return [r for r in self.requests if r.path.endswith("/management/tools")]
+
+    def requests_for(self, route: str) -> list[DaemonRequest]:
+        return [r for r in self.requests if r.route == route]
 
 
 def install_fake_daemon(monkeypatch: pytest.MonkeyPatch, daemon: FakeToolDaemon) -> FakeToolDaemon:
