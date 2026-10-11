@@ -287,7 +287,7 @@ const ConditionItem = ({
                                   aria-hidden
                                   className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
                                 />
-                                <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
+                                <SelectItemText className="mr-0 system-sm-medium text-text-secondary">
                                   {option.name}
                                 </SelectItemText>
                               </div>

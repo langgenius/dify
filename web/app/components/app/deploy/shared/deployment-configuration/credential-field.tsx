@@ -109,7 +109,7 @@ export function CredentialField({
                   <span className="flex size-2 shrink-0 items-center justify-center">
                     <StatusDot size="small" />
                   </span>
-                  <SelectItemText className="me-0 px-0 system-md-regular">
+                  <SelectItemText className="me-0 system-md-regular">
                     {candidate.display_name || candidate.credential_id}
                   </SelectItemText>
                 </SelectItem>

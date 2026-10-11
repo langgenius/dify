@@ -124,10 +124,14 @@ function SelectLabel({ className, ...props }: SelectLabelProps) {
 
 type SelectGroupLabelProps = BaseSelect.GroupLabel.Props
 
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
 function SelectGroupLabel({ className, ...props }: SelectGroupLabelProps) {
   return (
     <BaseSelect.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -252,9 +256,7 @@ type SelectItemTextProps = BaseSelect.ItemText.Props
 function SelectItemText({ className, ...props }: SelectItemTextProps) {
   return (
     <BaseSelect.ItemText
-      className={(state) =>
-        cn('me-1 min-w-0 grow truncate px-1', resolveClassName(className, state))
-      }
+      className={(state) => cn('me-1 min-w-0 grow truncate', resolveClassName(className, state))}
       {...props}
     />
   )
