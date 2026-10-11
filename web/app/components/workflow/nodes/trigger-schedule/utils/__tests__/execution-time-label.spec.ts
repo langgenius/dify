@@ -29,4 +29,22 @@ describe('execution time offset label', () => {
     expect(times[2]).toContain('November 2, 2026')
     expect(times[2]).toContain('(UTC-5)')
   })
+  
+  it('labels the repeated hour by its real offset when DST ends', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-01T03:00:00Z'))
+
+    const data = {
+      type: BlockEnum.TriggerSchedule,
+      title: 'schedule',
+      mode: 'cron',
+      cron_expression: '30 * * * *',
+      timezone: 'America/New_York',
+    } as ScheduleTriggerNodeType
+
+    const times = getFormattedExecutionTimes(data, 5)
+
+    expect(times[2]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-4\)/)
+    expect(times[3]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-5\)/)
+  })
 })
