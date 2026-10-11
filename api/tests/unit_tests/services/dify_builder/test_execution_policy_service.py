@@ -126,6 +126,32 @@ def test_full_owner_chain_required(owned, owner):
         prepare_inputs(owned)
 
 
+def test_owner_helpers_are_exported_once_for_shared_callers(owned, monkeypatch):
+    from configs import dify_config
+    from services.enterprise.rbac_service import RBACService
+
+    factory, actor, app, workflow, sid, tid = owned
+    module = service_module()
+    assert not hasattr(module, "_owners")
+    assert not hasattr(module, "_permission")
+    with factory() as db:
+        owner = module.load_execution_owners(
+            db, app_id=app.id, actor=actor, workflow_id=workflow.id, session_id=sid, test_input_id=tid
+        )
+        assert (owner.app.id, owner.workflow.id) == (app.id, workflow.id)
+        assert owner.session is not None
+        assert owner.session.id == sid
+        assert owner.test_input is not None
+        assert owner.test_input.id == tid
+        with pytest.raises(policy().BuilderExecutionPolicyError, match="execution_owner_mismatch"):
+            module.load_execution_owners(db, app_id=str(uuid4()), actor=actor)
+    module.check_execution_permission(actor, app.id, factory)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", lambda *_args, **_kwargs: False)
+    with pytest.raises(policy().BuilderExecutionPolicyError, match="execution_permission_denied"):
+        module.check_execution_permission(actor, app.id, factory)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
