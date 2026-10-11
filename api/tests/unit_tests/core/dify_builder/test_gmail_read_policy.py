@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from core.dify_builder import gmail_read_policy
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
 from core.dify_builder.gmail_read_policy import (
+    GmailGetMessageEnvelope,
     admit_get_message_workflow,
     classify_get_message_result,
     get_message_disclosure,
@@ -281,6 +282,35 @@ def test_hypothetical_envelope_is_fixed_and_separate_from_outcome() -> None:
     assert dumped["installed"]["unique_identifier"] == HYPOTHETICAL_ARTIFACT
     assert dumped["credential"]["credential_id"] == "credential-1"
     assert "access_token" not in str(dumped)
+
+
+@pytest.mark.usefixtures("hypothetical_qualified")
+@pytest.mark.parametrize("length", [1, 228, 229, 256])
+def test_hypothetical_envelope_accepts_every_supported_message_id_length(length: int) -> None:
+    message_id = "a" * length
+    envelope = get_message_envelope(
+        installed=installed(),
+        credential=credential(),
+        parameters=normalize_get_message_parameters(params(message_id=message_id)),
+    )
+    assert envelope.path == "/gmail/v1/users/me/messages/" + message_id
+    assert envelope.parameters.message_id == message_id
+
+
+@pytest.mark.usefixtures("hypothetical_qualified")
+def test_hypothetical_envelope_rejects_overlong_or_tampered_path() -> None:
+    with pytest.raises(BuilderExecutionPolicyError):
+        normalize_get_message_parameters(params(message_id="a" * 257))
+    valid = get_message_envelope(
+        installed=installed(), credential=credential(), parameters=GmailReadParameters.model_validate(params())
+    ).model_dump()
+    for path in (
+        "/gmail/v1/users/me/messages/" + "a" * 257,
+        "/gmail/v1/users/me/messages/18cab_1/extra",
+        "/gmail/v1/users/other/messages/18cab_1",
+    ):
+        with pytest.raises(ValidationError):
+            GmailGetMessageEnvelope.model_validate({**valid, "path": path})
 
 
 @pytest.mark.usefixtures("hypothetical_qualified")
@@ -567,3 +597,49 @@ def test_admission_refuses_everything_but_the_exact_slice(graph: Graph, reason: 
 def test_admission_reuses_raw_feature_restrictions(value: RestrictedAdmissionSnapshot) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         admit_get_message_workflow(value)
+
+
+@pytest.mark.parametrize(
+    ("graph", "reason"),
+    [
+        pytest.param(
+            gmail_graph(start_variables=[{"variable": ["x"], "type": "text-input", "label": "x"}]),
+            "unsupported_start_input",
+            id="list-variable-name",
+        ),
+        pytest.param(
+            gmail_graph(start_variables=[{"variable": {"x": 1}, "type": "text-input", "label": "x"}]),
+            "unsupported_start_input",
+            id="dict-variable-name",
+        ),
+        pytest.param(
+            gmail_graph(start_variables=[{"variable": 7, "type": "number", "label": "x"}]),
+            "unsupported_start_input",
+            id="number-variable-name",
+        ),
+        pytest.param(
+            gmail_graph(end_outputs=[{"variable": "r", "value_selector": ["start", ["x"]]}]),
+            "unsupported_selector",
+            id="list-start-output",
+        ),
+        pytest.param(
+            gmail_graph(end_outputs=[{"variable": "r", "value_selector": ["tool", {"json": 1}]}]),
+            "unsupported_selector",
+            id="dict-tool-output",
+        ),
+        pytest.param(
+            gmail_graph(end_outputs=[{"variable": "r", "value_selector": [["tool"], "json"]}]),
+            "unsupported_selector",
+            id="list-node-id",
+        ),
+        pytest.param(
+            gmail_graph(end_outputs=[{"variable": "r", "value_selector": [{"tool": 1}, "json"]}]),
+            "unsupported_selector",
+            id="dict-node-id",
+        ),
+    ],
+)
+def test_malformed_json_names_and_selectors_are_sanitized_refusals(graph: Graph, reason: str) -> None:
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        admit_get_message_workflow(snapshot(graph))
+    assert raised.value.reason_code == reason

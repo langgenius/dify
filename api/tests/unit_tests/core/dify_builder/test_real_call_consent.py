@@ -27,6 +27,7 @@ from core.dify_builder.execution_policy import (
 )
 from core.dify_builder.real_call_consent import (
     ActionOutcome,
+    ConfirmedToolBinding,
     ConsentBinding,
     ConsentDisclosure,
     ConsentReceipt,
@@ -542,3 +543,53 @@ def test_execution_policy_does_not_import_consent_module() -> None:
 
 def test_confirmed_tool_rollout_flag_defaults_off() -> None:
     assert WorkflowConfig.model_fields["DIFY_BUILDER_CONFIRMED_TOOL_ENABLED"].default is False
+
+
+# --- internal in-process handle ------------------------------------------------
+
+
+def handle_values(**overrides: object) -> dict[str, object]:
+    return {
+        "context": ConfirmedToolExecutionContext.model_validate(confirmed_values()),
+        "node_id": "tool",
+        "native_run_id": "run-1",
+        "native_node_execution_id": "node-execution-1",
+        **overrides,
+    }
+
+
+def test_confirmed_tool_binding_is_strict_and_frozen() -> None:
+    handle = ConfirmedToolBinding.model_validate(handle_values())
+    assert type(handle.context) is ConfirmedToolExecutionContext
+    assert (handle.node_id, handle.native_run_id, handle.native_node_execution_id) == (
+        "tool",
+        "run-1",
+        "node-execution-1",
+    )
+    with pytest.raises(ValidationError):
+        handle.native_run_id = "run-2"  # type: ignore[misc]
+    assert set(ConfirmedToolBinding.model_fields) == {
+        "context",
+        "node_id",
+        "native_run_id",
+        "native_node_execution_id",
+    }
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"context": restricted_values()},
+        {"context": "not-a-context"},
+        {"node_id": ""},
+        {"node_id": "x" * 129},
+        {"native_run_id": 7},
+        {"native_node_execution_id": None},
+        {"native_run_id": "bad\ud800"},
+        {"credentials": {"access_token": "secret"}},
+        {"scope_digest": "a" * 64},
+    ],
+)
+def test_confirmed_tool_binding_refuses_malformed_or_extra_fields(overrides: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        ConfirmedToolBinding.model_validate(handle_values(**overrides))
