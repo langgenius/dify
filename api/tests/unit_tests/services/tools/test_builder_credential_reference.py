@@ -555,6 +555,65 @@ def test_unknown_or_malformed_credential_id_is_unavailable(world: World, credent
     refused(world, "credential_reference_unavailable", credential_id=credential_id)
 
 
+def _session_that_must_not_query() -> Mock:
+    # Any SQL would reach PostgreSQL's native UUID column; refusal must precede it.
+    db = Mock(spec=Session)
+    for name in ("scalar", "scalars", "execute", "get", "query"):
+        getattr(db, name).side_effect = AssertionError("unexpected query")
+    return db
+
+
+VALID_UUID = "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e10"
+
+
+@pytest.mark.parametrize(
+    "credential_id",
+    [
+        "not-a-uuid",
+        "x" * 36,
+        "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e1g",
+        "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e1",
+        VALID_UUID.upper(),
+        "{" + VALID_UUID + "}",
+        VALID_UUID.replace("-", ""),
+        "urn:uuid:" + VALID_UUID,
+        " " + VALID_UUID,
+        VALID_UUID + "\n",
+        "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e10'; --",
+    ],
+)
+def test_noncanonical_credential_uuid_refuses_before_any_query(credential_id: str) -> None:
+    db = _session_that_must_not_query()
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        BuiltinToolManageService.resolve_builder_reference(
+            db=db,
+            actor=Actor(account_id="account", tenant_id="tenant"),
+            provider_id=PROVIDER,
+            credential_id=credential_id,
+            verified_plugin=True,
+            revision_key=KEY,
+        )
+    assert raised.value.reason_code == "credential_reference_unavailable"
+    assert credential_id not in str(raised.value)
+    db.scalar.assert_not_called()
+
+
+def test_canonical_credential_uuid_reaches_the_query_without_validating_actor_ids() -> None:
+    # Actor/tenant identities are not credential UUIDs; only credential_id is checked.
+    db = Mock(spec=Session)
+    db.scalar.return_value = None
+    with pytest.raises(BuilderExecutionPolicyError, match="credential_reference_unavailable"):
+        BuiltinToolManageService.resolve_builder_reference(
+            db=db,
+            actor=Actor(account_id="account", tenant_id="tenant"),
+            provider_id=PROVIDER,
+            credential_id=VALID_UUID,
+            verified_plugin=True,
+            revision_key=KEY,
+        )
+    db.scalar.assert_called_once()
+
+
 def test_explicit_credential_stays_selected_after_workspace_default_changes(world: World) -> None:
     before = resolve(world)
     other = _row(tenant_id=world.tenant_id, user_id=world.actor.account_id, name="Other mailbox")
