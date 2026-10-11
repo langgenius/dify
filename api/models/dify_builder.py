@@ -224,3 +224,100 @@ class DifyBuilderExecutionRequest(Base):
     completion_summary: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class DifyBuilderRealCallConsent(Base):
+    """One human-approved, one-shot real Tool call and its durable spends.
+
+    ``binding`` and ``disclosure`` are frozen at preparation; ``scope_digest``
+    is the keyed HMAC of that binding. Each public operation keeps its own
+    idempotency key, body digest and saved receipt. Launch reservation, the
+    grant claim and each phase claim are separate one-way spends; the counter
+    CHECKs make a second phase spend unrepresentable. Revisions are opaque
+    HMACs and stay internal. No secret, ciphertext or message content is
+    stored here: native Run rows and the execution sidecar own outputs.
+    Mutations are owned by ``BuilderRealCallConsentService`` under row locks.
+    """
+
+    __tablename__ = "dify_builder_real_call_consents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dify_builder_real_call_consent_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id", "actor_id", "session_id", "prepare_key", name="dify_builder_real_call_consent_prepare_key"
+        ),
+        sa.UniqueConstraint("execution_request_id", name="dify_builder_real_call_consent_request_key"),
+        sa.UniqueConstraint("command_id", name="dify_builder_real_call_consent_command_key"),
+        sa.Index("dify_builder_real_call_consent_session_idx", "session_id"),
+        sa.CheckConstraint(
+            "state IN ('prepared', 'confirmed', 'claimed', 'completed', 'failed', 'unknown', 'declined', "
+            "'expired', 'invalidated')",
+            name="builder_real_call_consent_state",
+        ),
+        sa.CheckConstraint(
+            "decision IS NULL OR decision IN ('confirm', 'decline')", name="builder_real_call_consent_decision"
+        ),
+        sa.CheckConstraint(
+            "outcome_state IS NULL OR outcome_state IN ('completed', 'failed', 'unknown')",
+            name="builder_real_call_consent_outcome",
+        ),
+        sa.CheckConstraint(
+            "(refresh_count = 0 AND refresh_claimed_at IS NULL) "
+            "OR (refresh_count = 1 AND refresh_claimed_at IS NOT NULL)",
+            name="builder_real_call_consent_refresh_once",
+        ),
+        sa.CheckConstraint(
+            "(business_count = 0 AND business_claimed_at IS NULL) "
+            "OR (business_count = 1 AND business_claimed_at IS NOT NULL)",
+            name="builder_real_call_consent_business_once",
+        ),
+        sa.CheckConstraint(
+            "claimed_at IS NOT NULL OR (refresh_claimed_at IS NULL AND business_claimed_at IS NULL)",
+            name="builder_real_call_consent_phase_after_claim",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    actor_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    prepared_commit_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    test_input_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    prepared_version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    binding: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    scope_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    disclosure: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    disclosure_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    execution_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    command_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    reserved_version: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    reserved_commit_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    prepare_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    prepare_body_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    prepare_receipt: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    confirm_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    confirm_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    confirm_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    execute_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    execute_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    execute_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    refresh_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    business_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    refresh_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    business_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    initial_credential_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    derived_credential_revision: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    oauth_client_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    native_node_execution_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    outcome_state: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reason_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
