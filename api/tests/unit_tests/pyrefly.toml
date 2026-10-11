@@ -677,7 +677,6 @@ project-excludes = [
   "models/test_tool_models.py",
   "models/test_types.py",
   "models/test_workflow.py",
-  "models/test_workflow_models.py",
   "models/test_workflow_node_execution_offload.py",
   "oss/__mock/aliyun_oss.py",
   "oss/__mock/baidu_obs.py",
