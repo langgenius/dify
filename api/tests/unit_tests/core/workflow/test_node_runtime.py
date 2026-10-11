@@ -1638,6 +1638,73 @@ def test_configured_node_is_refused_before_the_factory_claims(monkeypatch: pytes
     get_runtime.assert_not_called()
 
 
+_RESOLUTION_SECRET = "resolution-secret-sentinel-8e2"
+
+
+@pytest.mark.parametrize("use_factory", [False, True], ids=["ready-guard", "factory-guard"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError(f"daemon said {_RESOLUTION_SECRET}"),
+        ValueError(f"credential row {_RESOLUTION_SECRET}"),
+        node_runtime.ToolRuntimeResolutionError(f"native {_RESOLUTION_SECRET}"),
+    ],
+    ids=["runtime-error", "value-error", "tool-node-error"],
+)
+def test_unexpected_confirmed_resolution_error_is_sanitized(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, error: Exception, use_factory: bool
+) -> None:
+    get_runtime = MagicMock(side_effect=error)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    if use_factory:
+        runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([]))
+    else:
+        runtime = DifyToolNodeRuntime(
+            _build_run_context(), confirmed_guard=_confirmed_guard(node_execution_id="actual-exec-7")
+        )
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_tool_resolution_failed") as raised:
+        runtime.get_runtime(
+            node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+        )
+
+    assert _RESOLUTION_SECRET not in str(raised.value)
+    assert raised.value.__cause__ is None
+    assert raised.value.__suppress_context__ is True
+    assert _RESOLUTION_SECRET not in caplog.text
+    get_runtime.assert_called_once()
+
+
+def test_declared_confirmed_policy_refusal_keeps_its_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_runtime = MagicMock(side_effect=BuilderExecutionPolicyError("credential_cache_unavailable"))
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=_confirmed_guard())
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="credential_cache_unavailable") as raised:
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(),
+            variable_pool=None,
+            node_execution_id="node-execution-id",
+        )
+    assert "confirmed_tool_resolution_failed" not in str(raised.value)
+
+
+def test_ordinary_resolution_error_keeps_native_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_runtime = MagicMock(side_effect=RuntimeError("ordinary provider detail"))
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    runtime = DifyToolNodeRuntime(_build_run_context())
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="ordinary provider detail") as raised:
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(),
+            variable_pool=None,
+            node_execution_id="node-execution-id",
+        )
+    assert isinstance(raised.value.__cause__, RuntimeError)
+
+
 def test_guard_and_factory_together_are_refused() -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_confirmed_configuration"):
         DifyToolNodeRuntime(

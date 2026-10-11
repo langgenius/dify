@@ -604,9 +604,17 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     variable_pool,
                     confirmed_guard=guard,
                 )
-        except ToolNodeError:
-            raise
+        except BuilderExecutionPolicyError as exc:
+            # Declared refusals carry only their fixed reason code.
+            raise ToolRuntimeResolutionError(str(exc)) from exc
         except Exception as exc:
+            if self._confirmed:
+                # Provider, cache or credential text must not leave the confirmed boundary.
+                raise ToolRuntimeResolutionError(
+                    str(BuilderExecutionPolicyError("confirmed_tool_resolution_failed"))
+                ) from None
+            if isinstance(exc, ToolNodeError):
+                raise
             raise ToolRuntimeResolutionError(str(exc)) from exc
 
         conversation_id = (
