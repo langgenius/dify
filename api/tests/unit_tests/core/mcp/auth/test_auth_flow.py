@@ -1,11 +1,9 @@
 """Unit tests for MCP OAuth authentication flow."""
 
-import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
-from pydantic import ValidationError
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.helper import ssrf_proxy
@@ -577,9 +575,6 @@ class TestCallbackHandling:
         )
         mock_exchange.return_value = tokens
 
-        # Setup service
-        mock_service = Mock()
-
         state_result, tokens_result = handle_callback("state-key", "auth-code")
 
         assert state_result == state_data
@@ -602,15 +597,10 @@ class TestCallbackHandling:
 class TestAuthOrchestration:
     """Test the main auth orchestration function."""
 
-    @pytest.fixture
-    def mock_service(self):
-        """Create a mock MCP service."""
-        return Mock()
-
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow.register_client")
     @patch("core.mcp.auth.auth_flow.start_authorization")
-    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, provider, mock_service):
+    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, provider):
         """Test auth flow for new client registration."""
         # Setup
         mock_discover.return_value = (
@@ -656,7 +646,7 @@ class TestAuthOrchestration:
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
     @patch("core.mcp.auth.auth_flow.exchange_authorization")
-    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider, mock_service):
+    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider):
         """Test auth flow for exchanging authorization code."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -703,7 +693,7 @@ class TestAuthOrchestration:
         assert result.actions[0].tenant_id == "tenant-id"
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_exchange_code_without_state(self, mock_discover, provider, mock_service):
+    def test_auth_exchange_code_without_state(self, mock_discover, provider):
         """Test auth flow fails when exchanging code without state."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -725,7 +715,7 @@ class TestAuthOrchestration:
         assert "State parameter is required" in str(exc_info.value)
 
     @patch("core.mcp.auth.auth_flow.refresh_authorization")
-    def test_auth_refresh_token(self, mock_refresh, provider, mock_service):
+    def test_auth_refresh_token(self, mock_refresh, provider):
         """Test auth flow for refreshing tokens."""
         # Setup existing client and tokens
         provider.credentials["client_information"] = {"client_id": "existing-client"}
@@ -774,7 +764,7 @@ class TestAuthOrchestration:
             mock_refresh.assert_called_once()
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_registration_fails_with_code(self, mock_discover, provider, mock_service):
+    def test_auth_registration_fails_with_code(self, mock_discover, provider):
         """Test auth fails when no client info exists but code is provided."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -1085,33 +1075,32 @@ class TestAuthOrchestration:
 
     def test_parse_token_response(self):
         # Case 1: JSON
-        res = Mock()
-        res.headers = {"content-type": "application/json"}
-        res.json.return_value = {"access_token": "at", "token_type": "Bearer"}
+        res = httpx.Response(200, json={"access_token": "at", "token_type": "Bearer"})
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at"
 
         # Case 2: Form-urlencoded
-        res.headers = {"content-type": "application/x-www-form-urlencoded"}
-        res.text = "access_token=at2&token_type=Bearer"
+        res = httpx.Response(
+            200,
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            content=b"access_token=at2&token_type=Bearer",
+        )
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at2"
 
         # Case 3: No content-type, but JSON
-        res.headers = {}
-        res.json.return_value = {"access_token": "at3", "token_type": "Bearer"}
+        res = httpx.Response(200, content=b'{"access_token":"at3","token_type":"Bearer"}')
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at3"
 
         # Case 4: No content-type, not JSON, but Form
-        res.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
-        res.text = "access_token=at4&token_type=Bearer"
+        res = httpx.Response(200, content=b"access_token=at4&token_type=Bearer")
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at4"
 
-        # Case 5: Validation Error fallback
-        res.json.side_effect = ValidationError.from_exception_data("error", [])
-        res.text = "access_token=at5&token_type=Bearer"
+        # Case 5: A JSON string fails token-object validation; its form fields
+        # still let the fallback recover the token from the same response body.
+        res = httpx.Response(200, content=b'"ignored&access_token=at5&token_type=Bearer&ignored"')
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at5"
 
