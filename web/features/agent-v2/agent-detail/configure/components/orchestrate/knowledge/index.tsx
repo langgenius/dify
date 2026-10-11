@@ -61,7 +61,7 @@ function AgentKnowledgeRetrievalRow({
   )
 }
 
-export function AgentKnowledgeRetrieval() {
+export function AgentKnowledgeRetrieval({ workflowNodeId }: { workflowNodeId?: string }) {
   const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addKnowledgeRetrieval = useSetAtom(addKnowledgeRetrievalAtom)
@@ -130,6 +130,7 @@ export function AgentKnowledgeRetrieval() {
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
+        workflowNodeId={workflowNodeId}
         item={editingRetrieval ?? undefined}
         initialName={
           editingRetrieval ? getKnowledgeRetrievalName(editingRetrieval, t) : addDialogName
