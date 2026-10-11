@@ -182,7 +182,10 @@ def _digest(value: object) -> str:
 
 
 def _same(left: str | None, right: str | None) -> bool:
-    return left is not None and right is not None and hmac.compare_digest(left, right)
+    # Bytes, not str: compare_digest raises TypeError for non-ASCII strings; this fails closed instead.
+    if type(left) is not str or type(right) is not str:
+        return False
+    return hmac.compare_digest(left.encode("utf-8", "surrogatepass"), right.encode("utf-8", "surrogatepass"))
 
 
 def _json(value: object) -> bytes:
@@ -680,7 +683,9 @@ class BuilderRealCallConsentService:
         test_input_id = _uuid(test_input_id, "execution_owner_mismatch")
         credential_id = _uuid(credential_id, "credential_reference_unavailable")
         node_id = _bounded(node_id, "unsupported_tool_node")
-        base_app_revision = _bounded(base_app_revision, "stale_app_revision")
+        # Native execution revisions are lowercase SHA-256 hex; anything else is stale, refused before SQL.
+        if type(base_app_revision) is not str or _DIGEST.fullmatch(base_app_revision) is None:
+            raise _refuse("stale_app_revision")
         body_digest = canonical_digest(
             {
                 "operation": "prepare",
@@ -814,7 +819,6 @@ class BuilderRealCallConsentService:
             return self._decision_replay(owned.consent_id, idempotency_key, body_digest)
         key = _secret_key() if decision == "confirm" else b""
         external = _read_external(actor.tenant_id) if decision == "confirm" else None
-        now = _utcnow()
         pending: BuilderExecutionPolicyError | None = None
         receipt: ConsentReceipt | None = None
         with self._session_factory.begin() as db:
@@ -828,6 +832,8 @@ class BuilderRealCallConsentService:
                 credential_id=owned.credential_id,
             )
             row = _lock_consent(db, owned.consent_id)
+            # Fresh server time after every blocking lock: a lock wait cannot carry a decision past expiry.
+            now = _utcnow()
             if row.confirm_key is not None:
                 return self._replay_from(
                     row.confirm_key,
@@ -932,7 +938,6 @@ class BuilderRealCallConsentService:
         if owned.execute_key is not None:
             return self._execute_replay(owned.consent_id, idempotency_key, body_digest, _utcnow()), False
         external = _read_external(actor.tenant_id)
-        now = _utcnow()
         pending: BuilderExecutionPolicyError | None = None
         receipt: ConsentReceipt | None = None
         with self._session_factory.begin() as db:
@@ -947,6 +952,8 @@ class BuilderRealCallConsentService:
                 credential_id=owned.credential_id,
             )
             row = _lock_consent(db, owned.consent_id)
+            # Fresh server time after every blocking lock: a lock wait cannot carry a reservation past expiry.
+            now = _utcnow()
             if row.execute_key is not None:
                 return self._current_execute(row, idempotency_key, body_digest, now), False
             if not _same(supplied_scope, row.scope_digest):
@@ -1031,7 +1038,6 @@ class BuilderRealCallConsentService:
         owned = self._owned_consent(actor, context.session_id, context.consent_id)
         check_execution_permission(actor, owned.app_id, self._session_factory)
         external = _read_external(actor.tenant_id)
-        now = _utcnow()
         pending: BuilderExecutionPolicyError | None = None
         with self._session_factory.begin() as db:
             session_row = _lock_owner_rows(
@@ -1045,6 +1051,8 @@ class BuilderRealCallConsentService:
             )
             row = _lock_consent(db, owned.consent_id)
             request = _lock_request(db, row.execution_request_id)
+            # Fresh server time after every blocking lock decides expiry and becomes the claim timestamp.
+            now = _utcnow()
             stored = _verify_launch(row, request, context, node_id=node_id, native_run_id=native_run_id)
             if row.claimed_at is not None:
                 raise _refuse("consent_already_claimed")
@@ -1117,7 +1125,6 @@ class BuilderRealCallConsentService:
         except BuilderExecutionPolicyError as error:
             self._deny_after_claim(binding, phase, error.reason_code)
             raise
-        now = _utcnow()
         pending: BuilderExecutionPolicyError | None = None
         with self._session_factory.begin() as db:
             session_row = _lock_owner_rows(
@@ -1131,6 +1138,8 @@ class BuilderRealCallConsentService:
             )
             row = _lock_consent(db, owned.consent_id)
             request = _lock_request(db, row.execution_request_id)
+            # Fresh server time after every blocking lock decides expiry and becomes the phase timestamp.
+            now = _utcnow()
             stored = _verify_launch(row, request, context, node_id=binding.node_id, native_run_id=binding.native_run_id)
             _verify_claimed(row, binding)
             if (phase == "refresh" and row.refresh_claimed_at is not None) or (
