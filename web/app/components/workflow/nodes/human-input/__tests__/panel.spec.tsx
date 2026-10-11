@@ -4,9 +4,7 @@ import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { toast } from '@/app/notifications'
 import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
 
@@ -19,13 +17,9 @@ const mockFormContentPreview = vi.hoisted(() => vi.fn())
 const mockTimeoutInput = vi.hoisted(() => vi.fn())
 const mockUserActionItem = vi.hoisted(() => vi.fn())
 
-vi.mock('copy-to-clipboard', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
+    error: vi.fn(),
     success: vi.fn(),
   },
 }))
@@ -208,8 +202,7 @@ vi.mock('@remixicon/react', () => ({
   RiEyeLine: () => <span>preview-icon</span>,
 }))
 
-const mockCopy = vi.mocked(copy)
-const mockToastSuccess = vi.mocked(toast.success)
+const mockWriteText = vi.fn()
 
 const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNodeType => ({
   title: 'Human Input',
@@ -359,6 +352,11 @@ describe('human-input/panel', () => {
     await user.click(screen.getByRole('button', { name: 'toggle-output-vars' }))
     await user.click(screen.getByRole('button', { name: 'close-preview' }))
 
+    mockWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mockWriteText },
+    })
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
     await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
 
@@ -386,8 +384,10 @@ describe('human-input/panel', () => {
     expect(config.handleUserActionDelete).toHaveBeenCalledWith('approve')
     expect(config.handleTimeoutChange).toHaveBeenCalledWith({ timeout: 8, unit: 'hour' })
     expect(config.setStructuredOutputCollapsed).toHaveBeenCalledWith(false)
-    expect(mockCopy).toHaveBeenCalledWith('Please review this request')
-    expect(mockToastSuccess).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(mockWriteText).toHaveBeenCalledWith('Please review this request')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
     expect(mockFormContentPreview).toHaveBeenCalled()
   })
 

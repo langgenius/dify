@@ -113,7 +113,7 @@ describe('LogViewer', () => {
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
   })
 
-  it('should render raw response text and allow copying', () => {
+  it('should render raw response text and allow copying', async () => {
     const rawLog = {
       ...createLog(),
       response: 'plain response',
@@ -128,13 +128,12 @@ describe('LogViewer', () => {
 
     expect(screen.getByText('plain response')).toBeInTheDocument()
 
-    const copyButton = screen
-      .getAllByRole('button')
-      .find((button) => button !== toggleButton) as HTMLElement
-    expect(copyButton).toBeTruthy()
-    fireEvent.click(copyButton)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
     expect(mockWriteText).toHaveBeenCalledWith('plain response')
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(mockToastNotify).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
   })
 
   it('should parse request data when it is raw JSON', () => {

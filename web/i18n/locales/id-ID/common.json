@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} kini tersedia.",
   "about.updateNow": "Perbarui sekarang",
   "about.version": "versi {{version}}",
-  "actionMsg.copySuccessfully": "Berhasil disalin",
   "actionMsg.downloadUnsuccessfully": "Unduhan gagal. Silakan coba lagi nanti.",
   "actionMsg.generatedSuccessfully": "Berhasil dihasilkan",
   "actionMsg.generatedUnsuccessfully": "Dihasilkan tidak berhasil",

@@ -24,7 +24,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "Используйте прикрепленный файл, чтобы улучшить этот навык.",
   "skillManagement.detail.builder.close": "Закрыть",
   "skillManagement.detail.builder.copyResponse": "Копировать ответ",
-  "skillManagement.detail.builder.copySuccess": "Ответ скопирован в буфер обмена.",
   "skillManagement.detail.builder.editIntro": "Я рассмотрел этот навык. Что бы вы хотели настроить?",
   "skillManagement.detail.builder.exampleIssueTriage": "Сортировка проблем клиентов",
   "skillManagement.detail.builder.exampleOnboarding": "Руководство по адаптации новых сотрудников",

@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} este acum disponibil.",
   "about.updateNow": "Actualizați acum",
   "about.version": "versiunea {{version}}",
-  "actionMsg.copySuccessfully": "Copiat cu succes",
   "actionMsg.downloadUnsuccessfully": "Descărcarea a eșuat. Vă rugăm să încercați din nou mai târziu.",
   "actionMsg.generatedSuccessfully": "Generat cu succes",
   "actionMsg.generatedUnsuccessfully": "Generare eșuată",

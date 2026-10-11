@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} тепер доступна.",
   "about.updateNow": "Оновити зараз",
   "about.version": "версія {{version}}",
-  "actionMsg.copySuccessfully": "Скопійовано успішно",
   "actionMsg.downloadUnsuccessfully": "Не вдалося завантажити. Будь ласка, спробуйте пізніше.",
   "actionMsg.generatedSuccessfully": "Успішно згенеровано",
   "actionMsg.generatedUnsuccessfully": "Не вдалося згенерувати",

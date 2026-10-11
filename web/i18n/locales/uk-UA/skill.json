@@ -24,7 +24,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "Використовуйте прикріплений файл, щоб допомогти вдосконалити цей навик.",
   "skillManagement.detail.builder.close": "Закрийте Skill Builder",
   "skillManagement.detail.builder.copyResponse": "Копіювати відповідь",
-  "skillManagement.detail.builder.copySuccess": "Відповідь скопійовано в буфер обміну.",
   "skillManagement.detail.builder.editIntro": "Я перевірив цей навик. Що б ви хотіли налаштувати?",
   "skillManagement.detail.builder.exampleIssueTriage": "Сортування питань клієнта",
   "skillManagement.detail.builder.exampleOnboarding": "Посібник із адаптації нового найму",

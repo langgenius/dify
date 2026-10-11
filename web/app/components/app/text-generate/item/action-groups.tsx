@@ -5,8 +5,8 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
-import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import { toast } from '@/app/notifications'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
@@ -65,6 +65,9 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   const { t } = useTranslation(['appDebug', 'common', 'share'])
   const isTryApp = appSourceType === AppSourceTypeEnum.tryApp
   const showCopyAction = (currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow
+  const rawCopyContent = getCopyContent({ content, isWorkflow, workflowProcessData })
+  const copyText =
+    typeof rawCopyContent === 'string' ? rawCopyContent : (JSON.stringify(rawCopyContent) ?? '')
 
   return (
     <>
@@ -96,19 +99,13 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
         )}
         {isShowTextToSpeech && !isTryApp && <NewAudioButton id={messageId!} voice={voice} />}
         {showCopyAction && (
-          <IconButton
-            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+          <CopyFeedback
+            content={copyText}
             disabled={isError || !messageId}
-            title={t(($) => $['operation.copy'], { ns: 'common' })}
-            onClick={() => {
-              const copyContent = getCopyContent({ content, isWorkflow, workflowProcessData })
-              if (typeof copyContent === 'string') copy(copyContent)
-              else copy(JSON.stringify(copyContent))
-              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+            onCopyError={() => {
+              toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
             }}
-          >
-            <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-          </IconButton>
+          />
         )}
         {isInWebApp && isError && (
           <IconButton

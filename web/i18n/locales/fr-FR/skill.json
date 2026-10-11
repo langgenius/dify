@@ -23,7 +23,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "Utilisez le fichier ci-joint pour vous aider à améliorer cette compétence.",
   "skillManagement.detail.builder.close": "Fermer Skill Builder",
   "skillManagement.detail.builder.copyResponse": "Copier la réponse",
-  "skillManagement.detail.builder.copySuccess": "Réponse copiée dans le presse-papiers.",
   "skillManagement.detail.builder.editIntro": "J'ai examiné cette compétence. Que souhaiteriez-vous régler ?",
   "skillManagement.detail.builder.exampleIssueTriage": "Tri des problèmes clients",
   "skillManagement.detail.builder.exampleOnboarding": "Guide d'intégration des nouveaux employés",

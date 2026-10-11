@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} hiện đã có sẵn.",
   "about.updateNow": "Cập nhật ngay",
   "about.version": "phiên bản {{version}}",
-  "actionMsg.copySuccessfully": "Đã sao chép thành công",
   "actionMsg.downloadUnsuccessfully": "Tải xuống thất bại. Vui lòng thử lại sau.",
   "actionMsg.generatedSuccessfully": "Tạo thành công",
   "actionMsg.generatedUnsuccessfully": "Tạo không thành công",

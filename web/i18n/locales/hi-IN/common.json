@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} अब उपलब्ध है।",
   "about.updateNow": "अभी अपडेट करें",
   "about.version": "संस्करण {{version}}",
-  "actionMsg.copySuccessfully": "सफलतापूर्वक कॉपी किया गया",
   "actionMsg.downloadUnsuccessfully": "डाउनलोड विफल रहा। कृपया बाद में पुनः प्रयास करें।",
   "actionMsg.generatedSuccessfully": "सफलतापूर्वक उत्पन्न हुआ",
   "actionMsg.generatedUnsuccessfully": "उत्पन्न असफल रहा",

@@ -1593,7 +1593,6 @@ export default interface Resources {
     'about.nowAvailable': 'Dify {{version}} is now available.'
     'about.updateNow': 'Update now'
     'about.version': 'version {{version}}'
-    'actionMsg.copySuccessfully': 'Copied successfully'
     'actionMsg.downloadUnsuccessfully': 'Download failed. Please try again later.'
     'actionMsg.generatedSuccessfully': 'Generated successfully'
     'actionMsg.generatedUnsuccessfully': 'Generated unsuccessfully'
@@ -4334,7 +4333,6 @@ export default interface Resources {
     'skillManagement.detail.builder.attachmentOnlyMessage': 'Use the attached file to help improve this skill.'
     'skillManagement.detail.builder.close': 'Close Skill Builder'
     'skillManagement.detail.builder.copyResponse': 'Copy response'
-    'skillManagement.detail.builder.copySuccess': 'Response copied to clipboard.'
     'skillManagement.detail.builder.editIntro': "I've reviewed this skill. What would you like to adjust?"
     'skillManagement.detail.builder.exampleIssueTriage': 'Customer issue triage'
     'skillManagement.detail.builder.exampleOnboarding': 'New hire onboarding guide'

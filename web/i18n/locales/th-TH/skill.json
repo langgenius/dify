@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "ใช้ไฟล์แนบเพื่อช่วยพัฒนาทักษะนี้",
   "skillManagement.detail.builder.close": "ปิด Skill Builder",
   "skillManagement.detail.builder.copyResponse": "คัดลอกคำตอบ",
-  "skillManagement.detail.builder.copySuccess": "คัดลอกคำตอบไปยังคลิปบอร์ดแล้ว",
   "skillManagement.detail.builder.editIntro": "ฉันได้ทบทวนทักษะนี้แล้ว คุณต้องการปรับอะไร?",
   "skillManagement.detail.builder.exampleIssueTriage": "การตรวจสอบปัญหาของลูกค้า",
   "skillManagement.detail.builder.exampleOnboarding": "คู่มือการเริ่มต้นใช้งานการจ้างงานใหม่",

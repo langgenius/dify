@@ -324,10 +324,15 @@ describe('OAuthClientSettingsModal', () => {
         expect(mockClipboardWriteText).toHaveBeenCalledWith('https://example.com/oauth/callback')
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.copySuccessfully',
-      })
+      expect(
+        await screen.findByRole('button', { name: 'common.operation.copied' }),
+      ).toBeInTheDocument()
+      expect(mockToastNotify).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+          message: 'common.actionMsg.copySuccessfully',
+        }),
+      )
     })
   })
 

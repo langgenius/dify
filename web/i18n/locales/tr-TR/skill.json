@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "Bu beceriyi geliştirmeye yardımcı olması için ekteki dosyayı kullanın.",
   "skillManagement.detail.builder.close": "Skill Builder'yi kapat",
   "skillManagement.detail.builder.copyResponse": "Yanıtı kopyala",
-  "skillManagement.detail.builder.copySuccess": "Yanıt panoya kopyalandı.",
   "skillManagement.detail.builder.editIntro": "Bu beceriyi inceledim. Neyi ayarlamak istersiniz?",
   "skillManagement.detail.builder.exampleIssueTriage": "Müşteri sorunları önceliklendirmesi",
   "skillManagement.detail.builder.exampleOnboarding": "Yeni işe alım kılavuzu",

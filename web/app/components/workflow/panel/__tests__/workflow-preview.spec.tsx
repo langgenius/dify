@@ -3,7 +3,6 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import { ReactFlowProvider } from 'reactflow'
 import {
   createNodeTracing,
@@ -22,12 +21,9 @@ const renderWorkflowComponent = (
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 
-vi.mock('copy-to-clipboard', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
+    error: vi.fn(),
     success: vi.fn(),
   },
 }))
@@ -131,7 +127,7 @@ vi.mock('@/app/components/workflow/panel/human-input-filled-form-list', () => ({
   ),
 }))
 
-const mockCopy = vi.mocked(copy)
+const mockWriteText = vi.fn()
 const mockToastSuccess = vi.mocked(toast.success)
 const mockSubmitHumanInputForm = vi.mocked(submitHumanInputForm)
 
@@ -276,7 +272,7 @@ describe('WorkflowPreview', () => {
     })
   })
 
-  it('should copy successful string output and show a success toast', async () => {
+  it('should copy successful string output and show copied feedback on the button', async () => {
     const user = userEvent.setup()
 
     renderWorkflowComponent(<WorkflowPreview />, {
@@ -294,10 +290,18 @@ describe('WorkflowPreview', () => {
     })
 
     await user.click(screen.getByText('runLog.result'))
+    mockWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mockWriteText },
+    })
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
-    expect(mockCopy).toHaveBeenCalledWith('final answer')
-    expect(mockToastSuccess).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(mockWriteText).toHaveBeenCalledWith('final answer')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
   it('should show a loading state for an empty detail panel', () => {

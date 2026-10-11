@@ -4,10 +4,9 @@ import type {
   LogicalDocumentRevision,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import copy from 'copy-to-clipboard'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { toast } from '@/app/notifications'
 import {
   chunkCharacterCount,
@@ -120,17 +119,13 @@ export function DocumentChunkDetail({
                         {t(($) => $['newKnowledge.chunkLocation'], { position: chunk.ordinal })}
                       </p>
                     </div>
-                    <IconButton
-                      aria-label={tCommon(($) => $['operation.copy'])}
+                    <CopyFeedback
                       className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
-                      onClick={() => {
-                        copy(chunk.text)
-                        toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
+                      content={chunk.text}
+                      onCopyError={() => {
+                        toast.error(tCommon(($) => $['operation.copyErrorFailed']))
                       }}
-                      size="md"
-                    >
-                      <span aria-hidden className="i-ri-file-copy-line size-4" />
-                    </IconButton>
+                    />
                   </div>
                   {content.body && (
                     <p className="mt-3 body-md-regular wrap-break-word whitespace-pre-wrap text-text-primary">

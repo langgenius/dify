@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} artıq mövcuddur.",
   "about.updateNow": "İndi yenilə",
   "about.version": "versiya {{version}}",
-  "actionMsg.copySuccessfully": "Uğurla kopyalandı",
   "actionMsg.downloadUnsuccessfully": "Yükləmə alınmadı. Daha sonra yenidən cəhd edin.",
   "actionMsg.generatedSuccessfully": "Uğurla yaradıldı",
   "actionMsg.generatedUnsuccessfully": "Yaratma alınmadı",

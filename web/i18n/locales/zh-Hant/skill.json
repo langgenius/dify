@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "使用附加文件來幫助提高這項技能。",
   "skillManagement.detail.builder.close": "關閉 Skill Builder",
   "skillManagement.detail.builder.copyResponse": "複製回覆",
-  "skillManagement.detail.builder.copySuccess": "響應已複製到剪貼簿。",
   "skillManagement.detail.builder.editIntro": "我已檢閱這個 Skill。你想調整什麼？",
   "skillManagement.detail.builder.exampleIssueTriage": "客戶問題分類",
   "skillManagement.detail.builder.exampleOnboarding": "新進員工入職指南",

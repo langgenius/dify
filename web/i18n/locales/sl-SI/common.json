@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} je zdaj na voljo.",
   "about.updateNow": "Posodobi zdaj",
   "about.version": "različica {{version}}",
-  "actionMsg.copySuccessfully": "Kopirano uspešno",
   "actionMsg.downloadUnsuccessfully": "Prenos ni uspel. Poskusite znova pozneje.",
   "actionMsg.generatedSuccessfully": "Generirano uspešno",
   "actionMsg.generatedUnsuccessfully": "Generirano neuspešno",

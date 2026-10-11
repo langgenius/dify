@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} اکنون در دسترس است.",
   "about.updateNow": "به‌روزرسانی اکنون",
   "about.version": "نسخه {{version}}",
-  "actionMsg.copySuccessfully": "با موفقیت کپی شد",
   "actionMsg.downloadUnsuccessfully": "دانلود ناموفق بود. لطفاً بعداً دوباره امتحان کنید.",
   "actionMsg.generatedSuccessfully": "با موفقیت تولید شد",
   "actionMsg.generatedUnsuccessfully": "تولید ناموفق بود",

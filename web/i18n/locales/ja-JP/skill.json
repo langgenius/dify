@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "添付ファイルを使って、このスキルを改善してください。",
   "skillManagement.detail.builder.close": "Skill Builder を閉じる",
   "skillManagement.detail.builder.copyResponse": "応答をコピーする",
-  "skillManagement.detail.builder.copySuccess": "応答がクリップボードにコピーされました。",
   "skillManagement.detail.builder.editIntro": "このスキルを確認しました。何を調整しますか？",
   "skillManagement.detail.builder.exampleIssueTriage": "顧客問い合わせの優先度分類",
   "skillManagement.detail.builder.exampleOnboarding": "新入社員オンボーディングガイド",

@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "请根据附件改进此 Skill。",
   "skillManagement.detail.builder.close": "关闭 Skill Builder",
   "skillManagement.detail.builder.copyResponse": "复制回复",
-  "skillManagement.detail.builder.copySuccess": "回复已复制到剪贴板。",
   "skillManagement.detail.builder.editIntro": "我已查看此 Skill。想调整哪些内容？",
   "skillManagement.detail.builder.exampleIssueTriage": "客户问题分级处理",
   "skillManagement.detail.builder.exampleOnboarding": "新员工入职引导",
