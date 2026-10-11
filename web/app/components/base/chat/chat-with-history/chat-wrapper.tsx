@@ -119,7 +119,9 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (inputValue === undefined || inputValue === null || inputValue === '')
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
