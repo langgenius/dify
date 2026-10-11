@@ -100,14 +100,14 @@ def restricted_admission_snapshot(workflow: Workflow, app: App) -> RestrictedAdm
 
 
 @dataclass(frozen=True)
-class _OwnerSnapshot:
+class ExecutionOwnerSnapshot:
     app: App
     workflow: Workflow
     session: DifyBuilderSession | None
     test_input: DifyBuilderTestInput | None
 
 
-def _owners(
+def load_execution_owners(
     db: Session,
     *,
     app_id: str,
@@ -115,7 +115,8 @@ def _owners(
     workflow_id: str | None = None,
     session_id: str | None = None,
     test_input_id: str | None = None,
-) -> _OwnerSnapshot:
+) -> ExecutionOwnerSnapshot:
+    """Read the full local owner chain in the caller's session; the shared Builder owner check."""
     account = db.get(Account, actor.account_id)
     workspace = db.get(Tenant, actor.tenant_id)
     membership = db.scalar(
@@ -157,10 +158,10 @@ def _owners(
         raise BuilderExecutionPolicyError("execution_owner_mismatch")
     if test_input_id is not None and (test_input is None or test_input.session_id != session_id):
         raise BuilderExecutionPolicyError("execution_owner_mismatch")
-    return _OwnerSnapshot(app=app, workflow=workflow, session=builder_session, test_input=test_input)
+    return ExecutionOwnerSnapshot(app=app, workflow=workflow, session=builder_session, test_input=test_input)
 
 
-def _permission(actor: Actor, app_id: str, session_factory: sessionmaker[Session]) -> None:
+def check_execution_permission(actor: Actor, app_id: str, session_factory: sessionmaker[Session]) -> None:
     """Use native RBAC service owners with the PlainApp locator semantics.
 
     The transport helper gives OR semantics to a check list, so require each
@@ -229,7 +230,7 @@ class BuilderExecutionPolicyService:
         effective_inputs: Inputs,
     ) -> BuilderExecutionContext:
         with self._session_factory() as db:
-            owner = _owners(
+            owner = load_execution_owners(
                 db,
                 app_id=app_id,
                 actor=actor,
@@ -274,7 +275,7 @@ class BuilderExecutionPolicyService:
             initial = BuilderExecutionContext.model_validate({**values, "context_digest": "0" * 64})
             context = BuilderExecutionContext.model_validate({**values, "context_digest": context_digest(initial)})
             admit_restricted_workflow(context, snapshot)
-        _permission(actor, app_id, self._session_factory)
+        check_execution_permission(actor, app_id, self._session_factory)
         with self._session_factory.begin() as db:
             db.add(
                 DifyBuilderExecutionRequest(
@@ -296,9 +297,9 @@ class BuilderExecutionPolicyService:
     def stamp_http_fixtures(
         self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
     ) -> HttpFixtureSetV1:
-        _permission(actor, app_id, self._session_factory)
+        check_execution_permission(actor, app_id, self._session_factory)
         with self._session_factory() as db:
-            owner = _owners(db, app_id=app_id, actor=actor)
+            owner = load_execution_owners(db, app_id=app_id, actor=actor)
             snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
             bindings = admitted_node_bindings(snapshot)
             revision = execution_revision(owner.workflow)
@@ -354,12 +355,12 @@ class BuilderExecutionPolicyService:
         # Refuse raw changes before any revision function can resolve secrets.
         supplied = restricted_admission_snapshot(workflow, app)
         actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
-        _permission(actor, context.app_id, self._session_factory)
+        check_execution_permission(actor, context.app_id, self._session_factory)
         with self._session_factory() as db:
             row = _bound_request(db, context, lock=False)
             if row.state not in {"prepared", "running"}:
                 raise BuilderExecutionPolicyError("execution_request_closed")
-            owner = _owners(
+            owner = load_execution_owners(
                 db,
                 app_id=context.app_id,
                 actor=actor,
@@ -445,7 +446,7 @@ class BuilderExecutionPolicyService:
             raise BuilderExecutionPolicyError("execution_request_mismatch")
         with self._session_factory.begin() as db:
             row = _bound_request(db, context, lock=True)
-            _owners(
+            load_execution_owners(
                 db,
                 app_id=context.app_id,
                 actor=Actor(account_id=context.actor_id, tenant_id=context.tenant_id),

@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.dify_builder.models import Actor
+from core.dify_builder.real_call_consent import CredentialReference
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
@@ -34,6 +36,7 @@ from models.account import Account
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.tools.builder_credential_reference import select_builder_credential
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -610,6 +613,33 @@ class BuiltinToolManageService:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 
             return oauth_params
+
+    @staticmethod
+    def resolve_builder_reference(
+        *,
+        db: Session,
+        actor: Actor,
+        provider_id: str,
+        credential_id: str,
+        verified_plugin: bool,
+        revision_key: bytes,
+    ) -> CredentialReference:
+        """Bind Builder consent to one explicit credential's exact stored metadata.
+
+        Metadata only, in the caller's short session: no other transaction,
+        decryption, validation, refresh or network call. ``verified_plugin`` is
+        server-resolved artifact evidence, never public input; only ``True``
+        makes the system OAuth client eligible. Ciphertext stays inside the
+        private selection snapshot and never enters the returned reference.
+        """
+        return select_builder_credential(
+            db,
+            actor=actor,
+            provider_id=provider_id,
+            credential_id=credential_id,
+            verified_plugin=verified_plugin,
+            revision_key=revision_key,
+        ).reference
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):
