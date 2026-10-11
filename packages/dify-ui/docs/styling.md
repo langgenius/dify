@@ -63,9 +63,8 @@ Block-axis classes (`pt`, `mb`, `top`) and sizes stay physical. A class names a 
 when the side is physical by nature: under `rtl:`/`ltr:` or Base UI `data-[swipe-direction=left|right]`
 variants, in the `left-1/2 -translate-x-1/2` centering idiom, or in a layout tied to a physical
 swipe or transform such as the toast stack. `better-tailwindcss/enforce-logical-properties`
-enforces this; a deliberate physical class carries a comment and an entry in the root
-`oxlint-suppressions.json` baseline rather than a disable directive, because fix commands run
-without the Tailwind plugin and would report the directive as unused.
+enforces this in `packages/dify-ui`; a deliberate physical class carries a described
+`oxlint-disable-next-line` directive.
 
 ## Border radius
 

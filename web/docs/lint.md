@@ -20,7 +20,7 @@ CI and local development use the same root `vite.config.ts` configuration.
 
 The root `check` script delegates to the `check:cached` Vite Task. Formatting, linting,
 and type checking reuse successful results when their tracked inputs are unchanged.
-`CI`, `NODE_ENV`, `TAILWIND_CANONICAL_CLASSES`, and `TAILWIND_LOGICAL_PROPERTIES` are included in the cache key;
+`CI`, `NODE_ENV`, and `TAILWIND_CANONICAL_CLASSES` are included in the cache key;
 check results never restore files into the working tree. Fix commands remain uncached.
 To force a fresh check, run `vp run -w --no-cache check`.
 
@@ -66,24 +66,22 @@ Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-The Tailwind plugin (`eslint-plugin-better-tailwindcss`) loads by default and runs
-`better-tailwindcss/enforce-logical-properties` at `error` on `web/` and `packages/dify-ui/`.
+The Tailwind plugin (`eslint-plugin-better-tailwindcss`) always loads and runs
+`better-tailwindcss/enforce-logical-properties` at `error` on the directories listed in the
+`tailwindLogicalPropertiesOverride` of `lint.config.ts`, currently `packages/dify-ui/`.
 Inline-direction classes use the logical form (`ps-*`, `me-*`, `start-*`, `border-e`,
 `rounded-s-*`, `text-start`) because `cn` treats `pl-*` and `ps-*` as different properties and an
 override written in the other family silently stops applying. Block-axis and sizing classes,
 classes under `rtl:`, `ltr:`, or `data-[swipe-direction=left|right]` variants, and the
-`left-1/2`/`right-1/2` centering idiom stay physical; the rule's `ignore` patterns in
-`lint.config.ts` encode these exceptions. Existing violations are tracked in the bulk-suppression
-baseline and migrate directory by directory with `vp run -w lint:tailwind:fix <dir>`. Set
-`TAILWIND_LOGICAL_PROPERTIES=false` to skip loading the plugin; `check:fix`, `lint:oxlint:fix`,
-and the staged-file `check:staged` script do so because the rule's autofix also rewrites baselined
-violations. Oxlint only checks for unused suppressions on a full run without `--fix`, so those
-commands tolerate the baseline; a deliberate physical class is recorded in the baseline with a
-plain comment, because a disable directive would be reported as unused when the plugin is off.
-Tailwind canonical class cleanup remains optional: `TAILWIND_CANONICAL_CLASSES=true`
-(`vp run -w lint:tailwind`, `vp run -w lint:tailwind:fix`) adds the warning-level
-`better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px
-root font size.
+`left-1/2`/`right-1/2` centering idiom stay physical; the rule's `ignore` patterns encode these
+exceptions, and a deliberate physical class carries a described `oxlint-disable-next-line`.
+The rule deliberately has no bulk-suppression baseline: a fix run prunes baseline entries for the
+files it lints, and the rule's autofix would otherwise migrate unlisted files one commit at a time.
+Migrate a `web/` directory with `vp lint --fix <dir>` and `vp fmt <dir>`, convert any caller
+override of a class that moved, then add the directory to the override. Tailwind canonical class
+cleanup remains optional: `TAILWIND_CANONICAL_CLASSES=true` (`vp run -w lint:tailwind`,
+`vp run -w lint:tailwind:fix`) adds the warning-level `better-tailwindcss/enforce-canonical-classes`
+rule, using `web/app/styles/globals.css` and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
