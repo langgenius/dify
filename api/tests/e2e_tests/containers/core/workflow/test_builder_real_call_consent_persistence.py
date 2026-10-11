@@ -10,10 +10,9 @@ ciphertext below is an opaque fixture string written by the CAS owner.
 import importlib.util
 import json
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, timedelta
 from pathlib import Path
-from threading import Event
+from threading import Event, Thread
 from time import monotonic, sleep
 from uuid import uuid4
 
@@ -21,14 +20,20 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from flask import Flask
-from sqlalchemy import func, inspect, select, text
+from sqlalchemy import Engine, create_engine, event, func, inspect, select, text
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry, NullPool
 
 from configs import dify_config
 from core.dify_builder import gmail_read_policy
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.execution_policy import ConfirmedToolExecutionContext, validate_execution_context
+from core.dify_builder.execution_policy import (
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+    validate_execution_context,
+)
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext
 from core.dify_builder.real_call_consent import (
@@ -413,60 +418,138 @@ def test_postgres_expiry_boundary_blocks_the_grant_claim(world: World, monkeypat
     assert world.consent(reserved.consent_id).state == "expired"
 
 
+# Server-side bounds for the held-lock regression, applied per connection through libpq ``options``
+# (the same mechanism as ``SQLALCHEMY_ENGINE_OPTIONS``):
+# - ``lock_timeout`` aborts any single lock acquisition that waits longer (SQLSTATE 55P03).
+# - ``statement_timeout`` aborts any single statement, including one blocked on a lock (57014).
+# - ``idle_in_transaction_session_timeout`` makes the server terminate a session left idle inside an
+#   open transaction, so a stalled holder thread cannot keep the consent row locked.
+# Each abort ends that worker's SQL with a DBAPI error and SQLAlchemy rolls its transaction back, so
+# both workers terminate within these bounds even when an assertion fails or the holder never
+# acquires its lock. Joins below use deadlines strictly larger than the server-side bounds.
+_HOLDER_OPTIONS = "-c lock_timeout=5000 -c statement_timeout=5000 -c idle_in_transaction_session_timeout=20000"
+_SPENDER_OPTIONS = "-c lock_timeout=15000 -c statement_timeout=20000 -c idle_in_transaction_session_timeout=20000"
+_HOLDER_RELEASE_SECONDS = 15  # < holder idle-in-transaction bound
+_WITNESS_SECONDS = 10  # < spender lock_timeout, so the witnessed wait is still in progress
+_JOIN_SECONDS = 60  # > every server-side bound above
+
+
+def _bounded_engine(world: World, options: str, backend_pids: list[int] | None = None) -> Engine:
+    """A NullPool engine on the fixture's database whose every connection carries ``options``."""
+    base: Engine = world.factory.kw["bind"]
+    inherited = dify_config.SQLALCHEMY_ENGINE_OPTIONS.get("connect_args", {}).get("options", "")
+    engine = create_engine(base.url, poolclass=NullPool, connect_args={"options": f"{inherited} {options}".strip()})
+    if backend_pids is not None:
+
+        def record_backend(dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("SELECT pg_backend_pid()")
+            row = cursor.fetchone()
+            cursor.close()
+            if row is not None:
+                backend_pids.append(int(row[0]))
+
+        event.listen(engine, "connect", record_backend)
+    return engine
+
+
 @pytest.mark.parametrize("spend", ["tool", "business"])
 def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
     world: World, monkeypatch: pytest.MonkeyPatch, spend: str
 ) -> None:
-    """A spend that starts eligible, waits on a real held consent row lock across expiry, must refuse."""
+    """A spend that starts eligible and waits on a real held consent row lock across expiry must refuse.
+
+    The clock advances only after THIS spender's own backend is witnessed blocked by THIS holder's
+    backend on the consent query, so a pre-lock clock read would authorize and fail the assertion.
+    """
+    spender_pids: list[int] = []
+    holder_engine = _bounded_engine(world, _HOLDER_OPTIONS)
+    spender_engine = _bounded_engine(world, _SPENDER_OPTIONS, spender_pids)
+    # Every session the real service opens (owner read, permission, locked transaction) comes from
+    # this factory, so all spender SQL inherits the spender bounds.
+    service = BuilderRealCallConsentService(sessionmaker(bind=spender_engine, expire_on_commit=False))
     spend_once: Callable[[], object]
     if spend == "tool":
         reserved, context, run_id = world.launched()
 
         def spend_once() -> object:
-            return world.service().claim_tool(
+            return service.claim_tool(
                 context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution"
             )
     else:
         reserved, binding = world.claimed()
 
         def spend_once() -> object:
-            world.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
             return "spent"
 
     expires_at = world.consent(reserved.consent_id).expires_at.replace(tzinfo=UTC)
-    clock = {"now": expires_at - timedelta(seconds=5)}  # eligible when the call starts
+    clock = {"now": expires_at - timedelta(seconds=5)}  # eligible when the spender call starts
     monkeypatch.setattr(real_call_consent_service, "_utcnow", lambda: clock["now"])
     locked, release = Event(), Event()
+    results: dict[str, object] = {}
 
     def hold_consent_lock() -> None:
-        with world.factory.begin() as db:
-            db.execute(
-                select(DifyBuilderRealCallConsent.id)
-                .where(DifyBuilderRealCallConsent.id == reserved.consent_id)
-                .with_for_update()
-            )
-            locked.set()
-            release.wait(timeout=30)
-
-    def waiting_on_lock() -> bool:
-        with world.factory() as db:
-            return bool(db.scalar(text("SELECT count(*) FROM pg_locks WHERE NOT granted")))
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        holder = pool.submit(hold_consent_lock)
         try:
-            assert locked.wait(timeout=10)
-            spender = pool.submit(lambda: race(spend_once)[0])
-            deadline = monotonic() + 10
-            while not waiting_on_lock():
-                assert monotonic() < deadline, "spend never blocked on the held row lock"
-                sleep(0.05)
-            clock["now"] = expires_at  # expiry passes while the spend is blocked
-        finally:
-            release.set()
-        holder.result(timeout=30)
-        outcome = spender.result(timeout=30)
-    assert outcome == "consent_expired"
+            with Session(holder_engine) as db, db.begin():
+                results["holder_pid"] = int(db.scalar(text("SELECT pg_backend_pid()")) or 0)
+                db.execute(
+                    select(DifyBuilderRealCallConsent.id)
+                    .where(DifyBuilderRealCallConsent.id == reserved.consent_id)
+                    .with_for_update()
+                )
+                locked.set()
+                release.wait(timeout=_HOLDER_RELEASE_SECONDS)
+        except Exception as error:  # recorded and asserted; never left running
+            results["holder_error"] = type(error).__name__
+
+    def run_spender() -> None:
+        try:
+            results["spender"] = spend_once()
+        except BuilderExecutionPolicyError as error:
+            results["spender"] = error.reason_code
+        except Exception as error:
+            results["spender"] = f"error:{type(error).__name__}"
+
+    def spender_witnessed_blocked_by_holder() -> bool:
+        # Correlated: one of THIS spender's backends waits on a lock, is blocked by THIS holder's
+        # backend (which holds only the consent row lock), and is executing the consent lock query.
+        with world.factory() as db:
+            return bool(
+                db.scalar(
+                    text(
+                        "SELECT count(*) FROM pg_stat_activity AS a WHERE a.pid = ANY(CAST(:pids AS integer[])) "
+                        "AND a.wait_event_type = 'Lock' AND CAST(:holder AS integer) = ANY(pg_blocking_pids(a.pid)) "
+                        "AND a.query ILIKE '%dify_builder_real_call_consents%'"
+                    ),
+                    {"pids": list(spender_pids), "holder": results.get("holder_pid", 0)},
+                )
+            )
+
+    holder = Thread(target=hold_consent_lock, name="consent-lock-holder", daemon=True)
+    spender = Thread(target=run_spender, name="consent-spender", daemon=True)
+    try:
+        holder.start()
+        assert locked.wait(timeout=10), f"holder never acquired the consent lock: {results.get('holder_error')}"
+        assert clock["now"] < expires_at  # still eligible when the real call begins
+        spender.start()
+        deadline = monotonic() + _WITNESS_SECONDS
+        while not spender_witnessed_blocked_by_holder():
+            assert spender.is_alive(), f"spender finished without blocking: {results.get('spender')}"
+            assert monotonic() < deadline, "spender never blocked on the held consent row lock"
+            sleep(0.05)
+        clock["now"] = expires_at  # expiry passes while the spender is blocked
+    finally:
+        release.set()
+        holder.join(timeout=_JOIN_SECONDS)
+        if spender.ident is not None:
+            spender.join(timeout=_JOIN_SECONDS)
+        holder_engine.dispose()
+        spender_engine.dispose()
+    assert not holder.is_alive(), "holder outlived its server-side bounds"
+    assert not spender.is_alive(), "spender outlived its server-side bounds"
+    assert "holder_error" not in results
+    assert results["spender"] == "consent_expired"
     row = world.consent(reserved.consent_id)
     if spend == "tool":
         assert (row.state, row.claimed_at) == ("expired", None)
