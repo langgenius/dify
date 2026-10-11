@@ -3,13 +3,17 @@ from types import SimpleNamespace
 import pytest
 from pytest_mock import MockerFixture
 
+from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.exc import PluginDaemonError
 from core.plugin.impl.tool import PluginToolManager
 
 
 def _tool_provider(name: str = "provider") -> SimpleNamespace:
     return SimpleNamespace(
         plugin_id="org/plugin",
+        provider=name,
+        plugin_unique_identifier=f"org/plugin:0.0.1@{'0' * 64}",
         declaration=SimpleNamespace(
             identity=SimpleNamespace(name=name),
             tools=[SimpleNamespace(identity=SimpleNamespace(provider=""))],
@@ -40,10 +44,16 @@ class TestPluginToolManager:
             return [provider]
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+        # The installed Tool plugin ID list is the coverage authority; keep it
+        # hermetic at its native owner.
+        installed_ids = mocker.patch(
+            "core.plugin.impl.tool.PluginInstaller.list_installed_plugin_ids", return_value=["org/plugin"]
+        )
 
         result = manager.fetch_tool_providers("tenant-1")
 
         assert request_mock.call_count == 1
+        assert {call.args for call in installed_ids.call_args_list} == {("tenant-1", PluginCategory.Tool)}
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.tools[0].identity.provider == "org/plugin/remote"
 
@@ -238,3 +248,333 @@ class TestFetchToolProvidersWithinPageDedup:
 
         assert sorted(_ids(result)) == sorted(set(_ids(result)))
         assert len(result) == 258
+
+
+# ---- ENG-1191 final review: authoritative installed-ID coverage -------------
+#
+# Native ListTools pages with OFFSET/LIMIT and no ORDER BY, so short-page
+# termination plus dedup cannot prove completeness. The daemon's ordered,
+# deduplicated ``installation/ids?category=tool`` list is the authority; IDs
+# missing from the bulk pages are recovered through native installation
+# batches (max 256) and the single-provider fetch. Only the pooled HTTP
+# client is faked; the native HTTP owners and Pydantic entities run.
+
+
+def _route_requests(daemon, route: str):
+    return daemon.requests_for(route)
+
+
+def _assert_metadata_only(daemon, tenant_id: str = "tenant-1") -> None:
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import METADATA_ROUTES
+
+    assert all(r.route in METADATA_ROUTES and r.tenant_id == tenant_id for r in daemon.requests)
+
+
+def _batch_ids(daemon) -> list[list[str]]:
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLATION_BATCH
+
+    return [list((r.body or {}).get("plugin_ids") or []) for r in daemon.requests_for(INSTALLATION_BATCH)]
+
+
+def _single_ids(daemon) -> list[tuple[object, object]]:
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import SINGLE_TOOL
+
+    return [(r.params.get("plugin_id"), r.params.get("provider")) for r in daemon.requests_for(SINGLE_TOOL)]
+
+
+def _installed_id_requests(daemon):
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLED_IDS
+
+    return daemon.requests_for(INSTALLED_IDS)
+
+
+_INVENTORY_FAILURES = (PluginDaemonError, ValueError)
+
+
+class TestFetchToolProvidersAuthoritativeInventory:
+    def test_legally_unordered_pages_recover_the_provider_bulk_omitted(self, monkeypatch):
+        """The final review's unchanged 300-provider tenant: page 1 holds
+        0..255, page 2 (another valid ordering) holds 255..298. Provider 299
+        must come back through native metadata, never a silent 299."""
+        rows = _providers(300)
+        daemon = _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: rows[:256], 2: rows[255:299]},
+        )
+
+        result = PluginToolManager().fetch_tool_providers("tenant-1")
+
+        assert sorted(_ids(result)) == sorted(f"aaa/p_{i:03d}/p_{i:03d}" for i in range(300))
+        assert len(result) == 300
+        recovered = next(p for p in result if p.declaration.identity.name == "aaa/p_299/p_299")
+        # full stable ids and normalized actions, as on the bulk path
+        assert recovered.plugin_id == "aaa/p_299"
+        assert [tool.identity.provider for tool in recovered.declaration.tools] == ["aaa/p_299/p_299"]
+        assert _batch_ids(daemon) == [["aaa/p_299"]]
+        assert _single_ids(daemon) == [("aaa/p_299", "p_299")]
+        _assert_metadata_only(daemon)
+
+    def test_a_normal_inventory_reads_bulk_pages_and_never_fetches_providers_one_by_one(self, monkeypatch):
+        daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)})
+
+        result = PluginToolManager().fetch_tool_providers("tenant-1")
+
+        assert len(result) == 300
+        id_requests = _installed_id_requests(daemon)
+        assert id_requests
+        assert all(r.params.get("category") == "tool" for r in id_requests)
+        assert _batch_ids(daemon) == []
+        assert _single_ids(daemon) == []
+        _assert_metadata_only(daemon)
+
+    def test_an_empty_installed_id_list_yields_no_plugin_providers(self, monkeypatch):
+        daemon = _daemon(monkeypatch, providers_by_tenant={})
+
+        assert PluginToolManager().fetch_tool_providers("tenant-1") == []
+        assert _installed_id_requests(daemon)
+        assert _batch_ids(daemon) == []
+        assert _single_ids(daemon) == []
+
+    def test_duplicate_authoritative_ids_are_deduplicated(self, monkeypatch):
+        rows = _providers(5)
+        ids = [str(row["plugin_id"]) for row in rows]
+        daemon = _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            installed_ids_by_tenant={"tenant-1": [*ids, ids[4], ids[4]]},
+            list_tools_pages={1: rows[:4]},
+        )
+
+        result = PluginToolManager().fetch_tool_providers("tenant-1")
+
+        assert sorted(_ids(result)) == sorted(set(_ids(result)))
+        assert len(result) == 5
+        assert _batch_ids(daemon) == [["aaa/p_004"]]
+        assert _single_ids(daemon) == [("aaa/p_004", "p_004")]
+
+    def test_recovery_batches_respect_the_native_256_id_limit(self, monkeypatch):
+        rows = _providers(300)
+        daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: rows[:40]})
+
+        result = PluginToolManager().fetch_tool_providers("tenant-1")
+
+        assert len(result) == 300
+        batches = _batch_ids(daemon)
+        assert len(batches) >= 2
+        assert all(1 <= len(batch) <= 256 for batch in batches)
+        missing = {str(row["plugin_id"]) for row in rows[40:]}
+        assert sorted(plugin_id for batch in batches for plugin_id in batch) == sorted(missing)
+        assert sorted(plugin_id for plugin_id, _provider in _single_ids(daemon)) == sorted(missing)
+        _assert_metadata_only(daemon)
+
+    @pytest.mark.parametrize("defect", ["fail_routes", "malformed_routes"])
+    def test_an_installed_id_lookup_failure_fails_the_fetch(self, monkeypatch, defect):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLED_IDS
+
+        _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(3)}, **{defect: frozenset({INSTALLED_IDS})})
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    @pytest.mark.parametrize(
+        "corrupt",
+        [
+            pytest.param(lambda _rows, _ids: [], id="missing_row"),
+            pytest.param(lambda rows, _ids: [*rows, *rows], id="duplicate_row"),
+            pytest.param(
+                lambda rows, _ids: [*rows, {**rows[0], "plugin_id": "aaa/p_000"}],
+                id="extra_row",
+            ),
+            pytest.param(lambda rows, _ids: [{**rows[0], "tenant_id": "tenant-2"}], id="tenant_mismatch"),
+            pytest.param(lambda rows, _ids: [{**rows[0], "plugin_id": "aaa/p_009"}], id="plugin_mismatch"),
+            pytest.param(
+                lambda rows, _ids: [{**rows[0], "plugin_unique_identifier": "aaa/p_004:9.9.9@" + "f" * 64}],
+                id="unique_identifier_mismatch",
+            ),
+            pytest.param(
+                lambda rows, _ids: [{**rows[0], "declaration": {**rows[0]["declaration"], "tool": None}}],
+                id="absent_tool_manifest",
+            ),
+        ],
+    )
+    def test_a_defective_installation_batch_fails_the_fetch(self, monkeypatch, corrupt):
+        rows = _providers(5)
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: rows[:4]},
+            batch_rows_hook=corrupt,
+        )
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def _single_defect(self, monkeypatch, **kwargs):
+        rows = _providers(5)
+        return _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: rows[:4]}, **kwargs)
+
+    def test_a_failed_single_provider_fetch_fails_the_fetch(self, monkeypatch):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import SINGLE_TOOL
+
+        self._single_defect(monkeypatch, fail_routes=frozenset({SINGLE_TOOL}))
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_an_unparsable_single_provider_fails_the_fetch(self, monkeypatch):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import SINGLE_TOOL
+
+        self._single_defect(monkeypatch, malformed_routes=frozenset({SINGLE_TOOL}))
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    @pytest.mark.parametrize(
+        "mismatch",
+        [
+            pytest.param(lambda p: {**p, "plugin_id": "aaa/p_009"}, id="plugin_id"),
+            pytest.param(
+                lambda p: {**p, "plugin_unique_identifier": "aaa/p_004:9.9.9@" + "f" * 64},
+                id="unique_identifier",
+            ),
+            pytest.param(
+                lambda p: {
+                    **p,
+                    "declaration": {**p["declaration"], "identity": {**p["declaration"]["identity"], "name": "other"}},
+                },
+                id="provider_name",
+            ),
+        ],
+    )
+    def test_a_single_provider_identity_mismatch_fails_the_fetch(self, monkeypatch, mismatch):
+        self._single_defect(monkeypatch, single_payload_hook=mismatch)
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_a_bulk_provider_that_is_not_installed_fails_the_fetch(self, monkeypatch):
+        rows = _providers(5)
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            installed_ids_by_tenant={"tenant-1": [str(row["plugin_id"]) for row in rows[:4]]},
+        )
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_an_installed_set_that_changes_during_the_fetch_fails(self, monkeypatch):
+        rows = _providers(5)
+        ids = [str(row["plugin_id"]) for row in rows]
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            installed_ids_sequence=[list(ids), ids[:4]],
+        )
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_an_installed_id_list_beyond_the_inventory_bound_fails_before_recovery(self, monkeypatch):
+        oversized = [f"aaa/bulk_{index:05d}" for index in range(256 * 40 + 1)]
+        daemon = _daemon(monkeypatch, providers_by_tenant={}, installed_ids_by_tenant={"tenant-1": oversized})
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+        assert _batch_ids(daemon) == []
+        assert _single_ids(daemon) == []
+
+
+class TestFetchToolProvidersRecoveryControls:
+    """Gap controls added in GREEN: installation-batch failure, and the
+    recovery path keeping the bulk path's output-schema resolution and
+    normalized identities."""
+
+    @pytest.mark.parametrize("defect", ["fail_routes", "malformed_routes"])
+    def test_a_failed_installation_batch_fails_the_fetch(self, monkeypatch, defect):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLATION_BATCH
+
+        rows = _providers(5)
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: rows[:4]},
+            **{defect: frozenset({INSTALLATION_BATCH})},
+        )
+
+        with pytest.raises(_INVENTORY_FAILURES):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_recovered_and_bulk_providers_resolve_output_schemas_alike(self, monkeypatch):
+        rows = _providers(5)
+        for row in rows:
+            row["declaration"]["tools"][0]["output_schema"] = {"$ref": "#/definitions/x"}
+        monkeypatch.setattr("core.plugin.impl.tool.resolve_dify_schema_refs", lambda _schema: {"resolved": True})
+        _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: rows[:4]})
+
+        result = {p.declaration.identity.name: p for p in PluginToolManager().fetch_tool_providers("tenant-1")}
+
+        assert len(result) == 5
+        for name in ("aaa/p_000/p_000", "aaa/p_004/p_004"):  # bulk, recovered
+            tool = result[name].declaration.tools[0]
+            assert dict(tool.output_schema) == {"resolved": True}
+            assert tool.identity.provider == name
+
+
+def _foreign_unique_identifier(plugin_id: str = "aaa/p_009", version: str = "0.0.1") -> str:
+    return f"{plugin_id}:{version}@{'e' * 64}"
+
+
+class TestFetchToolProviderMetadataConsistency:
+    """Public provider metadata must agree with itself and with the installed
+    plugin identity; inconsistent rows fail instead of being dropped or
+    trusted."""
+
+    def test_two_bulk_rows_with_one_provider_id_but_different_unique_identifiers_fail(self, monkeypatch):
+        rows = _providers(5)
+        upgraded = {**rows[2], "plugin_unique_identifier": _foreign_unique_identifier("aaa/p_002", "0.0.2")}
+        _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: [*rows, upgraded]})
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_a_recovered_provider_whose_raw_provider_field_disagrees_fails(self, monkeypatch):
+        rows = _providers(5)
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: rows[:4]},
+            single_payload_hook=lambda payload: {**payload, "provider": "other"},
+        )
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_a_bulk_unique_identifier_of_another_plugin_fails(self, monkeypatch):
+        rows = _providers(5)
+        foreign = {**rows[1], "plugin_unique_identifier": _foreign_unique_identifier()}
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: [rows[0], foreign, *rows[2:]]},
+        )
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
+
+    def test_installation_and_recovered_provider_agreeing_on_a_foreign_unique_identifier_fail(self, monkeypatch):
+        rows = _providers(5)
+        foreign = _foreign_unique_identifier()
+        _daemon(
+            monkeypatch,
+            providers_by_tenant={"tenant-1": rows},
+            list_tools_pages={1: rows[:4]},
+            batch_rows_hook=lambda batch_rows, _ids: [
+                {**row, "plugin_unique_identifier": foreign} for row in batch_rows
+            ],
+            single_payload_hook=lambda payload: {**payload, "plugin_unique_identifier": foreign},
+        )
+
+        with pytest.raises(ValueError):
+            PluginToolManager().fetch_tool_providers("tenant-1")
