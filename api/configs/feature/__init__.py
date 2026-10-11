@@ -988,6 +988,14 @@ class WorkflowConfig(BaseSettings):
         default="ask",
     )
 
+    DIFY_BUILDER_CONFIRMED_TOOL_ENABLED: bool = Field(
+        description=(
+            "Backend-only rollout control for consented real Builder Tool tests. It never qualifies an artifact; "
+            "unqualified actions stay unsupported. Not exposed in public system features."
+        ),
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """

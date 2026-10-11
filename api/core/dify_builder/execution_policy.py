@@ -11,7 +11,18 @@ import re
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    StrictBool,
+    Tag,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 ScalarValue = str | int | float | bool | None
 BoundedID = Annotated[str, Field(strict=True, min_length=1, max_length=128)]
@@ -47,14 +58,18 @@ def _finite_json(value: Any) -> None:
     raise ValueError("invalid finite JSON")
 
 
-def canonical_digest(value: Any) -> str:
-    """Canonical finite UTF-8 JSON; arrays retain execution-significant order."""
+def canonical_json(value: Any) -> bytes:
+    """Sorted compact finite UTF-8 JSON; arrays retain execution-significant order."""
     try:
         _finite_json(value)
         encoded = json.dumps(value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        return encoded.encode("utf-8")
     except (ValueError, TypeError, UnicodeError, RecursionError):
         raise BuilderExecutionPolicyError("invalid_canonical_json") from None
+
+
+def canonical_digest(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value)).hexdigest()
 
 
 def scalar_inputs_digest(inputs: Mapping[str, Any]) -> str:
@@ -182,8 +197,67 @@ class BuilderExecutionContext(_TrustedModel):
     http_fixtures: Annotated[tuple[HttpResponseFixtureV1, ...], Field(max_length=128)]
 
 
-def context_digest(context: BuilderExecutionContext) -> str:
+class ConfirmedToolExecutionContext(_TrustedModel):
+    """One consented native Tool run. Holds consent references, never credentials.
+
+    The service reconstructs this from its durable reservation; it is not an
+    authorization object a client may submit.
+    """
+
+    policy_version: Literal["builder-confirmed-gmail-read-v1"]
+    request_id: BoundedID
+    tenant_id: BoundedID
+    app_id: BoundedID
+    workflow_id: BoundedID
+    actor_id: BoundedID
+    session_id: BoundedID
+    test_input_id: BoundedID
+    execution_revision: Digest
+    graph_revision: Digest
+    submitted_inputs_digest: Digest
+    effective_inputs_digest: Digest
+    context_digest: Digest
+    mode: Literal["confirmed_tool"]
+    sandbox_profile: Literal["disabled"]
+    admitted_nodes: Annotated[tuple[AdmittedNodeBinding, ...], Field(max_length=128)]
+    consent_id: BoundedID
+    scope_digest: Digest
+    command_id: BoundedID
+
+
+def _context_policy_tag(value: Any) -> str | None:
+    # An absent tag keeps the historical restricted default; it can never select
+    # the confirmed variant, which requires its explicit tag.
+    if isinstance(value, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
+        return value.policy_version
+    tag = value.get("policy_version", "builder-restricted-v1") if isinstance(value, dict) else None
+    return tag if isinstance(tag, str) else None
+
+
+BuilderExecutionContextValue = Annotated[
+    Annotated[BuilderExecutionContext, Tag("builder-restricted-v1")]
+    | Annotated[ConfirmedToolExecutionContext, Tag("builder-confirmed-gmail-read-v1")],
+    Discriminator(_context_policy_tag),
+]
+_CONTEXT_VALUE_ADAPTER: TypeAdapter[BuilderExecutionContext | ConfirmedToolExecutionContext] = TypeAdapter(
+    BuilderExecutionContextValue
+)
+
+
+def context_digest(context: BuilderExecutionContext | ConfirmedToolExecutionContext) -> str:
+    """The dumped policy tag domain-separates restricted and confirmed digests."""
     return canonical_digest(context.model_dump(mode="json", exclude={"context_digest"}))
+
+
+def validate_execution_context(raw: Any) -> BuilderExecutionContext | ConfirmedToolExecutionContext:
+    """Decode either context variant at a JSON/process boundary and verify its digest."""
+    try:
+        context = _CONTEXT_VALUE_ADAPTER.validate_python(raw)
+    except (ValidationError, ValueError, TypeError, UnicodeError):
+        raise BuilderExecutionPolicyError("invalid_execution_context") from None
+    if context.context_digest != context_digest(context):
+        raise BuilderExecutionPolicyError("context_digest_mismatch")
+    return context
 
 
 def fixture_digest(execution_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]) -> str:
@@ -555,6 +629,8 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
 
 
 def admit_restricted_workflow(context: BuilderExecutionContext, snapshot: RestrictedAdmissionSnapshot) -> None:
+    if not isinstance(context, BuilderExecutionContext):
+        raise BuilderExecutionPolicyError("unsupported_execution_policy")
     if context.context_digest != context_digest(context):
         raise BuilderExecutionPolicyError("context_digest_mismatch")
     if context.admitted_nodes != admitted_node_bindings(snapshot):
