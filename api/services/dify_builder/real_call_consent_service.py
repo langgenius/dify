@@ -2,8 +2,9 @@
 
 This owner persists decisions and spends only. It never decrypts, refreshes or
 invokes a credential, calls a provider, enqueues work or fabricates native Run
-proof; the native Tool boundary (Task 5) and the reserved-command Run/sealing
-path (Task 6) consume it.
+proof; the native Tool boundary consumes it through ``ServiceConfirmedToolGuard``
+and the reserved-command Run/sealing path (Task 6) through ``claim_tool`` and
+``finish``.
 
 Transactions
 ------------
@@ -38,7 +39,8 @@ message content never leave this module.
 
 import hmac
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
@@ -77,6 +79,7 @@ from core.dify_builder.real_call_consent import (
     GmailReadParameters,
     InstalledToolBinding,
     Phase,
+    confirmed_dispatch_headers,
     scope_digest,
     validate_phase,
     validate_scope,
@@ -107,7 +110,7 @@ from services.dify_builder.revision import executable_graph_revision, execution_
 from services.dify_builder.serde import context_from_dict
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-__all__ = ["CONSENT_LIFETIME", "BuilderRealCallConsentService"]
+__all__ = ["CONSENT_LIFETIME", "BuilderRealCallConsentService", "ServiceConfirmedToolGuard"]
 
 CONSENT_LIFETIME = timedelta(minutes=10)
 POLICY_VERSION: Literal["builder-confirmed-gmail-read-v1"] = "builder-confirmed-gmail-read-v1"
@@ -130,6 +133,7 @@ _STATES = frozenset(
 _RETRYABLE = frozenset({"declined", "expired", "invalidated"})
 _FINAL_OUTCOMES = frozenset({"completed", "failed", "unknown"})
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
+_REASON = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
 
 
 def _utcnow() -> datetime:
@@ -1599,6 +1603,41 @@ class BuilderRealCallConsentService:
                 return
             row.state, row.reason_code = _post_claim_failure(row), reason
 
+    # -- native Tool boundary (in-process only) ---------------------------------
+
+    def claimed_runtime(self, *, binding: ConfirmedToolBinding) -> "_ClaimedRuntime":
+        """Stored installation and initial credential revision of a grant claimed by this exact node.
+
+        Short read, no lock or write. Both values stay in process: the
+        installation pins the confirmed dispatch headers and the revision is the
+        CAS origin of a refresh; neither is public.
+        """
+        binding = _verify_binding(binding)
+        context = binding.context
+        with self._session_factory() as db:
+            row = db.get(DifyBuilderRealCallConsent, context.consent_id)
+            if row is None:
+                raise _refuse("consent_not_found")
+            request = (
+                db.get(DifyBuilderExecutionRequest, row.execution_request_id) if row.execution_request_id else None
+            )
+            if request is None:
+                raise _refuse("execution_request_mismatch")
+            stored = _verify_launch(row, request, context, node_id=binding.node_id, native_run_id=binding.native_run_id)
+            _verify_claimed(row, binding)
+            if type(row.initial_credential_revision) is not str:
+                raise _refuse("consent_record_invalid")
+            return _ClaimedRuntime(installed=stored.installed, initial_revision=row.initial_credential_revision)
+
+    def refuse_phase(self, *, binding: ConfirmedToolBinding, phase: Phase, reason_code: str) -> None:
+        """Record a refusal the native boundary found before spending ``phase`` (e.g. a widened envelope)."""
+        binding = _verify_binding(binding)
+        if phase not in ("refresh", "business"):
+            raise _refuse("unsupported_phase")
+        if type(reason_code) is not str or _REASON.fullmatch(reason_code) is None:
+            reason_code = "consent_scope_changed"
+        self._deny_after_claim(binding, phase, reason_code)
+
     def _mark_refresh_unknown(self, binding: ConfirmedToolBinding) -> None:
         context = binding.context
         with self._session_factory.begin() as db:
@@ -1620,3 +1659,102 @@ class BuilderRealCallConsentService:
 def _scope_of(binding: ConsentBinding, key: bytes) -> str:
     """Keyed scope digest; a rotated key yields a different digest and invalidates the grant."""
     return scope_digest(binding, key=key)
+
+
+@dataclass(frozen=True)
+class _ClaimedRuntime:
+    installed: InstalledToolBinding
+    initial_revision: str = field(repr=False)
+
+
+class ServiceConfirmedToolGuard:
+    """``ConfirmedToolGuard`` for one claimed native Tool node, backed by this service.
+
+    Constructed in process from a ``ConfirmedToolBinding`` the service itself
+    returned from ``claim_tool``; it is never deserialized from HTTP or queue
+    JSON. Phases spend through ``claim_phase`` and refreshed ciphertext lands
+    only through ``finish_refresh``'s CAS. Each phase starts at most once
+    locally as well as durably. Business JSON results are kept in memory, at
+    most two, solely for Task 2 classification and dropped when the stream
+    finishes; credentials and ciphertext never enter this object's state.
+    """
+
+    def __init__(self, service: BuilderRealCallConsentService, binding: ConfirmedToolBinding) -> None:
+        if not isinstance(service, BuilderRealCallConsentService):
+            raise _refuse("invalid_tool_binding")
+        self.binding = _verify_binding(binding)
+        self._service = service
+        self._runtime: _ClaimedRuntime | None = None
+        self._refresh: Literal["unspent", "claimed", "recorded"] = "unspent"
+        self._parameters: GmailReadParameters | None = None
+        self._results: list[dict[str, object]] = []
+        self._finished = False
+
+    def _claimed(self) -> _ClaimedRuntime:
+        if self._runtime is None:
+            self._runtime = self._service.claimed_runtime(binding=self.binding)
+        return self._runtime
+
+    def dispatch_headers(self) -> dict[str, str]:
+        return confirmed_dispatch_headers(self._claimed().installed)
+
+    def before_refresh(self) -> None:
+        if self._parameters is not None:
+            raise _refuse("phase_order_invalid")
+        if self._refresh != "unspent":
+            raise _refuse("phase_already_claimed")
+        self._service.claim_phase(binding=self.binding, phase="refresh", final_parameters=None)
+        self._refresh = "claimed"
+
+    def persist_refresh(self, encrypted_credentials: str, expires_at: int) -> str:
+        if self._refresh != "claimed":
+            raise _refuse("phase_not_claimed")
+        derived = self._service.finish_refresh(
+            binding=self.binding,
+            old_revision=self._claimed().initial_revision,
+            encrypted_credentials=encrypted_credentials,
+            expires_at=expires_at,
+        )
+        self._refresh = "recorded"
+        return derived
+
+    def before_invoke(self, parameters: Mapping[str, object]) -> None:
+        if self._parameters is not None or self._finished:
+            raise _refuse("phase_already_claimed")
+        try:
+            final = gmail_read_policy.normalize_get_message_parameters(parameters)
+        except BuilderExecutionPolicyError as error:
+            # A widened or malformed final envelope is a known denial; nothing was sent.
+            self._service.refuse_phase(binding=self.binding, phase="business", reason_code=error.reason_code)
+            raise
+        self._service.claim_phase(binding=self.binding, phase="business", final_parameters=final)
+        self._parameters = final
+
+    def observe_json(self, message: Mapping[str, object]) -> None:
+        if self._parameters is None or self._finished:
+            raise _refuse("phase_not_claimed")
+        # Two results already classify as duplicate; keep no more.
+        if len(self._results) < 2:
+            self._results.append(dict(message))
+
+    def finish_stream(self, *, complete: bool, declared_failure: bool) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        results, self._results = self._results, []
+        if self._parameters is not None:
+            try:
+                outcome = gmail_read_policy.classify_get_message_result(
+                    expected_message_id=self._parameters.message_id,
+                    json_messages=results,
+                    stream_completed=complete,
+                    declared_failure=declared_failure,
+                )
+            except BuilderExecutionPolicyError:
+                outcome = ActionOutcome(state="unknown", reason_code="invalid_outcome_input")
+        elif self._refresh == "claimed":
+            # A spent refresh never recorded may have rotated tokens remotely.
+            outcome = ActionOutcome(state="unknown", reason_code="refresh_uncertain")
+        else:
+            return
+        self._service.finish(binding=self.binding, outcome=outcome)
