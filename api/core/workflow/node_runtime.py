@@ -17,6 +17,8 @@ from core.app.file_access import (
 )
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.db.session_factory import session_factory
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -528,10 +530,19 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         session_maker: sessionmaker[Session] | None = None,
+        *,
+        confirmed_guard: ConfirmedToolGuard | None = None,
     ) -> None:
+        """``confirmed_guard`` is ``None`` for every ordinary run.
+
+        A consented Builder run supplies the consent service's in-process guard
+        for its one claimed Tool node; only that exact node resolves, and it is
+        consumed with a session that never holds a transaction (see ``invoke``).
+        """
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
+        self._confirmed_guard = confirmed_guard
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -550,16 +561,32 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
+        guard = self._confirmed_guard
         try:
-            tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self._run_context.tenant_id,
-                self._run_context.app_id,
-                node_id,
-                self._build_tool_runtime_spec(node_data),
-                self._run_context.user_id,
-                self._run_context.invoke_from,
-                variable_pool,
-            )
+            if guard is None:
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                )
+            else:
+                self._require_confirmed_node(
+                    guard, node_id=node_id, node_execution_id=node_execution_id, node_data=node_data
+                )
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                    confirmed_guard=guard,
+                )
         except ToolNodeError:
             raise
         except Exception as exc:
@@ -634,6 +661,17 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
             with use_credit_usage_metadata(request_metadata):
                 session_maker = self._session_maker or session_factory.get_session_maker()
+                if self._confirmed_guard is not None:
+                    yield from self._invoke_confirmed(
+                        session_maker,
+                        tool=tool,
+                        tool_parameters=tool_parameters,
+                        workflow_call_depth=workflow_call_depth,
+                        callback=callback,
+                        conversation_id=runtime_binding.conversation_id,
+                        provider_name=provider_name,
+                    )
+                    return
                 with session_maker.begin() as session:
                     messages = ToolEngine.generic_invoke(
                         session=session,
@@ -654,6 +692,80 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
+
+    def _invoke_confirmed(
+        self,
+        session_maker: sessionmaker[Session],
+        *,
+        tool: Tool,
+        tool_parameters: Mapping[str, Any],
+        workflow_call_depth: int,
+        callback: DifyWorkflowCallbackHandler,
+        conversation_id: str | None,
+        provider_name: str,
+    ) -> Generator[ToolRuntimeMessage, None, None]:
+        """Consume one consented native Tool call through the same native owners.
+
+        Unlike the ordinary ``begin()`` branch the session never starts a
+        transaction: the guard's phase claims commit in their own short
+        transactions and decryption, refresh and dispatch must run outside SQL.
+        Nothing here issues SQL on it; it is re-checked at every native callback.
+        The tool itself refuses non-data messages before file transformation.
+        """
+        with session_maker() as session:
+            self._require_no_transaction(session)
+            messages = ToolEngine.generic_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=dict(tool_parameters),
+                user_id=self._run_context.user_id,
+                workflow_tool_callback=callback,
+                workflow_call_depth=workflow_call_depth,
+                app_id=self._run_context.app_id,
+                conversation_id=conversation_id,
+            )
+            transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=messages,
+                user_id=self._run_context.user_id,
+                tenant_id=self._run_context.tenant_id,
+                conversation_id=conversation_id,
+            )
+            try:
+                for message in self._adapt_messages(transformed_messages, provider_name=provider_name):
+                    self._require_no_transaction(session)
+                    yield message
+                self._require_no_transaction(session)
+            finally:
+                # Close the native chain deterministically so cancellation reaches the
+                # plugin adapter's single outcome callback now; it is never rebuilt.
+                transformed_messages.close()
+                messages.close()
+
+    @staticmethod
+    def _require_no_transaction(session: Session) -> None:
+        if session.in_transaction():
+            raise BuilderExecutionPolicyError("confirmed_session_in_transaction")
+
+    def _require_confirmed_node(
+        self,
+        guard: ConfirmedToolGuard,
+        *,
+        node_id: str,
+        node_execution_id: str | None,
+        node_data: ToolNodeData,
+    ) -> None:
+        """Only the exact claimed node of this run, with no tool configuration, resolves under a guard."""
+        binding = guard.binding
+        if (
+            node_id != binding.node_id
+            or node_execution_id is None
+            or node_execution_id != binding.native_node_execution_id
+            or binding.context.tenant_id != self._run_context.tenant_id
+            or binding.context.app_id != self._run_context.app_id
+        ):
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        if node_data.tool_configurations:
+            raise BuilderExecutionPolicyError("unsupported_tool_configuration")
 
     @override
     def get_usage(

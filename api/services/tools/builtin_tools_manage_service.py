@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.db.session_factory import session_factory
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import CredentialReference
 from core.helper.name_generator import generate_incremental_name
@@ -36,10 +39,23 @@ from models.account import Account
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
-from services.tools.builder_credential_reference import select_builder_credential
+from services.tools.builder_credential_reference import (
+    BuilderCredentialSnapshot,
+    OAuthClientSnapshot,
+    select_builder_credential,
+)
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class BuilderCredentialRuntime:
+    """Private detached selection for one confirmed Builder Tool call; never serialized."""
+
+    snapshot: BuilderCredentialSnapshot
+    # Native OAuth refresh runs as the credential row's owner, as the ordinary path does.
+    owner_user_id: str
 
 
 class BuiltinToolManageService:
@@ -642,6 +658,67 @@ class BuiltinToolManageService:
             verified_plugin=verified_plugin,
             revision_key=revision_key,
         ).reference
+
+    @staticmethod
+    def load_builder_credential(
+        *, actor: Actor, provider_id: str, credential_id: str, verified_plugin: bool
+    ) -> "BuilderCredentialRuntime":
+        """Detached private selection of one explicit credential for a confirmed Builder Tool call.
+
+        One short read session, closed before returning, so the caller performs
+        compliance, decryption, refresh and dispatch outside SQL. The selection
+        is the same owner the consent bound (full reference, effective access
+        and server-selected OAuth client); the workspace default is never read.
+        The snapshot is private and never serialized.
+        """
+        key = dify_config.SECRET_KEY
+        if not isinstance(key, str) or not key:
+            raise BuilderExecutionPolicyError("invalid_scope_key")
+        with session_factory.create_session() as session:
+            snapshot = select_builder_credential(
+                session,
+                actor=actor,
+                provider_id=provider_id,
+                credential_id=credential_id,
+                verified_plugin=verified_plugin,
+                revision_key=key.encode(),
+            )
+            # Same session identity map: the row selected above, no second query.
+            row = session.get(BuiltinToolProvider, snapshot.reference.credential_id)
+            if row is None:
+                raise BuilderExecutionPolicyError("credential_reference_unavailable")
+            owner_user_id = row.user_id
+        return BuilderCredentialRuntime(snapshot=snapshot, owner_user_id=owner_user_id)
+
+    @staticmethod
+    def decrypt_builder_oauth_client(
+        *, tenant_id: str, provider_controller: BuiltinToolProviderController, client: OAuthClientSnapshot
+    ) -> Mapping[str, Any]:
+        """Natively decrypt exactly the detached OAuth client a Builder selection bound.
+
+        Mirrors ``get_oauth_client`` decryption without its lookup: no other
+        client, fallback or exchange, and no ordinary cache. Call outside SQL.
+        """
+        if client.source == "tenant" and client.encrypted_params:
+            encrypter, _ = create_provider_encrypter(
+                tenant_id=tenant_id,
+                config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
+                cache=NoOpProviderCredentialCache(),
+            )
+            try:
+                params = json.loads(client.encrypted_params)
+            except ValueError:
+                raise BuilderExecutionPolicyError("needs_setup") from None
+            if not isinstance(params, dict):
+                raise BuilderExecutionPolicyError("needs_setup")
+            return encrypter.decrypt(params)
+        if client.source == "system" and client.encrypted_params:
+            try:
+                return decrypt_system_params(client.encrypted_params)
+            except Exception:
+                # Decryption errors may echo parameter text.
+                raise BuilderExecutionPolicyError("needs_setup") from None
+        raise BuilderExecutionPolicyError("needs_setup")
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):

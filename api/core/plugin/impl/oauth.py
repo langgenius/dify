@@ -4,6 +4,7 @@ from typing import Any
 
 from werkzeug import Request
 
+from core.dify_builder.real_call_consent import validate_confirmed_dispatch_headers
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse, PluginOAuthCredentialsResponse
 from core.plugin.impl.base import BasePluginClient
 
@@ -93,7 +94,21 @@ class OAuthHandler(BasePluginClient):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
+        *,
+        confirmed_dispatch_headers: Mapping[str, str] | None = None,
     ) -> PluginOAuthCredentialsResponse:
+        """Refresh through the native tenant route.
+
+        ``confirmed_dispatch_headers`` is ``None`` for every ordinary refresh. A
+        confirmed Builder refresh supplies exactly the three server-built
+        companion headers, validated before any transport.
+        """
+        headers = {
+            "X-Plugin-ID": plugin_id,
+            "Content-Type": "application/json",
+        }
+        if confirmed_dispatch_headers is not None:
+            headers.update(validate_confirmed_dispatch_headers(confirmed_dispatch_headers))
         try:
             response = self._request_with_plugin_daemon_response_stream(
                 "POST",
@@ -108,10 +123,7 @@ class OAuthHandler(BasePluginClient):
                         "credentials": credentials,
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=headers,
             )
             for resp in response:
                 return resp

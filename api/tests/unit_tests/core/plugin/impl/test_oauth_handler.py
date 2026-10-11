@@ -7,6 +7,13 @@ from werkzeug import Request
 
 from core.plugin.impl.oauth import OAuthHandler
 
+# SYNTHETIC values in the proposed server-only contract shape; not deployed daemon support.
+SYNTHETIC_CONFIRMED_HEADERS = {
+    "X-Dify-Expected-Plugin-Identifier": "langgenius/dify-gmail:9.9.9@" + "f" * 64,
+    "X-Dify-Expected-Installation-ID": "synthetic-installation",
+    "X-Dify-Confirmed-Dispatch": "v1",
+}
+
 
 def _build_request(body: bytes = b"payload") -> Request:
     environ = {
@@ -136,6 +143,87 @@ class TestOAuthHandler:
                 system_credentials={},
                 credentials={},
             )
+
+    def test_refresh_credentials_without_confirmation_keeps_native_headers(self, mocker: MockerFixture) -> None:
+        handler = OAuthHandler()
+        stream_mock = mocker.patch.object(
+            handler,
+            "_request_with_plugin_daemon_response_stream",
+            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+        )
+
+        handler.refresh_credentials(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin",
+            provider="provider",
+            redirect_uri="https://dify.example.com/callback",
+            system_credentials={},
+            credentials={},
+        )
+
+        assert stream_mock.call_args.args[:2] == ("POST", "plugin/tenant-1/dispatch/oauth/refresh_credentials")
+        assert stream_mock.call_args.kwargs["headers"] == {
+            "X-Plugin-ID": "org/plugin",
+            "Content-Type": "application/json",
+        }
+
+    def test_refresh_credentials_merges_exactly_the_confirmed_headers(self, mocker: MockerFixture) -> None:
+        handler = OAuthHandler()
+        stream_mock = mocker.patch.object(
+            handler,
+            "_request_with_plugin_daemon_response_stream",
+            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+        )
+
+        handler.refresh_credentials(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin",
+            provider="provider",
+            redirect_uri="https://dify.example.com/callback",
+            system_credentials={},
+            credentials={},
+            confirmed_dispatch_headers=SYNTHETIC_CONFIRMED_HEADERS,
+        )
+
+        assert stream_mock.call_args.args[:2] == ("POST", "plugin/tenant-1/dispatch/oauth/refresh_credentials")
+        assert stream_mock.call_args.kwargs["headers"] == {
+            "X-Plugin-ID": "org/plugin",
+            "Content-Type": "application/json",
+            **SYNTHETIC_CONFIRMED_HEADERS,
+        }
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {},
+            {"X-Dify-Confirmed-Dispatch": "v1"},
+            {**SYNTHETIC_CONFIRMED_HEADERS, "X-Dify-Confirmed-Dispatch": "v0"},
+            {**SYNTHETIC_CONFIRMED_HEADERS, "Content-Type": "text/plain"},
+            {**SYNTHETIC_CONFIRMED_HEADERS, "X-Dify-Expected-Plugin-Identifier": "id with space"},
+        ],
+    )
+    def test_refresh_credentials_refuses_other_confirmed_headers_before_transport(
+        self, mocker: MockerFixture, headers: dict[str, str]
+    ) -> None:
+        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+
+        handler = OAuthHandler()
+        stream_mock = mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream")
+
+        with pytest.raises(BuilderExecutionPolicyError, match="confirmed_dispatch_headers_invalid"):
+            handler.refresh_credentials(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin",
+                provider="provider",
+                redirect_uri="https://dify.example.com/callback",
+                system_credentials={},
+                credentials={},
+                confirmed_dispatch_headers=headers,
+            )
+        stream_mock.assert_not_called()
 
     def test_convert_request_to_raw_data(self):
         handler = OAuthHandler()

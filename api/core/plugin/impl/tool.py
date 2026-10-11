@@ -1,9 +1,10 @@
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any
 
 from pydantic import BaseModel
 
 from configs import dify_config
+from core.dify_builder.real_call_consent import validate_confirmed_dispatch_headers
 
 # from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin import PluginCategory, PluginInstallation
@@ -245,12 +246,24 @@ class PluginToolManager(BasePluginClient):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        *,
+        confirmed_dispatch_headers: Mapping[str, str] | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
+
+        ``confirmed_dispatch_headers`` is ``None`` for every ordinary call. A
+        confirmed Builder call supplies exactly the three server-built companion
+        headers (validated here, before any transport) on the same native route.
         """
 
         tool_provider_id = GenericProviderID(tool_provider)
+        headers = {
+            "X-Plugin-ID": tool_provider_id.plugin_id,
+            "Content-Type": "application/json",
+        }
+        if confirmed_dispatch_headers is not None:
+            headers.update(validate_confirmed_dispatch_headers(confirmed_dispatch_headers))
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -269,10 +282,7 @@ class PluginToolManager(BasePluginClient):
                     "tool_parameters": tool_parameters,
                 },
             },
-            headers={
-                "X-Plugin-ID": tool_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=headers,
         )
 
         return merge_blob_chunks(response, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
