@@ -71,7 +71,7 @@ export function CredentialField({
           if (nextValue) onChange(nextValue)
         }}
       >
-        <SelectTrigger aria-label={name} className="px-2">
+        <SelectTrigger aria-label={name} className="pl-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
             <span className="truncate">
