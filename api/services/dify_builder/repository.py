@@ -17,16 +17,20 @@ another writer and lost (``ConflictError``, stale ``base_version``). The
 conversation items' ``UNIQUE(session_id, seq)`` DB constraint is the seq
 authority: a collision surfaces as ``IntegrityError`` from the driver, which
 this method maps to ``ConflictError`` so callers never see a raw SQLAlchemy
-exception.
+exception. Its body is ``_compare_and_advance_in_session``, which the
+real-call consent launch reservation runs inside its own transaction so the
+session version commits atomically with the reservation rows.
 """
 
 import dataclasses
 from collections.abc import Iterable, Iterator
 from itertools import islice
+from typing import cast
 
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
@@ -233,37 +237,56 @@ class SqlDifyBuilderRepository:
         fc: DifyBuilderContext,
         items: list[ConversationItem],
     ) -> int:
-        new_version = base_version + 1
-
         with self._session_factory() as db_session, db_session.begin():
-            result = db_session.execute(
+            return self._compare_and_advance_in_session(db_session, session_id, base_version, next, fc, items)
+
+    def _compare_and_advance_in_session(
+        self,
+        db_session: Session,
+        session_id: str,
+        base_version: int,
+        next: PcState,
+        fc: DifyBuilderContext,
+        items: list[ConversationItem],
+    ) -> int:
+        """The version-CAS body inside a caller-owned transaction.
+
+        Flushes but never commits: a caller that must commit other rows
+        atomically with the new session version (the consent launch
+        reservation) owns the transaction, and its rollback undoes this too.
+        """
+        new_version = base_version + 1
+        result = cast(
+            CursorResult,
+            db_session.execute(
                 update(DifyBuilderSession)
                 .where(DifyBuilderSession.id == session_id, DifyBuilderSession.version == base_version)
                 .values(version=DifyBuilderSession.version + 1, current_state=str(next))
                 .execution_options(synchronize_session=False)
+            ),
+        )
+
+        if result.rowcount == 0:
+            if db_session.get(DifyBuilderSession, session_id) is None:
+                raise NotFoundError(f"session {session_id} not found")
+            raise ConflictError(f"stale base_version {base_version} for session {session_id}")
+
+        db_session.add(
+            DifyBuilderSessionCommit(
+                session_id=session_id,
+                version=new_version,
+                state=str(next),
+                context=context_to_dict(fc),
+                actor="",
             )
+        )
 
-            if result.rowcount == 0:
-                if db_session.get(DifyBuilderSession, session_id) is None:
-                    raise NotFoundError(f"session {session_id} not found")
-                raise ConflictError(f"stale base_version {base_version} for session {session_id}")
+        db_session.add_all(self._to_conversation_row(session_id, item) for item in items)
 
-            db_session.add(
-                DifyBuilderSessionCommit(
-                    session_id=session_id,
-                    version=new_version,
-                    state=str(next),
-                    context=context_to_dict(fc),
-                    actor="",
-                )
-            )
-
-            db_session.add_all(self._to_conversation_row(session_id, item) for item in items)
-
-            try:
-                db_session.flush()
-            except IntegrityError as exc:
-                raise ConflictError(f"duplicate conversation item seq for session {session_id}") from exc
+        try:
+            db_session.flush()
+        except IntegrityError as exc:
+            raise ConflictError(f"duplicate conversation item seq for session {session_id}") from exc
 
         return new_version
 
