@@ -58,7 +58,7 @@ jobs:
               - 'api/app_factory.py'
               - 'api/commands/__init__.py'
               - 'api/controllers/console/__init__.py'
-              - 'api/controllers/console/workspace/rbac.py'
+              - 'api/controllers/console/workspace/rbac/**'
               - 'api/controllers/inner_api/__init__.py'
               - 'api/controllers/service_api/__init__.py'
               - 'api/core/agent/base_agent_runner.py'
@@ -198,7 +198,12 @@ jobs:
             api/commands/__init__.py
             api/controllers/console/__init__.py
             api/controllers/console/datasets/datasets.py
-            api/controllers/console/workspace/rbac.py
+            api/controllers/console/workspace/rbac/__init__.py
+            api/controllers/console/workspace/rbac/members.py
+            api/controllers/console/workspace/rbac/policies.py
+            api/controllers/console/workspace/rbac/resources.py
+            api/controllers/console/workspace/rbac/roles.py
+            api/controllers/console/workspace/rbac/schemas.py
             api/controllers/inner_api/__init__.py
             api/controllers/service_api/__init__.py
             api/core/agent/base_agent_runner.py
