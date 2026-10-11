@@ -3,7 +3,6 @@ import type { Shape } from '../../store/workflow'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import {
   createNodeTracing,
   createStartNode,
@@ -12,11 +11,12 @@ import {
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+
+const mockWriteText = vi.fn()
 import { submitHumanInputForm } from '@/service/workflow'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 const getChildExecutions = vi.hoisted(() =>
   vi.fn<
     typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get
@@ -112,8 +112,6 @@ const createHumanInputFilledFormData = (
 beforeEach(() => {
   getChildExecutions.mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
-  vi.mocked(copy).mockReset().mockResolvedValue(true)
-  vi.spyOn(toast, 'success')
 })
 afterEach(() => vi.restoreAllMocks())
 
@@ -214,9 +212,17 @@ it('copies the completed output from the result tab', async () => {
   })
   await user.click(screen.getByText('runLog.result'))
   expect(screen.getByText('final answer')).toBeInTheDocument()
+  mockWriteText.mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: mockWriteText },
+  })
   await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-  expect(copy).toHaveBeenCalledWith('final answer')
-  expect(toast.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+  expect(mockWriteText).toHaveBeenCalledWith('final answer')
+  expect(
+    await screen.findByRole('button', { name: 'common.operation.copied' }),
+  ).toBeInTheDocument()
+  expect(toast.success).not.toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 })
 
 it.each([false, true])('shows progress while waiting for run data, listening=%s', (isListening) => {

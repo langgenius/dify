@@ -1,8 +1,13 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LogViewer from '../log-viewer'
+
+const mockWriteText = vi.fn()
+vi.mock('@/app/notifications', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value: unknown }) => (
@@ -44,6 +49,16 @@ const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity 
     data: '{"ok":true}',
   },
   ...overrides,
+})
+
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockWriteText.mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: mockWriteText },
+  })
 })
 
 describe('LogViewer', () => {
@@ -108,6 +123,28 @@ describe('LogViewer', () => {
     )
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('{invalid}')
+  })
+
+
+  it('should render raw response text and allow copying with button feedback', async () => {
+    const user = userEvent.setup()
+    const rawLog = {
+      ...createLog(),
+      response: 'plain response',
+    } as unknown as TriggerLogEntity
+
+    render(<LogViewer logs={[rawLog]} />)
+
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
+    expect(screen.getByText('plain response')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+    expect(mockWriteText).toHaveBeenCalledWith('plain response')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
   })
 
   it('should render multiple log entries with distinct indices', () => {

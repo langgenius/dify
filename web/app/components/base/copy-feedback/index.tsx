@@ -13,7 +13,10 @@ type CopyFeedbackProps = Readonly<
     className?: string
     copiedLabel?: string
     copyLabel?: string
+    disabled?: boolean
     onCopyError?: () => void
+    size?: IconButtonProps['size']
+    variant?: IconButtonProps['variant']
   }
 >
 
@@ -23,7 +26,10 @@ export function CopyFeedback({
   className,
   copiedLabel,
   copyLabel,
+  disabled,
   onCopyError,
+  size,
+  variant,
 }: CopyFeedbackProps) {
   const { t } = useTranslation(['common'])
   // Rely on useClipboard's own timer to flip `copied` back to false so the
@@ -38,7 +44,7 @@ export function CopyFeedback({
   const safeText = tooltipText || ''
 
   const handleCopy = useCallback(() => {
-    copy(content)
+    void copy(content)
   }, [copy, content])
 
   return (
@@ -46,7 +52,15 @@ export function CopyFeedback({
       <TooltipTrigger
         closeOnClick={false}
         render={
-          <IconButton ref={ref} aria-label={safeText} className={className} onClick={handleCopy}>
+          <IconButton
+            ref={ref}
+            aria-label={safeText}
+            className={className}
+            disabled={disabled}
+            size={size}
+            variant={variant}
+            onClick={handleCopy}
+          >
             <span
               aria-hidden="true"
               className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}

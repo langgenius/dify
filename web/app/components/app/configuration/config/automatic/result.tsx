@@ -14,12 +14,11 @@ import {
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -66,17 +65,14 @@ const Result: FC<Props> = ({
           />
         </div>
         <div className="flex items-center space-x-2">
-          <IconButton
-            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-            variant="secondary"
+          <CopyFeedback
+            content={current.modified}
             size="lg"
-            onClick={() => {
-              copy(current.modified)
-              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+            variant="secondary"
+            onCopyError={() => {
+              toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
             }}
-          >
-            <span aria-hidden="true" className="i-ri-clipboard-line size-4 text-text-secondary" />
-          </IconButton>
+          />
           <AlertDialog actionsRef={actionsRef}>
             <AlertDialogTrigger render={<Button variant="primary" />}>
               {t(($) => $['generate.apply'], { ns: 'appGeneration' })}

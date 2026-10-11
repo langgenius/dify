@@ -3,7 +3,6 @@ import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -14,8 +13,9 @@ import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+const mockWriteText = vi.fn()
 vi.mock('../hooks/use-config', () => ({ default: (...args: unknown[]) => mockUseConfig(...args) }))
 
 // Delivery configuration has its own interaction suite; these cases exercise panel-owned controls.
@@ -161,9 +161,17 @@ describe('human-input/panel', () => {
   it('copies form content, expands the editor and opens and closes the real preview', async () => {
     const user = userEvent.setup()
     renderPanel()
+    mockWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mockWriteText },
+    })
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-    expect(copy).toHaveBeenCalledWith('Please review this request')
-    expect(toast.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(mockWriteText).toHaveBeenCalledWith('Please review this request')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(toast.success).not.toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 
     await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
     await user.click(screen.getByRole('button', { name: 'share.chat.collapse' }))

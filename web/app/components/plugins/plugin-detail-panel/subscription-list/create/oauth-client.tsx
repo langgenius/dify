@@ -13,7 +13,8 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useCallback } from 'react'
+import { useClipboard } from 'foxact/use-clipboard'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -40,6 +41,13 @@ export const OAuthClientSettingsModal = ({
   showOAuthCreateModal,
 }: Props) => {
   const { t } = useTranslation(['common', 'plugin', 'pluginTrigger'])
+  const redirectCopyLabelId = useId()
+  const { copied: redirectCopied, copy: copyRedirectUri } = useClipboard({
+    timeout: 2000,
+    onCopyError: () => {
+      toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
+    },
+  })
   const detail = usePluginStore((state) => state.detail)
   const providerName = detail?.provider || ''
   const closeModal = useCallback(() => onOpenChange(false), [onOpenChange])
@@ -66,8 +74,7 @@ export const OAuthClientSettingsModal = ({
   const showClientForm = isCustomClient && oauthClientSchema.length > 0
 
   const handleCopyRedirectUri = () => {
-    navigator.clipboard.writeText(oauthConfig?.redirect_uri || '')
-    toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+    void copyRedirectUri(oauthConfig?.redirect_uri || '')
   }
 
   const title = t(($) => $['modal.oauth.title'], { ns: 'pluginTrigger' })
@@ -117,9 +124,23 @@ export const OAuthClientSettingsModal = ({
                 <div className="my-1.5 system-sm-medium leading-4 break-all">
                   {oauthConfig?.redirect_uri}
                 </div>
-                <Button variant="secondary" size="small" onClick={handleCopyRedirectUri}>
-                  <span aria-hidden="true" className="i-ri-clipboard-line h-3.5 w-3.5" />
-                  {t(($) => $['operation.copy'], { ns: 'common' })}
+                <Button
+                  aria-labelledby={redirectCopyLabelId}
+                  variant="secondary"
+                  size="small"
+                  onClick={handleCopyRedirectUri}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={
+                      redirectCopied ? 'i-ri-check-line size-3.5' : 'i-ri-clipboard-line size-3.5'
+                    }
+                  />
+                  <span id={redirectCopyLabelId}>
+                    {redirectCopied
+                      ? t(($) => $['operation.copied'], { ns: 'common' })
+                      : t(($) => $['operation.copy'], { ns: 'common' })}
+                  </span>
                 </Button>
               </div>
             </div>
