@@ -21,12 +21,18 @@ def set_dify_builder_agent_factory(factory: Callable[[], DifyBuilderAgent] | Non
     _factory = factory
 
 
-def build_dify_builder_agent(tenant_id: str = "", model_config: dict[str, Any] | None = None) -> DifyBuilderAgent:
-    """Return the LLM-backed agent for one advance."""
+def build_dify_builder_agent(
+    tenant_id: str = "", model_config: dict[str, Any] | None = None, *, account_id: str | None = None
+) -> DifyBuilderAgent:
+    """Return the LLM-backed agent for one advance.
+
+    ``account_id`` is the acting member (tool readiness follows their
+    credential visibility); ``None`` counts team-shared credentials only.
+    """
     if _factory is not None:
         return _factory()
     # Keep the model-runtime dependency chain lazy for modules that only
     # install or type the factory override.
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-    return LlmBuilderAgent(tenant_id, model_config)
+    return LlmBuilderAgent(tenant_id, model_config, account_id=account_id)

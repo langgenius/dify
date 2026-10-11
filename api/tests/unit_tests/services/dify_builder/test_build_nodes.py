@@ -2,7 +2,23 @@ import logging
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
+
 from services.dify_builder.agent import build, resources
+
+
+@pytest.fixture(autouse=True)
+def _empty_inventory(monkeypatch):
+    """build_nodes reads the ready-tool inventory for its generation
+    allowlist; keep these tests off the plugin daemon and model providers.
+    Tests that need a specific inventory patch ``list_tenant_resources``
+    themselves, which overrides this default."""
+    monkeypatch.setattr(
+        build.resources,
+        "list_tenant_resources",
+        lambda _tenant_id, **_kwargs: resources.TenantResources(models=[], datasets=[], tools=[]),
+    )
+
 
 _GEN_GRAPH = {
     "graph": {

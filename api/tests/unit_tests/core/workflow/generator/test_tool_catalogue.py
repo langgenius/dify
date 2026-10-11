@@ -1,7 +1,10 @@
 """Unit tests for the tool catalogue helpers."""
 
+from __future__ import annotations
+
 import pytest
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers.time.time import WikiPediaProvider
@@ -387,9 +390,6 @@ def _make_tool(name: str, label_en: str = "", description_llm: str = "") -> Buil
     )
 
 
-from core.entities.provider_entities import ProviderConfig, ProviderConfigType
-
-
 def _make_builtin_provider(
     name: str, tools: list[BuiltinTool], *, need_credentials: bool = False
 ) -> BuiltinToolProviderController:
@@ -412,15 +412,14 @@ def _provider_identity(name: str) -> ToolProviderIdentity:
 def _make_plugin_provider(
     name: str, plugin_id: str, tools: list[BuiltinTool], *, need_credentials: bool = False
 ) -> PluginToolProviderController:
-    entity_kwargs = dict(
-        entity=ToolProviderEntityWithPlugin(identity=_provider_identity(name), tools=[tool.entity for tool in tools]),
-    )
-    if need_credentials:
-        entity_kwargs["entity"].credentials_schema = [
-            ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)
-        ]
     return PluginToolProviderController(
-        **entity_kwargs,
+        entity=ToolProviderEntityWithPlugin(
+            identity=_provider_identity(name),
+            tools=[tool.entity for tool in tools],
+            credentials_schema=(
+                [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)] if need_credentials else []
+            ),
+        ),
         plugin_id=plugin_id,
         plugin_unique_identifier=f"{plugin_id}:1.0@checksum" if plugin_id else "",
         tenant_id="tenant-1",
@@ -467,14 +466,17 @@ class TestToolDescription:
 
 class TestBuildToolCatalogue:
     """
-    The builder iterates the ``ToolManager.list_builtin_providers`` generator
-    (which already covers both hardcoded and plugin providers in production).
+    The builder discovers hardcoded and tenant-specific plugin providers independently.
     Real builtin and plugin controllers retain their constructors and type checks.
     Only provider discovery and intentional failure injection are isolated.
     """
 
+    @pytest.fixture(autouse=True)
+    def _no_plugin_providers(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(ToolManager, "list_plugin_providers", lambda _tenant: [])
+
     def test_returns_empty_list_for_tenant_with_no_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([]))
 
         assert build_tool_catalogue("tenant-1") == []
 
@@ -494,7 +496,8 @@ class TestBuildToolCatalogue:
             tools=[_make_tool("search", label_en="Google Search", description_llm="Search the web.")],
             need_credentials=True,
         )
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([hardcoded, plugin]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([hardcoded]))
+        monkeypatch.setattr(ToolManager, "list_plugin_providers", lambda _tenant: [plugin])
 
         entries = build_tool_catalogue("tenant-1")
 
@@ -530,7 +533,7 @@ class TestBuildToolCatalogue:
             tenant_id="tenant-1",
         )
         hardcoded = _make_builtin_provider("time", [_make_tool("now")])
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([unknown, hardcoded]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([unknown, hardcoded]))
 
         entries = build_tool_catalogue("tenant-1")
 
@@ -547,21 +550,13 @@ class TestBuildToolCatalogue:
 
         monkeypatch.setattr(bad, "get_tools", unavailable)
         good = _make_builtin_provider("time", [_make_tool("now")])
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([bad, good]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([bad, good]))
 
         entries = build_tool_catalogue("tenant-1")
 
         assert [e["provider_name"] for e in entries] == ["time"]
 
-    def test_continues_when_a_providers_need_credentials_property_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        # Regression guard: `.need_credentials` used to be read OUTSIDE the
-        # per-provider try/except that guards get_tools() and per-tool
-        # description parsing. A provider whose property raises must be
-        # skipped like any other bad provider -- not propagate and break the
-        # whole catalogue call, which this file's cmd+K /create and /refine
-        # callers also depend on.
+    def test_continues_when_a_providers_need_credentials_property_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         bad = _make_builtin_provider("broken", [_make_tool("x")])
         good = _make_builtin_provider("time", [_make_tool("now")])
         need_credentials = BuiltinToolProviderController.need_credentials
@@ -572,7 +567,7 @@ class TestBuildToolCatalogue:
             return need_credentials.__get__(provider, type(provider))
 
         monkeypatch.setattr(BuiltinToolProviderController, "need_credentials", property(credentials))
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([bad, good]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([bad, good]))
 
         entries = build_tool_catalogue("tenant-1")
 
@@ -586,7 +581,7 @@ class TestBuildToolCatalogue:
         bad_tool = _make_tool("bad")
         monkeypatch.setattr(bad_tool, "entity", None)
         hardcoded = _make_builtin_provider("p", [bad_tool, good_tool])
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([hardcoded]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([hardcoded]))
 
         entries = build_tool_catalogue("tenant-1")
 
@@ -600,7 +595,7 @@ class TestBuildToolCatalogue:
             "p",
             [_make_tool(f"t{i:03d}") for i in range(200)],
         )
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([big_provider]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([big_provider]))
 
         entries = build_tool_catalogue("tenant-1")
 
@@ -613,8 +608,96 @@ class TestBuildToolCatalogue:
         # check at every callsite.
         plugin = _make_plugin_provider("p", plugin_id="", tools=[_make_tool("t")])
         monkeypatch.setattr(plugin, "plugin_id", None)
-        monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([plugin]))
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([]))
+        monkeypatch.setattr(ToolManager, "list_plugin_providers", lambda _tenant: [plugin])
 
         entries = build_tool_catalogue("tenant-1")
 
         assert entries[0]["plugin_id"] == ""
+
+
+# ── ENG-1191: real installed inventory through the daemon boundary ───────────
+
+
+class TestInstalledInventoryCatalogue:
+    """Real hardcoded providers + plugin providers parsed from a faked daemon."""
+
+    def test_a_plugin_daemon_failure_keeps_the_hardcoded_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeToolDaemon, install_fake_daemon
+
+        install_fake_daemon(monkeypatch, FakeToolDaemon(fail_all=True))
+
+        entries = build_tool_catalogue("tenant-1")
+
+        keys = installed_tool_keys(entries)
+        assert ("time", "current_time") in keys
+        assert all(entry["plugin_id"] == "" for entry in entries)
+
+    def test_entries_carry_the_provider_capability_metadata(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+            FakeTool,
+            FakeToolDaemon,
+            install_fake_daemon,
+            provider_payload,
+        )
+
+        install_fake_daemon(
+            monkeypatch,
+            FakeToolDaemon(
+                providers_by_tenant={
+                    "tenant-1": [
+                        provider_payload(
+                            "acme/huddle",
+                            "huddle",
+                            [FakeTool(name="post", label="Post", description="Send text.")],
+                            needs_credentials=True,
+                            label="Huddle Team Chat",
+                            description="Notify teammates in shared chat channels.",
+                            tags=["social", "productivity"],
+                        )
+                    ]
+                }
+            ),
+        )
+
+        entry = find_tool_entry(build_tool_catalogue("tenant-1"), "acme/huddle/huddle", "post")
+
+        assert entry is not None
+        assert entry["needs_credentials"] is True
+        assert entry.get("provider_label") == "Huddle Team Chat"
+        assert entry.get("provider_description") == "Notify teammates in shared chat channels."
+        assert entry.get("provider_tags") == ["social", "productivity"]
+
+    def test_routing_matches_a_tool_by_its_provider_capability_metadata(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+            FakeTool,
+            FakeToolDaemon,
+            install_fake_daemon,
+            provider_payload,
+        )
+
+        install_fake_daemon(
+            monkeypatch,
+            FakeToolDaemon(
+                providers_by_tenant={
+                    "tenant-1": [
+                        provider_payload(
+                            "acme/huddle",
+                            "huddle",
+                            [FakeTool(name="post", label="Post", description="Send text.")],
+                            label="Huddle",
+                            description="Notify teammates in shared chat channels.",
+                            tags=["social"],
+                        )
+                    ]
+                }
+            ),
+        )
+        entries = build_tool_catalogue("tenant-1")
+
+        selection = select_tool_candidates(
+            entries, [ToolCapabilityQuery(capability="notify teammates", keywords=["chat channel"])]
+        )
+
+        assert ("acme/huddle/huddle", "post") in installed_tool_keys(selection.entries)
+        assert selection.unmatched_queries == []

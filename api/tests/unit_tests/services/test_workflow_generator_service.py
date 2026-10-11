@@ -14,7 +14,7 @@ from redis import Redis
 from core.app.app_config.entities import ModelConfig
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
-from core.entities.provider_entities import CustomProviderConfiguration
+from core.entities.provider_entities import CustomProviderConfiguration, ProviderConfig, ProviderConfigType
 from core.model_manager import ModelInstance
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -305,3 +305,93 @@ def test_stream_delegates_to_runner_stream(generation: GenerationObservations) -
     assert list(stream) == []
     assert generation.generator_calls[0]["mode"] == "workflow"
     _assert_model_resolution(generation, CreditUsageAppType.WORKFLOW)
+
+
+def _allowlist_providers(generation: GenerationObservations) -> None:
+    for provider_name, tool_name, needs_credentials in [
+        ("time", "current_time", False),
+        ("acme/huddle/huddle", "post", True),
+    ]:
+        label = I18nObject(en_US=tool_name)
+        generation.providers.append(
+            PluginToolProviderController(
+                entity=ToolProviderEntityWithPlugin(
+                    identity=ToolProviderIdentity(
+                        author="test", name=provider_name, description=label, icon="", label=label
+                    ),
+                    credentials_schema=(
+                        [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)]
+                        if needs_credentials
+                        else []
+                    ),
+                    tools=[
+                        ToolEntity(
+                            identity=ToolIdentity(author="test", name=tool_name, label=label, provider=provider_name),
+                            description=ToolDescription(human=label, llm=f"{tool_name} description"),
+                        )
+                    ],
+                ),
+                plugin_id=provider_name.rsplit("/", 1)[0],
+                plugin_unique_identifier=f"{provider_name}:1.0@checksum",
+                tenant_id=TENANT_ID,
+            )
+        )
+
+
+class TestReadyToolAllowlist:
+    """Only eligible installed tools may reach the planner and graph validator."""
+
+    def test_allowlist_filters_catalogue_and_validator_keys(self, generation: GenerationObservations) -> None:
+        _allowlist_providers(generation)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post the time to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        entries = call["tool_catalogue_entries"]
+        assert isinstance(entries, list)
+        assert [(entry["provider_name"], entry["tool_name"]) for entry in entries] == [("time", "current_time")]
+        assert call["installed_tools"] == {("time", "current_time")}
+
+    def test_empty_allowlist_means_no_executable_tools(self, generation: GenerationObservations) -> None:
+        _allowlist_providers(generation)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset(),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        assert call["tool_catalogue_entries"] == []
+        assert call["installed_tools"] == set()
+
+    def test_allowlist_keeps_validation_on_when_the_catalogue_fails(
+        self, generation: GenerationObservations, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def unavailable() -> Iterator[PluginToolProviderController]:
+            raise RuntimeError("plugin daemon unreachable")
+
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", unavailable)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        assert call["tool_catalogue_entries"] == []
+        assert call["installed_tools"] == set()

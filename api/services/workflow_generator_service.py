@@ -51,6 +51,7 @@ class WorkflowGeneratorService:
         model_config: ModelConfig,
         ideal_output: str = "",
         current_graph: dict[str, Any] | None = None,
+        ready_tool_keys: frozenset[tuple[str, str]] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
@@ -66,10 +67,24 @@ class WorkflowGeneratorService:
         Errors from the LLM call (auth, quota, invoke) propagate so the
         controller can map them to existing HTTP error envelopes (same
         envelope as ``/rule-generate``).
+
+        ``ready_tool_keys`` restricts generation to the ``(provider_name,
+        tool_name)`` tools the caller may execute: both the routed catalogue
+        and the validator's installed-tool keys are filtered to it, so any
+        other tool node fails validation. ``None`` (cmd+k and every other
+        standalone caller) keeps the complete installed catalogue; an empty
+        set means no tool is executable and keeps validation on.
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
             cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
         )
+        if ready_tool_keys is not None:
+            tool_catalogue_entries = [
+                entry
+                for entry in tool_catalogue_entries
+                if (entry["provider_name"], entry["tool_name"]) in ready_tool_keys
+            ]
+            installed_tools = installed_tool_keys(tool_catalogue_entries)
 
         return WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
