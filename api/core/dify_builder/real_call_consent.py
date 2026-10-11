@@ -10,8 +10,9 @@ already-dispatched phase's outcome is owned by the consent service.
 import hashlib
 import hmac
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictInt, model_validator
 
@@ -38,6 +39,19 @@ GMAIL_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 _SCOPE_DOMAIN = b"dify-builder/real-call-consent/scope/v1\x00"
 _SPENT_STATES = frozenset({"claimed", "completed", "failed", "unknown"})
+
+# Proposed server-only companion headers of a confirmed tenant dispatch. They
+# state the contract a daemon must enforce; sending them is not evidence that a
+# deployed daemon supports it (qualification stays a separate rollout gate).
+EXPECTED_PLUGIN_IDENTIFIER_HEADER = "X-Dify-Expected-Plugin-Identifier"
+EXPECTED_INSTALLATION_ID_HEADER = "X-Dify-Expected-Installation-ID"
+CONFIRMED_DISPATCH_HEADER = "X-Dify-Confirmed-Dispatch"
+CONFIRMED_DISPATCH_VERSION = "v1"
+_CONFIRMED_HEADER_NAMES = frozenset(
+    {EXPECTED_PLUGIN_IDENTIFIER_HEADER, EXPECTED_INSTALLATION_ID_HEADER, CONFIRMED_DISPATCH_HEADER}
+)
+# Visible ASCII only: no whitespace, CR/LF or other header-splitting bytes.
+_HEADER_VALUE = re.compile(r"[\x21-\x7e]{1,256}\Z")
 
 
 def _message_id(value: str) -> str:
@@ -223,6 +237,62 @@ class ConfirmedToolBinding(_TrustedModel):
     node_id: BoundedID
     native_run_id: BoundedID
     native_node_execution_id: BoundedID
+
+
+class ConfirmedToolGuard(Protocol):
+    """INTERNAL in-process callbacks binding one claimed grant to the native Tool owners.
+
+    Only the consent service constructs an implementation, from its own durable
+    state; no HTTP or queue payload can supply one. The native owners call it in
+    this order and never with an open SQL transaction: ``before_refresh`` (spend
+    the refresh phase) → native refresh → ``persist_refresh`` (short CAS; the
+    caller then invalidates the ordinary credential cache) → native conversion
+    → ``before_invoke`` with the complete final envelope (spend the business
+    phase) → one dispatch with ``dispatch_headers`` → ``observe_json`` per JSON
+    message → exactly one ``finish_stream``. A spent refresh that is never
+    recorded ends there too: the refresh owner calls ``finish_stream`` once with
+    ``complete=False`` and no business phase follows. Any refusal raises
+    ``BuilderExecutionPolicyError``; nothing is retried.
+    """
+
+    binding: ConfirmedToolBinding
+
+    def before_refresh(self) -> None: ...
+
+    def persist_refresh(self, encrypted_credentials: str, expires_at: int) -> str: ...
+
+    def before_invoke(self, parameters: Mapping[str, object]) -> None: ...
+
+    def observe_json(self, message: Mapping[str, object]) -> None: ...
+
+    def finish_stream(self, *, complete: bool, declared_failure: bool) -> None: ...
+
+    def dispatch_headers(self) -> dict[str, str]: ...
+
+
+def confirmed_dispatch_headers(installed: InstalledToolBinding) -> dict[str, str]:
+    """The exact companion headers pinning a confirmed dispatch to the stored installation."""
+    if not isinstance(installed, InstalledToolBinding):
+        raise BuilderExecutionPolicyError("confirmed_dispatch_headers_invalid")
+    return validate_confirmed_dispatch_headers(
+        {
+            EXPECTED_PLUGIN_IDENTIFIER_HEADER: installed.unique_identifier,
+            EXPECTED_INSTALLATION_ID_HEADER: installed.installation_id,
+            CONFIRMED_DISPATCH_HEADER: CONFIRMED_DISPATCH_VERSION,
+        }
+    )
+
+
+def validate_confirmed_dispatch_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    """Exactly the three companion headers, safe values and the supported version; anything else refuses."""
+    if not isinstance(headers, Mapping) or set(headers) != _CONFIRMED_HEADER_NAMES:
+        raise BuilderExecutionPolicyError("confirmed_dispatch_headers_invalid")
+    checked = {name: headers[name] for name in sorted(_CONFIRMED_HEADER_NAMES)}
+    if any(type(value) is not str or _HEADER_VALUE.fullmatch(value) is None for value in checked.values()):
+        raise BuilderExecutionPolicyError("confirmed_dispatch_headers_invalid")
+    if checked[CONFIRMED_DISPATCH_HEADER] != CONFIRMED_DISPATCH_VERSION:
+        raise BuilderExecutionPolicyError("confirmed_dispatch_headers_invalid")
+    return checked
 
 
 def gmail_message_url(message_id: str) -> str:
