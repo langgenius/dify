@@ -271,7 +271,7 @@ export function AuthorizationDialog({
 
   return (
     <Dialog actionsRef={actionsRef}>
-      <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid">
+      <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-line-general-settings-01 size-3 text-text-tertiary"

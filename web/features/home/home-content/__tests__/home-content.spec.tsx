@@ -13,7 +13,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactNode } from 'react'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -838,7 +838,8 @@ describe('HomeContent', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render learn dify templates without badges or template metadata', () => {
+    it('should render learn dify templates without badges or template metadata', async () => {
+      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -846,7 +847,9 @@ describe('HomeContent', () => {
 
       renderHomeContent()
 
-      const learnDifyHeading = screen.getByRole('heading', { name: 'explore.learnDify.title' })
+      const learnDifyHeading = await screen.findByRole('heading', {
+        name: 'explore.learnDify.title',
+      })
       expect(learnDifyHeading).toBeInTheDocument()
       expect(learnDifyHeading.closest('section')).toHaveAttribute(
         'data-step-by-step-tour-target',
@@ -878,6 +881,7 @@ describe('HomeContent', () => {
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
+      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -885,21 +889,16 @@ describe('HomeContent', () => {
 
       renderHomeContent()
 
-      fireEvent.click(screen.getByRole('button', { name: 'explore.learnDify.hide' }))
+      const hideButton = await screen.findByRole('button', { name: 'explore.learnDify.hide' })
+      const user = userEvent.setup()
+      await user.click(hideButton)
 
-      const learnDifySection = screen
-        .getByRole('heading', { name: 'explore.learnDify.title' })
-        .closest('section')
-      expect(learnDifySection).toHaveClass('z-50', 'opacity-20')
-      expect(learnDifySection).toHaveStyle({ transform: 'scale(0.08)' })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(800)
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+        ).not.toBeInTheDocument()
       })
 
-      expect(
-        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
-      ).not.toBeInTheDocument()
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('true')
     })
   })

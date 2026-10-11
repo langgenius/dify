@@ -247,8 +247,6 @@ export function SkillTagsEditor({
                 <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"
-                    inputValue={tagSearch}
-                    onInputValueChange={setTagSearch}
                     canBindOrUnbindTags
                     canManageTags
                     onOpenTagManagement={() => setShowTagManagement(true)}

@@ -184,10 +184,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const handleAdd = useCallback(
     async (data: BuiltInMetadataItem) => {
       await onAdd(data)
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       setOpen(false)
     },
-    [onAdd, t],
+    [onAdd],
   )
 
   const handleRenamed = useCallback(async () => {
@@ -197,10 +196,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
         ...item,
         name: templeName,
       })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     }
     setIsShowRenameModal(false)
-  }, [userMetadata, currPayload?.id, onRename, templeName, t])
+  }, [userMetadata, currPayload?.id, onRename, templeName])
 
   const handleDelete = useCallback(
     (payload: MetadataItemWithValueLength) => {

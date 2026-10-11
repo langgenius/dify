@@ -98,13 +98,12 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
       setRemoving(false)
     }
-  }, [member.id, queryClient, t])
+  }, [member.id, queryClient])
 
   const handleTransferOwnership = useCallback(() => {
     setOpen(false)

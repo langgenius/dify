@@ -48,7 +48,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           setIsEditing(false)
           onTagsChange?.()
         },

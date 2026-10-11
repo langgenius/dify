@@ -1,3 +1,4 @@
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ReactElement, ReactNode } from 'react'
 import type { ChatItem, Feedback } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -14,14 +15,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import copy from 'copy-to-clipboard'
 import { memo, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import { toast } from '@/app/notifications'
 import { useChatContext } from '../context'
 
 type OperationProps = {
@@ -78,6 +78,75 @@ const FeedbackTooltip = ({ content, children }: FeedbackTooltipProps) => {
   )
 }
 
+type FeedbackFormProps = {
+  isSubmitting: boolean
+  onSubmit: (content: string) => void
+}
+
+function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
+  const { t } = useTranslation(['common'])
+  const feedbackTextareaId = useId()
+  return (
+    <form
+      className="flex max-h-[80dvh] flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const content = new FormData(event.currentTarget).get('feedback-content')
+        onSubmit(typeof content === 'string' ? content : '')
+      }}
+    >
+      <div className="relative shrink-0 p-6 pr-14 pb-3">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
+        </DialogTitle>
+        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
+            'Please tell us what went wrong with this response'}
+        </DialogDescription>
+        <DialogClose
+          disabled={isSubmitting}
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+        <label
+          htmlFor={feedbackTextareaId}
+          className="mb-2 block system-sm-semibold text-text-secondary"
+        >
+          {t(($) => $['feedback.content'], { ns: 'common' }) || 'Feedback Content'}
+        </label>
+        <Textarea
+          id={feedbackTextareaId}
+          name="feedback-content"
+          readOnly={isSubmitting}
+          placeholder={
+            t(($) => $['feedback.placeholder'], { ns: 'common' }) ||
+            'Please describe what went wrong or how we can improve…'
+          }
+          rows={4}
+          className="w-full"
+        />
+      </div>
+      <div className="flex shrink-0 justify-end p-6 pt-5">
+        <DialogClose disabled={isSubmitting} render={<Button />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
+        </DialogClose>
+        <Button type="submit" className="ml-2" variant="primary" loading={isSubmitting}>
+          {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 function Operation({
   answerActionPosition = 'auto',
   item,
@@ -103,16 +172,13 @@ function Operation({
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   // Submitting replaces the dialog trigger with the current rating button.
-  const userFeedbackRef = useRef<HTMLButtonElement>(null)
-  const adminFeedbackRef = useRef<HTMLButtonElement>(null)
-  const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
-  const [feedbackContent, setFeedbackContent] = useState('')
+  const feedbackRef = useRef<HTMLButtonElement>(null)
+  const feedbackActionsRef = useRef<DialogActions>(null)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
   const { id, isOpeningStatement, annotation, feedback, adminFeedback, humanInputFormDataList } =
     item
   const [userFeedbackOverride, setUserFeedbackOverride] = useState<Feedback>()
   const [adminFeedbackOverride, setAdminFeedbackOverride] = useState<Feedback>()
-  const [feedbackTarget, setFeedbackTarget] = useState<'user' | 'admin'>('user')
-  const feedbackTextareaId = useId()
 
   const content = getPublicResponseContent(item)
   const hasPublicContent = !!content.trim()
@@ -143,7 +209,6 @@ function Operation({
     t(($) => $['table.header.adminRate'], { ns: 'appLog' }) || 'Admin feedback'
   const likeLabel = t(($) => $['detail.operation.like'], { ns: 'appLog' }) || 'Like'
   const dislikeLabel = t(($) => $['detail.operation.dislike'], { ns: 'appLog' }) || 'Dislike'
-  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' }) || 'Copy'
   const regenerateLabel = t(($) => $['operation.regenerate'], { ns: 'common' }) || 'Regenerate'
 
   const buildFeedbackTooltip = (
@@ -187,15 +252,15 @@ function Operation({
     void handleFeedback('like', undefined, target)
   }
 
-  const handleFeedbackSubmit = async () => {
-    const succeeded = await handleFeedback('dislike', feedbackContent, feedbackTarget)
-    if (!succeeded) return
-
-    setIsShowFeedbackModal(false)
-  }
-
-  const handleFeedbackCancel = () => {
-    setIsShowFeedbackModal(false)
+  const handleFeedbackSubmit = async (content: string) => {
+    setIsSubmittingFeedback(true)
+    const succeeded = await handleFeedback(
+      'dislike',
+      content,
+      config?.supportAnnotation ? 'admin' : 'user',
+    )
+    setIsSubmittingFeedback(false)
+    if (succeeded) feedbackActionsRef.current?.close()
   }
 
   const operationWidth = useMemo(() => {
@@ -239,10 +304,10 @@ function Operation({
         data-testid="operation-bar"
       >
         <Dialog
-          open={isShowFeedbackModal}
-          onOpenChange={setIsShowFeedbackModal}
-          onOpenChangeComplete={(open) => {
-            if (!open) setFeedbackContent('')
+          actionsRef={feedbackActionsRef}
+          onOpenChange={(open, eventDetails) => {
+            if (!open && isSubmittingFeedback && eventDetails.reason !== 'imperative-action')
+              eventDetails.cancel()
           }}
         >
           {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
@@ -257,7 +322,7 @@ function Operation({
                   content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
                 >
                   <Toggle
-                    ref={userFeedbackRef}
+                    ref={feedbackRef}
                     className={
                       displayUserFeedback?.rating === 'like'
                         ? accentPressedClassName
@@ -293,8 +358,7 @@ function Operation({
                     }
                   />
                   <DialogTrigger
-                    ref={userFeedbackRef}
-                    onClick={() => setFeedbackTarget('user')}
+                    ref={feedbackRef}
                     render={
                       <IconButton aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}>
                         <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
@@ -347,7 +411,7 @@ function Operation({
                   content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <Toggle
-                    ref={adminFeedbackRef}
+                    ref={feedbackRef}
                     className={
                       displayAdminFeedback?.rating === 'like'
                         ? accentPressedClassName
@@ -390,8 +454,7 @@ function Operation({
                     content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                   >
                     <DialogTrigger
-                      ref={adminFeedbackRef}
-                      onClick={() => setFeedbackTarget('admin')}
+                      ref={feedbackRef}
                       render={
                         <IconButton aria-label={`${adminFeedbackLabel}: ${dislikeLabel}`}>
                           <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
@@ -404,60 +467,11 @@ function Operation({
             </div>
           )}
           <DialogContent
-            finalFocus={feedbackTarget === 'user' ? userFeedbackRef : adminFeedbackRef}
+            finalFocus={feedbackRef}
             backdropProps={{ forceRender: true }}
             className="p-0"
           >
-            <div className="flex max-h-[80dvh] flex-col">
-              <div className="relative shrink-0 p-6 pr-14 pb-3">
-                <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
-                </DialogTitle>
-                <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
-                    'Please tell us what went wrong with this response'}
-                </DialogDescription>
-                <DialogClose
-                  render={
-                    <IconButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      size="lg"
-                      className="absolute top-5 right-5"
-                    >
-                      <span aria-hidden className="i-ri-close-line size-4" />
-                    </IconButton>
-                  }
-                />
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-                <label
-                  htmlFor={feedbackTextareaId}
-                  className="mb-2 block system-sm-semibold text-text-secondary"
-                >
-                  {t(($) => $['feedback.content'], { ns: 'common' }) || 'Feedback Content'}
-                </label>
-                <Textarea
-                  id={feedbackTextareaId}
-                  name="feedback-content"
-                  value={feedbackContent}
-                  onValueChange={(value) => setFeedbackContent(value)}
-                  placeholder={
-                    t(($) => $['feedback.placeholder'], { ns: 'common' }) ||
-                    'Please describe what went wrong or how we can improve…'
-                  }
-                  rows={4}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex shrink-0 justify-end p-6 pt-5">
-                <Button onClick={handleFeedbackCancel}>
-                  {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
-                </Button>
-                <Button className="ml-2" variant="primary" onClick={handleFeedbackSubmit}>
-                  {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
-                </Button>
-              </div>
-            </div>
+            <FeedbackForm isSubmitting={isSubmittingFeedback} onSubmit={handleFeedbackSubmit} />
           </DialogContent>
         </Dialog>
         {availableLogAction && !isOpeningStatement && (
@@ -479,15 +493,7 @@ function Operation({
                 <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
               )}
             {hasPublicContent && !humanInputFormDataList?.length && (
-              <IconButton
-                aria-label={copyLabel}
-                onClick={() => {
-                  copy(content)
-                  toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-                }}
-              >
-                <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-              </IconButton>
+              <CopyFeedback content={content} />
             )}
             {(!noChatInput || showRegenerate) && (
               <IconButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>

@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "生成が失敗しました",
   "actionMsg.modifiedSuccessfully": "変更が正常に行われました",
   "actionMsg.modifiedUnsuccessfully": "変更が失敗しました",
-  "actionMsg.noModification": "現在は変更されていません。",
   "actionMsg.payCancelled": "支払いがキャンセルされました",
   "actionMsg.paySucceeded": "支払いが成功しました",
   "agentStrategyPage.description": "AI エージェントの推論と意思決定の方法を定義します——ツールの選び方、結果の扱い方、問題を自律的に解決する方法までを設定できます。",

@@ -158,13 +158,13 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
         <DropdownMenuTrigger
           ref={triggerRef}
           data-learn-dify-help-target
-          className="focus-visible:ring-0"
+          // The recovery pulse animates box-shadow, so focus is drawn with an outline instead of the ring.
+          className="focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid"
           render={
             <IconButton
               size={triggerSize ?? 'lg'}
               aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'navigation' })}
               className={cn(
-                'focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                 usesDefaultTrigger && [
                   'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
                   !triggerSize && 'size-7 p-0',

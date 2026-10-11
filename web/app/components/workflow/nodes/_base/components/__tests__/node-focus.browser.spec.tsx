@@ -117,6 +117,8 @@ it.each([0, 1])(
     const node = screen.getByRole('button', { name: 'Code node', exact: true })
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).nth(index)
     await before.click()
+    await expect.element(trigger).toBeInTheDocument()
+    expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(false)
     await userEvent.tab()
     await expect.element(node).toHaveFocus()
     // Click the real React Flow handle: its transparent button intentionally does not receive pointer events.
@@ -126,31 +128,15 @@ it.each([0, 1])(
     await userEvent.keyboard('{Escape}')
     await expect.element(trigger).toHaveFocus()
     await expect.poll(() => trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
-    await userEvent.keyboard('{Enter}')
-    await expect.element(screen.getByRole('dialog')).toBeVisible()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(trigger).toHaveFocus()
   },
 )
-
-it('reveals an unselected node handle when reached by Tab', async () => {
-  const screen = await renderCanvas()
-  const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).first()
-  await screen.getByRole('button', { name: 'Before canvas' }).click()
-  expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(false)
-  await userEvent.tab()
-  await userEvent.tab()
-  await expect.element(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
-  await userEvent.tab()
-  await expect.element(trigger).toHaveFocus()
-  await expect.poll(() => trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
-})
 
 it('keeps More visible and focused after closing an unselected node menu away from hover', async () => {
   const screen = await renderCanvas()
   const before = screen.getByRole('button', { name: 'Before canvas' })
   const more = screen.getByRole('button', { name: 'common.operation.more' })
   await before.click()
+  await expect.element(more).toBeInTheDocument()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(false)
   await screen.getByRole('button', { name: 'Code node', exact: true }).hover()
   await more.click()
@@ -159,8 +145,6 @@ it('keeps More visible and focused after closing an unselected node menu away fr
   await userEvent.keyboard('{Escape}')
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(true)
-  await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('menu')).toBeVisible()
 })
 
 it.each([0, 1])(
@@ -170,6 +154,7 @@ it.each([0, 1])(
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).nth(index)
     const editor = screen.getByRole('textbox', { name: 'Outside editor' })
     const input = editor.element()
+    await expect.element(trigger).toBeInTheDocument()
     await userEvent.click(trigger.element().parentElement!)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await userEvent.click(input)

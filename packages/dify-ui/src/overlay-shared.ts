@@ -2,15 +2,17 @@ export type MenuItemVariant = 'default' | 'destructive'
 
 // The focus indicator a trigger owns. The caller owns the appearance, directly or through `render`.
 export const triggerFocusClassName =
-  'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
 
 export const menuItemClassName =
   'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-hidden data-highlighted:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-30'
 export const menuItemDestructiveClassName =
   'data-[variant=destructive]:text-text-destructive data-[variant=destructive]:data-highlighted:bg-state-destructive-hover'
 export const floatingItemIndicatorClassName = 'ms-auto flex shrink-0 items-center text-text-accent'
+// The horizontal inset belongs to the component: it depends on whether the label sits in the
+// popup (12px) or in a padded list (8px, with the list's padding supplying the rest).
 export const floatingGroupLabelClassName =
-  'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
+  'pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
 export const floatingSeparatorClassName = 'my-1 h-px bg-divider-subtle'
 export const menuPopupBaseClassName =
   'max-h-(--available-height) overflow-y-auto overflow-x-hidden text-sm text-text-secondary outline-hidden focus:outline-hidden focus-visible:outline-hidden'

@@ -63,9 +63,7 @@ class FormCreateParams:
     display_in_ui: bool
     resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
-    # ENG-635: the conversation this form belongs to. Set together with
-    # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
-    # for Agent v2 chat ask_human forms, which have no workflow run.
+    # Chatflow forms also belong to a conversation.
     conversation_id: str | None = None
     form_id: str | None = None
 
@@ -230,8 +228,7 @@ class HumanInputFormRecord:
     recipient_id: str | None
     recipient_type: RecipientType | None
     access_token: str | None
-    # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
-    # defaulted so existing record constructions stay source-compatible.
+    # Retain chatflow conversation correlation alongside the workflow run owner.
     conversation_id: str | None = None
 
     @property
@@ -450,15 +447,8 @@ class HumanInputFormRepositoryImpl:
         if not app_id:
             raise ValueError("app_id is required to create a human input form")
         workflow_execution_id = params.workflow_execution_id or self._workflow_execution_id
-        # A RUNTIME form must be owned by at least one of: a workflow run (workflow /
-        # Human-Input / agent node) or a conversation turn (ENG-635: Agent v2 chat
-        # ask_human; chatflow runs set both — workflow_run_id and conversation_id).
-        if (
-            params.form_kind == HumanInputFormKind.RUNTIME
-            and workflow_execution_id is None
-            and params.conversation_id is None
-        ):
-            raise ValueError("a runtime human input form requires a workflow_execution_id or conversation_id")
+        if params.form_kind == HumanInputFormKind.RUNTIME and workflow_execution_id is None:
+            raise ValueError("a runtime human input form requires a workflow_execution_id")
 
         with session_factory.create_session() as session, session.begin():
             form_id = params.form_id or str(uuidv7())
