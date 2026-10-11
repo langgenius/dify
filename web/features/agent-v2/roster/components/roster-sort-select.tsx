@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useQueryState } from 'nuqs'
-import { useId, useMemo } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rosterQueryParamNames, rosterSortByQueryParser } from '../query-params'
 
@@ -21,24 +21,20 @@ export function RosterSortSelect() {
   const { t } = useTranslation(['agentRoster'])
   const sortLabelId = useId()
   const [value, setValue] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
-  const options = useMemo(
-    () =>
-      [
-        {
-          value: 'last_modified',
-          label: t(($) => $['roster.sort.lastModified'], { ns: 'agentRoster' }),
-        },
-        {
-          value: 'recently_created',
-          label: t(($) => $['roster.sort.recentlyCreated'], { ns: 'agentRoster' }),
-        },
-        {
-          value: 'earliest_created',
-          label: t(($) => $['roster.sort.earliestCreated'], { ns: 'agentRoster' }),
-        },
-      ] satisfies Array<{ value: RosterSortBy; label: string }>,
-    [t],
-  )
+  const options = [
+    {
+      value: 'last_modified',
+      label: t(($) => $['roster.sort.lastModified'], { ns: 'agentRoster' }),
+    },
+    {
+      value: 'recently_created',
+      label: t(($) => $['roster.sort.recentlyCreated'], { ns: 'agentRoster' }),
+    },
+    {
+      value: 'earliest_created',
+      label: t(($) => $['roster.sort.earliestCreated'], { ns: 'agentRoster' }),
+    },
+  ] satisfies Array<{ value: RosterSortBy; label: string }>
   const sortByLabel = t(($) => $['roster.sort.label'], { ns: 'agentRoster' })
 
   return (

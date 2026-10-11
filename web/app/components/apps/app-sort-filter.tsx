@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { useId, useMemo } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
@@ -25,21 +25,17 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
   const { t } = useTranslation(['app'])
   const sortLabelId = useId()
 
-  const options = useMemo(
-    () =>
-      [
-        { value: 'last_modified', label: t(($) => $['studio.sort.lastModified'], { ns: 'app' }) },
-        {
-          value: 'recently_created',
-          label: t(($) => $['studio.sort.recentlyCreated'], { ns: 'app' }),
-        },
-        {
-          value: 'earliest_created',
-          label: t(($) => $['studio.sort.earliestCreated'], { ns: 'app' }),
-        },
-      ] satisfies Array<{ value: AppListSortBy; label: string }>,
-    [t],
-  )
+  const options = [
+    { value: 'last_modified', label: t(($) => $['studio.sort.lastModified'], { ns: 'app' }) },
+    {
+      value: 'recently_created',
+      label: t(($) => $['studio.sort.recentlyCreated'], { ns: 'app' }),
+    },
+    {
+      value: 'earliest_created',
+      label: t(($) => $['studio.sort.earliestCreated'], { ns: 'app' }),
+    },
+  ] satisfies Array<{ value: AppListSortBy; label: string }>
 
   const sortByLabel = t(($) => $['studio.sort.sortBy'], { ns: 'app' })
 
