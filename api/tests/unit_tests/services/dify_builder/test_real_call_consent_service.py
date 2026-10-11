@@ -11,14 +11,15 @@ SQLite proves transaction contents, not PostgreSQL lock behavior (CI-owned).
 
 import importlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Literal, Never, cast
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Table, func, select
+from sqlalchemy import Table, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -230,9 +231,10 @@ def consent_owner(
     return Owner(factory, actor, app.id, workflow.id, session_id, test_input_id, credential_id, client_id, reads)
 
 
-def overrides(changes: dict[str, object]) -> dict[str, Any]:
-    # Refusal cases deliberately pass ill-typed values (bool versions, unknown decisions).
-    return cast(dict[str, Any], changes)
+def overrides(changes: dict[str, object]) -> dict[str, Never]:
+    # Refusal cases deliberately pass ill-typed values (bool versions, unknown decisions);
+    # the localized cast keeps the typed dataclass fields while allowing those cases.
+    return cast(dict[str, Never], changes)
 
 
 @dataclass(frozen=True)
@@ -1104,3 +1106,207 @@ def test_phase_and_finish_reject_forged_binding(consent_owner: Owner) -> None:
             owner.service().finish(binding=candidate, outcome=ActionOutcome(state="unknown", reason_code="x"))
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.business_count, row.outcome_state) == ("claimed", 0, None)
+
+
+# --- correction 1: narrow context reference, current execute replay, pre-SQL ID refusal ------
+
+
+def latest_context(owner: Owner) -> DifyBuilderContext:
+    return SqlDifyBuilderRepository(owner.factory).get_session(owner.session_id)[1]
+
+
+def test_reservation_persists_narrow_consent_reference_in_the_same_commit(consent_owner: Owner) -> None:
+    owner = consent_owner
+    reserved, won = reserve(owner, confirm(owner, prepare(owner)))
+    assert won is True
+    with owner.factory() as db:
+        commits = {
+            commit.version: commit
+            for commit in db.scalars(
+                select(DifyBuilderSessionCommit).where(DifyBuilderSessionCommit.session_id == owner.session_id)
+            )
+        }
+    assert set(commits) == {1, 2}
+    reserved_context = context_from_dict(commits[2].context)
+    # One commit carries the command, the input and the exact consent reference together.
+    assert (
+        reserved_context.last_command_id,
+        reserved_context.test_input_ref,
+        reserved_context.confirmed_consent_id,
+        reserved_context.confirmed_command_id,
+    ) == (reserved.command_id, owner.test_input_id, reserved.consent_id, reserved.command_id)
+    assert (commits[2].context["confirmed_consent_id"], commits[2].context["confirmed_command_id"]) == (
+        reserved.consent_id,
+        reserved.command_id,
+    )
+    # The prepared commit is immutable history and never gains the reference.
+    assert (commits[1].context["confirmed_consent_id"], commits[1].context["confirmed_command_id"]) == ("", "")
+    assert owner.consent_row(reserved.consent_id).reserved_commit_id == commits[2].id
+
+
+def test_context_reference_roundtrips_and_old_rows_default_empty() -> None:
+    fresh = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    loaded = context_from_dict(context_to_dict(fresh))
+    assert (loaded.confirmed_consent_id, loaded.confirmed_command_id) == ("consent-1", "command-1")
+    legacy = context_to_dict(DifyBuilderContext(last_command_id="older"))
+    del legacy["confirmed_consent_id"], legacy["confirmed_command_id"]
+    old = context_from_dict(legacy)
+    assert (old.last_command_id, old.confirmed_consent_id, old.confirmed_command_id) == ("older", "", "")
+    assert context_from_dict({}).confirmed_command_id == ""
+    # Discovery data never stands in for the reference.
+    assert context_from_dict({"resource_selection": {"confirmed_consent_id": "x"}}).confirmed_consent_id == ""
+
+
+@pytest.mark.parametrize("field", ["confirmed_consent_id", "confirmed_command_id"])
+def test_claim_requires_exact_reserved_context_reference(consent_owner: Owner, field: str) -> None:
+    owner = consent_owner
+    reserved, won = reserve(owner, confirm(owner, prepare(owner)))
+    assert won is True
+    context, run_id = simulate_task6_launch(owner, reserved)
+    repo = SqlDifyBuilderRepository(owner.factory)
+    session, fc = repo.get_session(owner.session_id)
+    setattr(fc, field, str(uuid4()))  # a later commit of the same command that drops/changes the reference
+    repo.compare_and_advance(owner.session_id, session.version, session.current_state, fc, [])
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_scope_changed"):
+        owner.service().claim_tool(
+            context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution-1"
+        )
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.reason_code, row.claimed_at) == ("invalidated", "command_lineage_changed", None)
+
+
+def test_execute_replay_returns_current_state_after_business_and_unknown(consent_owner: Owner) -> None:
+    owner = consent_owner
+    prepared = prepare(owner)
+    decision = confirm(owner, prepared)
+    reserved, won = reserve(owner, decision)
+    assert won is True
+    context, run_id = simulate_task6_launch(owner, reserved)
+    binding = owner.service().claim_tool(
+        context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution-1"
+    )
+    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    executed, again = reserve(owner, decision)
+    assert again is False
+    assert (executed.state, executed.business_claimed, executed.native_run_id) == ("claimed", True, run_id)
+    assert (executed.command_id, executed.execution_request_id) == (reserved.command_id, reserved.execution_request_id)
+    owner.service().finish(binding=binding, outcome=ActionOutcome(state="unknown", reason_code="stream_incomplete"))
+    uncertain, again = reserve(owner, decision)
+    assert again is False
+    assert (uncertain.state, uncertain.reason_code, uncertain.can_retry) == ("unknown", "stream_incomplete", False)
+    assert (uncertain.command_id, uncertain.execution_request_id) == (
+        reserved.command_id,
+        reserved.execution_request_id,
+    )
+    assert uncertain == get(owner, reserved.consent_id)
+    # Idempotency metadata and the original audit receipt are kept; body/key checks still apply.
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.execute_key, row.execute_receipt) == ("execute-1", reserved.model_dump(mode="json"))
+    with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
+        reserve(owner, decision, scope_digest="b" * 64)
+    with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
+        reserve(owner, decision, idempotency_key="execute-2")
+    # The decision replay stays the original saved decision receipt.
+    assert confirm(owner, prepared) == decision
+    assert owner.count(DifyBuilderExecutionRequest) == 1
+    assert owner.count(DifyBuilderSessionCommit) == 2
+
+
+MALFORMED_IDS = ["", "not-a-uuid", "{00000000-0000-4000-8000-000000000000}", " " * 36, "A" * 36]
+
+
+@pytest.mark.parametrize("malformed", MALFORMED_IDS)
+@pytest.mark.parametrize(
+    ("operation", "reason"),
+    [
+        ("prepare_session", "execution_owner_mismatch"),
+        ("prepare_test_input", "execution_owner_mismatch"),
+        ("prepare_credential", "credential_reference_unavailable"),
+        ("prepare_upper_session", "execution_owner_mismatch"),
+        ("confirm_consent", "consent_not_found"),
+        ("confirm_session", "consent_not_found"),
+        ("reserve_consent", "consent_not_found"),
+        ("reserve_session", "consent_not_found"),
+        ("get_consent", "consent_not_found"),
+        ("get_session", "consent_not_found"),
+    ],
+)
+def test_malformed_public_ids_refuse_before_any_sql(
+    consent_owner: Owner, operation: str, reason: str, malformed: str
+) -> None:
+    owner = consent_owner
+    revision = owner.revision()
+    valid = str(uuid4())
+    service = owner.service()
+    engine = owner.factory.kw["bind"]
+    statements: list[str] = []
+
+    def spy(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    def direct_prepare(**changes: str) -> object:
+        # Direct call: the module helper reads the draft revision through SQL.
+        values = {
+            "session_id": owner.session_id,
+            "test_input_id": owner.test_input_id,
+            "credential_id": owner.credential_id,
+            **changes,
+        }
+        return service.prepare(
+            actor=owner.actor,
+            node_id="tool",
+            at_version=1,
+            base_app_revision=revision,
+            idempotency_key="k",
+            **values,
+        )
+
+    calls: dict[str, Callable[[], object]] = {
+        "prepare_session": lambda: direct_prepare(session_id=malformed),
+        "prepare_test_input": lambda: direct_prepare(test_input_id=malformed),
+        "prepare_credential": lambda: direct_prepare(credential_id=malformed),
+        "prepare_upper_session": lambda: direct_prepare(session_id=owner.session_id.upper()),
+        "confirm_consent": lambda: service.confirm(
+            actor=owner.actor,
+            session_id=owner.session_id,
+            consent_id=malformed,
+            decision="confirm",
+            scope_digest="a" * 64,
+            at_version=1,
+            idempotency_key="k",
+        ),
+        "confirm_session": lambda: service.confirm(
+            actor=owner.actor,
+            session_id=malformed,
+            consent_id=valid,
+            decision="decline",
+            scope_digest="a" * 64,
+            at_version=1,
+            idempotency_key="k",
+        ),
+        "reserve_consent": lambda: service.reserve_execution(
+            actor=owner.actor,
+            session_id=owner.session_id,
+            consent_id=malformed,
+            scope_digest="a" * 64,
+            at_version=1,
+            idempotency_key="k",
+        ),
+        "reserve_session": lambda: service.reserve_execution(
+            actor=owner.actor,
+            session_id=malformed,
+            consent_id=valid,
+            scope_digest="a" * 64,
+            at_version=1,
+            idempotency_key="k",
+        ),
+        "get_consent": lambda: service.get(actor=owner.actor, session_id=owner.session_id, consent_id=malformed),
+        "get_session": lambda: service.get(actor=owner.actor, session_id=malformed, consent_id=valid),
+    }
+    event.listen(engine, "before_cursor_execute", spy)
+    try:
+        with pytest.raises(BuilderExecutionPolicyError, match=reason):
+            calls[operation]()
+    finally:
+        event.remove(engine, "before_cursor_execute", spy)
+    assert statements == []
