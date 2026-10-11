@@ -19,11 +19,30 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { RerankingModeEnum } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { AgentOrchestratePanel } from '../../index'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+vi.mock('@/features/agent-v2/agent-detail/configure/feature-flags', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/agent-v2/agent-detail/configure/feature-flags')
+  >()),
+  ENABLE_AGENT_KNOWLEDGE_RETRIEVAL: true,
+}))
+
+// Keep the configuration panel and retrieval editor real; unrelated editors have their own suites.
+vi.mock('../../advanced', () => ({ AgentAdvancedSettings: () => null }))
+vi.mock('../../model-config/field', () => ({ AgentModelField: () => null }))
+vi.mock('../../prompt-editor', () => ({
+  AgentPromptEditor: () => null,
+  AgentTemplatePromptEditor: () => null,
+}))
+vi.mock('../../skills', () => ({ AgentSkills: () => null, AgentTemplateSkills: () => null }))
+vi.mock('../../files', () => ({ AgentFiles: () => null, AgentTemplateFiles: () => null }))
+vi.mock('../../tools', () => ({ AgentTools: () => null, AgentTemplateTools: () => null }))
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
   default: (_nodeId: string, { filterVar }: { filterVar: (value: Var) => boolean }) => ({
@@ -197,12 +216,14 @@ function renderKnowledgeRetrieval({
   viewingVersion = false,
   showConfigSnapshot = false,
   workflowNodeId,
+  throughPanel = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   readOnly?: boolean
   viewingVersion?: boolean
   showConfigSnapshot?: boolean
   workflowNodeId?: string
+  throughPanel?: boolean
 } = {}) {
   return render(
     <AgentComposerProvider initialDraft={initialDraft}>
@@ -210,7 +231,18 @@ function renderKnowledgeRetrieval({
         <AgentOrchestrateReadOnlyContext value={readOnly}>
           {workflowNodeId ? (
             <ReactFlowProvider>
-              <AgentKnowledgeRetrieval workflowNodeId={workflowNodeId} />
+              {throughPanel ? (
+                <AgentOrchestratePanel
+                  agentId="agent-1"
+                  appId="workflow-1"
+                  nodeId={workflowNodeId}
+                  showHeader={false}
+                  showPublishBar={false}
+                  onSelectModel={() => {}}
+                />
+              ) : (
+                <AgentKnowledgeRetrieval workflowNodeId={workflowNodeId} />
+              )}
             </ReactFlowProvider>
           ) : (
             <AgentKnowledgeRetrieval />
@@ -514,10 +546,14 @@ describe('AgentKnowledgeRetrieval', () => {
       ['guide_program_id', 'program_input', 'item_input'],
       ['guide_item_id', 'item_input', 'program_input'],
     ])(
-      'should save a matching workflow variable for %s',
+      'should save a matching workflow variable for %s through the configuration panel',
       async (metadataName, variableName, otherTypeVariable) => {
         const user = userEvent.setup()
-        renderKnowledgeRetrieval({ workflowNodeId: 'agent-node', showConfigSnapshot: true })
+        renderKnowledgeRetrieval({
+          workflowNodeId: 'agent-node',
+          showConfigSnapshot: true,
+          throughPanel: true,
+        })
 
         await user.click(
           screen.getByRole('button', {
