@@ -8,7 +8,7 @@ from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 class TestAppConfigEntities:
-    def test_variable_entity_coerces_none_description_and_options(self):
+    def test_variable_entity_coerces_none_description_and_options(self) -> None:
         entity = VariableEntity(
             variable="query",
             label="Query",
@@ -20,7 +20,7 @@ class TestAppConfigEntities:
         assert entity.description == ""
         assert entity.options == []
 
-    def test_variable_entity_rejects_invalid_json_schema(self):
+    def test_variable_entity_rejects_invalid_json_schema(self) -> None:
         with pytest.raises(ValueError):
             VariableEntity(
                 variable="query",
@@ -29,12 +29,12 @@ class TestAppConfigEntities:
                 json_schema={"type": "string", "minLength": "bad"},
             )
 
-    def test_prompt_template_value_of(self):
+    def test_prompt_template_value_of(self) -> None:
         assert PromptTemplateEntity.PromptType.value_of("simple") == PromptTemplateEntity.PromptType.SIMPLE
         with pytest.raises(ValueError):
             PromptTemplateEntity.PromptType.value_of("missing")
 
-    def test_dataset_retrieve_strategy_value_of(self):
+    def test_dataset_retrieve_strategy_value_of(self) -> None:
         assert (
             DatasetRetrieveConfigEntity.RetrieveStrategy.value_of("single")
             == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
