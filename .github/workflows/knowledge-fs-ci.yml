@@ -147,7 +147,7 @@ jobs:
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock
@@ -494,7 +494,7 @@ jobs:
       - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
       - name: Install native vector SDKs
         run: uv sync --project api --locked --dev --group vdb-qdrant --group vdb-elasticsearch --group vdb-weaviate
