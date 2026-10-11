@@ -880,3 +880,25 @@ def test_advance_session_resolves_edit_handler_via_merged_registry(repo: SqlDify
     stored, _fc = repo.get_session(s.id)
     assert stored.current_state == PcState.EDIT_IMPACT_ANALYSIS  # edit handler resolved, not a 500
     assert (s.id, "tok-e1") in released
+
+
+@pytest.mark.usefixtures("wired")
+def test_advance_builds_the_agent_for_the_acting_account(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ENG-1191: tool readiness honours the acting member's credential
+    visibility, so the agent must know who is acting."""
+    session = _seed_fix_session(repo)
+    seen: list[dict] = []
+
+    def build_agent(**kwargs):
+        seen.append(kwargs)
+        return StubAgent()
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", build_agent)
+
+    mod.advance_session(session.id, _act("message", 1, text="hello", client_turn_id="turn-1"), _ACTOR_DICT, "tok")
+
+    assert seen
+    assert seen[0]["tenant_id"] == TENANT_ID
+    assert seen[0].get("account_id") == ACCOUNT_ID
