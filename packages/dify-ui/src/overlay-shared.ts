@@ -9,8 +9,10 @@ export const menuItemClassName =
 export const menuItemDestructiveClassName =
   'data-[variant=destructive]:text-text-destructive data-[variant=destructive]:data-highlighted:bg-state-destructive-hover'
 export const floatingItemIndicatorClassName = 'ms-auto flex shrink-0 items-center text-text-accent'
+// The horizontal inset belongs to the component: it depends on whether the label sits in the
+// popup (12px) or in a padded list (8px, with the list's padding supplying the rest).
 export const floatingGroupLabelClassName =
-  'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
+  'pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
 export const floatingSeparatorClassName = 'my-1 h-px bg-divider-subtle'
 export const menuPopupBaseClassName =
   'max-h-(--available-height) overflow-y-auto overflow-x-hidden text-sm text-text-secondary outline-hidden focus:outline-hidden focus-visible:outline-hidden'
