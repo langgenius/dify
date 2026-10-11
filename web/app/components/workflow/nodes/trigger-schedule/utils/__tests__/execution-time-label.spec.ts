@@ -29,7 +29,7 @@ describe('execution time offset label', () => {
     expect(times[2]).toContain('November 2, 2026')
     expect(times[2]).toContain('(UTC-5)')
   })
-  
+
   it('labels the repeated hour by its real offset when DST ends', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-01T03:00:00Z'))
