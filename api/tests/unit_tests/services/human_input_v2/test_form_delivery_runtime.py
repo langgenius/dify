@@ -171,7 +171,9 @@ def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context
 
     @sa.event.listens_for(engine, "begin")
     def begin_transaction(connection):
-        connection.exec_driver_sql("BEGIN")
+        # SQLite cannot upgrade competing read transactions to writers. Reserve
+        # its writer at begin so concurrent calls can wait for serialized commits.
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
 
     for model in (
         Account,
@@ -568,8 +570,8 @@ def test_submission_during_delivery_is_rejected_until_workflow_pauses(
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -585,11 +587,11 @@ def test_submission_during_delivery_is_rejected_until_workflow_pauses(
             return accepted
         approval_link = re.search(r"/form/([A-Za-z0-9_-]+)", kwargs["html"])
         assert approval_link is not None
-        with pytest.raises(ConsoleFormError) as exc:
+        with pytest.raises(HumanInputFormError) as exc:
             submission_service.submit_console_form(
                 account_id=_ACCOUNT, form_token=approval_link.group(1), action="approve", inputs={}
             )
-        assert exc.value.code == ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE
+        assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
         return accepted
 
     providers[1].side_effect = submit_on_acceptance
@@ -1599,8 +1601,8 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
 )
 def test_console_approval_rejects_invalid_submission(context: Context, console_approval, monkeypatch, action, inputs):
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1608,11 +1610,11 @@ def test_console_approval_rejects_invalid_submission(context: Context, console_a
     form_id, token = console_approval
     enqueue = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=_ACCOUNT, form_token=token, action=action, inputs=inputs
         )
-    assert exc.value.code == ConsoleFormErrorCode.INVALID_INPUT
+    assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
     with context.sessions() as session:
         assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     enqueue.assert_not_called()
@@ -1623,8 +1625,8 @@ def test_console_approval_rejects_invalid_submission(context: Context, console_a
 )
 def test_console_approval_requires_the_delivery_recipient(context: Context, console_approval, monkeypatch, scenario):
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1648,11 +1650,11 @@ def test_console_approval_requires_the_delivery_recipient(context: Context, cons
                 session.execute(sa.delete(TenantAccountJoin).where(TenantAccountJoin.account_id == _ACCOUNT))
     enqueue = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=account_id, form_token=token, action="approve", inputs={"note": "Approved"}
         )
-    assert exc.value.code == ConsoleFormErrorCode.NOT_FOUND
+    assert exc.value.code == HumanInputFormErrorCode.NOT_FOUND
     with context.sessions() as session:
         assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     enqueue.assert_not_called()
@@ -1661,8 +1663,8 @@ def test_console_approval_requires_the_delivery_recipient(context: Context, cons
 @pytest.mark.parametrize("deadline", ["expiration_time", "global_timeout_deadline"])
 def test_console_approval_rejects_expiration(context: Context, console_approval, monkeypatch, deadline):
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1676,11 +1678,11 @@ def test_console_approval_rejects_expiration(context: Context, console_approval,
         )
     enqueue = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
         )
-    assert exc.value.code == ConsoleFormErrorCode.EXPIRED
+    assert exc.value.code == HumanInputFormErrorCode.EXPIRED
     enqueue.assert_not_called()
 
 
@@ -1688,8 +1690,8 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
     from graphon.variables.segments import StringSegment
     from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1699,9 +1701,9 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": " First "})
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Second"})
-    assert exc.value.code == ConsoleFormErrorCode.ALREADY_SUBMITTED
+    assert exc.value.code == HumanInputFormErrorCode.ALREADY_SUBMITTED
     with context.sessions() as session:
         form = SQLAlchemyFormRepository(session, _TENANT, _APP).get_form_by_id(form_id)
         assert form is not None
@@ -1722,8 +1724,8 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
 )
 def test_console_approval_requires_paused_workflow(context: Context, console_approval, monkeypatch, status):
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1733,11 +1735,11 @@ def test_console_approval_requires_paused_workflow(context: Context, console_app
         session.get(WorkflowRun, _RUN).status = status
     enqueue = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
         )
-    assert exc.value.code == ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE
+    assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
     with context.sessions() as session:
         assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     enqueue.assert_not_called()
@@ -1746,8 +1748,8 @@ def test_console_approval_requires_paused_workflow(context: Context, console_app
 @pytest.mark.parametrize("pause_state", ["missing", "resumed"])
 def test_console_approval_requires_committed_active_pause(context: Context, console_approval, monkeypatch, pause_state):
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1763,11 +1765,11 @@ def test_console_approval_requires_committed_active_pause(context: Context, cons
     enqueue = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     service = HumanInputSubmissionService(session_factory=context.sessions)
-    with pytest.raises(ConsoleFormError) as exc:
+    with pytest.raises(HumanInputFormError) as exc:
         service.submit_console_form(
             account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
         )
-    assert exc.value.code == ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE
+    assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
     with context.sessions() as session:
         assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     enqueue.assert_not_called()
@@ -1792,8 +1794,8 @@ def test_console_approval_requires_committed_active_pause(context: Context, cons
 def test_console_approval_uses_frozen_select_options(context: Context, console_approval, monkeypatch, choice):
     from core.human_input_v2.resolved_form import SelectInput
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1811,11 +1813,11 @@ def test_console_approval_uses_frozen_select_options(context: Context, console_a
         with context.sessions() as session:
             assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
     else:
-        with pytest.raises(ConsoleFormError) as exc:
+        with pytest.raises(HumanInputFormError) as exc:
             service.submit_console_form(
                 account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": choice}
             )
-        assert exc.value.code == ConsoleFormErrorCode.INVALID_INPUT
+        assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
 
 
 @pytest.mark.parametrize("scenario", ["single", "list", "empty_list", "foreign_file", "over_limit", "invalid_mapping"])
@@ -1830,8 +1832,8 @@ def test_console_approval_validates_files_and_persists_typed_segments(
     from models.model import UploadFile
     from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2.submission_service import (
-        ConsoleFormError,
-        ConsoleFormErrorCode,
+        HumanInputFormError,
+        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1883,11 +1885,11 @@ def test_console_approval_validates_files_and_persists_typed_segments(
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     if scenario in ("foreign_file", "over_limit", "invalid_mapping"):
-        with pytest.raises(ConsoleFormError) as exc:
+        with pytest.raises(HumanInputFormError) as exc:
             service.submit_console_form(
                 account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": submitted}
             )
-        assert exc.value.code == ConsoleFormErrorCode.INVALID_INPUT
+        assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
         enqueue.assert_not_called()
         return
     service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": submitted})

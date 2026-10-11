@@ -17,8 +17,8 @@ from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, Ev
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
-from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
+from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from services.human_input_v2.im_message_inbox.telemetry import IMInboxMetricKind
 
 _NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
@@ -101,7 +101,7 @@ def _sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Sessi
             integration_id=IntegrationId("integration-1"),
             expected_provider=IMProvider.FEISHU,
             expected_provider_tenant_id="tenant-1",
-            repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+            repository=IMInboxStorage(session_maker),
             clock=lambda: _NOW,
             metrics=metrics,
         ),
@@ -222,7 +222,7 @@ def test_sink_preserves_provider_metadata_and_payload(sqlite_engine: Engine) -> 
         integration_id=IntegrationId("integration-1"),
         expected_provider=IMProvider.FEISHU,
         expected_provider_tenant_id=maximum_tenant_id,
-        repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+        repository=IMInboxStorage(session_maker),
         clock=lambda: _NOW,
         metrics=_RecordingMetrics(),
     )
@@ -263,7 +263,7 @@ def test_sink_rejects_oversized_bound_provider_identity(sqlite_engine: Engine) -
             integration_id=IntegrationId("integration-1"),
             expected_provider=IMProvider.FEISHU,
             expected_provider_tenant_id="t" * 129,
-            repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+            repository=IMInboxStorage(session_maker),
             clock=lambda: _NOW,
             metrics=_RecordingMetrics(),
         )

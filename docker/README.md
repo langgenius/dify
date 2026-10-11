@@ -55,6 +55,14 @@ Custom worker queue lists set through `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` 
 `human_input_delivery` to process durable Human Input IM inbox events and
 `human_input_contact_sync` to process manual IM Contact directory synchronization.
 
+
+Human Input IM channels in `WEBHOOK` mode build their Callback URL from `TRIGGER_URL`.
+Set it to the externally reachable HTTPS origin of the API when configuring a remote
+deployment. A localhost value is only suitable for local development. Reverse proxies
+must forward `/callbacks/human-input/v2/im/` to the API and preserve the request path,
+body, and provider signature headers. Copy the channel's Callback URL into the
+provider's interaction configuration after changing the public origin.
+
 ## Environment Variables Synchronization
 
 When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` only when they are required for startup,

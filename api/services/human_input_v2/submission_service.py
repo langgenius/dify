@@ -1,29 +1,31 @@
-"""Authorize Console recipients and commit Human Input v2 approvals."""
+"""Authorize Console and IM recipients and commit Human Input v2 approvals."""
 
 import hashlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 
-import sqlalchemy as sa
 from pydantic import JsonValue, TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
-from core.human_input_v2.shared.values import AccountId
+from core.human_input_v2.shared.values import AccountId, WorkspaceScope
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileUploadConfig
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
-from models.human_input_v2 import HumanInputForm
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.human_input_v2.delivery_repository import SubmissionAuthType
+from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
 from repositories.human_input_v2.form_repository import Form, FormSubmissionFailure
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, Recipient
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import SQLAlchemyIMWebhookChannelRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 
 _STRING = TypeAdapter(str)
@@ -31,7 +33,7 @@ _FILE = TypeAdapter(dict[str, JsonValue])
 _FILES = TypeAdapter(list[dict[str, JsonValue]])
 
 
-class ConsoleFormErrorCode(StrEnum):
+class HumanInputFormErrorCode(StrEnum):
     NOT_FOUND = "not_found"
     ALREADY_SUBMITTED = "already_submitted"
     EXPIRED = "expired"
@@ -39,12 +41,22 @@ class ConsoleFormErrorCode(StrEnum):
     INVALID_INPUT = "invalid_input"
 
 
-class ConsoleFormError(Exception):
-    """A rejection translated to an HTTP response by the Console controller."""
+class HumanInputFormError(Exception):
+    """A rejection translated to an HTTP response by the owning transport."""
 
-    def __init__(self, code: ConsoleFormErrorCode):
+    def __init__(self, code: HumanInputFormErrorCode):
         self.code = code
         super().__init__(code.value)
+
+
+@dataclass(frozen=True, slots=True)
+class IMFormActor:
+    """Provider identity established by an authenticated callback in the inbox."""
+
+    channel_id: IMChannelId
+    provider: IMProvider
+    provider_tenant_id: str
+    provider_user_id: str
 
 
 class HumanInputSubmissionService:
@@ -55,17 +67,47 @@ class HumanInputSubmissionService:
         self, *, account_id: AccountId, form_token: str, action: str, inputs: Mapping[str, JsonValue]
     ) -> None:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+
+        def authorize(session: Session) -> tuple[Form, Recipient]:
+            return self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+
+        self._submit_form(authorize=authorize, action=action, inputs=inputs)
+
+    def submit_im_form(
+        self, *, actor: IMFormActor, form_token: str, action: str, inputs: Mapping[str, JsonValue]
+    ) -> None:
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+
+        def authorize(session: Session) -> tuple[Form, Recipient]:
+            form, recipient = self._load_im_form(session, actor=actor, token_hash=token_hash)
+            _ensure_form_waiting(form)
+            return form, recipient
+
+        try:
+            self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        except HumanInputFormError as error:
+            if error.code is not HumanInputFormErrorCode.ALREADY_SUBMITTED:
+                raise
+            self._resume_submitted_im_form(actor=actor, token_hash=token_hash, action=action, inputs=inputs)
+
+    def _submit_form(
+        self,
+        *,
+        authorize: Callable[[Session], tuple[Form, Recipient]],
+        action: str,
+        inputs: Mapping[str, JsonValue],
+    ) -> None:
         with self._session_factory() as session:
-            form, _ = self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+            form, _ = authorize(session)
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
             normalized = _normalize_inputs(form, action=action, inputs=inputs)
         except ValueError as exc:
-            raise ConsoleFormError(ConsoleFormErrorCode.INVALID_INPUT) from exc
+            raise HumanInputFormError(HumanInputFormErrorCode.INVALID_INPUT) from exc
 
         with self._session_factory() as session, session.begin():
-            form, recipient = self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+            form, recipient = authorize(session)
             if form.workflow_run_id is not None:
                 # Keep the run-before-form lock order shared with expiration.
                 workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
@@ -78,9 +120,9 @@ class HumanInputSubmissionService:
                     run_id=form.workflow_run_id,
                 )
                 if run is None:
-                    raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
                 if run.status != WorkflowExecutionStatus.PAUSED:
-                    raise ConsoleFormError(ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE)
+                    raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
                 # PAUSED can be persisted before the checkpoint. Accept only
                 # after its active pause is committed so resume has state to load.
                 if not workflow_run_repository.has_active_workflow_pause(
@@ -89,7 +131,7 @@ class HumanInputSubmissionService:
                     app_id=form.app_id,
                     run_id=run.id,
                 ):
-                    raise ConsoleFormError(ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE)
+                    raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
             result = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id).submit_form(
                 form.id,
                 submitted_by_recipient_id=recipient.id,
@@ -99,11 +141,11 @@ class HumanInputSubmissionService:
             )
             match result:
                 case FormSubmissionFailure.NOT_FOUND:
-                    raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
                 case FormSubmissionFailure.ALREADY_SUBMITTED:
-                    raise ConsoleFormError(ConsoleFormErrorCode.ALREADY_SUBMITTED)
+                    raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
                 case FormSubmissionFailure.FORM_EXPIRED | FormSubmissionFailure.GLOBAL_TIMEOUT:
-                    raise ConsoleFormError(ConsoleFormErrorCode.EXPIRED)
+                    raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
                 case Form():
                     pass
         if form.workflow_run_id is not None:
@@ -115,29 +157,89 @@ class HumanInputSubmissionService:
     def _authorize_console(session: Session, *, account_id: AccountId, token_hash: str) -> tuple[Form, Recipient]:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
         if delivery is None or delivery.auth_type != SubmissionAuthType.CONSOLE:
-            raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
-        app_id = session.scalar(
-            sa.select(HumanInputForm.app_id).where(
-                HumanInputForm.id == delivery.form_id, HumanInputForm.tenant_id == delivery.tenant_id
-            )
-        )
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        app_id = SQLAlchemyFormRepository.find_app_id(session, tenant_id=delivery.tenant_id, form_id=delivery.form_id)
         if app_id is None:
-            raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         form = SQLAlchemyFormRepository(session, delivery.tenant_id, app_id).get_form_by_id(delivery.form_id)
         assert form is not None
         recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
         if recipient is None or not isinstance(recipient.subject, ContactRecipientSubject):
-            raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         # Resolve the current Account in the delivery's workspace, not the
         # browser's active workspace, and never authenticate by email equality.
         contact = SQLAlchemyContactRepository(session).get_contact_by_account_id(form.tenant_id, account_id)
         if contact is None or contact.id != recipient.subject.contact_id:
-            raise ConsoleFormError(ConsoleFormErrorCode.NOT_FOUND)
-        if form.status == HumanInputFormStatus.SUBMITTED:
-            raise ConsoleFormError(ConsoleFormErrorCode.ALREADY_SUBMITTED)
-        if form.status in (HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED):
-            raise ConsoleFormError(ConsoleFormErrorCode.EXPIRED)
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        _ensure_form_waiting(form)
         return form, recipient
+
+    @staticmethod
+    def _load_im_form(session: Session, *, actor: IMFormActor, token_hash: str) -> tuple[Form, Recipient]:
+        route = SQLAlchemyIMWebhookChannelRepository(session).find_by_channel_id(actor.channel_id)
+        if (
+            route is None
+            or route.channel.provider is not actor.provider
+            or route.channel.provider_tenant_id != actor.provider_tenant_id
+        ):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
+        if delivery is None or delivery.auth_type is not SubmissionAuthType.IM:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if isinstance(route.scope, WorkspaceScope) and route.scope.id != delivery.tenant_id:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        target = delivery.target_snapshot
+        if (
+            not isinstance(target, IMUserTargetSnapshot)
+            or target.im_provider is not actor.provider
+            or target.im_tenant_id != actor.provider_tenant_id
+            or target.im_provider_user_id != actor.provider_user_id
+        ):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        app_id = SQLAlchemyFormRepository.find_app_id(session, tenant_id=delivery.tenant_id, form_id=delivery.form_id)
+        if app_id is None:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        form = SQLAlchemyFormRepository(session, delivery.tenant_id, app_id).get_form_by_id(delivery.form_id)
+        if form is None:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
+        if recipient is None or not isinstance(recipient.subject, ContactRecipientSubject):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        return form, recipient
+
+    def _resume_submitted_im_form(
+        self, *, actor: IMFormActor, token_hash: str, action: str, inputs: Mapping[str, JsonValue]
+    ) -> None:
+        # Approval commit and broker publication are separate. A redelivery can
+        # repair a failed resume publication without changing the saved approval.
+        with self._session_factory() as session, session.begin():
+            form, recipient = self._load_im_form(session, actor=actor, token_hash=token_hash)
+            submission = form.submission
+            if (
+                submission is None
+                or submission.submitted_by_recipient_id != recipient.id
+                or submission.selected_action_id != action
+                or submission.raw_submission_inputs != inputs
+            ):
+                raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
+            if form.workflow_run_id is None:
+                return
+            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+            run = repository.get_workflow_run_by_id_for_update(
+                session, tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
+            )
+            if run is None or run.status != WorkflowExecutionStatus.PAUSED:
+                return
+        from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+        resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": form.workflow_run_id}})
+
+
+def _ensure_form_waiting(form: Form) -> None:
+    if form.status == HumanInputFormStatus.SUBMITTED:
+        raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
+    if form.status in (HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED):
+        raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
 
 
 def _normalize_inputs(form: Form, *, action: str, inputs: Mapping[str, JsonValue]) -> dict[str, Segment]:

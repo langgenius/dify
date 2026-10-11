@@ -1,0 +1,48 @@
+name: Verify HITL IM callback deployment
+
+on:
+  push:
+    branches:
+      - 'build/feat/hitl-im-dev'
+
+concurrency:
+  group: hitl-im-callback-deployment
+  cancel-in-progress: true
+
+jobs:
+  callback-e2e:
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Wait for deployment and verify signed Slack callbacks
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+        with:
+          host: ${{ secrets.HITL_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 40m
+          script: |
+            set -eu
+            cd ~/langgenius
+            test -n '${{ vars.HITL_IM_E2E_TENANT_ID }}'
+            callback_expected_revision='${{ github.sha }}'
+            callback_deployed=false
+            for callback_attempt in $(seq 1 180); do
+              callback_current=true
+              callback_api=$(docker compose ps -q api)
+              callback_workers=$(docker compose ps -q worker)
+              test -n "$callback_api" && test -n "$callback_workers" || callback_current=false
+              callback_containers="$callback_api $callback_workers"
+              for callback_container in $callback_containers; do
+                callback_image=$(docker inspect --format '{{.Image}}' "$callback_container")
+                callback_revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$callback_image")
+                test "$callback_revision" = "$callback_expected_revision" || callback_current=false
+              done
+              if $callback_current && docker compose exec -T api curl -fsS http://127.0.0.1:5001/health >/dev/null; then
+                callback_deployed=true
+                break
+              fi
+              sleep 10
+            done
+            $callback_deployed || { echo 'Expected API and worker revision was not deployed'; exit 1; }
+            docker compose exec -T api uv run --no-sync --project /app/api python /app/api/dev/verify_hitl_im_callback_e2e.py --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}'

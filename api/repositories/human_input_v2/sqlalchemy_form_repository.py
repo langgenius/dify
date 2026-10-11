@@ -138,6 +138,16 @@ class SQLAlchemyFormRepository(FormRepository):
         self._tenant_id = tenant_id
         self._app_id = app_id
 
+    @staticmethod
+    def find_app_id(session: Session, *, tenant_id: TenantId, form_id: str) -> str | None:
+        """Recover the form owner for an already located delivery."""
+        return session.scalar(
+            sa.select(HumanInputForm.app_id).where(
+                HumanInputForm.tenant_id == tenant_id,
+                HumanInputForm.id == form_id,
+            )
+        )
+
     def _query(self) -> sa.Select[tuple[HumanInputForm]]:
         return (
             sa.select(HumanInputForm)
@@ -258,7 +268,7 @@ class SQLAlchemyFormRepository(FormRepository):
                     HumanInputForm.app_id == self._app_id,
                     HumanInputForm.id == form_id,
                 )
-                .values(id=HumanInputForm.id, updated_at=HumanInputForm.updated_at)
+                .values({"id": HumanInputForm.id, "updated_at": HumanInputForm.updated_at})
                 .execution_options(
                     autoflush=False,
                     synchronize_session=False,
@@ -301,7 +311,7 @@ class SQLAlchemyFormRepository(FormRepository):
             return FormSubmissionFailure.GLOBAL_TIMEOUT
         if now >= form.expiration_time:
             return FormSubmissionFailure.FORM_EXPIRED
-        raw_inputs = _RAW_INPUTS.dump_json(raw_submission_inputs, warnings="error").decode()
+        raw_inputs = _RAW_INPUTS.dump_json(dict(raw_submission_inputs), warnings="error").decode()
         normalized_inputs = _NORMALIZED_INPUTS.dump_json(
             normalized_submission_data,
             serialize_as_any=True,

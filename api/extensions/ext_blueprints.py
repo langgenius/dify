@@ -1,4 +1,5 @@
 from configs import dify_config
+from configs.deploy import IMEventTransportMode
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_CATALOG, HEADER_NAME_CSRF_TOKEN, HEADER_NAME_PASSPORT
 from dify_app import DifyApp
 
@@ -27,6 +28,14 @@ def _apply_cors_once(bp, /, **cors_kwargs):
 
 def init_app(app: DifyApp):
     # register blueprint routers
+
+    from services.human_input_v2.im_webhook_runtime import configure_im_webhook_runtime
+
+    configure_im_webhook_runtime(app)
+    if dify_config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE is IMEventTransportMode.WEBHOOK:
+        from controllers.web.human_input_v2 import bp as im_provider_webhook_bp
+
+        app.register_blueprint(im_provider_webhook_bp)
 
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp

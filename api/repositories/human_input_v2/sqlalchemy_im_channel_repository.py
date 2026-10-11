@@ -3,19 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Annotated, Literal
 
 import sqlalchemy as sa
+from pydantic import Field, RootModel, TypeAdapter
 from sqlalchemy.engine import CursorResult, Result
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.human_input_v2.shared import AccountId, TenantId
+from core.human_input_v2.shared import AccountId, DeploymentScope, TenantId, WorkspaceScope
 from models.human_input_v2 import HumanInputIMChannel
 
 from .im_channel_repository import (
     IMChannel,
     IMChannelAlreadyConfiguredError,
     IMChannelId,
+    IMWebhookChannelRoute,
     StaleIMChannelWriteError,
     WebhookId,
 )
@@ -24,6 +27,51 @@ _DEPLOYMENT_OWNER_KEY = "deployment"
 _INITIAL_CONFIG_VERSION = 1
 _OWNER_KEY_UNIQUE_CONSTRAINT = "human_input_im_channels_owner_key_uq"
 _SQLITE_OWNER_KEY_UNIQUE_TARGET = "human_input_im_channels.owner_key"
+
+
+class _WorkspaceOwner(
+    RootModel[
+        Annotated[
+            str,
+            Field(pattern=r"^workspace:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
+        ]
+    ]
+):
+    pass
+
+
+class _DeploymentOwner(RootModel[Literal["deployment"]]):
+    pass
+
+
+_OWNER_SCOPE = TypeAdapter(_WorkspaceOwner | _DeploymentOwner)
+
+
+class SQLAlchemyIMWebhookChannelRepository:
+    """Resolve callback routing using a caller-owned Session."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def find_by_webhook_id(self, webhook_id: WebhookId) -> IMWebhookChannelRoute | None:
+        record = self._session.scalar(
+            sa.select(HumanInputIMChannel).where(HumanInputIMChannel.webhook_id == webhook_id)
+        )
+        return self._route(record) if record is not None else None
+
+    def find_by_channel_id(self, channel_id: IMChannelId) -> IMWebhookChannelRoute | None:
+        record = self._session.get(HumanInputIMChannel, str(channel_id))
+        return self._route(record) if record is not None else None
+
+    @staticmethod
+    def _route(record: HumanInputIMChannel) -> IMWebhookChannelRoute:
+        owner = _OWNER_SCOPE.validate_python(record.owner_key)
+        scope = (
+            WorkspaceScope(TenantId(owner.root.removeprefix("workspace:")))
+            if isinstance(owner, _WorkspaceOwner)
+            else DeploymentScope()
+        )
+        return IMWebhookChannelRoute(channel=_channel_from_record(record), scope=scope)
 
 
 def _workspace_owner_key(tenant_id: TenantId) -> str:

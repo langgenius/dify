@@ -12,8 +12,8 @@ from fields.base import ResponseModel
 from libs.login import login_required
 from models.account import Account
 from services.human_input_v2.submission_service import (
-    ConsoleFormError,
-    ConsoleFormErrorCode,
+    HumanInputFormError,
+    HumanInputFormErrorCode,
     HumanInputSubmissionService,
 )
 
@@ -51,13 +51,13 @@ class ConsoleHumanInputV2FormApi(Resource):
                 action=payload.action,
                 inputs=payload.inputs,
             )
-        except ConsoleFormError as exc:
+        except HumanInputFormError as exc:
             status = {
-                ConsoleFormErrorCode.NOT_FOUND: 404,
-                ConsoleFormErrorCode.ALREADY_SUBMITTED: 409,
-                ConsoleFormErrorCode.EXPIRED: 410,
-                ConsoleFormErrorCode.WORKFLOW_NOT_ACTIVE: 409,
-                ConsoleFormErrorCode.INVALID_INPUT: 400,
+                HumanInputFormErrorCode.NOT_FOUND: 404,
+                HumanInputFormErrorCode.ALREADY_SUBMITTED: 409,
+                HumanInputFormErrorCode.EXPIRED: 410,
+                HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: 409,
+                HumanInputFormErrorCode.INVALID_INPUT: 400,
             }[exc.code]
             return {"code": exc.code.value, "message": "The approval could not be accepted."}, status
         return ConsoleHumanInputV2SubmitResponse().model_dump(mode="json")

@@ -74,6 +74,12 @@ server {
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
+
+    location /callbacks/human-input/v2/im/ {
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
+      include proxy.conf;
+    }
     
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}

@@ -28,8 +28,8 @@ from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAda
 from core.human_input_v2.im_message_inbox import IMInboxRecordId
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
-from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
+from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from services.human_input_v2.im_message_inbox.telemetry import NoopIMInboxMetrics
 
 _SIGNING_SECRET = "sanitized-signing-material"
@@ -134,7 +134,7 @@ def _build_sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker
         integration_id=_INTEGRATION_ID,
         expected_provider=IMProvider.SLACK,
         expected_provider_tenant_id=_PROVIDER_TENANT_ID,
-        repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+        repository=IMInboxStorage(session_maker),
         clock=_FixedClock().now,
         metrics=NoopIMInboxMetrics(),
     )
