@@ -14,9 +14,8 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import { getIconClassName } from '../utils/get-icon'
@@ -63,11 +62,9 @@ export function DatasetMetadataPicker({
   const metadataItems = datasetMetaData?.doc_metadata ?? []
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<PickerView>(PickerView.select)
-  const [query, setQuery] = useState('')
 
   const resetPickerState = () => {
     setView(PickerView.select)
-    setQuery('')
   }
 
   const handleOpenChangeComplete = (nextOpen: boolean) => {
@@ -76,7 +73,6 @@ export function DatasetMetadataPicker({
 
   const handleStartMetadataCreation = () => {
     setView(PickerView.create)
-    setQuery('')
   }
 
   const handleSelectMetadata = (metadata: MetadataItem | null) => {
@@ -136,15 +132,11 @@ export function DatasetMetadataPicker({
             onOpenChange={setOpen}
             value={null}
             items={metadataItems}
-            inputValue={query}
-            onInputValueChange={setQuery}
             onValueChange={handleSelectMetadata}
             itemToStringLabel={getMetadataLabel}
             filter={metadataFilter}
           >
             <MetadataPickerSelectPanel
-              query={query}
-              onClearQuery={() => setQuery('')}
               onStartMetadataCreation={handleStartMetadataCreation}
               onOpenMetadataManagement={handleOpenMetadataManagement}
             />
@@ -163,23 +155,13 @@ export function DatasetMetadataPicker({
 }
 
 function MetadataPickerSelectPanel({
-  query,
-  onClearQuery,
   onStartMetadataCreation,
   onOpenMetadataManagement,
 }: {
-  query: string
-  onClearQuery: () => void
   onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
   const { t } = useTranslation(['common', 'dataset'])
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleClearQuery = () => {
-    onClearQuery()
-    inputRef.current?.focus()
-  }
 
   return (
     <>
@@ -190,21 +172,9 @@ function MetadataPickerSelectPanel({
             aria-hidden="true"
           />
           <ComboboxInput
-            ref={inputRef}
             aria-label={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             placeholder={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
           />
-          {query && (
-            <IconButton
-              size="sm"
-              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
-              onClick={handleClearQuery}
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <span className="i-ri-close-line size-4" aria-hidden="true" />
-            </IconButton>
-          )}
         </ComboboxInputGroup>
       </div>
       <ComboboxList<MetadataItem>>

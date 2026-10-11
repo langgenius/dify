@@ -19,7 +19,6 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -27,7 +26,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
@@ -114,8 +113,6 @@ export function AppPicker({
   onSearchChange,
 }: AppPickerProps) {
   const { t } = useTranslation(['app', 'common', 'workflow'])
-  const inputRef = useRef<HTMLInputElement>(null)
-
   const handleValueChange = useCallback(
     (app: AppPartial | null) => {
       if (!app) return
@@ -125,11 +122,6 @@ export function AppPicker({
     },
     [onSelect, onShowChange],
   )
-
-  const handleClearSearch = () => {
-    onSearchChange('')
-    inputRef.current?.focus()
-  }
 
   return (
     <Combobox<AppPartial>
@@ -163,24 +155,9 @@ export function AppPicker({
                   aria-hidden="true"
                 />
                 <ComboboxInput
-                  ref={inputRef}
                   aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
                   placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
                 />
-                {searchText && (
-                  <IconButton
-                    size="xs"
-                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                    className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
-                    onClick={handleClearSearch}
-                    onMouseDown={(event) => event.preventDefault()}
-                  >
-                    <span
-                      className="i-custom-vender-solid-general-x-circle size-3.5"
-                      aria-hidden="true"
-                    />
-                  </IconButton>
-                )}
               </ComboboxInputGroup>
               <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                 <ScrollAreaViewport
