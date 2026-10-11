@@ -448,7 +448,10 @@ class TestMCPClient:
     def test_list_tools_paginates_until_cursor_exhausted(self):
         """Test list_tools follows nextCursor across pages."""
         pages = [
-            {"tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}], "nextCursor": "cursor-1"},
+            {
+                "tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}],
+                "nextCursor": "cursor-1",
+            },
             {"tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}]},
         ]
         client, session, t, seen_cursors = self._client_with_paginated_server(pages)
@@ -463,7 +466,10 @@ class TestMCPClient:
     def test_list_tools_stops_on_repeated_cursor(self):
         """Test list_tools does not loop forever when the server echoes a cursor."""
         pages = [
-            {"tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}], "nextCursor": "cursor-1"},
+            {
+                "tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}],
+                "nextCursor": "cursor-1",
+            },
             {
                 "tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}],
                 "nextCursor": "cursor-1",
