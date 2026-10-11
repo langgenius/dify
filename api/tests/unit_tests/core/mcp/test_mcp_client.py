@@ -399,64 +399,100 @@ class TestMCPClient:
         assert result == expected_tools
         mock_session.list_tools.assert_called_once()
 
+    def _client_with_paginated_server(self, pages: list[dict], fail_on_extra_page: bool = False):
+        """Client whose session talks to an in-memory server answering tools/list from pages.
+
+        Each entry in pages is the raw result dict for one request. The server
+        records the cursor of every request it sees. With fail_on_extra_page,
+        any request past the last page gets an error response so a runaway
+        pagination loop fails fast instead of hanging the test.
+        """
+        import queue
+        import threading
+
+        from core.mcp.session.base_session import SessionMessage
+        from core.mcp.session.client_session import ClientSession
+        from core.mcp.types import JSONRPCError, JSONRPCMessage, JSONRPCResponse
+
+        read_stream, write_stream = queue.Queue(), queue.Queue()
+        session = ClientSession(read_stream, write_stream)
+        seen_cursors: list[str | None] = []
+
+        def mock_server():
+            for page in pages:
+                msg = write_stream.get(timeout=5)
+                params = msg.message.root.params or {}
+                seen_cursors.append(params.get("cursor"))
+                resp = JSONRPCResponse(jsonrpc="2.0", id=msg.message.root.id, result=page)
+                read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+            if not fail_on_extra_page:
+                return
+            try:
+                msg = write_stream.get(timeout=2)
+            except queue.Empty:
+                return
+            err = JSONRPCError(
+                jsonrpc="2.0",
+                id=msg.message.root.id,
+                error={"code": -32000, "message": "client asked for a page the server never offered"},
+            )
+            read_stream.put(SessionMessage(message=JSONRPCMessage(err)))
+
+        t = threading.Thread(target=mock_server, daemon=True)
+        t.start()
+
+        client = MCPClient(server_url="http://test.example.com")
+        client._session = session
+        return client, session, t, seen_cursors
+
     def test_list_tools_paginates_until_cursor_exhausted(self):
         """Test list_tools follows nextCursor across pages."""
-        client = MCPClient(server_url="http://test.example.com")
-
-        tool_a = Tool(name="alpha", description="First page tool", inputSchema={"type": "object", "properties": {}})
-        tool_b = Tool(name="beta", description="Second page tool", inputSchema={"type": "object", "properties": {}})
-
-        mock_session = Mock()
-        mock_session.list_tools.side_effect = [
-            ListToolsResult(tools=[tool_a], nextCursor="cursor-1"),
-            ListToolsResult(tools=[tool_b]),
+        pages = [
+            {"tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}], "nextCursor": "cursor-1"},
+            {"tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}]},
         ]
-        client._session = mock_session
+        client, session, t, seen_cursors = self._client_with_paginated_server(pages)
 
-        result = client.list_tools()
+        with session:
+            result = client.list_tools()
+        t.join(timeout=5)
 
-        assert result == [tool_a, tool_b]
-        assert mock_session.list_tools.call_count == 2
-        assert mock_session.list_tools.call_args_list[0].kwargs == {"cursor": None}
-        assert mock_session.list_tools.call_args_list[1].kwargs == {"cursor": "cursor-1"}
+        assert [tool.name for tool in result] == ["alpha", "beta"]
+        assert seen_cursors == [None, "cursor-1"]
 
     def test_list_tools_stops_on_repeated_cursor(self):
         """Test list_tools does not loop forever when the server echoes a cursor."""
-        client = MCPClient(server_url="http://test.example.com")
-
-        tool_a = Tool(name="alpha", description="First page tool", inputSchema={"type": "object", "properties": {}})
-        tool_b = Tool(name="beta", description="Second page tool", inputSchema={"type": "object", "properties": {}})
-
-        mock_session = Mock()
-        mock_session.list_tools.side_effect = [
-            ListToolsResult(tools=[tool_a], nextCursor="cursor-1"),
-            ListToolsResult(tools=[tool_b], nextCursor="cursor-1"),
+        pages = [
+            {"tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}], "nextCursor": "cursor-1"},
+            {
+                "tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}],
+                "nextCursor": "cursor-1",
+            },
         ]
-        client._session = mock_session
+        client, session, t, seen_cursors = self._client_with_paginated_server(pages, fail_on_extra_page=True)
 
-        result = client.list_tools()
+        with session:
+            result = client.list_tools()
+        t.join(timeout=5)
 
         # The echoed cursor must not trigger a third request for the same page.
-        assert result == [tool_a, tool_b]
-        assert mock_session.list_tools.call_count == 2
+        assert [tool.name for tool in result] == ["alpha", "beta"]
+        assert seen_cursors == [None, "cursor-1"]
 
     def test_list_tools_empty_first_page_with_cursor(self):
         """Test list_tools keeps paging when an early page returns no tools."""
-        client = MCPClient(server_url="http://test.example.com")
-
-        tool = Tool(name="late-tool", description="Only on page two", inputSchema={"type": "object", "properties": {}})
-
-        mock_session = Mock()
-        mock_session.list_tools.side_effect = [
-            ListToolsResult(tools=[], nextCursor="cursor-1"),
-            ListToolsResult(tools=[tool]),
+        pages = [
+            {"tools": [], "nextCursor": "cursor-1"},
+            {"tools": [{"name": "late-tool", "inputSchema": {"type": "object", "properties": {}}}]},
         ]
-        client._session = mock_session
+        client, session, t, seen_cursors = self._client_with_paginated_server(pages)
 
-        result = client.list_tools()
+        with session:
+            result = client.list_tools()
+        t.join(timeout=5)
 
-        assert result == [tool]
-        assert mock_session.list_tools.call_count == 2
+        assert [tool.name for tool in result] == ["late-tool"]
+        assert seen_cursors == [None, "cursor-1"]
 
     def test_invoke_tool_not_initialized(self):
         """Test invoke_tool when session not initialized."""
