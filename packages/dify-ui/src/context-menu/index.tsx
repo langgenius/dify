@@ -259,7 +259,9 @@ type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )
