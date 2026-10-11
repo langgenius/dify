@@ -14,9 +14,9 @@ machine-readable failure grammar and is never derived from client input.
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import ValidationError, model_validator
+from pydantic import Field, ValidationError, model_validator
 
 from core.dify_builder.execution_policy import (
     AdmittedNodeBinding,
@@ -87,13 +87,17 @@ class GmailReadAdmission(_TrustedModel):
     parameters: GmailReadParameters
 
 
+# Fixed 28-character prefix plus the full 256-character canonical message ID.
+_MAX_ENVELOPE_PATH = len(GMAIL_MESSAGE_PATH.format(message_id="")) + 256
+
+
 class GmailGetMessageEnvelope(_TrustedModel):
     """Internal full non-secret request envelope; never a public outcome."""
 
     method: Literal["GET"] = "GET"
     host: Literal["gmail.googleapis.com"] = "gmail.googleapis.com"
     api_version: Literal["v1"] = "v1"
-    path: BoundedText
+    path: Annotated[str, Field(strict=True, min_length=1, max_length=_MAX_ENVELOPE_PATH)]
     format: Literal["full"] = "full"
     installed: InstalledToolBinding
     credential: CredentialReference
@@ -330,8 +334,10 @@ def admit_get_message_workflow(snapshot: RestrictedAdmissionSnapshot) -> GmailRe
         raise BuilderExecutionPolicyError("unsupported_graph")
 
     variables = found["start"][1].get("variables", [])
+    # Names must be strings before they are hashed; other finite JSON is refused, not a TypeError.
     if not isinstance(variables, list) or any(
-        not isinstance(v, dict) or v.get("type") not in _START_INPUT_TYPES for v in variables
+        not isinstance(v, dict) or v.get("type") not in _START_INPUT_TYPES or not isinstance(v.get("variable"), str)
+        for v in variables
     ):
         raise BuilderExecutionPolicyError("unsupported_start_input")
     start_outputs = {v.get("variable") for v in variables}
@@ -344,6 +350,8 @@ def admit_get_message_workflow(snapshot: RestrictedAdmissionSnapshot) -> GmailRe
         if not (
             isinstance(selector, list)
             and len(selector) == 2
+            and isinstance(selector[0], str)
+            and isinstance(selector[1], str)
             and (
                 (selector[0] == start_id and selector[1] in start_outputs)
                 or (selector[0] == tool_id and selector[1] in _TOOL_OUTPUTS)
