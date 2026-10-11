@@ -25,6 +25,7 @@ with positive server-resolved verification. Anything else needs setup.
 
 import hashlib
 import hmac
+import uuid
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -254,6 +255,16 @@ def _select_client(
     raise BuilderExecutionPolicyError("needs_setup")
 
 
+def _is_canonical_uuid(value: object) -> bool:
+    """Exactly the lowercase hyphenated form ``str(uuid4())`` stores; no braces, URN, case or whitespace."""
+    if type(value) is not str or len(value) != 36:
+        return False
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
+
 def select_builder_credential(
     db: Session,
     *,
@@ -266,7 +277,9 @@ def select_builder_credential(
     """Select exactly ``credential_id`` as the acting member sees it, in the caller's session."""
     if type(revision_key) is not bytes or not revision_key:
         raise BuilderExecutionPolicyError("invalid_revision_key")
-    if not isinstance(credential_id, str) or not 1 <= len(credential_id) <= 128:
+    # The row ID is a native PostgreSQL UUID: anything but the canonical stored
+    # form would reach SQL as a DataError, so refuse it before any query.
+    if not _is_canonical_uuid(credential_id):
         raise BuilderExecutionPolicyError("credential_reference_unavailable")
     query = select(BuiltinToolProvider).where(
         BuiltinToolProvider.id == credential_id,
