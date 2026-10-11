@@ -287,14 +287,24 @@ def test_hypothetical_envelope_is_fixed_and_separate_from_outcome() -> None:
 @pytest.mark.usefixtures("hypothetical_qualified")
 @pytest.mark.parametrize("length", [1, 228, 229, 256])
 def test_hypothetical_envelope_accepts_every_supported_message_id_length(length: int) -> None:
+    # Full pure chain: parameters -> HYPOTHETICAL qualified envelope -> public disclosure.
     message_id = "a" * length
-    envelope = get_message_envelope(
-        installed=installed(),
-        credential=credential(),
-        parameters=normalize_get_message_parameters(params(message_id=message_id)),
-    )
+    selected = credential()
+    parameters = normalize_get_message_parameters(params(message_id=message_id))
+    envelope = get_message_envelope(installed=installed(), credential=selected, parameters=parameters)
     assert envelope.path == "/gmail/v1/users/me/messages/" + message_id
     assert envelope.parameters.message_id == message_id
+    disclosure = get_message_disclosure(
+        credential=selected, parameters=parameters, expires_at=NOW + timedelta(minutes=10)
+    )
+    assert disclosure.request_url == (
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/" + message_id + "?format=full"
+    )
+    assert disclosure.message_id == message_id
+    assert disclosure.credential_id == selected.credential_id
+    assert disclosure.expires_at == NOW + timedelta(minutes=10)
+    assert disclosure.expires_at.utcoffset() == timedelta(0)
+    assert len(message_id) <= 256
 
 
 @pytest.mark.usefixtures("hypothetical_qualified")
