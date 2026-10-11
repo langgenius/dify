@@ -14,10 +14,8 @@ from typing import Annotated, Any, Literal, Protocol
 from pydantic import (
     BaseModel,
     ConfigDict,
-    Discriminator,
     Field,
     StrictBool,
-    Tag,
     TypeAdapter,
     ValidationError,
     field_validator,
@@ -225,19 +223,8 @@ class ConfirmedToolExecutionContext(_TrustedModel):
     command_id: BoundedID
 
 
-def _context_policy_tag(value: Any) -> str | None:
-    # An absent tag keeps the historical restricted default; it can never select
-    # the confirmed variant, which requires its explicit tag.
-    if isinstance(value, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
-        return value.policy_version
-    tag = value.get("policy_version", "builder-restricted-v1") if isinstance(value, dict) else None
-    return tag if isinstance(tag, str) else None
-
-
 BuilderExecutionContextValue = Annotated[
-    Annotated[BuilderExecutionContext, Tag("builder-restricted-v1")]
-    | Annotated[ConfirmedToolExecutionContext, Tag("builder-confirmed-gmail-read-v1")],
-    Discriminator(_context_policy_tag),
+    BuilderExecutionContext | ConfirmedToolExecutionContext, Field(discriminator="policy_version")
 ]
 _CONTEXT_VALUE_ADAPTER: TypeAdapter[BuilderExecutionContext | ConfirmedToolExecutionContext] = TypeAdapter(
     BuilderExecutionContextValue
@@ -250,7 +237,13 @@ def context_digest(context: BuilderExecutionContext | ConfirmedToolExecutionCont
 
 
 def validate_execution_context(raw: Any) -> BuilderExecutionContext | ConfirmedToolExecutionContext:
-    """Decode either context variant at a JSON/process boundary and verify its digest."""
+    """Decode either context variant at a JSON/process boundary and verify its digest.
+
+    Only an absent tag is filled with the restricted default; it never infers the
+    confirmed variant, whose exclusive fields then fail restricted validation.
+    """
+    if isinstance(raw, dict) and "policy_version" not in raw:
+        raw = {**raw, "policy_version": "builder-restricted-v1"}
     try:
         context = _CONTEXT_VALUE_ADAPTER.validate_python(raw)
     except (ValidationError, ValueError, TypeError, UnicodeError):
