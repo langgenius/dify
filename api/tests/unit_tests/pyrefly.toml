@@ -505,7 +505,6 @@ project-excludes = [
   "core/trigger/conftest.py",
   "core/trigger/debug/test_debug_event_bus.py",
   "core/trigger/debug/test_debug_event_selectors.py",
-  "core/trigger/test_provider.py",
   "core/trigger/test_trigger_manager.py",
   "core/trigger/utils/test_utils_encryption.py",
   "core/trigger/utils/test_utils_endpoint.py",
