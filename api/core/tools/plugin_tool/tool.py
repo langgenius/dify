@@ -17,10 +17,10 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 logger = logging.getLogger(__name__)
 
 # A confirmed call forwards only data messages: anything that could trigger a
-# secondary download or file write is refused before file transformation.
-_CONFIRMED_MESSAGE_TYPES = frozenset(
-    {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.JSON, ToolInvokeMessage.MessageType.VARIABLE}
-)
+# secondary download or file write is refused before file transformation. The
+# audited artifact's single ``message_id`` VARIABLE is admitted separately.
+_CONFIRMED_MESSAGE_TYPES = frozenset({ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.JSON})
+_AUDITED_VARIABLE = "message_id"
 
 
 class PluginTool(Tool):
@@ -85,12 +85,20 @@ class PluginTool(Tool):
         # The complete converted envelope is compared and the business phase
         # spent before the single native dispatch; a refusal sends nothing.
         guard.before_invoke(tool_parameters)
+        # The admitted final envelope's own value: never re-read from public input.
+        expected_message_id = tool_parameters.get(_AUDITED_VARIABLE)
+        variable_seen = False
         complete = False
         try:
             messages = dispatch(guard.dispatch_headers())
             try:
                 for message in messages:
-                    self._observe_confirmed(guard, message)
+                    if message.type == ToolInvokeMessage.MessageType.VARIABLE:
+                        if variable_seen or not self._is_audited_variable(message, expected_message_id):
+                            raise BuilderExecutionPolicyError("unsupported_tool_output")
+                        variable_seen = True
+                    else:
+                        self._observe_confirmed(guard, message)
                     yield message
             finally:
                 messages.close()
@@ -99,6 +107,23 @@ class PluginTool(Tool):
             # Exactly once per spent phase: cancellation, timeout, transport loss
             # or a refused message leave the outcome unknown, never failed.
             self._finish_confirmed(guard, complete=complete)
+
+    @staticmethod
+    def _is_audited_variable(message: ToolInvokeMessage, expected_message_id: object) -> bool:
+        """Only the non-streamed ``message_id`` VARIABLE equal to the admitted final message ID.
+
+        It is optional forwarded data, never a classification input: a VARIABLE
+        or TEXT alone never establishes success.
+        """
+        payload = message.message
+        return (
+            isinstance(payload, ToolInvokeMessage.VariableMessage)
+            and payload.variable_name == _AUDITED_VARIABLE
+            and payload.stream is False
+            and type(expected_message_id) is str
+            and type(payload.variable_value) is str
+            and payload.variable_value == expected_message_id
+        )
 
     @staticmethod
     def _observe_confirmed(guard: ConfirmedToolGuard, message: ToolInvokeMessage) -> None:
