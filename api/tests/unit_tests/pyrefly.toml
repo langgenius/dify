@@ -612,7 +612,6 @@ project-excludes = [
   "extensions/test_ext_request_logging.py",
   "extensions/test_ext_socketio.py",
   "extensions/test_pubsub_channel.py",
-  "extensions/test_redis.py",
   "extensions/test_set_secretkey.py",
   "extensions/test_workflow_warm_shutdown.py",
   "factories/test_build_from_mapping.py",
