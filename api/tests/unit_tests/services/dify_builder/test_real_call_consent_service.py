@@ -42,6 +42,7 @@ from core.dify_builder.real_call_consent import (
     ConsentState,
     GmailReadParameters,
     InstalledToolBinding,
+    Phase,
     scope_digest,
     validate_phase,
 )
@@ -1310,3 +1311,165 @@ def test_malformed_public_ids_refuse_before_any_sql(
     finally:
         event.remove(engine, "before_cursor_execute", spy)
     assert statements == []
+
+
+# --- fix round 1: expiry decided at fresh time after every blocking lock; non-ASCII revision -----
+
+
+class LockClock:
+    """Server clock that jumps forward while the service waits on its LAST blocking row lock."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, lock_name: str) -> None:
+        self.now = datetime.now(UTC)
+        self.jump_to: datetime | None = None
+        self.jumps = 0
+        module = service_module()
+        original: Callable[[Session, str | None], object] = getattr(module, lock_name)
+
+        def waiting_lock(db: Session, ident: str | None) -> object:
+            row = original(db, ident)
+            if self.jump_to is not None:
+                self.now, self.jumps = self.jump_to, self.jumps + 1
+            return row
+
+        monkeypatch.setattr(module, "_utcnow", lambda: self.now)
+        monkeypatch.setattr(module, lock_name, waiting_lock)
+
+    def cross(self, deadline: datetime, delta: timedelta = timedelta(0)) -> None:
+        # Armed after setup: the call enters before expiry and the clock moves inside the lock wait.
+        self.jump_to = deadline.replace(tzinfo=UTC) + delta
+
+
+def expires(owner: Owner, consent_id: str) -> datetime:
+    return owner.consent_row(consent_id).expires_at
+
+
+def test_confirm_crossing_expiry_inside_lock_wait_is_refused(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    prepared = prepare(owner)
+    clock = LockClock(monkeypatch, "_lock_consent")
+    clock.cross(expires(owner, prepared.consent_id))
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_expired"):
+        confirm(owner, prepared)
+    assert clock.jumps == 1
+    row = owner.consent_row(prepared.consent_id)
+    assert (row.state, row.decision, row.confirm_key, row.confirm_receipt) == ("expired", None, None, None)
+
+
+def test_reserve_crossing_expiry_inside_lock_wait_reserves_nothing(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    decision = confirm(owner, prepare(owner))
+    clock = LockClock(monkeypatch, "_lock_consent")
+    clock.cross(expires(owner, decision.consent_id))
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_expired"):
+        reserve(owner, decision)
+    assert clock.jumps == 1
+    row = owner.consent_row(decision.consent_id)
+    assert (row.state, row.command_id, row.execute_key, row.reserved_version) == ("expired", None, None, None)
+    assert owner.count(DifyBuilderExecutionRequest) == 0
+    assert owner.count(DifyBuilderSessionCommit) == 1
+    assert SqlDifyBuilderRepository(owner.factory).get_session(owner.session_id)[0].version == 1
+
+
+def test_tool_claim_crossing_expiry_inside_lock_wait_grants_nothing(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    reserved, _won = reserve(owner, confirm(owner, prepare(owner)))
+    context, run_id = simulate_task6_launch(owner, reserved)
+    clock = LockClock(monkeypatch, "_lock_request")
+    clock.cross(expires(owner, reserved.consent_id))
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_expired"):
+        owner.service().claim_tool(
+            context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution-1"
+        )
+    assert clock.jumps == 1
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.claimed_at, row.native_run_id) == ("expired", None, None)
+
+
+@pytest.mark.parametrize(("phase", "prior"), [("refresh", "none"), ("business", "none"), ("business", "refreshed")])
+def test_phase_crossing_expiry_inside_lock_wait_is_a_known_failure(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, phase: Phase, prior: str
+) -> None:
+    owner = consent_owner
+    reserved, binding = claimed(owner)
+    service = owner.service()
+    parameters = None if phase == "refresh" else APPROVED
+    if prior == "refreshed":
+        service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        service.finish_refresh(
+            binding=binding,
+            old_revision=owner.full_reference_revision(),
+            encrypted_credentials='{"access_token":"enc-new"}',
+            expires_at=1_900_003_600,
+        )
+    before = owner.consent_row(reserved.consent_id)
+    clock = LockClock(monkeypatch, "_lock_request")
+    clock.cross(expires(owner, reserved.consent_id))
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_expired"):
+        service.claim_phase(binding=binding, phase=phase, final_parameters=parameters)
+    assert clock.jumps == 1
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.reason_code) == ("failed", "consent_expired")
+    assert (row.business_count, row.business_claimed_at) == (0, None)
+    # Permanent prior spends are untouched.
+    assert (row.refresh_count, row.refresh_claimed_at, row.derived_credential_revision) == (
+        before.refresh_count,
+        before.refresh_claimed_at,
+        before.derived_credential_revision,
+    )
+
+
+def test_unresolved_refresh_stays_unknown_when_business_crosses_expiry_in_lock(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    reserved, binding = claimed(owner)
+    owner.service().claim_phase(binding=binding, phase="refresh", final_parameters=None)
+    before = owner.consent_row(reserved.consent_id)
+    clock = LockClock(monkeypatch, "_lock_request")
+    clock.cross(expires(owner, reserved.consent_id), timedelta(seconds=1))
+    with pytest.raises(BuilderExecutionPolicyError, match="refresh_uncertain"):
+        owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    assert clock.jumps == 1
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.business_count, row.business_claimed_at) == ("unknown", 0, None)
+    assert (row.refresh_count, row.refresh_claimed_at) == (1, before.refresh_claimed_at)
+
+
+def test_spend_timestamps_use_fresh_time_after_lock_wait(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> None:
+    owner = consent_owner
+    reserved, _won = reserve(owner, confirm(owner, prepare(owner)))
+    context, run_id = simulate_task6_launch(owner, reserved)
+    deadline = expires(owner, reserved.consent_id)
+    clock = LockClock(monkeypatch, "_lock_request")
+    clock.cross(deadline, -timedelta(seconds=2))
+    binding = owner.service().claim_tool(
+        context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution-1"
+    )
+    assert owner.consent_row(reserved.consent_id).claimed_at == deadline - timedelta(seconds=2)
+    clock.cross(deadline, -timedelta(seconds=1))
+    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.business_claimed_at, row.business_count, row.state) == (deadline - timedelta(seconds=1), 1, "claimed")
+    assert clock.jumps == 2
+    # Completion of the already-dispatched phase is still recorded after expiry.
+    clock.cross(deadline, timedelta(minutes=5))
+    owner.service().finish(binding=binding, outcome=ActionOutcome(state="completed", reason_code="message_returned"))
+    assert owner.consent_row(reserved.consent_id).outcome_state == "completed"
+
+
+def test_non_ascii_app_revision_is_a_declared_refusal_without_side_effects(consent_owner: Owner) -> None:
+    owner = consent_owner
+    for revision in ("é", "é" * 64):
+        with pytest.raises(BuilderExecutionPolicyError, match="stale_app_revision"):
+            prepare(owner, base_app_revision=revision)
+    assert owner.consents() == 0
+    assert owner.metadata_reads == []
+    # A valid native revision still prepares.
+    assert prepare(owner).state == "prepared"

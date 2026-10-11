@@ -10,8 +10,11 @@ ciphertext below is an opaque fixture string written by the CAS owner.
 import importlib.util
 import json
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, timedelta
 from pathlib import Path
+from threading import Event
+from time import monotonic, sleep
 from uuid import uuid4
 
 import pytest
@@ -408,6 +411,67 @@ def test_postgres_expiry_boundary_blocks_the_grant_claim(world: World, monkeypat
     monkeypatch.setattr(real_call_consent_service, "_utcnow", lambda: expires_at - timedelta(microseconds=1))
     assert race(claim) == ["consent_not_confirmed"]
     assert world.consent(reserved.consent_id).state == "expired"
+
+
+@pytest.mark.parametrize("spend", ["tool", "business"])
+def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
+    world: World, monkeypatch: pytest.MonkeyPatch, spend: str
+) -> None:
+    """A spend that starts eligible, waits on a real held consent row lock across expiry, must refuse."""
+    spend_once: Callable[[], object]
+    if spend == "tool":
+        reserved, context, run_id = world.launched()
+
+        def spend_once() -> object:
+            return world.service().claim_tool(
+                context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution"
+            )
+    else:
+        reserved, binding = world.claimed()
+
+        def spend_once() -> object:
+            world.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+            return "spent"
+
+    expires_at = world.consent(reserved.consent_id).expires_at.replace(tzinfo=UTC)
+    clock = {"now": expires_at - timedelta(seconds=5)}  # eligible when the call starts
+    monkeypatch.setattr(real_call_consent_service, "_utcnow", lambda: clock["now"])
+    locked, release = Event(), Event()
+
+    def hold_consent_lock() -> None:
+        with world.factory.begin() as db:
+            db.execute(
+                select(DifyBuilderRealCallConsent.id)
+                .where(DifyBuilderRealCallConsent.id == reserved.consent_id)
+                .with_for_update()
+            )
+            locked.set()
+            release.wait(timeout=30)
+
+    def waiting_on_lock() -> bool:
+        with world.factory() as db:
+            return bool(db.scalar(text("SELECT count(*) FROM pg_locks WHERE NOT granted")))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        holder = pool.submit(hold_consent_lock)
+        try:
+            assert locked.wait(timeout=10)
+            spender = pool.submit(lambda: race(spend_once)[0])
+            deadline = monotonic() + 10
+            while not waiting_on_lock():
+                assert monotonic() < deadline, "spend never blocked on the held row lock"
+                sleep(0.05)
+            clock["now"] = expires_at  # expiry passes while the spend is blocked
+        finally:
+            release.set()
+        holder.result(timeout=30)
+        outcome = spender.result(timeout=30)
+    assert outcome == "consent_expired"
+    row = world.consent(reserved.consent_id)
+    if spend == "tool":
+        assert (row.state, row.claimed_at) == ("expired", None)
+    else:
+        assert (row.state, row.business_count, row.business_claimed_at) == ("failed", 0, None)
 
 
 def test_postgres_refresh_cas_never_overwrites_same_timestamp_rotation(world: World) -> None:
