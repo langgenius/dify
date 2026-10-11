@@ -399,6 +399,65 @@ class TestMCPClient:
         assert result == expected_tools
         mock_session.list_tools.assert_called_once()
 
+    def test_list_tools_paginates_until_cursor_exhausted(self):
+        """Test list_tools follows nextCursor across pages."""
+        client = MCPClient(server_url="http://test.example.com")
+
+        tool_a = Tool(name="alpha", description="First page tool", inputSchema={"type": "object", "properties": {}})
+        tool_b = Tool(name="beta", description="Second page tool", inputSchema={"type": "object", "properties": {}})
+
+        mock_session = Mock()
+        mock_session.list_tools.side_effect = [
+            ListToolsResult(tools=[tool_a], nextCursor="cursor-1"),
+            ListToolsResult(tools=[tool_b]),
+        ]
+        client._session = mock_session
+
+        result = client.list_tools()
+
+        assert result == [tool_a, tool_b]
+        assert mock_session.list_tools.call_count == 2
+        assert mock_session.list_tools.call_args_list[0].kwargs == {"cursor": None}
+        assert mock_session.list_tools.call_args_list[1].kwargs == {"cursor": "cursor-1"}
+
+    def test_list_tools_stops_on_repeated_cursor(self):
+        """Test list_tools does not loop forever when the server echoes a cursor."""
+        client = MCPClient(server_url="http://test.example.com")
+
+        tool_a = Tool(name="alpha", description="First page tool", inputSchema={"type": "object", "properties": {}})
+        tool_b = Tool(name="beta", description="Second page tool", inputSchema={"type": "object", "properties": {}})
+
+        mock_session = Mock()
+        mock_session.list_tools.side_effect = [
+            ListToolsResult(tools=[tool_a], nextCursor="cursor-1"),
+            ListToolsResult(tools=[tool_b], nextCursor="cursor-1"),
+        ]
+        client._session = mock_session
+
+        result = client.list_tools()
+
+        # The echoed cursor must not trigger a third request for the same page.
+        assert result == [tool_a, tool_b]
+        assert mock_session.list_tools.call_count == 2
+
+    def test_list_tools_empty_first_page_with_cursor(self):
+        """Test list_tools keeps paging when an early page returns no tools."""
+        client = MCPClient(server_url="http://test.example.com")
+
+        tool = Tool(name="late-tool", description="Only on page two", inputSchema={"type": "object", "properties": {}})
+
+        mock_session = Mock()
+        mock_session.list_tools.side_effect = [
+            ListToolsResult(tools=[], nextCursor="cursor-1"),
+            ListToolsResult(tools=[tool]),
+        ]
+        client._session = mock_session
+
+        result = client.list_tools()
+
+        assert result == [tool]
+        assert mock_session.list_tools.call_count == 2
+
     def test_invoke_tool_not_initialized(self):
         """Test invoke_tool when session not initialized."""
         client = MCPClient(server_url="http://test.example.com")

@@ -114,8 +114,18 @@ class MCPClient:
         """List available tools from the MCP server"""
         if not self._session:
             raise ValueError("Session not initialized.")
-        response = self._session.list_tools()
-        return response.tools
+        tools: list[Tool] = []
+        cursor: str | None = None
+        seen_cursors: set[str] = set()
+        while True:
+            response = self._session.list_tools(cursor=cursor)
+            tools.extend(response.tools)
+            cursor = response.nextCursor
+            # A server echoing the same cursor would loop forever, so stop there.
+            if not cursor or cursor in seen_cursors:
+                break
+            seen_cursors.add(cursor)
+        return tools
 
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""

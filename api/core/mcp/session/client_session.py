@@ -188,23 +188,25 @@ class ClientSession(
             types.EmptyResult,
         )
 
-    def list_resources(self) -> types.ListResourcesResult:
+    def list_resources(self, cursor: str | None = None) -> types.ListResourcesResult:
         """Send a resources/list request."""
         return self.send_request(
             types.ClientRequest(
                 types.ListResourcesRequest(
                     method="resources/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListResourcesResult,
         )
 
-    def list_resource_templates(self) -> types.ListResourceTemplatesResult:
+    def list_resource_templates(self, cursor: str | None = None) -> types.ListResourceTemplatesResult:
         """Send a resources/templates/list request."""
         return self.send_request(
             types.ClientRequest(
                 types.ListResourceTemplatesRequest(
                     method="resources/templates/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListResourceTemplatesResult,
@@ -265,12 +267,13 @@ class ClientSession(
             request_read_timeout_seconds=read_timeout_seconds,
         )
 
-    def list_prompts(self) -> types.ListPromptsResult:
+    def list_prompts(self, cursor: str | None = None) -> types.ListPromptsResult:
         """Send a prompts/list request."""
         return self.send_request(
             types.ClientRequest(
                 types.ListPromptsRequest(
                     method="prompts/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListPromptsResult,
@@ -307,12 +310,13 @@ class ClientSession(
             types.CompleteResult,
         )
 
-    def list_tools(self) -> types.ListToolsResult:
+    def list_tools(self, cursor: str | None = None) -> types.ListToolsResult:
         """Send a tools/list request."""
         return self.send_request(
             types.ClientRequest(
                 types.ListToolsRequest(
                     method="tools/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListToolsResult,
