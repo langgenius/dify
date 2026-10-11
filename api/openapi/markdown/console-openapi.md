@@ -2745,29 +2745,6 @@ Create or update message feedback (like/dislike)
 | 403 | Insufficient permissions |  |
 | 404 | Message not found |  |
 
-### [GET] /apps/{app_id}/feedbacks/export
-Export user feedback data for Google Sheets
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| end_date | query | End date (YYYY-MM-DD) | No | string |
-| format | query | Export format | No | string, <br>**Available values:** "csv", "json", <br>**Default:** csv |
-| from_source | query | Filter by feedback source | No | string, <br>**Available values:** "admin", "user" |
-| has_comment | query | Only include feedback with comments | No | boolean |
-| rating | query | Filter by rating | No | string, <br>**Available values:** "dislike", "like" |
-| start_date | query | Start date (YYYY-MM-DD) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Feedback data exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
-| 400 | Invalid parameters |  |
-| 500 | Internal server error |  |
-
 ### [POST] /apps/{app_id}/icon
 Update application icon
 
@@ -19637,17 +19614,6 @@ Effective feature availability and limits for the current workspace.
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
 | rating | string |  | Yes |
-
-#### FeedbackExportQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| end_date | string | End date (YYYY-MM-DD) | No |
-| format | string, <br>**Available values:** "csv", "json", <br>**Default:** csv | Export format<br>*Enum:* `"csv"`, `"json"` | No |
-| from_source | string, <br>**Available values:** "admin", "user" | Filter by feedback source | No |
-| has_comment | boolean | Only include feedback with comments | No |
-| rating | string, <br>**Available values:** "dislike", "like" | Filter by rating | No |
-| start_date | string | Start date (YYYY-MM-DD) | No |
 
 #### FeedbackStat
 
