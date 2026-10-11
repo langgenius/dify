@@ -1755,6 +1755,11 @@ class ServiceConfirmedToolGuard:
         elif self._refresh == "claimed":
             # A spent refresh never recorded may have rotated tokens remotely.
             outcome = ActionOutcome(state="unknown", reason_code="refresh_uncertain")
+        elif self._refresh == "recorded":
+            # A recorded refresh whose business phase was never dispatched (e.g. the
+            # ordinary cache could not be invalidated): close conservatively so no
+            # fresh guard can continue this grant.
+            outcome = ActionOutcome(state="unknown", reason_code="business_not_dispatched")
         else:
             return
         self._service.finish(binding=self.binding, outcome=outcome)
