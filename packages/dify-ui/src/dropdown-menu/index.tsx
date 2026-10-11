@@ -225,7 +225,9 @@ type DropdownMenuGroupLabelProps = Menu.GroupLabel.Props
 function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelProps) {
   return (
     <Menu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )

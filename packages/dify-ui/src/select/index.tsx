@@ -79,9 +79,11 @@ const selectTriggerVariants = cva(
   {
     variants: {
       size: {
-        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
+        // The text sits 4px further in than the icon: 8px around the control, 4px more for text.
+        // Physical padding, so callers' `px-*`/`pl-*`/`pr-*` overrides keep replacing it.
+        small: 'h-6 gap-px rounded-md py-1 pr-1 pl-2 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg py-2 pr-2 pl-3 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] py-2 pr-3 pl-4 system-md-regular',
       },
     },
     defaultVariants: {
@@ -124,10 +126,14 @@ function SelectLabel({ className, ...props }: SelectLabelProps) {
 
 type SelectGroupLabelProps = BaseSelect.GroupLabel.Props
 
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
 function SelectGroupLabel({ className, ...props }: SelectGroupLabelProps) {
   return (
     <BaseSelect.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -252,9 +258,7 @@ type SelectItemTextProps = BaseSelect.ItemText.Props
 function SelectItemText({ className, ...props }: SelectItemTextProps) {
   return (
     <BaseSelect.ItemText
-      className={(state) =>
-        cn('me-1 min-w-0 grow truncate px-1', resolveClassName(className, state))
-      }
+      className={(state) => cn('me-1 min-w-0 grow truncate', resolveClassName(className, state))}
       {...props}
     />
   )
