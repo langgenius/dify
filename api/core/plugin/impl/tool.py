@@ -13,12 +13,51 @@ from core.schemas.resolver import resolve_dify_schema_refs
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from models.provider_ids import GenericProviderID, ToolProviderID
 
+# The daemon's ``management/tools`` (ListTools) accepts ``page >= 1`` and
+# ``page_size <= 256`` and returns one tenant-filtered page with no total, so
+# the complete inventory is read page by page until a short or empty page.
+_TOOL_PROVIDER_PAGE_SIZE = 256
+# 40 pages = 10,240 tool providers for one workspace -- far beyond any real
+# tenant. Reaching it means the daemon is not paging, so fail explicitly rather
+# than report a truncated inventory as complete.
+_MAX_TOOL_PROVIDER_PAGES = 40
+
 
 class PluginToolManager(BasePluginClient):
     def fetch_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
         """
-        Fetch tool providers for the given tenant.
+        Fetch every tool provider installed for the given tenant.
+
+        Pages through the daemon until a short or empty page. Providers are
+        deduplicated on their stable ``plugin_id/provider`` id, within and
+        across pages, because the daemon's page order is not guaranteed. A failed page fails the whole
+        fetch; a page that adds nothing new (the daemon ignoring ``page``) or
+        exceeding ``_MAX_TOOL_PROVIDER_PAGES`` raises ``ValueError`` -- a partial
+        inventory is never returned as complete.
         """
+        providers: list[PluginToolProviderEntity] = []
+        seen: set[str] = set()
+        for page in range(1, _MAX_TOOL_PROVIDER_PAGES + 1):
+            page_providers = self._fetch_tool_provider_page(tenant_id, page)
+            added = 0
+            for provider in page_providers:
+                identity = provider.declaration.identity.name
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                providers.append(provider)
+                added += 1
+            if page_providers and not added:
+                raise ValueError(f"plugin daemon repeated tool provider page {page}; inventory is incomplete")
+            if len(page_providers) < _TOOL_PROVIDER_PAGE_SIZE:
+                return providers
+        raise ValueError(
+            f"plugin daemon returned more than {_MAX_TOOL_PROVIDER_PAGES} full tool provider pages; "
+            "inventory is incomplete"
+        )
+
+    def _fetch_tool_provider_page(self, tenant_id: str, page: int) -> list[PluginToolProviderEntity]:
+        """Fetch one ``management/tools`` page with stable ``plugin_id/provider`` names."""
 
         def transformer(json_response: dict[str, Any]):
             for provider in json_response.get("data", []):
@@ -36,7 +75,7 @@ class PluginToolManager(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/tools",
             list[PluginToolProviderEntity],
-            params={"page": 1, "page_size": 256},
+            params={"page": page, "page_size": _TOOL_PROVIDER_PAGE_SIZE},
             transformer=transformer,
         )
 

@@ -135,7 +135,9 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
-        agent = build_dify_builder_agent(tenant_id=actor.tenant_id, model_config=_fc.model_config)
+        agent = build_dify_builder_agent(
+            tenant_id=actor.tenant_id, model_config=_fc.model_config, account_id=actor.account_id
+        )
 
         def emit_workflow(payload: Mapping[str, object]) -> None:
             assert env is not None

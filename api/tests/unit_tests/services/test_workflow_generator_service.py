@@ -295,3 +295,106 @@ class TestWorkflowGeneratorService:
         assert call_kwargs["model_instance"] is instance
         assert call_kwargs["mode"] == "workflow"
         assert call_kwargs["provider"] == "openai"
+
+
+def _catalogue_entry(provider_name: str, tool_name: str, *, needs_credentials: bool) -> dict:
+    return {
+        "provider_name": provider_name,
+        "provider_type": "builtin",
+        "plugin_id": provider_name.rsplit("/", 1)[0] if "/" in provider_name else "",
+        "tool_name": tool_name,
+        "tool_label": tool_name,
+        "description": f"{tool_name} description",
+        "needs_credentials": needs_credentials,
+    }
+
+
+_EMPTY_GRAPH_RESULT = {
+    "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+    "message": "",
+    "error": "",
+}
+
+
+class TestReadyToolAllowlist:
+    """ENG-1191: the Builder hands the generator only the tools it may execute.
+
+    ``ready_tool_keys=None`` (every cmd+K caller) keeps the full installed
+    catalogue; a set restricts both the routed catalogue and the validator's
+    installed-tool keys, so a missing_config tool can neither be routed nor
+    survive validation.
+    """
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    def test_allowlist_filters_catalogue_and_validator_keys(
+        self, mock_build_catalogue, mock_model_manager, mock_workflow_generator
+    ):
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = [
+            _catalogue_entry("time", "current_time", needs_credentials=False),
+            _catalogue_entry("acme/huddle/huddle", "post", needs_credentials=True),
+        ]
+        mock_workflow_generator.generate_workflow_graph.return_value = _EMPTY_GRAPH_RESULT
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="workflow",
+            instruction="Post the time to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
+        assert [(e["provider_name"], e["tool_name"]) for e in call_kwargs["tool_catalogue_entries"]] == [
+            ("time", "current_time")
+        ]
+        assert call_kwargs["installed_tools"] == {("time", "current_time")}
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    def test_empty_allowlist_means_no_executable_tools(
+        self, mock_build_catalogue, mock_model_manager, mock_workflow_generator
+    ):
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = [_catalogue_entry("acme/huddle/huddle", "post", needs_credentials=True)]
+        mock_workflow_generator.generate_workflow_graph.return_value = _EMPTY_GRAPH_RESULT
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset(),
+        )
+
+        call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
+        assert call_kwargs["tool_catalogue_entries"] == []
+        # an empty set (not the None "unknown inventory" sentinel) keeps tool
+        # validation on, so any generated tool node is rejected
+        assert call_kwargs["installed_tools"] == set()
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    def test_allowlist_keeps_validation_on_when_the_catalogue_fails(
+        self, mock_build_catalogue, mock_model_manager, mock_workflow_generator
+    ):
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.side_effect = RuntimeError("plugin daemon unreachable")
+        mock_workflow_generator.generate_workflow_graph.return_value = _EMPTY_GRAPH_RESULT
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
+        assert call_kwargs["tool_catalogue_entries"] == []
+        assert call_kwargs["installed_tools"] is not None
+        assert call_kwargs["installed_tools"] <= {("time", "current_time")}

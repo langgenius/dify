@@ -3,6 +3,19 @@ import json
 import pytest
 
 from services.dify_builder.agent import build, resources
+from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+    ACCOUNT_A,
+    ACCOUNT_B,
+    TENANT_ID,
+    FakeTool,
+    FakeToolDaemon,
+    add_credential,
+    bind_database,
+    filler_providers,
+    forbid_secret_and_business_calls,
+    install_fake_daemon,
+    provider_payload,
+)
 
 
 class _Msg:
@@ -352,7 +365,7 @@ def test_discover_resources_refuses_dataset_recommendations(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]
         ),
     )
@@ -365,7 +378,7 @@ def _stub_inventory(monkeypatch, *, datasets=(), models=(), tools=()):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda _t: resources.TenantResources(models=list(models), datasets=list(datasets), tools=list(tools)),
+        lambda _t, **_kw: resources.TenantResources(models=list(models), datasets=list(datasets), tools=list(tools)),
     )
 
 
@@ -496,7 +509,7 @@ def test_bind_resources_refuses_dataset_binding(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[], datasets=[resources.ResourceRef(id="kb-1", label="Company KB")], tools=[]
         ),
     )
@@ -512,7 +525,7 @@ def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[
                 resources.ResourceRef(
                     id="langgenius/tokener/tokener/deepseek-v4-flash",
@@ -554,7 +567,7 @@ def test_bind_resources_binds_each_tool_to_the_step_naming_its_id(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[],
             datasets=[],
             tools=[
@@ -606,7 +619,7 @@ def test_bind_resources_tool_suffix_carries_the_id_the_generator_pins_on(monkeyp
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[],
             datasets=[],
             tools=[
@@ -649,7 +662,7 @@ def test_bind_resources_names_the_tool_id_on_an_empty_plan_too(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[],
             datasets=[],
             tools=[
@@ -669,7 +682,7 @@ def test_bind_resources_keeps_model_label_and_ignores_selected_dataset(monkeypat
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[
                 resources.ResourceRef(
                     id="langgenius/tokener/tokener/deepseek-v4-flash",
@@ -694,7 +707,7 @@ def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeyp
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[], datasets=[], tools=[resources.ResourceRef(id="p/t", label="Some Tool")]
         ),
     )
@@ -711,7 +724,7 @@ def test_bind_resources_rebind_with_the_same_selection_is_idempotent(monkeypatch
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[
                 resources.ResourceRef(
                     id="langgenius/tokener/tokener/deepseek-v4-flash",
@@ -745,7 +758,7 @@ def test_bind_resources_rebind_with_a_changed_selection_drops_the_deselected_lab
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[resources.ResourceRef(id="model-a", label="Model A")],
             datasets=[],
             tools=[
@@ -771,7 +784,7 @@ def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypa
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
             models=[
                 resources.ResourceRef(
                     id="langgenius/tokener/tokener/deepseek-v4-flash",
@@ -937,6 +950,7 @@ def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch):
             instruction,
             model_config,  # noqa: ARG004
             current_graph,  # noqa: ARG004
+            **_kwargs,
         ):
             seen["instruction"] = instruction
             return {
@@ -950,6 +964,7 @@ def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch):
     # shared class object itself.
     monkeypatch.setattr(build, "WorkflowGeneratorService", _FakeGen)
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: {})  # noqa: ARG005
+    _stub_inventory(monkeypatch)
 
     build.build_nodes(tenant_id="t1", model_config={}, plan_items=["llm node drafts a reply"])
 
@@ -986,7 +1001,7 @@ def test_ready_tool_catalogue_lists_only_ready_tools_and_is_capped(monkeypatch):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
-        lambda t: resources.TenantResources(models=[], datasets=[], tools=tools),  # noqa: ARG005
+        lambda t, **_kw: resources.TenantResources(models=[], datasets=[], tools=tools),  # noqa: ARG005
     )
 
     out = build.ready_tool_catalogue("t1")
@@ -997,7 +1012,7 @@ def test_ready_tool_catalogue_lists_only_ready_tools_and_is_capped(monkeypatch):
 
 
 def test_ready_tool_catalogue_degrades_to_empty_when_the_listing_fails(monkeypatch):
-    def boom(_tenant_id):
+    def boom(_tenant_id, **_kwargs):
         raise RuntimeError("plugin daemon down")
 
     monkeypatch.setattr(build.resources, "list_tenant_resources", boom)
@@ -1227,3 +1242,336 @@ def test_grounding_preserves_retrieval_config_without_dataset_assignment(monkeyp
     build._ground([intent], mc)
 
     assert intent.args["config"]["dataset_ids"] == ["original"]
+
+
+# ---- ENG-1191: installed tool discovery vs executable planning ---------------
+#
+# Real inventory owners (PluginToolManager -> ToolManager -> tool catalogue ->
+# resources) over a faked plugin daemon and real SQLite credential rows. The
+# LLM is the other faked boundary.
+
+
+_HUDDLE_POST = "acme/huddle/huddle/post"
+_FREE_ECHO = "acme/free/free/echo"
+_PAGER_OPEN = "zeta/pager/pager/open_incident"
+_PAGER_PLUS = "zeta/pagerplus/pagerplus/page_oncall"
+_ONLYME_RUN = "acme/onlyme/onlyme/run"
+_FILLER_COUNT = 120
+
+
+@pytest.fixture
+def installed_tools(monkeypatch, sqlite_engine):
+    bind_database(monkeypatch, sqlite_engine)
+    daemon = install_fake_daemon(
+        monkeypatch,
+        FakeToolDaemon(
+            providers_by_tenant={
+                TENANT_ID: [
+                    *filler_providers(_FILLER_COUNT),
+                    provider_payload(
+                        "acme/huddle",
+                        "huddle",
+                        [FakeTool(name="post", label="Post", description="Send text to a channel.")],
+                        needs_credentials=True,
+                        label="Huddle",
+                        description="Notify teammates in shared chat channels.",
+                        tags=["social"],
+                    ),
+                    provider_payload(
+                        "acme/free", "free", [FakeTool(name="echo", label="Echo", description="Echo the input.")]
+                    ),
+                    provider_payload(
+                        "acme/onlyme",
+                        "onlyme",
+                        [FakeTool(name="run", label="Run", description="Private teammate tool.")],
+                        needs_credentials=True,
+                    ),
+                    provider_payload(
+                        "zeta/pager",
+                        "pager",
+                        [
+                            FakeTool(
+                                name="open_incident",
+                                label="Open incident",
+                                description="Page the on-call responders about an incident.",
+                            )
+                        ],
+                    ),
+                    provider_payload(
+                        "zeta/pagerplus",
+                        "pagerplus",
+                        [
+                            FakeTool(
+                                name="page_oncall",
+                                label="Page on-call",
+                                description="Page the on-call responders about an incident.",
+                            )
+                        ],
+                        needs_credentials=True,
+                    ),
+                ]
+            }
+        ),
+    )
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    return daemon, forbid_secret_and_business_calls(monkeypatch)
+
+
+def test_discovery_recommends_an_unauthenticated_installed_tool_as_requiring_setup(installed_tools):
+    """The full path: an installed tool with no credential, matched by its
+    description/provider capability (not its bare label "Post"), reaches the
+    recommender beyond the old name-sorted window and comes back
+    missing_config with a setup note -- without any secret/invoke call."""
+    _daemon, forbidden = installed_tools
+    model = _FakeInstance([json.dumps({"resource_ids": [_HUDDLE_POST]})])
+
+    options = build.discover_resources(
+        model,
+        TENANT_ID,
+        ["start node: ticket closed", "tool node notifies teammates in the shared chat channel", "end node"],
+        goal_text="When a ticket closes, notify teammates in our chat channel.",
+        requirements={"channel": "#support"},
+    )
+
+    assert [(o.id, o.kind, o.readiness) for o in options] == [(_HUDDLE_POST, "plugin", "missing_config")]
+    assert "requires setup" in options[0].meta
+    system = model.calls[0][0][0].content
+    user = model.calls[0][0][1].content
+    # the recommender may now surface setup-required tools...
+    assert "never recommend a missing_config" not in system
+    assert "missing_config" in system
+    # ...sees what the tool does, not only its label...
+    huddle_lines = [line for line in user.splitlines() if _HUDDLE_POST in line]
+    assert len(huddle_lines) == 1
+    assert "missing_config" in huddle_lines[0]
+    assert "Send text to a channel." in huddle_lines[0] or "Notify teammates" in huddle_lines[0]
+    # ...and is given a bounded, relevance-ranked candidate list
+    plugin_lines = [line for line in user.splitlines() if "(plugin," in line]
+    assert len(plugin_lines) < _FILLER_COUNT
+    assert forbidden == []
+
+
+@pytest.mark.usefixtures("installed_tools")
+def test_discovery_with_no_model_signal_still_recommends_nothing():
+    model = _FakeInstance([json.dumps({"resource_ids": []})])
+
+    assert build.discover_resources(model, TENANT_ID, ["tool node posts to chat"]) == []
+
+
+def test_planner_sees_a_relevant_ready_tool_beyond_the_old_name_cap_and_no_setup_tools(installed_tools, monkeypatch):
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+
+    _daemon, forbidden = installed_tools
+    captured = {}
+
+    def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
+        captured["system"] = system
+        return json.dumps({"plan": ["tool node pages the on-call responders"]})
+
+    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
+    agent = LlmBuilderAgent(TENANT_ID, {})
+    monkeypatch.setattr(agent, "_model", lambda: _FakeInstance([]))
+
+    agent.propose_plan_v1({"severity": "high"}, goal_text="Page the on-call responders when an incident opens.")
+
+    system = captured["system"]
+    section = system.split("# Installed tools you may name (ready to use)", 1)[1]
+    listed = [line for line in section.splitlines() if line.startswith("- ")]
+    assert _PAGER_OPEN in section
+    # a better-worded missing_config tool is never offered as executable
+    assert _PAGER_PLUS not in section
+    assert _HUDDLE_POST not in section
+    assert 0 < len(listed) <= build._MAX_PLANNER_TOOLS
+    assert forbidden == []
+
+
+@pytest.mark.usefixtures("installed_tools")
+def test_bind_resources_binds_only_ready_tools():
+    plan = ["tool node echoes the ticket", "tool node posts to the team chat"]
+
+    bound = build.bind_resources(None, TENANT_ID, plan, [_FREE_ECHO, _HUDDLE_POST])
+
+    joined = "\n".join(bound)
+    assert f"[{_FREE_ECHO}]" in joined
+    assert _HUDDLE_POST not in joined
+
+
+@pytest.mark.usefixtures("installed_tools")
+def test_bind_resources_honours_the_actors_credential_visibility(sqlite_session):
+    from models.enums import PermissionEnum
+
+    add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider="acme/onlyme/onlyme",
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    plan = ["tool node runs the private step"]
+
+    owner = build.bind_resources(None, TENANT_ID, plan, [_ONLYME_RUN], account_id=ACCOUNT_B)
+    teammate = build.bind_resources(None, TENANT_ID, plan, [_ONLYME_RUN], account_id=ACCOUNT_A)
+
+    assert _ONLYME_RUN in "\n".join(owner)
+    assert _ONLYME_RUN not in "\n".join(teammate)
+
+
+def _session_model_config():
+    from core.app.app_config.entities import ModelConfig
+
+    return ModelConfig.model_validate({"provider": "anthropic", "name": "x", "mode": "chat", "completion_params": {}})
+
+
+class _CapturingGenerator:
+    def __init__(self, graph: dict | None = None):
+        self.calls: list[dict] = []
+        self._graph = graph or {"nodes": [{"id": "s", "data": {"type": "start", "title": "Start"}}], "edges": []}
+
+    def generate_workflow_graph(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"graph": self._graph, "error": "", "errors": []}
+
+
+def _tool_graph(provider_id: str, tool_name: str) -> dict:
+    return {
+        "nodes": [
+            {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "t",
+                "type": "custom",
+                "data": {
+                    "type": "tool",
+                    "title": tool_name,
+                    "provider_id": provider_id,
+                    "provider_name": provider_id,
+                    "provider_type": "builtin",
+                    "tool_name": tool_name,
+                    "tool_label": tool_name,
+                    "tool_parameters": {},
+                    "tool_configurations": {},
+                },
+            },
+            {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [{"id": "e1", "source": "s", "target": "t"}, {"id": "e2", "source": "t", "target": "e"}],
+    }
+
+
+def _tool_intents(result) -> list[tuple[str, str]]:
+    return [
+        (intent.args["config"].get("provider_id"), intent.args["config"].get("tool_name"))
+        for intent in result.intents
+        if intent.op == "create_node" and intent.args.get("node_type") == "tool"
+    ]
+
+
+@pytest.mark.usefixtures("installed_tools")
+def test_build_nodes_restricts_generation_to_the_uncapped_ready_inventory(monkeypatch):
+    generator = _CapturingGenerator()
+    monkeypatch.setattr(build, "WorkflowGeneratorService", generator)
+    monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: _session_model_config())  # noqa: ARG005
+
+    build.build_nodes(TENANT_ID, {}, ["tool node posts to the team chat"])
+
+    ready = generator.calls[0].get("ready_tool_keys")
+    assert ready is not None
+    assert ("acme/free/free", "echo") in ready
+    assert ("time", "current_time") in ready
+    # every ready filler, not a name-sorted planner window
+    assert sum(1 for provider, _tool in ready if provider.startswith("aaa/filler_")) == _FILLER_COUNT
+    assert ("acme/huddle/huddle", "post") not in ready
+    assert ("zeta/pagerplus/pagerplus", "page_oncall") not in ready
+
+
+@pytest.mark.usefixtures("installed_tools")
+def test_build_nodes_ready_inventory_uses_the_actor(sqlite_session, monkeypatch):
+    from models.enums import PermissionEnum
+
+    add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider="acme/onlyme/onlyme",
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    generator = _CapturingGenerator()
+    monkeypatch.setattr(build, "WorkflowGeneratorService", generator)
+    monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: _session_model_config())  # noqa: ARG005
+
+    build.build_nodes(TENANT_ID, {}, ["tool node runs"], account_id=ACCOUNT_B)
+    build.build_nodes(TENANT_ID, {}, ["tool node runs"], account_id=ACCOUNT_A)
+
+    assert ("acme/onlyme/onlyme", "run") in generator.calls[0]["ready_tool_keys"]
+    assert ("acme/onlyme/onlyme", "run") not in generator.calls[1]["ready_tool_keys"]
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "tool_name", "admitted"),
+    [
+        ("acme/free/free", "echo", True),  # ready control
+        ("acme/huddle/huddle", "post", False),  # installed, missing_config
+    ],
+)
+@pytest.mark.usefixtures("installed_tools")
+def test_build_nodes_never_admits_a_generated_tool_node_outside_the_ready_inventory(
+    monkeypatch, provider_id, tool_name, admitted
+):
+    """Defense in depth: even a generator that ignores the allowlist cannot
+    smuggle a missing_config tool into the applied graph."""
+    generator = _CapturingGenerator(_tool_graph(provider_id, tool_name))
+    monkeypatch.setattr(build, "WorkflowGeneratorService", generator)
+    monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: _session_model_config())  # noqa: ARG005
+
+    result = build.build_nodes(TENANT_ID, {}, [f"tool node runs {tool_name}"])
+
+    assert ((provider_id, tool_name) in _tool_intents(result)) is admitted
+
+
+# ---- review edge: the readiness reason survives a long description -----------
+
+_LONG_DESCRIPTION = "Send a richly formatted message to a team chat channel. " * 12
+
+
+@pytest.mark.parametrize(
+    ("drop_credential_table", "expected_note"),
+    [
+        (False, resources.SETUP_REQUIRED_NOTE),
+        (True, resources.AUTHORIZATION_UNVERIFIED_NOTE),
+    ],
+)
+def test_discovery_prompt_keeps_the_readiness_reason_for_a_long_description(
+    monkeypatch, sqlite_engine, drop_credential_table, expected_note
+):
+    from sqlalchemy import text
+
+    bind_database(monkeypatch, sqlite_engine)
+    install_fake_daemon(
+        monkeypatch,
+        FakeToolDaemon(
+            providers_by_tenant={
+                TENANT_ID: [
+                    provider_payload(
+                        "acme/huddle",
+                        "huddle",
+                        [FakeTool(name="post", label="Post", description=_LONG_DESCRIPTION)],
+                        needs_credentials=True,
+                    )
+                ]
+            }
+        ),
+    )
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    if drop_credential_table:
+        with sqlite_engine.begin() as connection:
+            connection.execute(text("DROP TABLE tool_builtin_providers"))
+    model = _FakeInstance([json.dumps({"resource_ids": [_HUDDLE_POST]})])
+
+    build.discover_resources(model, TENANT_ID, ["tool node posts to the team chat channel"], account_id=ACCOUNT_A)
+
+    user = model.calls[0][0][1].content
+    huddle_lines = [line for line in user.splitlines() if _HUDDLE_POST in line]
+    assert len(huddle_lines) == 1
+    assert "missing_config" in huddle_lines[0]
+    assert expected_note in huddle_lines[0]

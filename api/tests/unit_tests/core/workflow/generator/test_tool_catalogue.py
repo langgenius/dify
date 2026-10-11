@@ -3,6 +3,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.workflow.generator.tool_catalogue import (
@@ -516,21 +518,28 @@ class TestToolDescription:
 
 class TestBuildToolCatalogue:
     """
-    The builder iterates the ``ToolManager.list_builtin_providers`` generator
-    (which already covers both hardcoded and plugin providers in production).
-    We patch the generator + isinstance so the tests can exercise every branch
-    without standing up real plugin daemon state.
+    The builder enumerates hardcoded providers and the tenant's plugin
+    providers (``ToolManager.list_hardcoded_providers`` /
+    ``list_plugin_providers``). We patch the hardcoded source + isinstance so
+    the tests can exercise every branch without standing up real plugin daemon
+    state; the plugin source is empty here.
     """
 
+    @pytest.fixture(autouse=True)
+    def _no_plugin_providers(self, monkeypatch):
+        monkeypatch.setattr(
+            "core.workflow.generator.tool_catalogue.ToolManager.list_plugin_providers", lambda _tenant_id: []
+        )
+
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_returns_empty_list_for_tenant_with_no_tools(self, mock_list, mock_isinstance):
         mock_list.return_value = iter([])
 
         assert build_tool_catalogue("tenant-1") == []
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_collects_hardcoded_and_plugin_tools(self, mock_list, mock_isinstance):
         # Mixed-tenant scenario: hardcoded provider plus a plugin provider,
         # each carrying one tool. The catalogue must include all four fields
@@ -574,7 +583,7 @@ class TestBuildToolCatalogue:
         assert time_entry["needs_credentials"] is False
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_skips_unknown_provider_classes(self, mock_list, mock_isinstance):
         # If ToolManager ever yields a provider the catalogue doesn't know how
         # to label, we must continue (not raise) and leave it out of the
@@ -588,7 +597,7 @@ class TestBuildToolCatalogue:
         assert [e["provider_name"] for e in entries] == ["time"]
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_continues_when_a_provider_get_tools_raises(self, mock_list, mock_isinstance):
         # A buggy plugin must not break the whole catalogue. Resilient
         # per-provider try/except is what keeps generation usable in tenants
@@ -602,7 +611,7 @@ class TestBuildToolCatalogue:
         assert [e["provider_name"] for e in entries] == ["time"]
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_continues_when_a_providers_need_credentials_property_raises(self, mock_list, mock_isinstance):
         # Regression guard: `.need_credentials` used to be read OUTSIDE the
         # per-provider try/except that guards get_tools() and per-tool
@@ -619,7 +628,7 @@ class TestBuildToolCatalogue:
         assert [e["provider_name"] for e in entries] == ["time"]
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_skips_individual_tools_when_their_metadata_is_broken(self, mock_list, mock_isinstance):
         # Per-tool try/except — a single mis-declared tool inside an otherwise
         # healthy provider gets dropped, the rest still surface.
@@ -634,7 +643,7 @@ class TestBuildToolCatalogue:
         assert [e["tool_name"] for e in entries] == ["ok"]
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_keeps_complete_inventory_for_validation_beyond_prompt_cap(self, mock_list, mock_isinstance):
         # Prompt formatting is capped separately. Dropping entries here would
         # make the validator falsely report installed tools after the cap as
@@ -651,7 +660,7 @@ class TestBuildToolCatalogue:
         assert ("p", "t199") in installed_tool_keys(entries)
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
-    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
+    @patch("core.workflow.generator.tool_catalogue.ToolManager.list_hardcoded_providers")
     def test_defaults_plugin_id_to_empty_string_when_missing(self, mock_list, mock_isinstance):
         # Plugin provider whose plugin_id is None should serialise to "" so
         # the consumer can safely index ``e["plugin_id"]`` without a None
@@ -662,3 +671,90 @@ class TestBuildToolCatalogue:
         entries = build_tool_catalogue("tenant-1")
 
         assert entries[0]["plugin_id"] == ""
+
+
+# ── ENG-1191: real installed inventory through the daemon boundary ───────────
+
+
+class TestInstalledInventoryCatalogue:
+    """Real hardcoded providers + plugin providers parsed from a faked daemon."""
+
+    def test_a_plugin_daemon_failure_keeps_the_hardcoded_tools(self, monkeypatch):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeToolDaemon, install_fake_daemon
+
+        install_fake_daemon(monkeypatch, FakeToolDaemon(fail_all=True))
+
+        entries = build_tool_catalogue("tenant-1")
+
+        keys = installed_tool_keys(entries)
+        assert ("time", "current_time") in keys
+        assert all(entry["plugin_id"] == "" for entry in entries)
+
+    def test_entries_carry_the_provider_capability_metadata(self, monkeypatch):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+            FakeTool,
+            FakeToolDaemon,
+            install_fake_daemon,
+            provider_payload,
+        )
+
+        install_fake_daemon(
+            monkeypatch,
+            FakeToolDaemon(
+                providers_by_tenant={
+                    "tenant-1": [
+                        provider_payload(
+                            "acme/huddle",
+                            "huddle",
+                            [FakeTool(name="post", label="Post", description="Send text.")],
+                            needs_credentials=True,
+                            label="Huddle Team Chat",
+                            description="Notify teammates in shared chat channels.",
+                            tags=["social", "productivity"],
+                        )
+                    ]
+                }
+            ),
+        )
+
+        entry = find_tool_entry(build_tool_catalogue("tenant-1"), "acme/huddle/huddle", "post")
+
+        assert entry is not None
+        assert entry["needs_credentials"] is True
+        assert entry.get("provider_label") == "Huddle Team Chat"
+        assert entry.get("provider_description") == "Notify teammates in shared chat channels."
+        assert entry.get("provider_tags") == ["social", "productivity"]
+
+    def test_routing_matches_a_tool_by_its_provider_capability_metadata(self, monkeypatch):
+        from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+            FakeTool,
+            FakeToolDaemon,
+            install_fake_daemon,
+            provider_payload,
+        )
+
+        install_fake_daemon(
+            monkeypatch,
+            FakeToolDaemon(
+                providers_by_tenant={
+                    "tenant-1": [
+                        provider_payload(
+                            "acme/huddle",
+                            "huddle",
+                            [FakeTool(name="post", label="Post", description="Send text.")],
+                            label="Huddle",
+                            description="Notify teammates in shared chat channels.",
+                            tags=["social"],
+                        )
+                    ]
+                }
+            ),
+        )
+        entries = build_tool_catalogue("tenant-1")
+
+        selection = select_tool_candidates(
+            entries, [ToolCapabilityQuery(capability="notify teammates", keywords=["chat channel"])]
+        )
+
+        assert ("acme/huddle/huddle", "post") in installed_tool_keys(selection.entries)
+        assert selection.unmatched_queries == []

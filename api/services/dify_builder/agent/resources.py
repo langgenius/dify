@@ -1,8 +1,12 @@
 """Read-only tenant resource inventory for Dify Builder cognition/grounding.
 
 One entry point -- list_tenant_resources -- returns the tenant's configured
-models, datasets, and tools normalized to id+label. Each source degrades to
-an empty list on failure so a missing provider never breaks the advance.
+models and datasets and every INSTALLED tool, normalized to id+label. A tool
+is listed whether or not it is authorized; its ``readiness`` says whether the
+acting member can run it. Readiness is computed from credential-row metadata
+only (provider id, owner, visibility) -- never credential values, decryption,
+OAuth refresh, validation or invocation. Each source degrades to an empty
+list on failure so a missing provider never breaks the advance.
 """
 
 import logging
@@ -12,13 +16,21 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.tools.tool_manager import ToolManager
-from core.workflow.generator.tool_catalogue import build_tool_catalogue
+from core.workflow.generator.tool_catalogue import build_tool_catalogue, tool_capability_text
 from extensions.ext_database import db
+from models.credential_permission import CredentialType as CredentialPermissionType
 from models.dataset import Dataset
+from models.provider_ids import ToolProviderID
+from models.tools import BuiltinToolProvider
+from services.credential_permission_service import CredentialPermissionService
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
+
+
+# Appended to a missing_config tool's meta so the recommendation says why.
+SETUP_REQUIRED_NOTE = "requires setup: authorize this tool's credentials in the workspace before it can run"
+AUTHORIZATION_UNVERIFIED_NOTE = "requires setup: authorization could not be verified"
 
 
 @dataclass(frozen=True)
@@ -27,6 +39,10 @@ class ResourceRef:
     label: str
     meta: str = ""
     readiness: str = "ready"
+    # Tools only: the tool's own description and its provider's label,
+    # description and tags, used to rank tools against a request.
+    description: str = ""
+    capability: str = ""
 
 
 @dataclass(frozen=True)
@@ -49,36 +65,76 @@ def _list_tools(tenant_id: str) -> list[dict]:
     return list(build_tool_catalogue(tenant_id))
 
 
-def _authorized_providers(tenant_id: str) -> set[str]:
-    """Providers with a credential row, i.e. authorized for this tenant.
+def _authorized_providers(tenant_id: str, account_id: str | None) -> set[str]:
+    """Tool provider ids with a credential row the acting member may use.
 
-    Mirrors ``ToolTransformService.builtin_provider_to_user_provider``
-    (api/services/tools/tools_transform_service.py) so the Builder and the
-    console's own tools page can never disagree about what is usable: a
-    provider is usable when it needs no credentials, or when a
-    ``tool_builtin_providers`` row exists for it.
+    A provider is usable when it needs no credentials, or when a
+    ``tool_builtin_providers`` row in this tenant is visible to the member
+    under the native per-credential policy
+    (``CredentialPermissionService``). ``account_id=None`` (no acting
+    member) sees team-shared rows only, never a teammate's private or
+    partial-member credential. Only the ``provider`` column is selected.
+
+    Each row contributes its raw id (hardcoded providers such as ``time``
+    and full plugin ids) plus its native ``ToolProviderID`` canonical form,
+    which maps legacy short ids (``google`` -> ``langgenius/google/google``).
+    Matching stays on the full id, so another organization's plugin with
+    the same short provider name never borrows the authorization.
     """
-    return {str(p.provider) for p in ToolManager.list_default_builtin_providers(tenant_id)}
+    query = select(BuiltinToolProvider.provider).where(BuiltinToolProvider.tenant_id == tenant_id)
+    query = CredentialPermissionService.apply_account_visibility_filter(
+        query,
+        model_id_column=BuiltinToolProvider.id,
+        model_user_id_column=BuiltinToolProvider.user_id,
+        model_visibility_column=BuiltinToolProvider.visibility,
+        credential_type=CredentialPermissionType.BUILTIN_TOOL_PROVIDER,
+        account_id=account_id,
+    )
+    with Session(db.engine) as session:
+        raw_providers = set(session.scalars(query).all())
+    authorized: set[str] = set()
+    for raw in raw_providers:
+        authorized.add(raw)
+        try:
+            authorized.add(str(ToolProviderID(raw)))
+        except ValueError:
+            continue
+    return authorized
 
 
-def _tool_readiness(entry: dict, authorized: set[str] | None) -> str:
-    """"ready" unless the tool needs credentials it doesn't have.
+def _tool_readiness(entry: dict, authorized: set[str] | None) -> tuple[str, str]:
+    """``(readiness, note)``: "ready" unless the tool needs credentials the
+    acting member cannot use.
 
     ``authorized is None`` means the authorization lookup itself failed
-    (see the ``build_tools`` try/except below) -- distinct from a
-    successful lookup that simply found zero rows. We fail OPEN in that
-    case: reporting every credentialed tool "missing_config" on a
-    transient DB error would hide tools the tenant genuinely has
-    configured, which is a worse failure than occasionally recommending
-    one we can't currently confirm. A real credential gap still surfaces
-    the next time the lookup succeeds, and the actual authorization check
-    happens again at tool-execution time regardless of this label.
+    (see the ``build_tools`` try/except below). An unverified authorization
+    is never reported ready: the tool stays discoverable as missing_config
+    with a note saying it could not be verified. Runtime authorization
+    remains the final gate either way.
     """
     if not entry.get("needs_credentials"):
-        return "ready"
+        return "ready", ""
     if authorized is None:
-        return "ready"
-    return "ready" if entry["provider_name"] in authorized else "missing_config"
+        return "missing_config", AUTHORIZATION_UNVERIFIED_NOTE
+    if entry["provider_name"] in authorized:
+        return "ready", ""
+    return "missing_config", SETUP_REQUIRED_NOTE
+
+
+def _tool_ref(entry: dict, authorized: set[str] | None) -> ResourceRef:
+    readiness, note = _tool_readiness(entry, authorized)
+    description = str(entry.get("description") or "")
+    # The readiness reason leads so a bounded rendering of a long description
+    # (the discovery prompt line) never cuts it off.
+    meta = f"{note} — {description}" if description and note else (note or description)
+    return ResourceRef(
+        id=f"{entry['provider_name']}/{entry['tool_name']}",
+        label=str(entry.get("tool_label") or entry["tool_name"]),
+        meta=meta,
+        readiness=readiness,
+        description=description,
+        capability=tool_capability_text(entry),
+    )
 
 
 def _safe(build, source: str) -> list:
@@ -93,7 +149,11 @@ def _safe(build, source: str) -> list:
         return []
 
 
-def list_tenant_resources(tenant_id: str) -> TenantResources:
+def list_tenant_resources(tenant_id: str, *, account_id: str | None = None) -> TenantResources:
+    """``account_id`` is the acting member whose credential visibility decides
+    tool readiness; ``None`` (no acting member) counts team-shared
+    credentials only. Models and datasets do not depend on it."""
+
     def build_models():
         models: list[ResourceRef] = []
         for prov in _list_models(tenant_id):
@@ -114,7 +174,7 @@ def list_tenant_resources(tenant_id: str) -> TenantResources:
         authorized: set[str] | None = None
         if any(t.get("needs_credentials") for t in tools):
             try:
-                authorized = _authorized_providers(tenant_id)
+                authorized = _authorized_providers(tenant_id, account_id)
             except Exception:  # the lookup degrades to "unknown", not "none authorized"
                 logger.warning(
                     "Dify Builder: resource source %r failed for the current tenant; treating as empty",
@@ -122,11 +182,7 @@ def list_tenant_resources(tenant_id: str) -> TenantResources:
                     exc_info=True,
                 )
                 authorized = None
-        return [
-            ResourceRef(id=f"{t['provider_name']}/{t['tool_name']}", label=str(t.get("tool_label") or t["tool_name"]),
-                        meta=str(t.get("description") or ""), readiness=_tool_readiness(t, authorized))
-            for t in tools
-        ]
+        return [_tool_ref(t, authorized) for t in tools]
 
     models = _safe(build_models, "models")
     datasets = _safe(build_datasets, "datasets")
