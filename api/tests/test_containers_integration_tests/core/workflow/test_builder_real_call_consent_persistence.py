@@ -9,8 +9,10 @@ ciphertext below is an opaque fixture string written by the CAS owner.
 
 import importlib.util
 import json
+import multiprocessing
 from collections.abc import Callable
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
+from multiprocessing.connection import Connection
 from pathlib import Path
 from threading import Event, Thread
 from time import monotonic, sleep
@@ -418,25 +420,35 @@ def test_postgres_expiry_boundary_blocks_the_grant_claim(world: World, monkeypat
     assert world.consent(reserved.consent_id).state == "expired"
 
 
-# Server-side bounds for the held-lock regression, applied per connection through libpq ``options``
-# (the same mechanism as ``SQLALCHEMY_ENGINE_OPTIONS``):
+# Held-lock regression containment
+# --------------------------------
+# The whole scenario (holder, spender, PG witness polling, row assertions facts and engine cleanup)
+# runs in a dedicated forked CI child process. Process termination is the containment boundary: it
+# ends every worker thread and every in-flight SQL read, even a connection hang outside a server
+# statement or before a backend PID is published. The parent never runs scenario SQL while waiting;
+# it only polls one plain pipe with a deadline, then joins, terminates and finally kills the child,
+# each with a bounded join, and fails if the child still exists. No Manager, Queue, Event or lock is
+# shared across the process boundary, so killing the child cannot strand the parent.
+#
+# Inside the child, server-side bounds are applied per connection through libpq ``options`` (the
+# same mechanism as ``SQLALCHEMY_ENGINE_OPTIONS``) so the child also cleans up normally:
 # - ``lock_timeout`` aborts any single lock acquisition that waits longer (SQLSTATE 55P03).
 # - ``statement_timeout`` aborts any single statement, including one blocked on a lock (57014).
 # - ``idle_in_transaction_session_timeout`` makes the server terminate a session left idle inside an
-#   open transaction, so a stalled holder thread cannot keep the consent row locked.
-# Each abort ends that worker's SQL with a DBAPI error and SQLAlchemy rolls its transaction back, so
-# both workers terminate within these bounds even when an assertion fails or the holder never
-# acquires its lock. Joins below use deadlines strictly larger than the server-side bounds.
+#   open transaction, so a stalled holder cannot keep the consent row locked after the child dies.
 _HOLDER_OPTIONS = "-c lock_timeout=5000 -c statement_timeout=5000 -c idle_in_transaction_session_timeout=20000"
 _SPENDER_OPTIONS = "-c lock_timeout=15000 -c statement_timeout=20000 -c idle_in_transaction_session_timeout=20000"
+_PROBE_OPTIONS = "-c lock_timeout=5000 -c statement_timeout=5000"
+_HOLDER_LOCK_SECONDS = 10
 _HOLDER_RELEASE_SECONDS = 15  # < holder idle-in-transaction bound
 _WITNESS_SECONDS = 10  # < spender lock_timeout, so the witnessed wait is still in progress
-_JOIN_SECONDS = 60  # > every server-side bound above
+_THREAD_JOIN_SECONDS = 60  # > every server-side bound above (inside the child only)
+_CHILD_RESULT_SECONDS = 180  # > the child's own worst case: lock + witness + both thread joins
+_CHILD_JOIN_SECONDS = 10  # each of: normal join, after terminate(), after kill()
 
 
-def _bounded_engine(world: World, options: str, backend_pids: list[int] | None = None) -> Engine:
-    """A NullPool engine on the fixture's database whose every connection carries ``options``."""
-    base: Engine = world.factory.kw["bind"]
+def _bounded_engine(base: Engine, options: str, backend_pids: list[int] | None = None) -> Engine:
+    """A child-owned NullPool engine on the fixture's database whose every connection carries ``options``."""
     inherited = dify_config.SQLALCHEMY_ENGINE_OPTIONS.get("connect_args", {}).get("options", "")
     engine = create_engine(base.url, poolclass=NullPool, connect_args={"options": f"{inherited} {options}".strip()})
     if backend_pids is not None:
@@ -453,39 +465,27 @@ def _bounded_engine(world: World, options: str, backend_pids: list[int] | None =
     return engine
 
 
-@pytest.mark.parametrize("spend", ["tool", "business"])
-def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
-    world: World, monkeypatch: pytest.MonkeyPatch, spend: str
-) -> None:
-    """A spend that starts eligible and waits on a real held consent row lock across expiry must refuse.
+def _held_lock_scenario(
+    base: Engine,
+    consent_id: str,
+    expires_at: datetime,
+    spend: Callable[[BuilderRealCallConsentService], object],
+) -> dict[str, object]:
+    """Run INSIDE the forked child only: real service and real row locks on child-owned engines.
 
     The clock advances only after THIS spender's own backend is witnessed blocked by THIS holder's
     backend on the consent query, so a pre-lock clock read would authorize and fail the assertion.
     """
     spender_pids: list[int] = []
-    holder_engine = _bounded_engine(world, _HOLDER_OPTIONS)
-    spender_engine = _bounded_engine(world, _SPENDER_OPTIONS, spender_pids)
+    holder_engine = _bounded_engine(base, _HOLDER_OPTIONS)
+    spender_engine = _bounded_engine(base, _SPENDER_OPTIONS, spender_pids)
+    probe_engine = _bounded_engine(base, _PROBE_OPTIONS)
     # Every session the real service opens (owner read, permission, locked transaction) comes from
     # this factory, so all spender SQL inherits the spender bounds.
     service = BuilderRealCallConsentService(sessionmaker(bind=spender_engine, expire_on_commit=False))
-    spend_once: Callable[[], object]
-    if spend == "tool":
-        reserved, context, run_id = world.launched()
-
-        def spend_once() -> object:
-            return service.claim_tool(
-                context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution"
-            )
-    else:
-        reserved, binding = world.claimed()
-
-        def spend_once() -> object:
-            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
-            return "spent"
-
-    expires_at = world.consent(reserved.consent_id).expires_at.replace(tzinfo=UTC)
     clock = {"now": expires_at - timedelta(seconds=5)}  # eligible when the spender call starts
-    monkeypatch.setattr(real_call_consent_service, "_utcnow", lambda: clock["now"])
+    # Child-process memory only; the parent's module is untouched.
+    real_call_consent_service._utcnow = lambda: clock["now"]
     locked, release = Event(), Event()
     results: dict[str, object] = {}
 
@@ -495,17 +495,17 @@ def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
                 results["holder_pid"] = int(db.scalar(text("SELECT pg_backend_pid()")) or 0)
                 db.execute(
                     select(DifyBuilderRealCallConsent.id)
-                    .where(DifyBuilderRealCallConsent.id == reserved.consent_id)
+                    .where(DifyBuilderRealCallConsent.id == consent_id)
                     .with_for_update()
                 )
                 locked.set()
                 release.wait(timeout=_HOLDER_RELEASE_SECONDS)
-        except Exception as error:  # recorded and asserted; never left running
+        except Exception as error:  # reported to the parent, which asserts on it
             results["holder_error"] = type(error).__name__
 
     def run_spender() -> None:
         try:
-            results["spender"] = spend_once()
+            results["spender"] = spend(service)
         except BuilderExecutionPolicyError as error:
             results["spender"] = error.reason_code
         except Exception as error:
@@ -514,7 +514,7 @@ def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
     def spender_witnessed_blocked_by_holder() -> bool:
         # Correlated: one of THIS spender's backends waits on a lock, is blocked by THIS holder's
         # backend (which holds only the consent row lock), and is executing the consent lock query.
-        with world.factory() as db:
+        with Session(probe_engine) as db:
             return bool(
                 db.scalar(
                     text(
@@ -530,31 +530,122 @@ def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(
     spender = Thread(target=run_spender, name="consent-spender", daemon=True)
     try:
         holder.start()
-        assert locked.wait(timeout=10), f"holder never acquired the consent lock: {results.get('holder_error')}"
-        assert clock["now"] < expires_at  # still eligible when the real call begins
-        spender.start()
-        deadline = monotonic() + _WITNESS_SECONDS
-        while not spender_witnessed_blocked_by_holder():
-            assert spender.is_alive(), f"spender finished without blocking: {results.get('spender')}"
-            assert monotonic() < deadline, "spender never blocked on the held consent row lock"
-            sleep(0.05)
-        clock["now"] = expires_at  # expiry passes while the spender is blocked
+        results["holder_locked"] = locked.wait(timeout=_HOLDER_LOCK_SECONDS)
+        if results["holder_locked"]:
+            results["eligible_at_start"] = clock["now"] < expires_at
+            spender.start()
+            deadline = monotonic() + _WITNESS_SECONDS
+            witnessed = False
+            while spender.is_alive() and monotonic() < deadline:
+                if spender_witnessed_blocked_by_holder():
+                    witnessed = True
+                    break
+                sleep(0.05)
+            results["witnessed"] = witnessed
+            if witnessed:
+                clock["now"] = expires_at  # expiry passes while the spender is blocked
     finally:
         release.set()
-        holder.join(timeout=_JOIN_SECONDS)
+        holder.join(timeout=_THREAD_JOIN_SECONDS)
         if spender.ident is not None:
-            spender.join(timeout=_JOIN_SECONDS)
+            spender.join(timeout=_THREAD_JOIN_SECONDS)
+        results["threads_alive"] = holder.is_alive() or spender.is_alive()
+        if not results["threads_alive"]:
+            with Session(probe_engine) as db:
+                row = db.get(DifyBuilderRealCallConsent, consent_id)
+                if row is not None:
+                    results["row"] = (
+                        row.state,
+                        row.claimed_at is None,
+                        row.business_count,
+                        row.business_claimed_at is None,
+                    )
         holder_engine.dispose()
         spender_engine.dispose()
-    assert not holder.is_alive(), "holder outlived its server-side bounds"
-    assert not spender.is_alive(), "spender outlived its server-side bounds"
-    assert "holder_error" not in results
-    assert results["spender"] == "consent_expired"
-    row = world.consent(reserved.consent_id)
+        probe_engine.dispose()
+    return results
+
+
+@pytest.mark.parametrize("spend", ["tool", "business"])
+def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(world: World, spend: str) -> None:
+    """A spend that starts eligible and waits on a real held consent row lock across expiry must refuse.
+
+    The scenario runs in a killable forked child (see the containment notes above); the parent only
+    supervises it through a bounded pipe and asserts on the facts the child reports.
+    """
+    assert "fork" in multiprocessing.get_all_start_methods(), "held-lock containment needs fork (Linux CI)"
+    base: Engine = world.factory.kw["bind"]
+    spend_with: Callable[[BuilderRealCallConsentService], object]
     if spend == "tool":
-        assert (row.state, row.claimed_at) == ("expired", None)
+        reserved, context, run_id = world.launched()
+
+        def spend_with(service: BuilderRealCallConsentService) -> object:
+            return service.claim_tool(
+                context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution"
+            )
     else:
-        assert (row.state, row.business_count, row.business_claimed_at) == ("failed", 0, None)
+        reserved, binding = world.claimed()
+
+        def spend_with(service: BuilderRealCallConsentService) -> object:
+            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+            return "spent"
+
+    expires_at = world.consent(reserved.consent_id).expires_at.replace(tzinfo=UTC)
+    # Explicit fork: the child keeps this process's patched synthetic metadata/flags in memory.
+    ctx = multiprocessing.get_context("fork")
+    receiver, sender = ctx.Pipe(duplex=False)
+
+    def child_main(channel: Connection) -> None:
+        facts: dict[str, object] = {}
+        try:
+            # Drop the inherited fixture pool without closing the parent's sockets; the child then
+            # uses only its own NullPool engines (SQLAlchemy multiprocessing guidance).
+            base.dispose(close=False)
+            facts = _held_lock_scenario(base, reserved.consent_id, expires_at, spend_with)
+        except BaseException as error:
+            facts["child_error"] = type(error).__name__
+        finally:
+            channel.send(facts)
+            channel.close()
+
+    child = ctx.Process(target=child_main, args=(sender,), name="held-lock-consent-scenario", daemon=True)
+    facts: dict[str, object] | None = None
+    child_alive = False
+    try:
+        child.start()
+        sender.close()  # only the child may write
+        if receiver.poll(_CHILD_RESULT_SECONDS):
+            try:
+                facts = receiver.recv()
+            except EOFError:
+                facts = None  # child exited without reporting
+    finally:
+        sender.close()
+        if child.pid is not None:  # started: always reap within bounds
+            child.join(timeout=_CHILD_JOIN_SECONDS)
+            if child.is_alive():
+                child.terminate()
+                child.join(timeout=_CHILD_JOIN_SECONDS)
+            if child.is_alive():
+                child.kill()
+                child.join(timeout=_CHILD_JOIN_SECONDS)
+            child_alive = child.is_alive()
+            if not child_alive:
+                child.close()
+        receiver.close()
+    assert not child_alive, "held-lock child survived terminate() and kill()"
+    assert facts is not None, "held-lock child reported nothing within its deadline"
+    assert "child_error" not in facts, facts
+    assert "holder_error" not in facts, facts
+    assert facts.get("holder_locked") is True, facts
+    assert facts.get("eligible_at_start") is True, facts
+    assert facts.get("witnessed") is True, facts
+    assert facts.get("threads_alive") is False, facts
+    assert facts.get("spender") == "consent_expired", facts
+    if spend == "tool":
+        assert facts.get("row") == ("expired", True, 0, True), facts
+    else:
+        assert facts.get("row") == ("failed", False, 0, True), facts
 
 
 def test_postgres_refresh_cas_never_overwrites_same_timestamp_rotation(world: World) -> None:
