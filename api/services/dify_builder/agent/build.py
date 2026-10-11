@@ -19,6 +19,7 @@ from core.app.app_config.entities import ModelConfig
 from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
+from core.workflow.generator.tool_catalogue import score_tool_relevance
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import preflight
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
@@ -336,23 +337,72 @@ _DIFY_NODE_VOCABULARY = """\
 
 
 # How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
-# 35; a cap keeps the prompt bounded on tenants with hundreds. Sorted by id so
-# the listing is stable across calls.
+# 35; a cap keeps the prompt bounded on tenants with hundreds. Tools are ranked
+# by relevance to the request first, so a matching tool is never hidden behind
+# alphabetically earlier ones; ties keep id order so the listing is stable.
 _MAX_PLANNER_TOOLS = 40
+# How many installed tools (ready or needing setup) the resource recommender
+# is shown, ranked the same way. Models are listed in full as before.
+_MAX_DISCOVERY_TOOLS = 40
 
 
-def ready_tool_catalogue(tenant_id: str) -> list[ResourceRef]:
+def _tool_key(ref: ResourceRef) -> tuple[str, str]:
+    """``(provider_name, tool_name)`` of a tool resource id ``provider/tool``.
+    Provider ids may contain slashes; tool names never do."""
+    provider_name, _, tool_name = ref.id.rpartition("/")
+    return provider_name, tool_name
+
+
+def _request_text(goal_text: str, requirements: dict[str, Any] | None, plan_items: Sequence[str] = ()) -> str:
+    """The free text tools are ranked against."""
+    parts = [goal_text, json.dumps(requirements, ensure_ascii=False) if requirements else "", *plan_items]
+    return "\n".join(part for part in parts if part)
+
+
+def _rank_tools(tools: Sequence[ResourceRef], query_text: str) -> list[ResourceRef]:
+    """Tools ordered by relevance to ``query_text`` (the shared tool-catalogue
+    scorer over id, label, description and provider capability), ties and an
+    empty query in id order."""
+    if not query_text.strip():
+        return sorted(tools, key=lambda t: t.id)
+
+    def score(ref: ResourceRef) -> float:
+        provider_name, tool_name = _tool_key(ref)
+        value, _confident = score_tool_relevance(
+            query_text,
+            provider_name=provider_name,
+            tool_name=tool_name,
+            label=ref.label,
+            description=ref.description,
+            capability=ref.capability,
+        )
+        return value
+
+    scored = [(score(ref), ref) for ref in tools]
+    scored.sort(key=lambda item: (-item[0], item[1].id))
+    return [ref for _score, ref in scored]
+
+
+def ready_tool_catalogue(
+    tenant_id: str,
+    *,
+    account_id: str | None = None,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> list[ResourceRef]:
     """The installed tools the planner may name: ``ready`` ones only (an
-    installed-but-unauthorized tool cannot cover a step), capped and sorted.
+    installed tool needing setup cannot cover a step), ranked by relevance to
+    the goal and requirements, then capped. ``account_id`` is the acting
+    member whose credentials decide readiness (``None``: team-shared only).
     A listing failure yields ``[]`` -- the plan then just cannot name tools,
     which is the pre-existing behaviour, never a crashed advance."""
     try:
-        tools = resources.list_tenant_resources(tenant_id).tools
+        tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
     except Exception:
         logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
         return []
-    ready = sorted((t for t in tools if t.readiness == "ready"), key=lambda t: t.id)
-    return ready[:_MAX_PLANNER_TOOLS]
+    ready = [t for t in tools if t.readiness == "ready"]
+    return _rank_tools(ready, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
 
 
 def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
@@ -466,9 +516,20 @@ def discover_resources(
     *,
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
+    account_id: str | None = None,
 ) -> list[ResourceOption]:
-    inv = resources.list_tenant_resources(tenant_id)
-    catalog = {r.id: ("plugin", r) for r in inv.tools}
+    """Recommend installed tools and models for the plan.
+
+    Tools are every installed tool -- ready or needing setup -- ranked by
+    relevance to the goal, requirements and plan and bounded to
+    ``_MAX_DISCOVERY_TOOLS``. A recommended missing_config tool keeps that
+    readiness and its setup note in ``meta``; binding and generation still
+    accept ready tools only. ``account_id`` is the acting member whose
+    credentials decide readiness (``None``: team-shared only).
+    """
+    inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    tools = _rank_tools(inv.tools, _request_text(goal_text, requirements, plan_items))[:_MAX_DISCOVERY_TOOLS]
+    catalog = {r.id: ("plugin", r) for r in tools}
     catalog.update({r.id: ("model", r) for r in inv.models})
     if not catalog or model is None:
         return []
@@ -476,12 +537,14 @@ def discover_resources(
         "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
         "ids relevant to the original goal, confirmed requirements and plan. A mention alone "
         "does not require a resource; respect optional and negative source instructions. "
-        "Each is listed with its readiness: 'ready' or 'missing_config' "
-        "(installed but not authorized for this workspace, so it cannot actually be used) -- never "
-        "recommend a missing_config resource. Use ONLY listed ids. Reply with ONLY JSON: "
+        "Each is listed with its readiness: 'ready' or 'missing_config' (installed in this workspace "
+        "but it requires setup -- its credentials are not authorized for this member, or the "
+        "authorization could not be verified -- so it cannot run until set up). You may recommend a "
+        "missing_config tool when it is the right fit; it is presented as requiring setup. Prefer a "
+        "ready resource that fits equally well. Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
-    listing = "\n".join(f"- {rid} ({kind}, {ref.readiness}): {ref.label}" for rid, (kind, ref) in catalog.items())
+    listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
@@ -505,6 +568,14 @@ def discover_resources(
         )
         for rid in chosen_ids
     ]
+
+
+def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
+    line = f"- {rid} ({kind}, {ref.readiness}): {ref.label}"
+    meta = ref.meta.replace("\n", " ").strip()
+    if meta:
+        line += f" — {meta[:240]}"
+    return line
 
 
 _GAP_SYSTEM = (
@@ -620,7 +691,14 @@ def _bound_name(kind: str, ref: ResourceRef) -> str:
 _TRAILING_USING_SUFFIX = re.compile(r"(\s*\(using [^()]*\))+\s*$")
 
 
-def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str]) -> list[str]:
+def bind_resources(
+    model,
+    tenant_id: str,
+    plan_items: list[str],
+    resource_ids: list[str],
+    *,
+    account_id: str | None = None,
+) -> list[str]:
     """Name each selected resource on the plan step it covers.
 
     Used to append every label to the LAST step -- in the ESQ1-302 session the
@@ -635,12 +713,18 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     trailing "(using ...)" suffix is stripped before binding fresh: a
     deselected resource must not keep its old suffix, and a re-bind of the
     same selection must not pile a duplicate on top of it.
+
+    Only tools ``ready`` for the acting member (``account_id``; ``None``:
+    team-shared credentials only) are bound, re-checked against a fresh
+    inventory: a selected tool that requires setup is dropped, because the
+    bound id is what the generator pins as executable.
     """
-    inv = resources.list_tenant_resources(tenant_id)
+    inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    ready_tools = [r for r in inv.tools if r.readiness == "ready"]
     kinds: dict[str, str] = {}
-    kinds.update({r.id: "plugin" for r in inv.tools})
+    kinds.update({r.id: "plugin" for r in ready_tools})
     kinds.update({r.id: "model" for r in inv.models})
-    by_id = {r.id: r for r in (*inv.tools, *inv.models)}
+    by_id = {r.id: r for r in (*ready_tools, *inv.models)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
     stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
@@ -896,6 +980,42 @@ def _prepare_build_candidate(
     return preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
 
 
+# Tool-node provider types whose readiness the Builder's inventory decides.
+# Plugin tools are "builtin" on workflow nodes (see tool_catalogue); API,
+# workflow and MCP tools keep their existing handling.
+_INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
+
+
+def _ready_tool_keys(tenant_id: str, account_id: str | None) -> frozenset[tuple[str, str]]:
+    """Every tool ready for the acting member, uncapped; empty on failure so
+    generation fails closed rather than allowing unverified tools."""
+    try:
+        tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
+    except Exception:
+        logger.warning("dify_builder: tool listing failed; generating without executable tools", exc_info=True)
+        return frozenset()
+    return frozenset(_tool_key(t) for t in tools if t.readiness == "ready")
+
+
+def _unready_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tuple[str, str]]) -> list[str]:
+    """Refuse every generated built-in/plugin tool node outside the ready set."""
+    refusals: list[str] = []
+    for node in graph.get("nodes") or []:
+        data = node.get("data") if isinstance(node, dict) else None
+        if not isinstance(data, dict) or data.get("type") != "tool":
+            continue
+        if str(data.get("provider_type") or "builtin") not in _INVENTORY_TOOL_PROVIDER_TYPES:
+            continue
+        provider_name = str(data.get("provider_id") or data.get("provider_name") or "").strip()
+        tool_name = str(data.get("tool_name") or "").strip()
+        if (provider_name, tool_name) not in ready_tool_keys:
+            refusals.append(
+                f"Tool node {node.get('id')!s} uses {provider_name}/{tool_name}, which is not a ready installed "
+                "tool for this workspace member; use a ready tool or another node type."
+            )
+    return refusals
+
+
 def build_nodes(
     tenant_id: str,
     model_config: dict[str, Any],
@@ -903,10 +1023,20 @@ def build_nodes(
     resource_ids: Sequence[str] = (),
     *,
     trusted_text: str = "",
+    account_id: str | None = None,
 ) -> BuildNodesResult:
+    """Generate the approved plan's nodes with ready tools only.
+
+    The complete (uncapped) set of tools ready for the acting member
+    (``account_id``; ``None``: team-shared credentials only) is read from a
+    fresh inventory and handed to the generator as its tool allowlist. A
+    generated candidate naming any other built-in/plugin tool is refused like
+    any other invalid candidate, whatever the generator returned.
+    """
     diagnostics: list[dict[str, Any]] = []
     try:
         mc = _generator_model_config(tenant_id, model_config)
+        ready_tool_keys = _ready_tool_keys(tenant_id, account_id)
         base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
         if trusted_text:
             base_instruction += (
@@ -924,6 +1054,7 @@ def build_nodes(
                 instruction=instruction,
                 model_config=mc,
                 current_graph=None,
+                ready_tool_keys=ready_tool_keys,
             )
 
         instruction = base_instruction
@@ -938,14 +1069,15 @@ def build_nodes(
                 if grounding_mc is None:
                     grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
                 candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text)
-                if not candidate.rejections and candidate.applicable:
+                rejections = [*_unready_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
+                if not rejections and candidate.applicable:
                     return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
                 # vet_intents supplies credential-safe node/field refusals from
                 # the real engine. Never embed the raw candidate config here.
                 source = "build_nodes"
                 result = {
                     "error": "the generated graph had no applicable node intents",
-                    "errors": [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in candidate.rejections],
+                    "errors": [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in rejections],
                 }
 
             diagnostic = _generation_diagnostic(result, attempt=attempt)
